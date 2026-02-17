@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Change Completed - HAYC</title>
+    <style>
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .header { 
+            background: linear-gradient(135deg, #28a745 0%, #218838 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content { 
+            padding: 0 30px 20px;
+        }
+        .success-message {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            border-radius: 0 6px 6px 0;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .change-details {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .change-details h3 {
+            margin-top: 0;
+            color: #495057;
+        }
+        .change-details p {
+            margin: 10px 0;
+        }
+        .cta-button {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            margin: 20px 0;
+            font-weight: 600;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .cta-button:hover {
+            background-color: #218838;
+        }
+        .info-box {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        .footer { 
+            text-align: center; 
+            margin-top: 30px; 
+            font-size: 12px; 
+            color: #666;
+            padding-top: 20px;
+            border-top: 1px solid #e1e4e8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Change Request Completed!</h1>
+            <p style="margin: 10px 0 0; font-size: 16px; opacity: 0.9;">
+                Your website update is ready for review
+            </p>
+        </div>
+
+        <div class="content">
+            <div class="success-message">
+                <h3 style="margin-top: 0; color: #155724;">Hello {{username}}!</h3>
+                <p style="margin-bottom: 0;">
+                    Great news! We've completed the change request for your website <strong>{{projectName}}</strong>.
+                </p>
+            </div>
+
+            <div class="change-details">
+                <h3>📝 Change Details:</h3>
+                <p><strong>Website:</strong> {{projectName}}</p>
+                <p><strong>Request:</strong> {{changeDescription}}</p>
+                <p><strong>Completed:</strong> {{completedDate}}</p>
+            </div>
+
+            <div class="info-box">
+                <strong>💬 We'd love your feedback!</strong>
+                <p style="margin: 10px 0 0;">
+                    Please take a moment to review the changes and let us know if everything looks good or if you need any adjustments.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://{{domain}}" class="cta-button" target="_blank" style="color: white; text-decoration: none;">
+                    View Your Website
+                </a>
+            </div>
+
+            <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                If you have any questions or need adjustments, please log in to your dashboard to provide feedback or contact our support team.
+            </p>
+
+            <p style="margin-top: 25px;">
+                Best regards,<br>
+                <strong>The HAYC Team</strong>
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>
+                © 2025 HAYC. All rights reserved.<br>
+                This email was sent to {{email}}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

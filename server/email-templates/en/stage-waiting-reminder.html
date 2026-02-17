@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Action Required - Website Development</title>
+        <style>
+            body {
+                font-family:
+                    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                    Oxygen, Ubuntu, Cantarell, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #f8fafc;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                background-color: #ffffff;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+            }
+            .header {
+                background-color: #ff9800;
+                color: white;
+                padding: 30px;
+                border-radius: 8px 8px 0 0;
+                text-align: center;
+                margin-bottom: 30px;
+            }
+            .header h1 {
+                margin: 0;
+                font-size: 26px;
+                font-weight: 600;
+                color: #fff;
+            }
+            .header .subtitle {
+                color: #fff;
+            }
+            .logo-header {
+                text-align: center;
+            }
+            .icon {
+                width: 64px;
+                height: 64px;
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                border-radius: 50%;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 24px;
+            }
+            .icon::before {
+                content: "⏰";
+                color: white;
+                font-size: 28px;
+            }
+            h1 {
+                color: #1f2937;
+                font-size: 28px;
+                font-weight: 700;
+                margin: 0;
+                line-height: 1.2;
+            }
+            .subtitle {
+                color: #6b7280;
+                font-size: 16px;
+                margin-top: 8px;
+            }
+            .content {
+                margin: 32px 0;
+            }
+            .content p {
+                color: #222;
+            }
+            .info-card {
+                background: #fef3c7;
+                border: 1px solid #f59e0b;
+                border-radius: 8px;
+                padding: 24px;
+                margin: 24px 0;
+            }
+            .info-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+            .info-row:last-child {
+                margin-bottom: 0;
+            }
+            .info-label {
+                color: #222;
+                font-weight: 500;
+            }
+            .info-value {
+                color: #222;
+                font-weight: 600;
+            }
+            .highlight {
+                color: #f59e0b;
+                font-weight: 700;
+            }
+            .waiting-info {
+                background: #f9fafb;
+                border-left: 4px solid #f59e0b;
+                padding: 16px;
+                margin: 24px 0;
+                border-radius: 0 8px 8px 0;
+            }
+            .waiting-info p {
+                margin: 0;
+                color: #222;
+                font-weight: 500;
+            }
+            .cta {
+                text-align: center;
+                margin: 32px 0;
+            }
+            .button {
+                display: inline-block;
+                background: linear-gradient(135deg, #f59e0b, #d97706);
+                color: white;
+                text-decoration: none;
+                padding: 12px 32px;
+                border-radius: 8px;
+                font-weight: 600;
+                font-size: 16px;
+                transition: transform 0.2s;
+            }
+            .button:hover {
+                transform: translateY(-1px);
+            }
+            .footer {
+                text-align: center;
+                margin-top: 40px;
+                padding-top: 32px;
+                border-top: 1px solid #e5e7eb;
+                color: #222;
+                font-size: 14px;
+            }
+            .footer a {
+                color: #f59e0b;
+                text-decoration: none;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Action Required</h1>
+                <p class="subtitle">
+                    Your website development is waiting for your input
+                </p>
+            </div>
+            <div class="logo-header">
+                <img
+                    src="https://b9c269b8-ad5c-47f6-93c1-b8853e7c5a12-00-wd84edz68d81.worf.replit.dev/images/hayc-logo.png"
+                    alt="HAYC Logo Image"
+                    className="w-full h-auto"
+                    style="max-width: 100px; padding: 0 30px"
+                />
+            </div>
+
+            <div class="content">
+                <p>Hello {{username}},</p>
+
+                <p>
+                    We're working on your website and need your assistance to
+                    move forward with the next stage of development.
+                </p>
+
+                <div class="info-card">
+                    <div class="info-row">
+                        <span class="info-label">Website:</span>
+                        <span class="info-value highlight">{{domain}}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Current Stage:</span>
+                        <span class="info-value">{{stageName}}</span>
+                    </div>
+                </div>
+
+                <div class="waiting-info">
+                    <p><strong>What we need from you:</strong></p>
+                    <p>{{waitingInfo}}</p>
+                </div>
+
+                <p>
+                    To ensure your website development stays on track, please
+                    provide the requested information or materials as soon as
+                    possible. Our team is ready to continue working as soon as
+                    we receive what we need from you.
+                </p>
+
+                <div class="cta">
+                    <a
+                        href="{{baseUrl}}/dashboard"
+                        class="button"
+                        style="color: #fff"
+                        >View Project Details</a
+                    >
+                </div>
+
+                <p>
+                    If you have any questions about what's needed or need
+                    clarification, please don't hesitate to contact our support
+                    team.
+                </p>
+            </div>
+
+            <div class="footer">
+                <p>Thank you for your cooperation!</p>
+                <p>
+                    <a href="{{baseUrl}}">Visit our website</a> |
+                    <a href="mailto:support@hayc.gr">Contact Support</a>
+                </p>
+            </div>
+        </div>
+    </body>
+</html>

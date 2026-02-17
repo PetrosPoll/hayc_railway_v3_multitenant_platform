@@ -1,0 +1,199 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Subscription - Admin Notification</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+        .admin-badge {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .content {
+            padding: 40px 30px;
+            line-height: 1.6;
+        }
+        .user-details {
+            background-color: #f1f5f9;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 4px solid #3b82f6;
+        }
+        .user-details h3 {
+            margin: 0 0 20px 0;
+            color: #1e40af;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #475569;
+            min-width: 120px;
+        }
+        .detail-value {
+            font-weight: 500;
+            color: #1e293b;
+            text-align: right;
+        }
+        .action-items {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        .action-items h4 {
+            margin: 0 0 15px 0;
+            color: #92400e;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .action-list {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .action-list li {
+            margin-bottom: 8px;
+            color: #92400e;
+        }
+        .priority-high {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+            color: #dc2626;
+        }
+        .footer {
+            background-color: #f8fafc;
+            padding: 25px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+            margin: 0;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .timestamp {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="admin-badge">🎉 NEW SUBSCRIPTION</div>
+            <h1>Customer Subscription Created</h1>
+        </div>
+        
+        <div class="content">
+            <p>A new customer has successfully subscribed! Please set up their website and begin the development process.</p>
+            
+            <div class="user-details">
+                <h3>👤 Customer Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Username:</span>
+                    <span class="detail-value">{{username}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Email:</span>
+                    <span class="detail-value">{{email}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Plan:</span>
+                    <span class="detail-value">{{plan}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Subscription Date:</span>
+                    <span class="detail-value">{{subscriptionDate}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Amount Paid:</span>
+                    <span class="detail-value">{{currency}} {{amount}}</span>
+                </div>
+                {{#if hasAddOns}}
+                <div class="detail-row">
+                    <span class="detail-label">Add-ons:</span>
+                    <span class="detail-value">{{addOnsDetails}}</span>
+                </div>
+                {{/if}}
+            </div>
+
+            <div class="action-items priority-high">
+                <h4>🚨 IMMEDIATE ACTION REQUIRED</h4>
+                <ul class="action-list">
+                    <li><strong>Create website progress tracker</strong> in the admin panel</li>
+                    <li><strong>Set up development stages</strong> for the customer's project</li>
+                    <li><strong>Contact customer</strong> to gather requirements and preferences</li>
+                    <li><strong>Begin planning phase</strong> based on selected plan features</li>
+                    <li><strong>Update project management system</strong> with new client details</li>
+                </ul>
+            </div>
+
+            <div class="action-items">
+                <h4>📋 NEXT STEPS</h4>
+                <ul class="action-list">
+                    <li>Schedule initial consultation call</li>
+                    <li>Prepare project timeline and milestones</li>
+                    <li>Set up development environment</li>
+                    <li>Review plan-specific features and limitations</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p><strong>HAYC Development Team</strong></p>
+            <p class="timestamp">Notification sent on {{subscriptionDate}}</p>
+        </div>
+    </div>
+</body>
+</html>

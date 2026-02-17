@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Αίτημα Αλλαγής Ιστοσελίδας</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+            margin: -20px -20px 20px -20px;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .message-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+        }
+        .highlight {
+            color: #007bff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Αίτημα Αλλαγής Ιστοσελίδας</h1>
+        </div>
+        
+        <div class="content">
+            <p>Ένα νέο αίτημα αλλαγής ιστοσελίδας υποβλήθηκε από πελάτη.</p>
+            
+            <div class="info-box">
+                <h3>Στοιχεία Πελάτη</h3>
+                <p><strong>Όνομα:</strong> {{username}}</p>
+                <p><strong>Email:</strong> {{email}}</p>
+                <p><strong>Ιστοσελίδα:</strong> {{domain}}</p>
+                <p><strong>Ημερομηνία Αιτήματος:</strong> {{requestDate}}</p>
+            </div>
+            
+            <div class="info-box">
+                <h3>Λεπτομέρειες Αιτήματος</h3>
+                <p><strong>Θέμα:</strong> {{subject}}</p>
+            </div>
+            
+            <div class="message-box">
+                <h4>Μήνυμα:</h4>
+                <p>{{message}}</p>
+            </div>
+            
+            {{#if filesHtml}}
+            <div class="info-box">
+                <h3>📎 Συνημμένα Αρχεία</h3>
+                {{filesHtml}}
+            </div>
+            {{/if}}
+            
+            <div class="info-box">
+                <h3>Επόμενα Βήματα</h3>
+                <ul>
+                    <li>Ελέγξτε τις λεπτομέρειες του αιτήματος αλλαγής</li>
+                    <li>Επικοινωνήστε με τον πελάτη εάν χρειάζεται διευκρίνιση</li>
+                    <li>Αξιολογήστε το εύρος και το χρονοδιάγραμμα υλοποίησης</li>
+                    <li>Ενημερώστε τον πελάτη για την κατάσταση του αιτήματός του</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Αυτή είναι μια αυτόματη ειδοποίηση από το σύστημα διαχείρισης HAYC.</p>
+            <p>Παρακαλώ χειριστείτε αυτό το αίτημα το συντομότερο δυνατό.</p>
+        </div>
+    </div>
+</body>
+</html>

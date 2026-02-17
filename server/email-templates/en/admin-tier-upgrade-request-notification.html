@@ -1,0 +1,142 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tier Upgrade Request</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+            margin: -20px -20px 20px -20px;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .upgrade-box {
+            background-color: #e7f3ff;
+            border: 2px solid #007bff;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .tier-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+        .tier-current {
+            background-color: #ffeaa7;
+            color: #2d3436;
+        }
+        .tier-requested {
+            background-color: #00b894;
+            color: white;
+        }
+        .message-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+        }
+        .highlight {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .arrow {
+            font-size: 24px;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Tier Upgrade Request</h1>
+        </div>
+        
+        <div class="content">
+            <p>A customer has requested a tier upgrade to access premium features.</p>
+            
+            <div class="upgrade-box">
+                <h3>Requested Upgrade</h3>
+                <div style="display: flex; align-items: center; justify-content: center; margin: 20px 0;">
+                    <span class="tier-badge tier-current">{{currentTier}}</span>
+                    <span class="arrow">→</span>
+                    <span class="tier-badge tier-requested">{{requestedTier}}</span>
+                </div>
+                <p style="margin: 10px 0;"><strong>Feature Requested:</strong> {{feature}}</p>
+            </div>
+            
+            <div class="info-box">
+                <h3>Customer Information</h3>
+                <p><strong>Name:</strong> {{username}}</p>
+                <p><strong>User ID:</strong> {{userId}}</p>
+                <p><strong>Email:</strong> {{email}}</p>
+                {{#if websiteName}}
+                <p><strong>Website:</strong> {{websiteName}}</p>
+                {{/if}}
+                <p><strong>Request Date:</strong> {{requestDate}}</p>
+            </div>
+            
+            {{#if message}}
+            <div class="message-box">
+                <h4>Customer Message:</h4>
+                <p>{{message}}</p>
+            </div>
+            {{/if}}
+            
+            <div class="info-box">
+                <h3>Next Steps</h3>
+                <ul>
+                    <li>Review the customer's request and current subscription status</li>
+                    <li>Contact the customer to discuss upgrade options and pricing</li>
+                    <li>Process the tier upgrade through Stripe manually</li>
+                    <li>Confirm the upgrade with the customer once completed</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification from the HAYC admin system.</p>
+            <p>Please handle this request as soon as possible.</p>
+        </div>
+    </div>
+</body>
+</html>

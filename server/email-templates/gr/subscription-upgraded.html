@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Αναβάθμιση Συνδρομής - hayc</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .logo {
+            margin-bottom: 15px;
+        }
+        .logo-header {
+            text-align: center;
+        }
+        .content {
+            padding: 30px;
+        }
+        .subscription-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .subscription-details h3 {
+            margin: 0 0 15px 0;
+            color: #222;
+            font-size: 18px;
+        }
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .price-row:last-child {
+            border-bottom: none;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            font-weight: bold;
+            font-size: 16px;
+            color: #4CAF50;
+            margin-top: 10px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 13px;
+            padding-top: 20px;
+            border-top: 1px solid #e1e4e8;
+            color: #222;
+        }
+        .highlight {
+            background-color: #e8f5e8;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #4CAF50;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Η Συνδρομή σας Αναβαθμίστηκε με Επιτυχία!</h1>
+        </div>
+        <div class="logo-header">
+            <img
+                src="https://b9c269b8-ad5c-47f6-93c1-b8853e7c5a12-00-wd84edz68d81.worf.replit.dev/images/hayc-logo.png"
+                alt="HAYC Logo Image"
+                className="w-full h-auto"
+                style="max-width: 100px; padding: 0 30px"
+            />
+        </div>
+        <div class="content">
+            <p>Γεια σας {{username}},</p>
+            <p>Υπέροχα νέα! Η συνδρομή σας έχει αναβαθμιστεί με επιτυχία σε ετήσια χρέωση. Τώρα εξοικονομείτε χρήματα με το ετήσιο μας πρόγραμμα!</p>
+
+            <div class="highlight">
+                <strong>🎉 Συγχαρητήρια!</strong> Τώρα εξοικονομείτε {{currency}} {{monthlySavings}} το μήνα με την ετήσια συνδρομή σας!
+            </div>
+
+            <div class="subscription-details">
+                <h3>Λεπτομέρειες Αναβάθμισης</h3>
+                {{#if domain}}
+                <div class="price-row">
+                    <span>Ιστότοπος:&nbsp;</span>
+                    <span><strong>{{domain}}</strong></span>
+                </div>
+                {{/if}}
+                <div class="price-row">
+                    <span>Πρόγραμμα:&nbsp;</span>
+                    <span>{{plan}} (Ετήσιο)</span>
+                </div>
+                <div class="price-row">
+                    <span>Ημερομηνία Αναβάθμισης:&nbsp;</span>
+                    <span>{{upgradeDate}}</span>
+                </div>
+                <div class="price-row">
+                    <span>Επόμενη Ημερομηνία Χρέωσης:&nbsp;</span>
+                    <span>{{nextBillingDate}}</span>
+                </div>
+                <div class="total-row">
+                    <span>Μηνιαία Εξοικονόμηση:&nbsp;</span>
+                    <span>{{currency}} {{monthlySavings}}</span>
+                </div>
+            </div>
+
+            {{#if hasWebsites}}
+                {{websitesHtml}}
+                {{/if}}
+
+            <p>Η ετήσια συνδρομή σας παρέχει τις ίδιες εξαιρετικές λειτουργίες σε καλύτερη αξία, και δεν θα χρειάζεται να ανησυχείτε για μηνιαίες ανανεώσεις.</p>
+
+            <div style="text-align: center;">
+                <a href="{{baseUrl}}/dashboard" class="button" style="color:#fff;">Δείτε τον Πίνακα Ελέγχου σας</a>
+            </div>
+
+            <p>Σας ευχαριστούμε για τη συνεχή εμπιστοσύνη σας στις υπηρεσίες μας. Είμαστε ενθουσιασμένοι να σας βοηθήσουμε να επιτύχετε τους στόχους σας κατά τη διάρκεια του επόμενου έτους!</p>
+        </div>
+
+        <div class="footer">
+            <p>© 2025 hayc. Όλα τα δικαιώματα διατηρούνται.</p>
+            <p>Εάν έχετε οποιεσδήποτε ερωτήσεις, μη διστάσετε να επικοινωνήσετε με την ομάδα υποστήριξής μας.</p>
+        </div>
+    </div>
+</body>
+</html>

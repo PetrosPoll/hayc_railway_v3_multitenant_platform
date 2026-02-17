@@ -1,0 +1,160 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Onboarding Form Submission</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 30px;
+        }
+        .user-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+        .info-item {
+            margin: 12px 0;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .info-value {
+            color: #212529;
+            font-size: 16px;
+        }
+        .priority {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 14px 35px;
+            border-radius: 25px;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .footer {
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .dashboard-note {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 New Onboarding Submission!</h1>
+            <p>Website Development Request</p>
+        </div>
+        
+        <div class="content">
+            <div class="priority">
+                🔥 New Client Opportunity - Respond within 24 hours
+            </div>
+            
+            <p>A new potential client has completed the onboarding form and is ready to start their website project!</p>
+            
+            <div class="user-info">
+                <h3 style="margin-top: 0;">👤 Submitted By:</h3>
+                
+                <div class="info-item">
+                    <div class="info-label">Full Name</div>
+                    <div class="info-value">{{fullName}}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Email</div>
+                    <div class="info-value">{{email}}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Business Name</div>
+                    <div class="info-value">{{businessName}}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Submitted On</div>
+                    <div class="info-value">{{submittedAt}}</div>
+                </div>
+            </div>
+
+            <div class="dashboard-note">
+                <p style="margin: 0; font-weight: 600;">📊 View full submission details in the admin dashboard</p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{dashboardUrl}}" class="cta-button">📋 View Full Details in Dashboard</a>
+            </div>
+
+            <div style="text-align: center; margin: 20px 0;">
+                <a href="mailto:{{email}}" class="cta-button" style="background: #28a745;">📧 Contact Client</a>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This submission was received through the HAYC onboarding form.</p>
+            <p>© 2025 HAYC. Client Management System</p>
+        </div>
+    </div>
+</body>
+</html>

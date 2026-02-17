@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 200 200">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-2 {
+        stroke-width: 5.5px;
+      }
+
+      .cls-2, .cls-3 {
+        fill: none;
+        stroke: #fff;
+        stroke-linejoin: round;
+      }
+
+      .cls-3 {
+        stroke-linecap: round;
+        stroke-width: 5.69px;
+      }
+
+      .cls-4 {
+        fill: url(#linear-gradient);
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="12.07" y1="187.93" x2="191.98" y2="8.02" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2777e9"/>
+      <stop offset="1" stop-color="#182b53"/>
+    </linearGradient>
+  </defs>
+  <path class="cls-4" d="M137.5,200H62.5c-50,0-62.5-12.5-62.5-62.5V62.5C0,12.5,12.5,0,62.5,0h75c50,0,62.5,12.5,62.5,62.5v75c0,50-12.5,62.5-62.5,62.5Z"/>
+  <line class="cls-3" x1="74.61" y1="32.89" x2="74.61" y2="52.4"/>
+  <line class="cls-3" x1="125.39" y1="32.89" x2="125.39" y2="52.4"/>
+  <rect class="cls-2" x="40" y="40" width="120" height="120" rx="10" ry="10"/>
+  <line class="cls-2" x1="40" y1="70" x2="160" y2="70"/>
+  <rect class="cls-1" x="80" y="82.86" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="106.67" y="82.86" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="133.33" y="82.86" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="53.33" y="108.57" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="80" y="108.57" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="106.67" y="108.57" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="133.33" y="108.57" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="53.33" y="134.29" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="80" y="134.29" width="13.33" height="12.86" rx="2" ry="2"/>
+  <rect class="cls-1" x="106.67" y="134.29" width="13.33" height="12.86" rx="2" ry="2"/>
+</svg>

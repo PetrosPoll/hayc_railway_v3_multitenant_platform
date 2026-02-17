@@ -1,0 +1,14 @@
+
+Name,Email,Group,Status
+John Doe,john.doe@example.com,customers,active
+Jane Smith,jane.smith@example.com,prospects,active
+Bob Johnson,bob.johnson@example.com,customers,unsubscribed
+Alice Brown,alice.brown@example.com,vip,active
+Charlie Wilson,charlie.wilson@example.com,prospects,active
+Emma Davis,emma.davis@example.com,customers,active
+Michael Chen,michael.chen@example.com,vip,active
+Sarah Miller,sarah.miller@example.com,prospects,unsubscribed
+David Garcia,david.garcia@example.com,customers,active
+Lisa Rodriguez,lisa.rodriguez@example.com,vip,active
+Tom Anderson,tom.anderson@example.com,prospects,active
+Jennifer Taylor,jennifer.taylor@example.com,customers,active

@@ -1,0 +1,112 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Website Change Request</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+            margin: -20px -20px 20px -20px;
+        }
+        .content {
+            padding: 20px 0;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .message-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+        }
+        .highlight {
+            color: #007bff;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Website Change Request</h1>
+        </div>
+        
+        <div class="content">
+            <p>A new website change request has been submitted by a client.</p>
+            
+            <div class="info-box">
+                <h3>Client Information</h3>
+                <p><strong>Name:</strong> {{username}}</p>
+                <p><strong>Email:</strong> {{email}}</p>
+                <p><strong>Website:</strong> {{domain}}</p>
+                <p><strong>Request Date:</strong> {{requestDate}}</p>
+            </div>
+            
+            <div class="info-box">
+                <h3>Change Request Details</h3>
+                <p><strong>Subject:</strong> {{subject}}</p>
+            </div>
+            
+            <div class="message-box">
+                <h4>Message:</h4>
+                <p>{{message}}</p>
+            </div>
+            
+            {{#if filesHtml}}
+            <div class="info-box">
+                <h3>📎 Attached Files</h3>
+                {{filesHtml}}
+            </div>
+            {{/if}}
+            
+            <div class="info-box">
+                <h3>Next Steps</h3>
+                <ul>
+                    <li>Review the change request details</li>
+                    <li>Contact the client if clarification is needed</li>
+                    <li>Assess the scope and timeline for implementation</li>
+                    <li>Update the client on the status of their request</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>This is an automated notification from the HAYC admin system.</p>
+            <p>Please handle this request as soon as possible.</p>
+        </div>
+    </div>
+</body>
+</html>

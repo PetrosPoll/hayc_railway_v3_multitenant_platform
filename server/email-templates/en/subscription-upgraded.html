@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Subscription Upgraded - hayc</title>
+        <style>
+            body {
+                font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+                background-color: #f8f9fa;
+            }
+            .container {
+                max-width: 600px;
+                margin: 20px auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+                overflow: hidden;
+            }
+            .header {
+                background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+                color: white;
+                text-align: center;
+                padding: 30px 20px;
+                border-radius: 8px 8px 0px 0px;
+                margin-bottom: 30px;
+            }
+            .header h1 {
+                margin: 0;
+                font-size: 28px;
+                font-weight: 600;
+            }
+            .logo-header {
+                text-align: center;
+            }
+            .logo {
+                margin-bottom: 15px;
+            }
+            .content {
+                padding: 30px;
+            }
+            .content p {
+                color: #222;
+            }
+            .subscription-details {
+                background-color: #f8f9fa;
+                border-radius: 8px;
+                padding: 20px;
+                margin: 20px 0;
+            }
+            .subscription-details h3 {
+                margin: 0 0 15px 0;
+                color: #222;
+                font-size: 18px;
+            }
+            .price-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 0;
+                border-bottom: 1px solid #e9ecef;
+            }
+            .price-row:last-child {
+                border-bottom: none;
+            }
+            .total-row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 0;
+                font-weight: bold;
+                font-size: 16px;
+                color: #4caf50;
+                border-top: 2px solid #4caf50;
+                margin-top: 10px;
+            }
+            .button {
+                display: inline-block;
+                background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+                color: white;
+                padding: 12px 30px;
+                text-decoration: none;
+                border-radius: 6px;
+                font-weight: 500;
+                margin: 20px 0;
+                transition: all 0.3s ease;
+            }
+            .button:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+            }
+            .footer {
+                text-align: center;
+                padding: 20px;
+                font-size: 14px;
+                color: #222;
+                border-top: 1px solid #e1e4e8;;
+            }
+            .highlight {
+                background-color: #e8f5e8;
+                padding: 15px;
+                border-radius: 6px;
+                border-left: 4px solid #4caf50;
+                margin: 15px 0;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Subscription Upgraded Successfully!</h1>
+            </div>
+            <div class="logo-header">
+                <img
+                    src="https://b9c269b8-ad5c-47f6-93c1-b8853e7c5a12-00-wd84edz68d81.worf.replit.dev/images/hayc-logo.png"
+                    alt="HAYC Logo Image"
+                    className="w-full h-auto"
+                    style="max-width: 100px; padding: 0 30px"
+                />
+            </div>
+            <div class="content">
+                <p>Hello {{username}},</p>
+                <p>
+                    Great news! Your subscription has been successfully upgraded
+                    to yearly billing. You're now saving money with our annual
+                    plan!
+                </p>
+
+                <div class="highlight">
+                    <strong>🎉 Congratulations!</strong> You're now saving
+                    {{currency}} {{monthlySavings}} per month with your yearly
+                    subscription!
+                </div>
+
+                <div class="subscription-details">
+                    <h3>Upgrade Details</h3>
+                    {{#if domain}}
+                    <div class="price-row">
+                        <span>Website:&nbsp;</span>
+                        <span><strong>{{domain}}</strong></span>
+                    </div>
+                    {{/if}}
+                    <div class="price-row">
+                        <span>Plan:&nbsp;</span>
+                        <span>{{plan}} (Yearly)</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Upgrade Date:&nbsp;</span>
+                        <span>{{upgradeDate}}</span>
+                    </div>
+                    <div class="price-row">
+                        <span>Next Billing Date:&nbsp;</span>
+                        <span>{{nextBillingDate}}</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Monthly Savings:&nbsp;</span>
+                        <span>{{currency}} {{monthlySavings}}</span>
+                    </div>
+                </div>
+
+                {{#if hasWebsites}}
+                {{websitesHtml}}
+                {{/if}}
+
+                <p>
+                    Your yearly subscription gives you the same great features
+                    at a better value, and you won't need to worry about monthly
+                    renewals.
+                </p>
+
+                <div style="text-align: center">
+                    <a
+                        href="{{baseUrl}}/dashboard"
+                        class="button"
+                        style="color: #fff"
+                        >View Your Dashboard</a
+                    >
+                </div>
+
+                <p>
+                    Thank you for your continued trust in our services. We're
+                    excited to help you achieve your goals over the coming year!
+                </p>
+            </div>
+
+            <div class="footer">
+                <p>© 2025 hayc. All rights reserved.</p>
+                <p>
+                    If you have any questions, feel free to contact our support
+                    team.
+                </p>
+            </div>
+        </div>
+    </body>
+</html>

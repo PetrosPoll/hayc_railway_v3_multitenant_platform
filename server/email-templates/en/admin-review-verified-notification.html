@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Verified - Coupon Applied</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px;
+        }
+        .alert-box {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .user-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .detail-value {
+            color: #6c757d;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #6c757d;
+        }
+        .success-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="success-icon">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                </svg>
+            </div>
+            <h1>✅ Review Verified</h1>
+            <p style="margin: 10px 0 0; font-size: 18px; opacity: 0.9;">Coupon Successfully Applied</p>
+        </div>
+
+        <div class="content">
+            <p>A user's reviews have been successfully verified and their reward has been applied!</p>
+
+            <div class="user-details">
+                <h3>👤 User Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Username:</span>
+                    <span class="detail-value">{{username}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Email:</span>
+                    <span class="detail-value">{{email}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Verified by:</span>
+                    <span class="detail-value">{{adminName}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Verification Date:</span>
+                    <span class="detail-value">{{verificationDate}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Action:</span>
+                    {{#if isRefund}}
+                    <span class="detail-value">Partial refund processed: {{currency}} {{refundAmount}}</span>
+                    {{/if}}
+                    {{#if isRefund}}{{else}}
+                    <span class="detail-value">Free month coupon applied</span>
+                    {{/if}}
+                </div>
+            </div></div>
+
+        <div class="footer">
+            <p>This is an automated notification from the hayc admin system.</p>
+            <p>© 2025 HAYC. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

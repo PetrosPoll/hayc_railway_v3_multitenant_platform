@@ -1,0 +1,293 @@
+
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Η Συνδρομή σας Επαναφέρθηκε Επιτυχώς</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            background-color: #f8fafc;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 8px 8px 0 0;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            margin: 0 0 10px 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .logo-header {
+            text-align: center;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+
+        .content p {
+            font-size: 13px;
+        }
+        
+        .greeting {
+            font-size: 13px;
+            margin-bottom: 30px;
+            color: #222;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #e8f5e8 0%, #f0f9f0 100%);
+            border-left: 4px solid #4CAF50;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        
+        .highlight-box h3 {
+            margin: 0 0 15px 0;
+            color: #222;
+            font-size: 18px;
+        }
+        
+        .highlight-box p {
+            margin: 0;
+            color: #222;
+            font-size: 13px;
+        }
+        
+        .info-grid {
+            background: #f8fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .info-grid h3 {
+            margin: 0 0 20px 0;
+            color: #222;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #222;
+        }
+        
+        .info-value {
+            font-weight: 700;
+            color: #222;
+        }
+        
+        .feature-list {
+            margin: 30px 0;
+        }
+        
+        .feature-list h3 {
+            color: #222;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        
+        .feature-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .feature-list li {
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+            color: #222;
+        }
+        
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .reactivation-notice {
+            background: linear-gradient(135deg, #fff3cd 0%, #fef3c7 100%);
+            border-left: 4px solid #f59e0b;
+            padding: 25px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        
+        .reactivation-notice h4 {
+            margin: 0 0 15px 0;
+            color: #222;
+            font-size: 18px;
+        }
+        
+        .reactivation-notice p {
+            margin: 0;
+            color: #222;
+            font-size: 13px;
+        }
+        
+        .closing-message {
+            padding: 20px 0;
+            font-size: 13px;
+            color: #222;
+            line-height: 1.7;
+        }
+        
+        .signature {
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            font-size: 13px;
+            color: #222;
+        }
+        
+        .footer {
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer p {
+            margin: 0;
+            font-size: 13px;
+            color: #222;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .content {
+                padding: 30px 20px;
+            }
+            
+            .info-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Καλώς Ήρθατε Πίσω!</h1>
+            <p>Η συνδρομή σας επαναφέρθηκε επιτυχώς</p>
+        </div>
+        <div class="logo-header">
+            <img
+                src="https://b9c269b8-ad5c-47f6-93c1-b8853e7c5a12-00-wd84edz68d81.worf.replit.dev/images/hayc-logo.png"
+                alt="HAYC Logo Image"
+                className="w-full h-auto"
+                style="max-width: 100px; padding: 0 30px"
+            />
+        </div>
+        <div class="content">
+            <div class="greeting">
+                Γεια σας {{username}},
+            </div>
+            
+            <div class="highlight-box">
+                <h3>✅ Η Συνδρομή Επαναφέρθηκε Επιτυχώς!</h3>
+                <p>Εξαιρετικά νέα! Η συνδρομή σας <strong>{{plan}}</strong> επαναφέρθηκε και είναι πλέον ενεργή.</p>
+            </div>
+            
+            <div class="info-grid">
+                <h3>Επιβεβαίωση Πληρωμής</h3>
+                <div class="info-row">
+                    <span class="info-label">Πακέτο:</span>
+                    <span class="info-value">{{plan}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Ποσό που Πληρώθηκε:</span>
+                    <span class="info-value">{{currency}} {{amount}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Ημερομηνία Επαναφοράς:</span>
+                    <span class="info-value">{{resumeDate}}</span>
+                </div>
+            </div>
+            
+            {{#if hasWebsites}}
+                {{websitesHtml}}
+                {{/if}}
+
+            <div class="feature-list">
+                <h3>Τι ακολουθεί;</h3>
+                <ul>
+                    <li>🔧 Η ομάδα μας ενημερώθηκε για την επαναφορά του ιστότοπού σας</li>
+                    <li>🌐 Ο ιστότοπός σας θα αποκατασταθεί και θα είναι προσβάσιμος σύντομα</li>
+                    <li>📧 Θα έχετε πλήρη πρόσβαση σε όλες τις premium δυνατότητες</li>
+                    <li>💬 Η ομάδα υποστήριξής μας είναι διαθέσιμη αν χρειάζεστε βοήθεια</li>
+                </ul>
+            </div>
+            
+            <div class="reactivation-notice">
+                <h4>Επαναφορά Ιστότοπου</h4>
+                <p>Ο ιστότοπός σας επαναφέρεται και θα είναι διαθέσιμος μέσα στις επόμενες λίγες ώρες. Θα λάβετε άλλη μια ειδοποίηση όταν η επαναφορά ολοκληρωθεί.</p>
+            </div>
+            
+            <div class="closing-message">
+                <p>Σας ευχαριστούμε που επιλέξατε να συνεχίσετε με την hayc! Είμαστε ενθουσιασμένοι που σας έχουμε πίσω.</p>
+                <p>Αν έχετε οποιεσδήποτε ερωτήσεις, μη διστάσετε να επικοινωνήσετε με την ομάδα υποστήριξής μας.</p>
+            </div>
+            
+            <div class="signature">
+                <p>Με εκτίμηση,<br>
+                <strong>Η Ομάδα hayc</strong></p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>Αυτό το email στάλθηκε στο {{email}}. Αν έχετε ερωτήσεις, επικοινωνήστε μαζί μας στο info@hayc.gr</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,156 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Review Check Request</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px 8px 0 0;
+            margin: -20px -20px 30px -20px;
+        }
+        .content {
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .user-info {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .info-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .info-value {
+            color: #333;
+        }
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        .cta-button:hover {
+            transform: translateY(-2px);
+        }
+        .footer {
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .priority {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .action-steps {
+            background-color: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Review Check Request</h1>
+            <p>Customer wants free month verification</p>
+        </div>
+        
+        <div class="content">
+            <div class="priority">
+                ⏰ Action Required - Verify customer reviews for free month credit
+            </div>
+            
+            <p>A customer has requested verification of their reviews to earn a free month!</p>
+            
+            <div class="user-info">
+                <h3>Customer Information:</h3>
+                <div class="info-row">
+                    <span class="info-label">Username:</span>
+                    <span class="info-value">{{username}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">{{email}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">User ID:</span>
+                    <span class="info-value">{{userId}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Request Date:</span>
+                    <span class="info-value">{{requestDate}}</span>
+                </div>
+            </div>
+
+            <div class="action-steps">
+                <h3>✅ Verification Steps:</h3>
+                <ol>
+                    <li><strong>Check Facebook Review:</strong> Visit the Facebook reviews and search for reviews from {{email}} or {{username}}</li>
+                    <li><strong>Check Trustpilot Review:</strong> Visit Trustpilot and search for reviews from the same user</li>
+                    <li><strong>Check G2 Review:</strong> Visit G2 and search for reviews from the same user</li>
+                    <li><strong>Verify Review Quality:</strong> Ensure all reviews are genuine and reflect actual experience</li>
+                    <li><strong>Apply Credit:</strong> If verified, apply free month credit to the customer's next billing cycle</li>
+                    <li><strong>Notify Customer:</strong> Send confirmation email to customer about credit application</li>
+                </ol>
+            </div>
+
+            <div style="text-align: center;">
+                <a href="{{facebookUrl}}" class="cta-button">📘 Check Facebook Reviews</a>
+                <a href="{{trustpilotUrl}}" class="cta-button">⭐ Check Trustpilot Reviews</a>
+                <a href="{{g2Url}}" class="cta-button">🔥 Check G2 Reviews</a>
+            </div>
+
+            <p><strong>Important:</strong> Only approve genuine reviews that reflect actual customer experience. Reject any fake or spam reviews.</p>
+        </div>
+        
+        <div class="footer">
+            <p>This request was automatically generated from the reviews program page.</p>
+            <p>© 2025 HAYC. Review Management System</p>
+        </div>
+    </div>
+</body>
+</html>

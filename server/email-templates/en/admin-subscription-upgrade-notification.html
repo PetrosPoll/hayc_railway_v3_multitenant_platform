@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Upgrade - Admin Notification</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f8fafc;
+            color: #334155;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+        .admin-badge {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        .content {
+            padding: 40px 30px;
+            line-height: 1.6;
+        }
+        .user-details {
+            background-color: #f0fdf4;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 4px solid #22c55e;
+        }
+        .user-details h3 {
+            margin: 0 0 20px 0;
+            color: #16a34a;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid: #dcfce7;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 600;
+            color: #475569;
+            min-width: 120px;
+        }
+        .detail-value {
+            font-weight: 500;
+            color: #1e293b;
+            text-align: right;
+        }
+        .revenue-info {
+            background-color: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 25px 0;
+        }
+        .revenue-info h4 {
+            margin: 0 0 15px 0;
+            color: #1e40af;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .footer {
+            background-color: #f8fafc;
+            padding: 25px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        .footer p {
+            margin: 0;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .timestamp {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="admin-badge">📈 SUBSCRIPTION UPGRADE</div>
+            <h1>Customer Upgraded to Yearly</h1>
+        </div>
+        
+        <div class="content">
+            <p>A customer has successfully upgraded their subscription from monthly to yearly billing!</p>
+            
+            <div class="user-details">
+                <h3>👤 Customer Details</h3>
+                <div class="detail-row">
+                    <span class="detail-label">Username:</span>
+                    <span class="detail-value">{{username}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Email:</span>
+                    <span class="detail-value">{{email}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Plan:</span>
+                    <span class="detail-value">{{plan}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Previous Billing:</span>
+                    <span class="detail-value">Monthly</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">New Billing:</span>
+                    <span class="detail-value">Yearly</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Upgrade Date:</span>
+                    <span class="detail-value">{{upgradeDate}}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">Next Billing:</span>
+                    <span class="detail-value">{{nextBillingDate}}</span>
+                </div>
+            </div>
+
+            <div class="revenue-info">
+                <h4>💰 Revenue Impact</h4>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li>Customer committed to full year of service</li>
+                    {{#if isImmediate}}
+                    <li>✅ <strong>Immediate cash flow improvement</strong> - Annual payment collected now</li>
+                    <li>✅ Prorations applied - Customer credited for unused monthly period</li>
+                    {{else}}
+                    <li>Improved cash flow with upfront annual payment</li>
+                    {{/if}}
+                    <li>Reduced churn risk with yearly commitment</li>
+                    <li>Customer saves {{currency}} {{monthlySavings}} annually</li>
+                </ul>
+            </div>
+
+            <p><strong>This upgrade indicates:</strong></p>
+            <ul>
+                <li>High customer satisfaction with our services</li>
+                <li>Trust in our long-term value proposition</li>
+                <li>Improved customer lifetime value</li>
+                <li>Positive impact on monthly recurring revenue (MRR)</li>
+            </ul>
+        </div>
+
+        <div class="footer">
+            <p><strong>HAYC Development Team</strong></p>
+            <p class="timestamp">Notification sent on {{upgradeDate}}</p>
+        </div>
+    </div>
+</body>
+</html>

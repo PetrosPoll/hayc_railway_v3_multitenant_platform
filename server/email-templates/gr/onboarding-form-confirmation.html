@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Λήψη Φόρμας Εισαγωγής</title>
+    <style>
+      body {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        margin: 0;
+        padding: 0;
+        background-color: #f9f9f9;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
+      .header {
+        background-color: #3d95f4;
+        color: white;
+        padding: 30px;
+        border-radius: 8px 8px 0 0;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .header h1 {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 600;
+      }
+      .logo-header {
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .content {
+        padding: 0 30px 20px;
+      }
+      .submission-details {
+        background-color: #f5f7fa;
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 25px;
+      }
+      .submission-details h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: #222;
+        border-bottom: 1px solid #e1e4e8;
+        padding-bottom: 10px;
+      }
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+      .next-steps {
+        background-color: #e9f4ff;
+        border-left: 4px solid #3d95f4;
+        padding: 16px;
+        margin: 24px 0;
+        border-radius: 0 8px 8px 0;
+      }
+      .next-steps h3 {
+        color: #222;
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 8px 0;
+      }
+      .next-steps ul {
+        margin: 0;
+        padding-left: 20px;
+        color: #222;
+      }
+      .button {
+        display: inline-block;
+        background-color: #3d95f4;
+        color: white;
+        text-decoration: none;
+        padding: 12px 25px;
+        border-radius: 4px;
+        margin-top: 20px;
+        font-weight: 500;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        font-size: 12px;
+        color: #222;
+        padding-top: 20px;
+        border-top: 1px solid #e1e4e8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>Έχουμε λάβει την onboarding φόρμα 🎉</h1>
+      </div>
+      <div class="logo-header">
+        <img
+          src="https://b9c269b8-ad5c-47f6-93c1-b8853e7c5a12-00-wd84edz68d81.worf.replit.dev/images/hayc-logo.png"
+          alt="Λογότυπο HAYC"
+          style="max-width: 100px; padding: 0 30px"
+        />
+      </div>
+
+      <div class="content">
+        <p>Γεια σου {{contactName}},</p>
+        <p>
+          Ευχαριστούμε που συμπλήρωσες τη φόρμα εισαγωγής σου! Έχουμε λάβει με επιτυχία τις πληροφορίες σου και η ομάδα μας έχει ήδη ξεκινήσει τον έλεγχο.
+        </p>
+
+        <div class="submission-details">
+          <h3>Λεπτομέρειες Υποβολής</h3>
+          <div class="detail-row">
+            <span>Όνομα Επικοινωνίας:&nbsp;</span>
+            <span>{{contactName}}</span>
+          </div>
+          {{#if businessName}}
+          <div class="detail-row">
+            <span>Όνομα Επιχείρησης:&nbsp;</span>
+            <span>{{businessName}}</span>
+          </div>
+          {{/if}}
+          <div class="detail-row">
+            <span>Email:&nbsp;</span>
+            <span>{{email}}</span>
+          </div>
+          <div class="detail-row">
+            <span>ID Υποβολής:&nbsp;</span>
+            <span>{{submissionId}}</span>
+          </div>
+          <div class="detail-row">
+            <span>Ημερομηνία Υποβολής:&nbsp;</span>
+            <span>{{submittedAt}}</span>
+          </div>
+        </div>
+
+        <div class="next-steps">
+          <h3>Επόμενα Βήματα</h3>
+          <ul>
+            <li>Η ομάδα μας θα ελέγξει τις πληροφορίες σου μέσα στις επόμενες 24 ώρες.</li>
+            <li>Αν κάτι λείπει ή χρειάζεται διευκρίνιση, θα ενημερωθείς μέσω email/dashboard για να παρέχεις περισσότερες πληροφορίες.</li>
+            <li>Μόλις επιβεβαιωθούν όλα, θα ξεκινήσουμε τη διαδικασία κατασκευής της ιστοσελίδας σου.</li>
+            <li>Θα λαμβάνεις ενημερώσεις μέσα από το dashboard σου καθώς προχωράμε.</li>
+          </ul>
+        </div>
+
+        <p>
+          Μπες στον Πίνακα Ελέγχου σου και δες σε ποιο στάδιο βρίσκεται η ιστοσελίδα σου!
+        </p>
+
+        <div style="text-align: center">
+          <a href="{{baseUrl}}/dashboard" class="button">Προβολή Dashboard</a>
+        </div>
+
+        <p>
+          Είμαστε ενθουσιασμένοι που ξεκινάμε να δουλεύουμε πάνω στην ιστοσελίδα σου και ανυπομονούμε να σου δείξουμε τα πρώτα αποτελέσματα!
+        </p>
+      </div>
+
+      <div class="footer">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+          width="6em"
+          height="3em"
+          viewBox="0 0 148 49.81"
+        >
+          <defs>
+            <clipPath id="clip-path">
+              <rect
+                id="Rectangle_93"
+                data-name="Rectangle 93"
+                width="148"
+                height="49.81"
+                fill="none"
+              ></rect>
+            </clipPath>
+          </defs>
+          <g id="Group_117" data-name="Group 117" transform="translate(0 0)">
+            <path
+              id="Path_901"
+              data-name="Path 901"
+              d="M9.327,0l.059,7.248L2.852,3.327,0,8.2l6.476,3.563L0,15.267,2.852,20.14l6.534-3.92-.059,7.248h5.584l-.119-7.189,6.536,3.861,2.91-4.873-6.474-3.5L24.238,8.2l-2.91-4.873L14.792,7.248,14.911,0Z"
+              transform="translate(0 0)"
+              fill="#ed4c14"
+            ></path>
+            <g id="Group_116" data-name="Group 116" transform="translate(0 0)">
+              <g id="Group_115" data-name="Group 115" clip-path="url(#clip-path)">
+                <path
+                  id="Path_902"
+                  data-name="Path 902"
+                  d="M61.828,22.27V38.076H53.823V23.5c0-4.465-2.052-6.518-5.594-6.518-3.849,0-6.619,2.362-6.619,7.441V38.076H33.6V0H41.61V13.34a12.138,12.138,0,0,1,8.775-3.285c6.517,0,11.444,3.8,11.444,12.215"
+                  transform="translate(-6.611 0)"
+                  fill="#00398e"
+                ></path>
+                <path
+                  id="Path_903"
+                  data-name="Path 903"
+                  d="M102.242,12.917v27.61H94.6v-3.18c-2,2.41-4.927,3.591-8.622,3.591-7.8,0-13.8-5.542-13.8-14.214s6-14.216,13.8-14.216a10.606,10.606,0,0,1,8.263,3.338V12.917ZM94.39,26.723c0-4.774-3.079-7.648-7.03-7.648-4,0-7.082,2.874-7.082,7.648s3.079,7.646,7.082,7.646c3.951,0,7.03-2.873,7.03-7.646"
+                  transform="translate(-14.197 -2.46)"
+                  fill="#00398e"
+                ></path>
+                <path
+                  id="Path_904"
+                  data-name="Path 904"
+                  d="M140.745,13.019V37.388c0,10.264-5.388,14.983-15.037,14.983-5.08,0-10.006-1.282-13.187-3.8l3.182-5.747a15.335,15.335,0,0,0,9.339,3.079c5.388,0,7.7-2.514,7.7-7.494V37.49a11.314,11.314,0,0,1-8.159,3.183c-6.928,0-11.8-3.849-11.8-12.42V13.019h8.006V27.072c0,4.67,2.053,6.723,5.594,6.723,3.7,0,6.364-2.362,6.364-7.44V13.019Z"
+                  transform="translate(-22.135 -2.561)"
+                  fill="#00398e"
+                ></path>
+                <path
+                  id="Path_905"
+                  data-name="Path 905"
+                  d="M149.683,26.724c0-8.315,6.414-14.214,15.395-14.214,5.8,0,10.366,2.513,12.367,7.03l-6.209,3.335a6.881,6.881,0,0,0-6.209-3.8c-4.054,0-7.236,2.821-7.236,7.646s3.182,7.646,7.236,7.646a6.794,6.794,0,0,0,6.209-3.8l6.209,3.386c-2,4.414-6.569,6.979-12.367,6.979-8.981,0-15.395-5.9-15.395-14.214"
+                  transform="translate(-29.445 -2.461)"
+                  fill="#00398e"
+                ></path>
+              </g>
+            </g>
+          </g>
+        </svg>
+        <p>© 2025 HAYC. Όλα τα δικαιώματα διατηρούνται.</p>
+        <p>Το email στάλθηκε στη διεύθυνση {{email}}</p>
+      </div>
+    </div>
+  </body>
+</html>

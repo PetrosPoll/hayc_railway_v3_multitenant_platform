@@ -1,0 +1,2777 @@
+{
+    "welcome": "Welcome to our website!",
+    "stages": {
+        "planning": "Σχεδιασμός & Σχεδίαση",
+        "development": "Development",
+        "testing": "Testing",
+        "deployment": "Deployment",
+        "completed": "Completed",
+        "welcome": {
+            "title": "Welcome & Project Setup",
+            "description": "Welcome to hayc! We get started right away by setting up your project and preparing everything for a smooth start"
+        },
+        "layout": {
+            "title": "Layout Selection",
+            "description": "We pick the best layout for your website, based on your preferences or examples you've shared with us"
+        },
+        "content": {
+            "title": "Content Collection & Organization",
+            "description": "We organize the information you provide (via our form or email) and spread your content across the chosen layout"
+        },
+        "preview": {
+            "title": "First Demo Preview",
+            "description": "Your website draft is ready! You receive a private link to review and give us your feedback"
+        },
+        "feedback": {
+            "title": "Feedback & Refinements",
+            "description": "We make any quick changes or adjustments based on your feedback to make sure everything feels right"
+        },
+        "launch": {
+            "title": "Website Launch",
+            "description": "Your website goes live and is ready for your business!"
+        },
+        "uiux": {
+            "title": "UI/UX Development",
+            "description": "User interface and experience design"
+        },
+        "backend": "Ανάπτυξη Backend",
+        "delivery": "Τελική Έκδοση & Παράδοση",
+        "contentCreation": {
+            "title": "Content Creation",
+            "description": "Writing and organizing website content"
+        },
+        "seo": {
+            "title": "SEO Optimization",
+            "description": "Search engine optimization and performance tuning"
+        },
+        "security": {
+            "title": "Security Implementation",
+            "description": "Security measures and protection setup"
+        },
+        "analytics": {
+            "title": "Analytics Setup",
+            "description": "Analytics and tracking implementation"
+        },
+        "maintenance": {
+            "title": "Maintenance Setup",
+            "description": "Ongoing maintenance and support setup"
+        },
+        "ui": "Ανάπτυξη UI/UX"
+    },
+    "pricing": {
+        "allPlansInclude": "All plans include:",
+        "zeroTransactionFee": "0% transactional fee on digital products / services selling",
+        "hosting": "hosting",
+        "maintenance": "ongoing maintenance"
+    },
+    "status": {
+        "pending": "Pending",
+        "in-progress": "In Progress",
+        "waiting": "We are waiting for information",
+        "completed": "Completed",
+        "cancelled": "Cancelled"
+    },
+    "actions": {
+        "selectUser": "Select a user",
+        "addWebsite": "Add Website Progress",
+        "createProgress": "Create Website Progress",
+        "enterDomain": "Enter domain name",
+        "delete": "Delete",
+        "confirm": "Confirm",
+        "cancel": "Cancel",
+        "sendEmail": "Send Email Notification",
+        "dontSendEmail": "Don't Send Email",
+        "dashboard": "Dashboard",
+        "login": "Login",
+        "logout": "Logout",
+        "viewProjects": "View Projects",
+        "getStarted": "Get Started",
+        "learnMore": "Learn More",
+        "scrollDown": "Scroll Down",
+        "upgradeToYearlyDialog": {
+            "title": "Upgrade to Yearly & Save",
+            "description": "Switch to yearly billing and unlock significant savings",
+            "upgradeToYearly": "Upgrade to Yearly"
+        },
+        "upgradeConfirmation": {
+            "yourAnnualSavings": "Your Annual Savings",
+            "monthlyPlan12Months": "Monthly Plan (12 months):",
+            "yearlyPlan": "Yearly Plan:",
+            "totalSavings": "Total Savings:",
+            "savePerMonth": "Save per month with yearly billing!",
+            "perMonth": "month",
+            "creditFromCurrentPlan": "Credit from Current Plan",
+            "daysRemainingOnMonthlyPlan": "Days remaining on monthly plan",
+            "creditFromUnusedDays": "Credit from unused days",
+            "creditApplied": "Credit applied",
+            "amountToPayToday": "Amount to pay today",
+            "loadingProrationDetails": "Loading proration details...",
+            "whatHappensNext": "What Happens Next",
+            "yourYearlyBillingStarts": "Your yearly billing starts",
+            "immediately": "immediately",
+            "theCreditFromYourUnusedDaysIsAutomaticallyApplied": "The credit from your unused days is automatically applied",
+            "nextBillingDate": "Next billing date:",
+            "cancel": "Cancel",
+            "upgrading": "Upgrading...",
+            "upgradeAndSave": "Upgrade & Save",
+            "coupon": "Coupon",
+            "enterCouponCode": "Enter coupon code",
+            "apply": "Apply",
+            "couponApplied": "Coupon Applied!",
+            "couponDiscount": "Coupon discount",
+            "yearlyPlanWithCoupon": "Yearly plan (with coupon)"
+        }
+    },
+    "labels": {
+        "currentStage": "Current Stage",
+        "selectStage": "Select stage",
+        "domain": "Domain",
+        "reminderDays": "Remind every",
+        "days": "days",
+        "waitingInfo": "Enter required information from user...",
+        "email": "Email",
+        "password": "Password",
+        "username": "Username"
+    },
+    "dialogs": {
+        "deleteTitle": "Delete Website Progress",
+        "deleteDescription": "Are you sure you want to delete the progress for {domain}? This action cannot be undone.",
+        "addTitle": "Add New Website Progress",
+        "addDescription": "Create a new website progress tracking for a user",
+        "emailTitle": "Send Email Notification",
+        "emailDescription": "Do you want to send an email notification about this stage change?"
+    },
+    "nav": {
+        "home": "Home",
+        "about": "About",
+        "templates": "Templates",
+        "contact": "Contact",
+        "services": "Services",
+        "projects": "Projects",
+        "adminDashboard": "Admin Dashboard",
+        "dashboard": "Dashboard",
+        "myAccount": "Account",
+        "languages": "Languages",
+        "backToWebsites": "Back to Websites"
+    },
+    "auth": {
+        "login": "Login",
+        "register": "Register",
+        "email": "Email",
+        "password": "Password",
+        "confirmPassword": "Confirm Password",
+        "processing": "Processing...",
+        "forgotPassword": "Forgot Password?",
+        "alreadyHaveAccount": "Already have an account?",
+        "dontHaveAccount": "Don't have an account?",
+        "loginLink": "Login",
+        "registerLink": "Register",
+        "passwordValidation": "Password must be at least 8 characters",
+        "confirmPasswordValidation": "Passwords must match",
+        "emailValidation": "Please enter a valid email address",
+        "loginSuccessful": "Login successful",
+        "registrationSuccessful": "Registration successful",
+        "welcome": "Welcome",
+        "loginFailed": "Login failed. Please check your email and password."
+    },
+    "contact": {
+        "title": "Contact Us",
+        "subtitle": "Get in touch with us - we'd love to hear from you!",
+        "contactInformation": "Contact Information",
+        "callUs": "Call us",
+        "emailUs": "Email us",
+        "ourLocation": "Our location",
+        "location": "Greece",
+        "socialMedia": "Social Media",
+        "sendMessage": "Send us a message",
+        "form": {
+            "name": "Name",
+            "email": "Email",
+            "subject": "Subject",
+            "message": "Message",
+            "submit": "Send Message",
+            "sending": "Sending...",
+            "success": "Your message has been sent successfully!",
+            "error": "Failed to send message. Please try again later."
+        }
+    },
+    "notFound": {
+        "title": "404 Page Not Found",
+        "message": "Did you forget to add the page to the router?"
+    },
+    "templates": {
+        "title": "Templates",
+        "subtitle": "Explore our pre-built templates",
+        "searchPlaceholder": "Search templates...",
+        "allCategories": "All Categories",
+        "categories": {
+            "hospitality": "Hospitality & Tourism",
+            "food": "Food & Entertainment",
+            "health": "Health & Wellness",
+            "services": "Professional Services",
+            "arts": "Creativity & Arts",
+            "education": "Education"
+        },
+        "backToTemplates": "Back to Templates",
+        "features": "Features",
+        "description": "Description",
+        "livePreview": "Live Preview",
+        "items": {
+            "corporatePro": {
+                "name": "Horizon Studios",
+                "description": "If Storytelling is what you want to convey through your Website, then you are in the right Layout!",
+                "fullDescription": "Present your projects in a 'clean' way in a minimal environment so that they 'tie' everything together. Through the images, the visitor of your Website understands exactly what your work is and the history of each Project. So be sure to send us nice pictures.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Forms"
+                }
+            },
+            "ecommercePlus": {
+                "name": "YooGA",
+                "description": "Create the perfect Website for your new Yoga Studio!",
+                "fullDescription": "Inform your audience about the available courses so that everyone can book their appointments. This way you will save time on the phone and on questions.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Forms",
+                    "presentation": "Presentation carousel"
+                }
+            },
+            "portfolioMaster": {
+                "name": "Villa",
+                "description": "Attract an audience to see the available properties on your Website like this Layout!",
+                "fullDescription": "Fantastic way to advertise homes that are available to the public, either to buy or sell.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Forms",
+                    "presentation": "Presentation carousel",
+                    "scalability": "Scalability"
+                }
+            },
+            "blogStandard": {
+                "name": "Golden Sands",
+                "description": "Your Resort needs a good online presentation for interested summer guests!",
+                "fullDescription": "Remember to include all important information regarding your rooms. The photos are the ones that will confirm what the texts say.Also we connect your company's Instagram to convey the vibe of your space and accommodations.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Forms",
+                    "presentation": "Presentation carousel & Video",
+                    "scalability": "Scalability"
+                }
+            },
+            "landingPro": {
+                "name": "PixelWave",
+                "description": "If you are Creative then this Layout is ideal for your business!",
+                "fullDescription": "Showcase your projects in a professional way and highlight the people behind them. Present your work with style and introduce the team that makes every success possible.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "customForms": "Forms",
+                    "presentation": "Presentation carousel & Video",
+                    "scalability": "Scalability"
+                }
+            },
+            "digitalHive": {
+                "name": "DigitalHive",
+                "description": "A Digital Agency company must have a Website like this Layout!",
+                "fullDescription": "Present your projects with a professional touch and unique design, while showcasing the trusted associates and companies you’ve worked with. Build credibility and inspire confidence in every new customer.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Forms",
+                    "presentation": "Presentation carousel"
+                }
+            },
+            "resort": {
+                "name": "Resort",
+                "description": "The ideal Layout for your hotel!",
+                "fullDescription": "Discover exceptional services designed to make your stay truly unforgettable, with images that reflect reality and highlight the quality we provide. Our luxurious suites are presented in every detail, giving you a complete picture before you even arrive. With an elegant presentation and clear information, we turn every interested visitor into a valued guest.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Forms",
+                    "presentation": "Presentation of rooms"
+                }
+            },
+            "apex": {
+                "name": "Apex",
+                "description": "The ideal Layout for your hotel!",
+                "fullDescription": "Clear steps show how a construction company can present its process from concept to completion, making information accessible and structured. Customer feedback, completed projects, and success stories highlight reliability and quality, creating trust and inspiring confidence in future clients.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "scalability": "Scalability",
+                    "customForms": "Forms",
+                    "presentation": "Presentation of your Reviews"
+                }
+            },
+            "jane": {
+                "name": "Jane",
+                "description": "This Layout offers personal presentation with a fantastically special Design!",
+                "fullDescription": "A short introduction section allows visitors to quickly understand the background and story behind a business or individual. With a clean and responsive design, information is presented clearly and is easy to read on any device, ensuring a professional and user-friendly experience.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "scalability": "Scalability",
+                    "customForms": "Forms",
+                    "specialDesign": "Special Design"
+                }
+            },
+            "beauty": {
+                "name": "Beauty",
+                "description": "Your business needs a Website to complete its online presence!",
+                "fullDescription": "A pricelist section makes information easily accessible, reducing unnecessary inquiries and saving valuable time. Products can also be displayed clearly, giving clients confidence in the quality and safety of the materials being used.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "pricelist": "Pricelist",
+                    "customForms": "Forms",
+                    "presentation": "Presentation of your Reviews"
+                }
+            },
+            "evelinaDigital": {
+                "name": "Evelina Digital",
+                "description": "Whether you're a Freelancer or have a steady job, this Layout is for showcasing your personal skills!",
+                "fullDescription": "A personal projects section highlights past work with a dynamic design that combines visuals and supporting details, offering a clear view of contributions to each project. Alongside this, an expertise section showcases capabilities and achievements, creating a well-rounded presentation that inspires confidence and professionalism.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Forms",
+                    "presentation": "Presentations"
+                }
+            },
+            "medicalCare": {
+                "name": "Medical Care",
+                "description": "Take your practice one step further with a beautiful online presentation!",
+                "fullDescription": "An easy communication section allows visitors to send inquiries or appointment requests directly, streamlining scheduling and follow-up. A trust section highlights customer feedback and testimonials, showcasing past experiences to convey reliability and build confidence.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "TimelinePresentation": "Timeline presentation",
+                    "customForms": "Forms",
+                    "presentation": "Presentation of your Reviews"
+                }
+            },
+            "ensurance": {
+                "name": "Ensurance",
+                "description": "When you offer insurance, you should also look safe. With this Layout you can achieve it!",
+                "fullDescription": "A services section presents offerings with a dynamic design, combining text, images, and interactive elements for a visually engaging experience. A fast communication section features a prominently placed form, making it easy for visitors to get in touch quickly and efficiently.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Forms",
+                    "presentation": "Presentation of services"
+                }
+            },
+            "monica": {
+                "name": "Monica",
+                "description": "If your audience reads texts, then this Layout is for you!",
+                "fullDescription": "A power of speech section emphasizes the impact of well-crafted text to engage visitors and convey key messages effectively. A people’s power section showcases customer reviews and testimonials, formatted for readability to highlight real experiences and build credibility.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "scalability": "Scalability",
+                    "customForms": "Forms",
+                    "presentation": "Presentation of your Reviews"
+                }
+            },
+            "digitalPeak": {
+                "name": "Digital Peak",
+                "description": "If you have a Digital Agency, you must also have a very good online presentation!",
+                "fullDescription": "A services section highlights the key offerings of a business, using concise descriptions to capture the interest of visitors. A share knowledge section presents blogs or informative content, allowing expertise to be communicated clearly while engaging and educating the audience.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "blog": "Blog",
+                    "customForms": "Forms"
+                }
+            },
+            "johnMiller": {
+                "name": "John Miller",
+                "description": "To win a position that no one else can take, you have to do something that no one else is doing! Sophisticated presentation of your CV!",
+                "fullDescription": "A projects section displays past work with images and descriptions, giving a clear overview of skills and experience. A features section emphasizes key tools, techniques, or attributes, using industry-relevant terms to demonstrate expertise and professionalism.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "downloadableCV": "Downloadable CV",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation of your Projects"
+                }
+            },
+            "americanBarbershop": {
+                "name": "American Barbershop",
+                "description": "Every barbershop need an Online Presentation!",
+                "fullDescription": "An impressive menu section offers a unique browsing experience, making both the website and the business stand out. A services section clearly presents all offerings, ensuring visitors can easily see what is available.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "scalability": "Scalability",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation of Services"
+                }
+            },
+            "healthCare": {
+                "name": "Health Care",
+                "description": "Give your customers the confidence they ask for!",
+                "fullDescription": "An expertise section highlights the medical staff and their specialized skills, giving visitors a clear sense of professionalism and trust. An authenticity section presents patient testimonials and reviews, emphasizing real experiences to reinforce credibility and confidence.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation of your Reviews"
+                }
+            },
+            "novaMed": {
+                "name": "NovaMed",
+                "description": "Your clinic needs an online presence!",
+                "fullDescription": "A view services section provides a clear overview of the services offered, helping visitors understand what the clinic provides. A reviews section showcases patient feedback, highlighting experiences that build trust with new visitors.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "scalability": "Scalability",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation of your Reviews"
+                }
+            },
+            "fotogency": {
+                "name": "Fotogency",
+                "description": "If photography is the element of your business, then you are in the right Layout!",
+                "fullDescription": "A dynamic menu section highlights creativity not only in the projects but also in the website’s navigation. A better view section allows visitors to explore projects in detail, gaining insight into the story and artistry behind each piece.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "carousel": "Carousel",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation of photos"
+                }
+            },
+            "pureSpaceArchitects": {
+                "name": "PureSpace Architects",
+                "description": "Take your art Online and share it with the public!",
+                "fullDescription": "A unique design section provides a special presentation space that reflects the originality of each project. A talk about your projects section allows a brief description, sharing the story and inspiration behind the work with website visitors.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "architecturalDesign": "Architectural Design",
+                    "customForms": "Contact Form",
+                    "modernUI": "Modern UI"
+                }
+            },
+            "cakelicious": {
+                "name": "Cakelicious",
+                "description": "If you create sweet recipes then it is very good to show them to your audience!",
+                "fullDescription": "A creators section introduces the artisans behind your products, giving visitors a sense of connection and the story behind each creation. A sweets section showcases the range of offerings, with or without prices, helping visitors explore options and highlighting what makes your business unique.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "architecturalDesign": "Architectural Design",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation of your Pastry Chefs"
+                }
+            },
+            "festavaLayout": {
+                "name": "Festava Layout",
+                "description": "The best way to advertise your next Event!",
+                "fullDescription": "A schedule section provides a detailed program of events, keeping visitors informed about what’s coming next. A meet the artist section highlights key performers, with photos and relevant details, helping to attract and engage a wider audience.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Contact Form",
+                    "presentation": "Video Presentation"
+                }
+            },
+            "kidKinder": {
+                "name": "KidKinder",
+                "description": "Transparency is everything when it comes to children!",
+                "fullDescription": "A schedule section provides updated information on classes and activities, helping visitors understand available options and plan accordingly. A teachers section introduces the staff, highlighting those who spend significant time with the children, giving parents confidence and peace of mind.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "scalability": "Scalability",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation of the teachers"
+                }
+            },
+            "photoZone": {
+                "name": "PhotoZone",
+                "description": "If you think you have good photos then this is the best Layout for you.",
+                "fullDescription": "An impress section uses striking photos or videos as the first visual element, capturing attention right from the start. A mosaic section arranges images in a creative pattern, offering visitors an inspiring glimpse into the range and potential of the work.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "mosaicPattern": "Mosaic Pattern",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation of services"
+                }
+            },
+            "nobleNosh": {
+                "name": "Noble Nosh",
+                "description": "Presenting food with pictures is what makes people want to buy it!",
+                "fullDescription": "A dynamic menu section showcases the full range of options, enhanced with photos that make the choices more appealing and engaging than plain text. A reviews section features customer feedback, helping new visitors gain trust and make confident dining decisions.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation carousel"
+                }
+            },
+            "hexaDigital": {
+                "name": "Hexa Digital",
+                "description": "Start bringing customers to your company after you first have a good presentation!",
+                "fullDescription": "An easy navigation section ensures a seamless experience across devices, with a layout simple enough for any user to follow. An individual presentation section highlights projects one by one, providing details that help visitors appreciate the quality and impact of the work.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Contact Form",
+                    "stickyHeader": "Sticky Header"
+                }
+            },
+            "unityMentalHealth": {
+                "name": "Unity Mental Health",
+                "description": "Present your business in simple steps!",
+                "fullDescription": "An in simple steps section outlines the process for working with new clients, making it clear and easy to understand. A combination section brings together text and visuals to create a strong impression, encouraging visitors to engage further.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "scalability": "Scalability",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation carousel"
+                }
+            },
+            "insure": {
+                "name": "Insure",
+                "description": "Give your customers the confidence they need by having a perfect Website!",
+                "fullDescription": "An earn the trust section highlights key numbers, such as customer base and team size, to capture visitor interest and build credibility. A services section presents available offerings and capabilities, with clear descriptions that create a strong first impression.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "scalability": "Scalability",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation carousel"
+                }
+            },
+            "carServ": {
+                "name": "CarServ",
+                "description": "Take your physical business one step further!",
+                "fullDescription": "An everyone’s satisfaction section offers both an overview and detailed view of services, meeting the needs of visitors who want either a quick glance or more specific information. An authenticity section highlights real numbers and genuine expertise, reinforcing credibility even without large figures.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation carousel"
+                }
+            },
+            "johnsonWilliams": {
+                "name": "Johnson Williams",
+                "description": "Special and impressive for the presentation of your works!",
+                "fullDescription": "An impressive presentation section showcases work in a visually striking way, helping it stand out to visitors. A quick access section connects directly to social media channels, making it easy for visitors to explore further and stay in touch..",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "animations": "Animations",
+                    "customForms": "Contact Form",
+                    "presentation": "Slider presentation"
+                }
+            },
+            "mueller": {
+                "name": "Mueller",
+                "description": "Give your customers solutions to build their digital presence!",
+                "fullDescription": "A step-by-step section outlines the agency’s service process in clear phases—from discovery and strategy to execution and delivery—so visitors can quickly understand what to expect and the outcomes at each stage.A build-trust section highlights past collaborations, client logos, and short case summaries, demonstrating experience and reinforcing confidence in the agency’s capabilities.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "newsletter": "Newsletter",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation video"
+                }
+            },
+            "eduMeeting": {
+                "name": "Edu Meeting",
+                "description": "Present your lessons in the best possible way for your students!",
+                "fullDescription": "A clear presentation section organizes courses or events by time and date, making it easy for both beginners and advanced learners to find the information they need. A get your business noticed section highlights reviews or popular courses, showcasing quality and encouraging visitors to enroll.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "parallax": "Parallax",
+                    "customForms": "Contact Form",
+                    "presentation": "Video & presentation carousel"
+                }
+            },
+            "alexJohnson": {
+                "name": "Alex Johnson",
+                "description": "Personal portfolio with a special design for presenting your works!",
+                "fullDescription": "A unique tour section offers visitors an engaging browsing experience, reflecting originality in how projects are presented and completed. A special design section uses a distinct layout to showcase work in a memorable and visually appealing way.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Contact Form"
+                }
+            },
+            "eduWell": {
+                "name": "EduWell",
+                "description": "Present your courses in the best possible way to your students!",
+                "fullDescription": "A recommendation section highlights feedback from students and clients, emphasizing the value of past experiences to build trust. A list of courses section presents course categories clearly, with detailed information to help visitors fully understand the content and objectives of each lesson.",
+                "features": {
+                    "responsiveDesign": "Responsive Design",
+                    "modernUI": "Modern UI",
+                    "customForms": "Contact Form",
+                    "presentation": "Presentation carousel"
+                }
+            }
+        }
+    },
+    "projects": {
+        "backToHome": "Back to Home",
+        "techStack": {
+            "title": "Technology Stack"
+        },
+        "challenge": "Challenge",
+        "keyFeatures": "Key Features",
+        "solution": "Solution"
+    },
+    "home": {
+        "title": "Do you need website?",
+        "hero": {
+            "title": "Do you need website?",
+            "subtitle": "We create websites with all the features your business needs.",
+            "cta": "Get Started Today"
+        },
+        "addons": {
+            "title": "Add-ons",
+            "bookingAddon": {
+                "title": "Appointment Booking",
+                "description": "Let your customers schedule appointments or sessions online.",
+                "tags": [
+                    "Online Payments",
+                    "Calendar",
+                    "Different providers"
+                ],
+                "alt": "Appointment Booking"
+            },
+            "lmsAddon": {
+                "title": "LMS",
+                "description": "Turn your website into a learning platform. Upload videos, create lessons, and let users access your content.",
+                "tags": [
+                    "Video Lessons",
+                    "Member Access",
+                    "Weekly Lessons",
+                    "Audio Lessons"
+                ],
+                "alt": "LMS"
+            },
+            "multistepFormAddon": {
+                "title": "Smart Forms",
+                "description": "Collect any kind of information through beautiful, multistep forms — from client onboarding to service requests.",
+                "tags": [
+                    "Data Collection",
+                    "Price Calculations"
+                ],
+                "alt": "Smart Forms"
+            },
+            "qrCodeAddon": {
+                "title": "Smart QR & Discount System",
+                "description": "Generate unique QR codes and send automated discount codes by email. Track redemptions and re-engage your customers.",
+                "tags": [
+                    "Email Code",
+                    "Resturant Discount"
+                ],
+                "alt": "Smart QR & Discount System"
+            },
+            "realEstateAddon": {
+                "title": "Real Estate Listings",
+                "description": "Display properties with images, location, and contact info. Perfect for realtors and property managers.",
+                "tags": [
+                    "Advance Search Form",
+                    "Images",
+                    "Property Interest Form"
+                ],
+                "alt": "Real Estate Listings"
+            },
+            "transportBookingAddon": {
+                "title": "Transport Request Form",
+                "description": "Let users enter pickup and drop-off locations, choose a vehicle, and submit a transport request — ideal for taxi, delivery, or shuttle services.",
+                "tags": [
+                    "Route Planning",
+                    "Car Selection",
+                    "Email Trip Requests",
+                    "Multilanguage"
+                ],
+                "alt": "Transport Request Form"
+            },
+            "donationaddon": {
+                "title": "Donation System",
+                "description": "Create a donation platform to raise funds for your cause. Includes secure payments and goal tracking.",
+                "tags": [
+                    "Secure Payments",
+                    "Goal Tracking",
+                    "Donor Management"
+                ],
+                "alt": "Donation System"
+            },
+            "onlinepayments": {
+                "title": "Online Payments",
+                "description": "Integrate secure online payments into your website. Supports credit cards, PayPal, and other payment methods.",
+                "tags": [
+                    "Credit Cards",
+                    "Secure Payments",
+                    "Stripe Integration"
+                ],
+                "alt": "Online Payments"
+            },
+            "cta": {
+                "title": "Find the best integrations",
+                "description": "Add any of these to your subscription and unlock new ways to grow faster, attract more customers, and boost revenue!",
+                "button": "Book a free call →"
+            }
+        },
+        "description": "Transform your ideas into reality with our expert development team",
+        "featuresTitle": "Our Features",
+        "features": {
+            "design": "Modern Design",
+            "development": "Custom Development",
+            "support": "24/7 Support"
+        },
+        "projects": {
+            "title": "Our Projects",
+            "subtitle": "Check out some of our recent work",
+            "view": "View Project",
+            "items": {
+                "techStartInnovationHub": {
+                    "title": "TechStart Innovation Hub",
+                    "description": "A modern platform for tech startups",
+                    "fullDescription": "TechStart Innovation Hub is a comprehensive platform designed to help tech startups streamline their operations, connect with investors, and scale their businesses effectively.",
+                    "challenge": "Tech startups needed a centralized platform to manage their operations and connect with potential investors while maintaining focus on their core business.",
+                    "solution": "We developed a user-friendly platform that combines essential business tools with networking capabilities, making it easier for startups to grow and succeed.",
+                    "features": [
+                        "Real-time analytics dashboard",
+                        "Investor matching algorithm",
+                        "Resource management tools",
+                        "Integrated communication platform"
+                    ]
+                },
+                "SkTransfer": {
+                    "title": "SkTransfer",
+                    "description": "Professional transfer and logistics service",
+                    "fullDescription": "SkTransfer is a comprehensive transfer and logistics platform that provides reliable transportation services for individuals and businesses across various sectors including food delivery, health services, personal transport, repairs, and entertainment logistics.",
+                    "challenge": "Customers needed a reliable and efficient transfer service that could handle diverse logistics requirements across multiple industries.",
+                    "solution": "We developed a user-friendly platform that connects customers with professional transfer services, ensuring timely and secure delivery across all service categories."
+                },
+                "innovateCoPortal": {
+                    "title": "InnovateCo Portal",
+                    "description": "Enterprise collaboration platform",
+                    "fullDescription": "InnovateCo Portal is an enterprise-grade collaboration platform that enables teams to work together seamlessly, share resources, and track progress effectively.",
+                    "challenge": "Large enterprises needed a secure and scalable platform to facilitate collaboration across different departments and locations.",
+                    "solution": "We developed a comprehensive portal that brings together all collaboration tools in one place, improving productivity and communication across the organization.",
+                    "features": [
+                        "Team workspace management",
+                        "Document collaboration",
+                        "Project tracking",
+                        "Integration capabilities"
+                    ]
+                },
+                "techStartInnovationHub2": {
+                    "title": "TechStart Innovation Hub",
+                    "description": "A modern platform for tech startups",
+                    "fullDescription": "TechStart Innovation Hub is a comprehensive platform designed to help tech startups streamline their operations, connect with investors, and scale their businesses effectively.",
+                    "challenge": "Tech startups needed a centralized platform to manage their operations and connect with potential investors while maintaining focus on their core business.",
+                    "solution": "We developed a user-friendly platform that combines essential business tools with networking capabilities, making it easier for startups to grow and succeed.",
+                    "features": [
+                        "Real-time analytics dashboard",
+                        "Investor matching algorithm",
+                        "Resource management tools",
+                        "Integrated communication platform"
+                    ]
+                },
+                "Vayo": {
+                    "title": "Vayo",
+                    "description": "Business innovation and consulting platform",
+                    "fullDescription": "Vayo is a cutting-edge business consulting platform that helps companies innovate and transform their operations through technology-driven solutions and expert guidance.",
+                    "challenge": "Businesses needed expert guidance to navigate digital transformation and implement innovative solutions effectively.",
+                    "solution": "We created a comprehensive consulting platform that provides businesses with the tools and expertise needed to drive innovation and achieve sustainable growth."
+                },
+                "GoldenServices": {
+                    "title": "Golden Services",
+                    "description": "Premium service excellence platform",
+                    "fullDescription": "Golden Services is a premium platform dedicated to delivering exceptional service quality across various industries, focusing on customer satisfaction and service excellence.",
+                    "challenge": "Service providers needed a platform to showcase their premium offerings and maintain consistent quality standards.",
+                    "solution": "We developed a sophisticated platform that enables service providers to deliver premium experiences while maintaining the highest standards of quality and customer care."
+                },
+                "DelliosGardenExperts": {
+                    "title": "Dellios Garden Experts",
+                    "description": "Professional gardening and landscaping services",
+                    "fullDescription": "Dellios Garden Experts is a comprehensive gardening and landscaping platform that connects property owners with professional garden designers and maintenance specialists.",
+                    "challenge": "Property owners needed access to professional gardening expertise and reliable maintenance services for their outdoor spaces.",
+                    "solution": "We created a platform that brings together gardening experts and property owners, facilitating professional garden design, plant care, and landscaping services."
+                },
+                "Ankologistics": {
+                    "title": "Ankologistics",
+                    "description": "Professional logistics and transport solutions",
+                    "fullDescription": "Ankologistics is a comprehensive logistics platform that provides efficient transport and supply chain management solutions for businesses across various industries.",
+                    "challenge": "Businesses needed a reliable logistics partner to handle their transport and supply chain requirements efficiently.",
+                    "solution": "We developed a comprehensive logistics platform that streamlines transport operations and supply chain management for optimal efficiency."
+                },
+                "MarianthiKatsouda": {
+                    "title": "Marianthi Katsouda",
+                    "description": "Professional portfolio and personal services",
+                    "fullDescription": "Marianthi Katsouda is a professional portfolio website showcasing expertise and services in a clean, modern design that highlights professional achievements and offerings.",
+                    "challenge": "Creating a professional online presence that effectively showcases skills, experience, and services to potential clients.",
+                    "solution": "We designed a sophisticated portfolio platform that elegantly presents professional credentials and services while maintaining a personal touch."
+                },
+                "growthLabsAnalytics": {
+                    "challenge": "Challenge: Building a comprehensive analytics platform",
+                    "description": "Advanced analytics and business intelligence platform",
+                    "features": [
+                        "Real-time data visualization",
+                        "Custom reporting dashboard",
+                        "Multi-source data integration",
+                        "Predictive analytics tools"
+                    ],
+                    "fullDescription": "Complete analytics solution with real-time insights",
+                    "solution": "Solution: Built a scalable analytics platform with custom dashboards",
+                    "title": "Growth Labs Analytics"
+                }
+            }
+        },
+        "testimonials": {
+            "title": "What Our Clients Say"
+        },
+        "reviews": {
+            "title": "Our Reviews on Social Platforms",
+            "subtitle": "See what our customers are saying about us on Facebook and Trustpilot"
+        },
+        "templates": {
+            "title": "Templates",
+            "subtitle": "Explore our pre-built templates",
+            "searchPlaceholder": "Search templates...",
+            "allCategories": "All Categories",
+            "backToTemplates": "Back to Templates",
+            "categories": {
+                "blog": "Blog",
+                "corporate": "Corporate",
+                "landing": "Landing Page",
+                "portfolio": "Portfolio"
+            },
+            "description": "Description",
+            "features": "Features",
+            "items": {
+                "blogStandard": {
+                    "description": "Professional blog template with modern design",
+                    "features": {
+                        "articleLayout": "Article Layout",
+                        "categories": "Categories",
+                        "comments": "Comments System"
+                    },
+                    "fullDescription": "A comprehensive blog template with all essential features",
+                    "name": "Blog Standard"
+                },
+                "corporatePro": {
+                    "description": "Professional corporate website template",
+                    "features": {
+                        "customForms": "Custom Forms",
+                        "modernUI": "Modern UI",
+                        "responsiveDesign": "Responsive Design"
+                    },
+                    "fullDescription": "Complete corporate solution with modern design",
+                    "name": "Corporate Pro"
+                },
+                "landingPro": {
+                    "description": "High-converting landing page template",
+                    "features": {
+                        "ctaSections": "CTA Sections",
+                        "featureShowcase": "Feature Showcase",
+                        "testimonials": "Testimonials"
+                    },
+                    "fullDescription": "Optimized landing page for maximum conversions",
+                    "name": "Landing Pro"
+                },
+                "portfolioMaster": {
+                    "description": "Stunning portfolio template for creatives",
+                    "features": {
+                        "contactForm": "Contact Form",
+                        "galleryLayout": "Gallery Layout",
+                        "projectShowcase": "Project Showcase"
+                    },
+                    "fullDescription": "Perfect portfolio template to showcase your work",
+                    "name": "Portfolio Master"
+                }
+            },
+            "livePreview": "Live Preview"
+        },
+        "plans": {
+            "title": "Choose Your Plan",
+            "subtitle": "Find the perfect plan for your needs",
+            "monthly": "Monthly",
+            "yearly": "Yearly",
+            "saveLabel": "Save 20%",
+            "period": {
+                "month": "/month",
+                "year": "/year",
+                "perMonth": "per month",
+                "billedYearly": "billed once yearly"
+            },
+            "setupFee": "setup fee",
+            "features": {
+                "maintenance": "Maintenance",
+                "support": "Support",
+                "secureWebsite": "Secure website",
+                "changes1Month": "Changes 1 time per month",
+                "changes2Month": "Changes 2 time per month",
+                "changesUnlimited": "Changes unlimited per month",
+                "hosting": "Hosting",
+                "domainName": "Domain name",
+                "content": "Content",
+                "email1": "1 professional Email",
+                "email5": "5 professional Email",
+                "emailUnlimited": "Unlimited professional Email",
+                "everythingBasic": "Everything that exists in Basic",
+                "everythingProfessional": "Everything that exists in Professional",
+                "seo": "SEO",
+                "advancedSeo": "Advanced SEO",
+                "thirdPartyApps": "Connecting to third-party applications",
+                "layoutRenewal24": "Layout renewal every 24 months",
+                "layoutRenewal12": "Layout renewal every 12 months",
+                "prioritySupport": "Priority support",
+                "customIntegrations": "Custom integrations",
+                "3Pages": "3 pages",
+                "1Email1GB": "1 email (1GB)",
+                "1ChangeMonth10Days": "1 change/month (10 days)",
+                "basicSEO": "Basic SEO",
+                "emailSupportGreekEnglish72hr": "Email support in Greek & English (72hr)",
+                "10Pages": "10 pages",
+                "5Emails1GB": "5 emails (1GB)",
+                "2ChangesMonth5Days": "2 changes/month (5 days)",
+                "analytics": "Analytics",
+                "advanceSEO": "Advance SEO",
+                "newsletter3000EmailsMonth": "Newsletter (3,000 emails/month)",
+                "zeroTransactionFee": "0% transactional fee on digital products / services selling",
+                "emailSupportGreekEnglish48hr": "Email support in Greek & English (48hr)",
+                "monthlyStrategyCall": "Monthly strategy call",
+                "phoneSupport": "Phone Support",
+                "50Pages": "50 pages",
+                "20Emails1GB": "20 emails (1GB)",
+                "5ChangesMonth48h": "5 changes/month (48h)",
+                "advancedAnalytics": "Advanced Analytics",
+                "advancedSEO": "Advanced SEO",
+                "newsletter10000EmailsMonth": "Newsletter (10,000 emails/month)",
+                "allAddOnsIncluded": "All add-ons included for free"
+            },
+            "subscribe": {
+                "again": "Subscribe Again",
+                "now": "Subscribe Now"
+            },
+            "tooltips": {
+                "coreFeatures": "Essential website building tools including drag-and-drop editor, responsive templates, basic SEO tools, SSL certificates, and real-time analytics dashboard. Perfect for getting your business online quickly and professionally.",
+                "basicSupport": "Email support with guaranteed response within 24-48 hours. Our support team helps with technical issues, account questions, and basic troubleshooting. Includes access to our knowledge base and video tutorials.",
+                "advancedFeatures": "Premium tools including advanced SEO optimization, custom domain integration, enhanced security features, A/B testing capabilities, advanced analytics and custom CSS/HTML editing options.",
+                "prioritySupport": "Fast-track support with 4-8 hour response times via email and live chat during business hours. Priority queue placement for all technical issues, plus access to phone support and screen sharing sessions.",
+                "allFeatures": "Complete platform access including white-label solutions, API access for custom integrations, advanced automation tools, multi-language support, enterprise-grade security, and unlimited third-party integrations.",
+                "dedicatedSupport": "Personal account manager available 24/7 with direct phone line and email. Includes priority issue resolution, monthly strategy consultations, custom training sessions, and dedicated onboarding specialist.",
+                "oneProject": "Create and manage one complete website project with full access to all plan features. Includes domain hosting, SSL certificate, email accounts, and comprehensive analytics for your single business website.",
+                "fiveProjects": "Manage up to 5 different website projects simultaneously. Each project gets individual settings, analytics, domains, and customization options. Perfect for agencies or businesses with multiple brands.",
+                "unlimitedProjects": "Create and manage unlimited website projects with no restrictions. Ideal for agencies, developers, or large enterprises. Each project includes full features, individual analytics, and separate management dashboards.",
+                "storage1gb": "1GB of secure cloud storage for your website files, images, documents, and media. Includes automatic backups, CDN delivery, and secure file management. Sufficient for most small business websites.",
+                "storage10gb": "10GB of premium cloud storage with enhanced performance and security. Perfect for websites with rich media content, multiple product images, or extensive document libraries. Includes advanced backup options.",
+                "unlimitedStorage": "Unlimited secure cloud storage space for all your projects. Store unlimited images, videos, documents, and files. Includes enterprise-grade security, automatic backups, and global CDN for fast loading times.",
+                "customDomain": "Connect your own custom domain name (e.g., www.yourbusiness.com) to your website. Includes domain management tools, DNS configuration, and SSL certificate setup for professional branding.",
+                "emailAccount": "Professional email accounts using your domain name (e.g., info@yourbusiness.com). Includes spam filtering, email forwarding, autoresponders, and webmail access from any device.",
+                "analytics": "Basic website traffic tracking and visitor insights to understand your audience and website performance",
+                "seo": "Advanced search engine optimization tools including keyword research, meta tag management, sitemap generation, search console integration, and performance monitoring to improve your search rankings.",
+                "ecommerce": "Complete online store functionality with product catalog management, shopping cart, payment processing, inventory tracking, order management, and customer accounts. Supports multiple payment methods.",
+                "ssl": "Secure Socket Layer certificate for encrypted data transmission. Ensures your website displays the secure 'https' and padlock icon, building customer trust and improving search engine rankings.",
+                "responsive": "Your website automatically adapts to all screen sizes including smartphones, tablets, and desktops. Ensures optimal viewing experience across all devices with touch-friendly navigation.",
+                "backup": "Automatic daily backups of your entire website stored securely in the cloud. One-click restore functionality allows you to recover your site quickly in case of any issues or unwanted changes.",
+                "template": "Access to professional website templates and design tools. Customize layouts, colors, fonts, and content to match your brand identity with our intuitive design editor.",
+                "hosting": "Reliable web hosting service with 99.9% uptime guarantee. Includes fast loading speeds, global CDN, automatic scaling, and secure infrastructure to keep your website running smoothly.",
+                "support": "Professional customer support to help you with any questions or technical issues. Our team is here to ensure your website runs smoothly and meets your business needs.",
+                "default": "Get detailed information about this feature by contacting our support team. We're happy to explain how this feature can benefit your website and business goals.",
+                "3Pages": "Up to 3 professional web pages for your website, perfect for showcasing your business basics like home, about, and contact information",
+                "1Email1GB": "Professional email address using your domain name (e.g., info@yourbusiness.com) with 1GB storage capacity",
+                "1ChangeMonth10Days": "One content update or modification per month, completed within 10 business days",
+                "basicSEO": "Essential search engine optimization setup to help your website appear in Google search results with proper meta tags and basic optimization",
+                "emailSupportGreekEnglish72hr": "Professional customer support via email in both Greek and English languages, with 72-hour response time guarantee",
+                "10Pages": "Multi-page website with up to 10 different pages (Home, About, Services, Contact, etc.) for comprehensive business presence",
+                "5Emails1GB": "Five professional email accounts for your team members, each with 1GB storage capacity",
+                "2ChangesMonth5Days": "Two content updates or modifications per month, completed within 5 business days for faster response",
+                "advanceSEO": "Enhanced search engine optimization with keyword research and advanced on-page optimization techniques",
+                "newsletter3000EmailsMonth": "Email marketing capability to send newsletters to up to 3,000 subscribers monthly for customer engagement",
+                "zeroTransactionFee": "Sell your digital products or services directly through your website without any transaction fees - keep 100% of your earnings",
+                "emailSupportGreekEnglish48hr": "Professional customer support via email in both Greek and English languages, with 48-hour response time for faster assistance",
+                "monthlyStrategyCall": "One-on-one consultation call each month to discuss your business goals, website performance, and growth strategies",
+                "phoneSupport": "Direct phone support for immediate assistance and faster problem resolution during business hours",
+                "50Pages": "Extensive website with up to 50 pages for large businesses or content-rich sites",
+                "20Emails1GB": "Twenty professional email accounts for larger teams, each with 1GB storage capacity",
+                "5ChangesMonth48h": "Five content updates or modifications per month, completed within 48 hours for rapid response",
+                "advancedAnalytics": "Comprehensive website analytics including detailed visitor behavior, conversion tracking, and performance metrics",
+                "advancedSEO": "Premium SEO optimization including keyword research, competitor analysis, and ongoing optimization strategies",
+                "newsletter10000EmailsMonth": "Professional email marketing for up to 10,000 subscribers monthly for large-scale customer campaigns",
+                "allAddOnsIncluded": "Get all premium add-ons completely free with this plan - Booking System, LMS, Multistep Forms, QR Code Generator, Donation System, Online Payments, Real Estate Platform, and Transport Booking (worth over €400/month)"
+            }
+        },
+        "guarantees": {
+            "title": "Our Guarantee",
+            "performance": {
+                "title": "Performance Guarantee",
+                "description": "Your website will load fast, look great on mobile — or we'll fix it free until it does."
+            },
+            "moneyBack": {
+                "title": "30-Day Money Back Guarantee",
+                "description": "Not satisfied? Get a full refund within the first 30 days of your subscription — no questions asked."
+            },
+            "uptime": {
+                "title": "Uptime Guarantee",
+                "description": "Your website will stay online 99% of the time — or we cover your next month."
+            }
+        },
+        "notificationPreferenceUpdated": "Notification preference updated",
+        "tipsSubtitle": "Helpful tips for your website",
+        "tipsTitle": "Tips & Tricks"
+    },
+    "dashboard": {
+        "noInvoicesForMonth": "No invoices found for this month",
+        "emailLimitReached": "Monthly email limit reached.",
+        "addonPurchaseSuccess": "Add-on purchased successfully!",
+        "loading": "Loading...",
+        "confirmPurchase": "Confirm Purchase",
+        "reviewPurchaseDetails": "Review the details of your purchase below",
+        "title": "Dashboard",
+        "completed": "Completed",
+        "media": "Media",
+        "tags": "Tags",
+        "edit": "Edit",
+        "preview": "Preview",
+        "tagsDescription": "Organize subscribers with tags for targeted campaigns",
+        "emailUsage": "Email Usage This Month",
+        "emailsSent": "emails sent",
+        "noticeForNewPlatformFeedback": "We're working hard day and night to make it perfect for you. If you have any feedback or notice anything that could be improved, we'd love to hear from you.",
+        "noticeForNewPlatformFeedbackTitle": "Our platform is brand new!",
+        "shareFeedback": "Share Feedback",
+        "shareFeedbackPlaceHolder": "Tell us what's on your mind... Any bugs, suggestions, or thoughts are welcome!",
+        "shareFeedbackCancelButton": "Cancel",
+        "shareFeedbackSendButton": "Send feedback",
+        "shareFeedbackSendLoading": "Sending...",
+        "upgradeToUnlockNewsletter": "Upgrade to Unlock Newsletter",
+        "basicTierNoNewsletter": "Your Basic plan doesn't include newsletter features. Upgrade to Essential to send up to 3,000 emails per month, or Pro for 10,000 emails.",
+        "requestUpgrade": "Request Upgrade",
+        "emailsSentOf": "of",
+        "emailNewsletterResets": "Resets",
+        "emailsRemaining": "Remaining emails",
+        "completeOnboardingMessage": "Complete the onboarding form to create your website",
+        "createNewWebsite": "Create New Website",
+        "tips": "Latest Tips",
+        "createNewWebsite": "Create New Website",
+        "viewDetails": "View Details",
+        "userInfo": "User Information",
+        "websitesDescription": "Manage your website projects",
+        "profile": "Profile",
+        "language": "Language",
+        "loggedOut": "Logged out successfully",
+        "requestAnalyticsAccess": "Request Analytics Access",
+        "analyticsRequestSent": "Analytics access request sent successfully",
+        "myProfile": "My Profile",
+        "attachFiles": "Attach Files (Optional)",
+        "uploadFiles": "Upload files",
+        "mediaDescription": "Upload and manage files that you want to share with us for your website. You can delete files anytime for ownership control.",
+        "uploadMedia": "Upload Media",
+        "noMediaFiles": "No media files uploaded yet. Click the button above to upload your first file.",
+        "subscriptions": "Subscriptions",
+        "myWebsites": "My Websites",
+        "noWebsites": "No websites yet",
+        "noWebsitesMessage": "Fill out the onboarding form so we can start working on your website.",
+        "completeOnboarding": "Complete Onboarding Form",
+        "noSubscriptionsMessage": "You need to subscribe to a plan before we can create your website.",
+        "profileInformation": "Profile Information",
+        "newSubscription": "New Subscription Ready",
+        "phoneNumber": "Phone Number",
+        "notProvided": "Not provided",
+        "update": "Update",
+        "cancel": "Cancel",
+        "enterPhoneNumber": "Enter your phone number",
+        "updateGoogleAnalyticsEmail": "Update Google Analytics email",
+        "updateEmail": "Update Email",
+        "openGoogleAnalytics": "Open Google Analytics",
+        "requestGoogleAnalyticsAccess": "Request Google Analytics Access",
+        "phoneNumberUpdated": "Phone number updated successfully",
+        "errorUpdatingPhone": "Error updating phone number",
+        "analyticsEmailUpdated": "Analytics email updated successfully",
+        "errorUpdatingEmail": "Error updating email",
+        "analyticsAccessRequest": "Analytics access request sent",
+        "errorSendingRequest": "Error sending request",
+        "validPhoneNumber": "Please enter a valid phone number",
+        "validEmailAddress": "Please enter a valid email address",
+        "updatePaymentMethod": "Update Payment Method",
+        "noSubscriptionsFound": "No subscriptions found.",
+        "viewPlans": "View Plans",
+        "package": "Package",
+        "status": "Active",
+        "price": "Price",
+        "startDate": "Start Date",
+        "nextBillingAccessExpiry": "Next Billing / Access Expiry",
+        "addOns": "Add ons",
+        "upgradeActions": "Upgrade / Actions",
+        "cancellation": "Cancellation",
+        "showAvailableAddOns": "Show Available Add-ons",
+        "upgradeToYearly": "Upgrade to Yearly",
+        "yearlyPlan": "Yearly Plan",
+        "resume": "Resubscribe",
+        "notApplicable": "Not Applicable",
+        "documentType": "Document Type",
+        "invoice": "Invoice",
+        "receipt": "Receipt",
+        "vatNumber": "VAT Number",
+        "notRequiredForReceipts": "Not required for receipts",
+        "enterVatNumber": "Enter VAT number",
+        "save": "Save",
+        "vatNumberUpdated": "VAT number updated successfully",
+        "errorUpdatingVat": "Error updating VAT number",
+        "billingUpdated": "Billing information updated successfully",
+        "billingUpdateFailed": "Failed to update billing information",
+        "wrappInvoiceCreated": "Invoice created with Wrapp successfully",
+        "wrappInvoiceCreateFailed": "Failed to create invoice with Wrapp",
+        "transactions": "Transactions",
+        "amount": "Amount",
+        "date": "Date",
+        "pdf": "PDF",
+        "noDocumentReady": "No document ready",
+        "pdfNotAvailable": "PDF not available",
+        "pdfNotAvailableDesc": "Your subscription PDF is not yet available.",
+        "downloadPdf": "Download PDF",
+        "pdfDownloadDesc": "Your subscription PDF is opening in a new window.",
+        "subscriptionCancelled": "Subscription cancelled",
+        "subscriptionCancelledDesc": "Your subscription has been cancelled successfully.",
+        "error": "Error",
+        "failedToCancelSubscription": "Failed to cancel subscription. Please try again.",
+        "failedToUpgrade": "Failed to initiate upgrade. Please try again.",
+        "failedToBillingPortal": "Failed to access billing portal. Please try again.",
+        "areSureCancel": "Are you sure you want to cancel?",
+        "actionCannotBeUndone": "This action cannot be undone. Your subscription will be cancelled immediately, and you will lose access to premium features at the end of your current billing period.",
+        "noKeepSubscription": "No, keep my subscription",
+        "yesCancelSubscription": "Yes, cancel subscription",
+        "resumeSubscription": "Resubscribe",
+        "aboutToRenew": "You are about to renew your",
+        "subscriptionRegainAccess": "subscription. Once completed, you will regain access to all the features of your plan.",
+        "redirectedToCheckout": "You will be redirected to the checkout page to complete the payment process.",
+        "proceedToCheckout": "Proceed to Checkout",
+        "availableAddOns": "Available Add-ons",
+        "selectAdditionalFeatures": "Select additional features to enhance your",
+        "subscriptionId": "Subscription ID",
+        "alreadyAttached": "(Already attached to this subscription)",
+        "totalAdditionalCost": "Total Additional Cost:",
+        "purchaseAddOns": "Purchase Add-ons",
+        "proratedBillingTitle": "Prorated Billing",
+        "proratedBillingDescription": "You'll be charged a prorated amount today based on the remaining days until your next billing date. Starting next billing cycle, the full add-on price will be included with your regular subscription payment.",
+        "processing": "Processing...",
+        "success": "Success",
+        "addOnsPurchased": "Add-ons purchased successfully!",
+        "failedToPurchaseAddOns": "Failed to purchase add-ons. Please try again.",
+        "leaveReviewsGetFreeMonth": "🎁 Leave 2 reviews and get the next month for free",
+        "tier": "Tier",
+        "billingPeriod": "Billing Period",
+        "purchasedAt": "Purchased At",
+        "currency": "Currency",
+        "progress": "Progress",
+        "analytics": "Analytics",
+        "newsletter": "Newsletter",
+        "booking": "Booking",
+        "bookingOpening": "Opening Booking...",
+        "bookingError": "Could not open Booking",
+        "bookingErrorDescription": "Please try again.",
+        "emailBuilder": "Email Builder",
+        "emailBuilderDescription": "Design and create beautiful email templates with our visual editor",
+        "groups": "Groups",
+        "groupsDescription": "Organize subscribers into groups for targeted campaigns",
+        "contacts": "Contacts",
+        "contactsDescription": "Manage your subscriber list and contact information",
+        "form": "Newsletter Form",
+        "formDescription": "Send emails via SES and manage newsletter subscriptions",
+        "emailTemplates": "Email Templates",
+        "emailTemplatesDescription": "View and manage your saved email templates",
+        "createEmailTemplatesDesc": "Create and design beautiful email templates for your newsletters.",
+        "openBuilder": "Open Builder",
+        "visualEmailEditor": "Visual Email Editor",
+        "viewManageTemplates": "View and manage your saved email templates",
+        "createNewTemplate": "Create New Template",
+        "noTemplatesYet": "No templates saved yet",
+        "createFirstTemplate": "Create your first email template using the email builder",
+        "createTemplate": "Create Template",
+        "activeSubscriptions": "Active Subscriptions",
+        "activeSubscriptionsStartedOn": "Started on",
+        "noSubscriptions": "No subscriptions for this website yet",
+        "addSubscription": "Add Subscription",
+        "billingPeriods": {
+            "month": "month",
+            "monthly": "monthly",
+            "year": "year",
+            "yearly": "yearly"
+        },
+        "renewAutomatically": "Renew automatically",
+        "noTransactions": "No transactions yet",
+        "analyticsComingSoon": "Analytics dashboard coming soon",
+        "newsletterComingSoon": "Newsletter management coming soon",
+        "backToWebsites": "Back to Websites",
+        "stage": "Stage",
+        "billing": "Billing",
+        "paymentInformation": "Payment Information",
+        "managePaymentInfo": "Manage and edit your billing information",
+        "manageSubscriptions": "Manage your subscription plans",
+        "manageSubscriptionsDesc": "Manage the subscriptions tied to your account.",
+        "invoices": "Invoices / Receipts",
+        "viewInvoices": "View your invoices / receipts",
+        "viewDownloadInvoices": "View and download your invoices / receipts.",
+        "subscription": "Subscription",
+        "subscriptionPlan": "Subscription Plan",
+        "change": "CHANGE",
+        "cancelSubscription": "CANCEL SUBSCRIPTION",
+        "websiteProject": "Website project",
+        "website": "Website",
+        "subscribedSince": "Subscribed Since",
+        "payment": "Payment",
+        "view": "VIEW",
+        "nextPayment": "Next Payment",
+        "paymentDue": "Payment Due",
+        "promotionalOffer": "Your next payment is €0.00 due to a promotional offer applied to your subscription.",
+        "paymentInfoComingSoon": "Payment management coming soon",
+        "download": "Download",
+        "duplicate": "Duplicate",
+        "templateDuplicated": "Template duplicated successfully",
+        "noPdf": "No PDF",
+        "manageSubscriptionBilling": "Manage your website subscription and billing information.",
+        "changes": "Changes",
+        "changesDescription": "Request changes to your website and track their status.",
+        "changesUsage": "Changes Usage",
+        "unlimited": "Unlimited",
+        "limitReached": "Limit Reached",
+        "nearlyFull": "Nearly Full",
+        "unlimitedChanges": "You have unlimited changes available",
+        "changesRemaining": "changes remaining",
+        "requestChange": "Request a Change",
+        "requestChangeDescription": "Describe the changes you'd like to make to your website",
+        "subject": "Subject",
+        "subjectPlaceholder": "Brief description of the change",
+        "message": "Message",
+        "messagePlaceholder": "Detailed description of what you'd like to change",
+        "changesLimitReached": "You've reached your monthly change limit. Please upgrade your plan for more changes.",
+        "submitting": "Submitting...",
+        "submitRequest": "Submit Request",
+        "changeHistory": "Change History",
+        "preLaunchChanges": "Pre-Launch Changes",
+        "unlimitedChangesBeforeLaunch": "You have unlimited change requests available before your website is launched. Limits will apply after the Website Launch stage is completed.",
+        "by": "by",
+        "changeRequestSubmitted": "Change Request Submitted",
+        "changeRequestSubmittedDescription": "Your change request has been submitted successfully.",
+        "paymentMethod": "Payment Method",
+        "cardOnFile": "Card on file",
+        "managedByStripe": "Managed by Stripe",
+        "opening": "Opening...",
+        "stripeSecure": "You'll be redirected to Stripe's secure portal",
+        "noActiveSubscription": "No active subscription found",
+        "subscribe": "Subscribe Now",
+        "billingHistory": "Billing History",
+        "viewInvoicesMessage": "View your past invoices / receipts and billing history in the Invoices / receipts section.",
+        "discover": "Add-ons",
+        "explore": "Explore",
+        "addOnsDesc": "Enhance this website with premium features",
+        "alreadyPurchased": "Already Purchased",
+        "purchase": "Purchase",
+        "draftOnboarding": "Draft Onboarding Form",
+        "continueOnboardingMessage": "Continue filling out the onboarding form to create your website",
+        "continueOnboarding": "Continue",
+        "analytics": "Website Analytics",
+        "analyticsUpsell": {
+            "unlockTitle": "Unlock Website Analytics",
+            "unlockDescription": "Get detailed insights into your website's performance with our analytics dashboard. Track visitors, page views, traffic sources, and more.",
+            "visitorInsightsTitle": "Visitor Insights",
+            "visitorInsightsDescription": "Track unique visitors, page views, and user behavior",
+            "trafficSourcesTitle": "Traffic Sources",
+            "trafficSourcesDescription": "See where your visitors are coming from",
+            "deviceBreakdownTitle": "Device Breakdown",
+            "deviceBreakdownDescription": "Understand how users access your website",
+            "performanceMetricsTitle": "Performance Metrics",
+            "performanceMetricsDescription": "Monitor bounce rate and session duration",
+            "requestUpgrade": "Request Upgrade"
+        },
+        "upgradeModal": {
+            "successTitle": "Request Submitted!",
+            "successDescription": "Your upgrade request has been sent to our team. We'll contact you shortly to process your subscription upgrade.",
+            "title": "Request Tier Upgrade",
+            "description": "Let us know which plan you'd like to upgrade to and we'll help you get started.",
+            "selectTierLabel": "Select Tier",
+            "selectTierPlaceholder": "Choose a tier",
+            "essential": "Essential",
+            "pro": "Pro",
+            "featureLabel": "Feature",
+            "notesLabel": "Additional Notes (Optional)",
+            "notesPlaceholder": "Any questions or special requirements?",
+            "infoBox": "Our team will review your request and contact you via email to complete the upgrade process.",
+            "cancel": "Cancel",
+            "submit": "Submit Request",
+            "sending": "Sending..."
+        },
+        "invoicesPerWebsite": {
+            "title": "Website Invoices / Receipts",
+            "number": "Invoice Number",
+            "issueDate": "Issue Date",
+            "amount": "Amount",
+            "download": "Download",
+            "descriptionSeparator": "•"
+        },
+        "tabs": {
+            "overview": "Overview",
+            "tips": "Tips",
+            "websiteChanges": "Website Changes",
+            "websiteProgress": "Website Progress"
+        },
+        "websiteChanges": {
+            "contactAdmin": "Contact Admin",
+            "noChangesAvailable": "No changes available",
+            "remainingChanges": "Remaining changes",
+            "title": "Website Changes"
+        },
+        "billingInformation": "Billing Information",
+        "city": "City",
+        "street": "Street",
+        "number": "Number",
+        "postalCode": "Postal Code",
+        "campaigns": {
+            "title": "Email Campaigns",
+            "description": "Create and manage your email campaigns",
+            "createButton": "Create Campaign",
+            "searchPlaceholder": "Search campaigns...",
+            "sort": {
+                "newestFirst": "Newest First",
+                "oldestFirst": "Oldest First",
+                "titleAZ": "Title (A-Z)",
+                "titleZA": "Title (Z-A)",
+                "mostOpens": "Most Opens",
+                "mostClicks": "Most Clicks"
+            },
+            "tabs": {
+                "all": "All",
+                "draft": "Draft",
+                "scheduled": "Scheduled",
+                "sent": "Sent"
+            },
+            "toast": {
+                "createdTitle": "Campaign created successfully",
+                "createdDescription": "Your campaign has been created.",
+                "updatedTitle": "Campaign updated successfully",
+                "updatedDescription": "Your campaign has been updated."
+            },
+            "status": {
+                "draft": "Draft",
+                "sending": "Sending...",
+                "scheduled": "Scheduled",
+                "sent": "Sent"
+            },
+            "card": {
+                "recipients": "Recipients",
+                "opens": "Opens",
+                "clicks": "Clicks",
+                "scheduled": "Scheduled",
+                "sent": "Sent",
+                "viewAnalytics": "View Analytics",
+                "send": "Send",
+                "duplicate": "Duplicate",
+                "edit": "Edit"
+            },
+            "selectAll": "Select all",
+            "selected": "selected",
+            "delete": "Delete",
+            "sendDialog": {
+                "title": "Send Campaign",
+                "description": "Are you sure you want to send this campaign? This action cannot be undone and the campaign will be sent to all recipients immediately.",
+                "cancel": "Cancel",
+                "confirm": "Send Campaign",
+                "sending": "Sending...",
+                "sendingTitle": "Sending your campaign",
+                "sendingDescription": "This may take several minutes for large contact lists. Please don't close this page.",
+                "sendingToRecipients": "Sending to {{count}} recipients..."
+            },
+            "bulkDeleteDialog": {
+                "title": "Delete Campaigns",
+                "description": "Are you sure you want to delete {{count}} campaign(s)? This action cannot be undone.",
+                "cancel": "Cancel",
+                "confirm": "Delete",
+                "deleting": "Deleting..."
+            },
+            "wizard": {
+                "createTitle": "Create New Campaign",
+                "editTitle": "Edit Campaign",
+                "createDescription": "Follow the steps to create your email campaign",
+                "editDescription": "Update your email campaign",
+                "steps": {
+                    "1": "Details",
+                    "2": "Design",
+                    "3": "Recipients",
+                    "4": "Review & Send"
+                },
+                "schedule": {
+                    "title": "Schedule Campaign",
+                    "description": "Choose when to send this campaign",
+                    "sendNow": "As draft",
+                    "scheduleLater": "Schedule for Later",
+                    "selectDate": "Select Date",
+                    "pickDate": "Pick a date",
+                    "selectTime": "Select Time",
+                    "scheduledToSend": "Scheduled to send:"
+                },
+                "fields": {
+                    "title": "Campaign Title *",
+                    "tags": "Target Tags *",
+                    "statusFilters": "Contact Status Filter",
+                    "subject": "Email Subject *",
+                    "senderName": "Sender Name",
+                    "senderEmail": "Sender Email",
+                    "description": "Description (Optional)"
+                },
+                "placeholders": {
+                    "title": "e.g., Monthly Newsletter - January 2024",
+                    "subject": "Enter the email subject line",
+                    "senderName": "Your Company",
+                    "description": "Internal notes about this campaign"
+                },
+                "hints": {
+                    "selectMultiple": "Select one or more",
+                    "filterByStatus": "Filter recipients by status",
+                    "matchingContacts": "Matching contacts"
+                },
+                "messages": {
+                    "noTags": "No tags yet. Create tags in the contacts management section."
+                },
+                "system": "System",
+                "design": {
+                    "title": "Choose Your Email Design",
+                    "createTemplate": "Create New Template",
+                    "description": "Select an email template to send your campaign. A template is required. ({{count}} available)",
+                    "loading": "Loading templates...",
+                    "noTemplates": "No templates yet. Create your first email template to get started.",
+                    "selected": "Selected",
+                    "plainTextLabel": "Plain Text Message (Fallback)",
+                    "plainTextPlaceholder": "This will be used as fallback if HTML template isn't available"
+                },
+                "recipients": {
+                    "title": "Recipients Summary",
+                    "description": "Review who will receive this campaign based on your filters",
+                    "selectedTags": "Selected Tags",
+                    "selectedStatuses": "Status Filter",
+                    "noTagsSelected": "No tags selected",
+                    "noStatusSelected": "No status selected",
+                    "count": "recipients",
+                    "listTitle": "Recipients (matching tags and status filters):",
+                    "noName": "No name",
+                    "noContacts": "No contacts found matching your filters. Make sure you have contacts assigned to these tags with the selected statuses."
+                },
+                "review": {
+                    "title": "Campaign Summary",
+                    "description": "Review your campaign before sending",
+                    "fields": {
+                        "title": "Campaign Title",
+                        "tags": "Target Tags",
+                        "statusFilters": "Status Filters",
+                        "subject": "Email Subject",
+                        "recipients": "Recipients",
+                        "template": "Template",
+                        "sender": "Sender"
+                    },
+                    "plainText": "Plain text only",
+                    "default": "Default",
+                    "scheduleLabel": "Schedule Send (Optional)"
+                },
+                "navigation": {
+                    "back": "Back",
+                    "next": "Next",
+                    "cancel": "Cancel",
+                    "create": "Create Campaign",
+                    "update": "Update Campaign",
+                    "creating": "Creating...",
+                    "updating": "Updating..."
+                }
+            }
+        },
+        "campaignsDescription": "Create and manage email campaigns for your subscribers",
+        "account": "Account",
+        "accountSettings": "Account Settings",
+        "basicInfo": "Basic Information",
+        "name": "Name",
+        "email": "Email",
+        "phone": "Phone",
+        "notProvided": "Not provided",
+        "languagePreference": "Language Preference",
+        "languageDescription": "Choose your preferred language for dashboard and email notifications",
+        "updating": "Updating...",
+        "languageUpdated": "Language preference updated successfully"
+    },
+    "newsletter": {
+        "analyticsTooltips": {
+            "sent": "Total number of emails that were sent from this campaign",
+            "delivered": "Emails that successfully reached the recipient's inbox",
+            "deliveryRate": "Percentage of sent emails that were successfully delivered",
+            "bounces": "Emails that could not be delivered because the address was invalid or the mailbox was full",
+            "bounceRate": "Percentage of sent emails that bounced back",
+            "complaints": "Recipients who marked your email as spam or unwanted",
+            "complaintRate": "Percentage of delivered emails marked as spam",
+            "opens": "Number of times recipients opened your email",
+            "openRate": "Percentage of delivered emails that were opened",
+            "clicks": "Number of times recipients clicked on links in your email",
+            "clickRate": "Percentage of delivered emails where a link was clicked",
+            "clickThroughRate": "Percentage of email opens that resulted in a click - shows how engaging your content is"
+        },
+        "rowsPerPage": "Rows per page",
+        "contactSelected": "contact selected",
+        "contactsSelected": "contacts selected",
+        "selectAll": "Select all",
+        "addNewContact": "Add New Contact",
+        "addNewContactDescription": "Add a new contact to your mailing list.",
+        "singleContact": "Single Contact",
+        "importFile": "Import File",
+        "csvFile": "CSV File",
+        "csvDescription": "The CSV file should contain the columns: email (required), name (optional), status (optional)",
+        "downloadSample": "Download Sample",
+        "pleaseDownloadSample": "Please download the sample CSV file first.",
+        "importing": "Importing...",
+        "importingDescription": "Please wait while contacts are being imported. This may take a moment.",
+        "import": "Import",
+        "deletingDescription": "Deleting {{count}} contacts. Please wait...",
+        "updatingStatusDescription": "Updating status for {{count}} contacts. Please wait...",
+        "assigningTagsDescription": "Assigning tags to {{count}} contacts. Please wait...",
+        "contact": "contact",
+        "s": "s",
+        "name": "Name",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "optional": "(optional)",
+        "pending": "Pending",
+        "active": "Subscribed",
+        "confirmed": "Confirmed",
+        "unsubscribed": "Unsubscribed",
+        "noTagsAvailable": "No tags available. Create tags first.",
+        "adding": "Adding...",
+        "addContact": "Add Contact",
+        "addContactButton": "Add Contact",
+        "export": "Export",
+        "exporting": "Exporting...",
+        "exportAll": "Export All",
+        "exportSelected": "Export Selected",
+        "exportSuccess": "Export successful",
+        "exported": "Exported",
+        "failedToExportContacts": "Failed to export contacts",
+        "noContacts": "No contacts yet. Add your first contact to start building your mailing list.",
+        "fileLoaded": "File loaded",
+        "found": "Found",
+        "toImport": "to import",
+        "duplicate": "duplicates",
+        "alreadyExist": "that already exist.",
+        "toastContact": "contacts",
+        "toastContactAndCSV": "and",
+        "deleteContact": "Delete Contact",
+        "deleteContactDescription": "Are you sure you want to delete this contact? This action cannot be undone.",
+        "deleteContacts": "Delete Contacts",
+        "deleteContactsDescription": "Are you sure you want to delete {{count}} contacts? This action cannot be undone.",
+        "assignTags": "Assign Tags",
+        "assignTagsDescription": "Select the tags to be assigned to all selected contacts.",
+        "assigning": "Assigning...",
+        "assign": "Assign",
+        "tagsAssigned": "Tags assigned",
+        "tagsAssignedDescription": "Tags have been assigned successfully",
+        "failedToAssignTags": "Failed to assign tags",
+        "changeStatus": "Change Status",
+        "changeStatusDescription": "Select the status to be assigned to all selected contacts.",
+        "selectStatus": "Select status",
+        "statusUpdated": "Status updated",
+        "statusUpdatedDescription": "Status has been updated successfully",
+        "failedToUpdateStatus": "Failed to update status",
+        "update": "Update",
+        "deleting": "Deleting...",
+        "delete": "Delete",
+        "editContact": "Edit Contact",
+        "editContactDescription": "Update contact information and tags.",
+        "updating": "Updating...",
+        "updateContact": "Update Contact",
+        "contactUpdated": "Contact updated",
+        "contactUpdatedDescription": "Contact has been updated successfully",
+        "failedToUpdateContact": "Failed to update contact",
+        "failedToDeleteContact": "Failed to delete contact",
+        "contactCreated": "Contact created",
+        "contactCreatedDescription": "Contact has been created successfully",
+        "failedToCreateContact": "Failed to create contact",
+        "contactDeleted": "Contact deleted",
+        "contactDeletedDescription": "Contact has been deleted successfully",
+        "noContactsToImport": "No contacts to import",
+        "loadingContacts": "Loading contacts...",
+        "importComplete": "Import complete",
+        "importCompleteDescription": "Import has been completed successfully",
+        "failedToImportContacts": "Failed to import contacts",
+        "failedToImportContactsDescription": "Failed to import contacts",
+        "noContactsToImport": "No contacts to import",
+        "loadingContacts": "Loading contacts...",
+        "importComplete": "Import complete",
+        "importCompleteDescription": "Import has been completed successfully",
+        "failedToImportContacts": "Failed to import contacts",
+        "failedToImportContactsDescription": "Failed to import contacts",
+        "noContactsToImport": "No contacts to import",
+        "loadingContacts": "Loading contacts...",
+        "importComplete": "Import complete",
+        "importCompleteDescription": "Import has been completed successfully",
+        "failedToImportContacts": "Failed to import contacts",
+        "failedToImportContactsDescription": "Failed to import contacts",
+        "noContactsToImport": "No contacts to import",
+        "loadingContacts": "Loading contacts...",
+        "importComplete": "Import complete",
+        "importCompleteDescription": "Import has been completed successfully",
+        "failedToImportContacts": "Failed to import contacts",
+        "failedToImportContactsDescription": "Failed to import contacts",
+        "noContactsToImport": "No contacts to import",
+        "loadingContacts": "Loading contacts...",
+        "importComplete": "Import complete",
+        "importCompleteDescription": "Import has been completed successfully",
+        "failedToImportContacts": "Failed to import contacts",
+        "failedToImportContactsDescription": "Failed to import contacts",
+        "noContactsToImport": "No contacts to import",
+        "loadingContacts": "Loading contacts...",
+        "importComplete": "Import complete",
+        "importCompleteDescription": "Import has been completed successfully",
+        "failedToImportContacts": "Failed to import contacts",
+        "failedToImportContactsDescription": "Failed to import contacts",
+        "tags": "Tags",
+        "subscribed": "Subscribed",
+        "searchContacts": "Search by name or email...",
+        "filterByStatus": "Status",
+        "filterByTag": "Tag",
+        "allStatuses": "All Statuses",
+        "statusPending": "Pending",
+        "statusActive": "Subscribed",
+        "statusConfirmed": "Confirmed",
+        "statusUnsubscribed": "Unsubscribed",
+        "allTags": "All Tags",
+        "clearFilters": "Clear",
+        "showingResults": "Showing",
+        "of": "of",
+        "noMatchingContacts": "No contacts match your filters",
+        "groups": "Newsletter Groups",
+        "groupsDescription": "Organize subscribers into groups for targeted campaigns",
+        "subscriberGroups": "Subscriber Groups",
+        "addGroup": "Add Group",
+        "subscribers": "subscribers",
+        "addNewGroup": "Add New Group",
+        "createNewSubscriberGroup": "Create a new subscriber group",
+        "editGroup": "Edit Group",
+        "updateGroupInformation": "Update group information",
+        "groupName": "Group Name",
+        "enterGroupName": "Enter group name",
+        "description": "Description",
+        "enterGroupDescription": "Enter group description",
+        "colorTheme": "Color Theme",
+        "colors": {
+            "gray": "Gray",
+            "blue": "Blue",
+            "green": "Green",
+            "purple": "Purple",
+            "red": "Red",
+            "yellow": "Yellow",
+            "indigo": "Indigo",
+            "pink": "Pink"
+        },
+        "cancel": "Cancel",
+        "addGroupButton": "Add Group",
+        "updateGroup": "Update Group",
+        "subscribersInGroup": "Subscribers in {groupName} Group",
+        "subscriberCountInGroup": "{count} subscriber(s) in this group",
+        "noSubscribersInGroup": "No subscribers in this group yet",
+        "name": "Name",
+        "email": "Email",
+        "status": "Status",
+        "subscribedDate": "Subscribed Date",
+        "actions": "Actions",
+        "close": "Close",
+        "groupAdded": "Group added",
+        "groupCreated": "{name} group has been created",
+        "error": "Error",
+        "failedToAddGroup": "Failed to add group",
+        "groupUpdated": "Group updated",
+        "groupUpdatedSuccessfully": "{name} group has been updated successfully",
+        "failedToUpdateGroup": "Failed to update group",
+        "groupDeleted": "Group deleted",
+        "groupDeletedMessage": "{name} has been deleted",
+        "failedToDeleteGroup": "Failed to delete group",
+        "subscriberDeleted": "Subscriber deleted",
+        "subscriberRemoved": "{name} has been removed from the list",
+        "failedToDeleteSubscriber": "Failed to delete subscriber",
+        "confirmDeleteGroup": "Are you sure you want to delete this group? This action cannot be undone.",
+        "confirmRemoveSubscriber": "Are you sure you want to remove this subscriber from the group?",
+        "contacts": "Newsletter Contacts",
+        "contactsDescription": "Manage your newsletter subscribers and their contact information",
+        "addSubscriber": "Add Subscriber",
+        "editSubscriber": "Edit Subscriber",
+        "addNewSubscriber": "Add New Subscriber",
+        "addNewSubscriberDescription": "Add a new contact to your newsletter list",
+        "updateSubscriberInformation": "Update subscriber information",
+        "group": "Group",
+        "selectGroup": "Select a group...",
+        "enterEmail": "Enter email address",
+        "enterName": "Enter subscriber name",
+        "active": "Active",
+        "unsubscribed": "Unsubscribed",
+        "addSubscriberButton": "Add Subscriber",
+        "updateSubscriber": "Update Subscriber",
+        "subscriberAdded": "Subscriber added",
+        "subscriberAddedSuccessfully": "{name} has been added to the list",
+        "failedToAddSubscriber": "Failed to add subscriber",
+        "subscriberUpdated": "Subscriber updated",
+        "subscriberUpdatedSuccessfully": "{name} has been updated successfully",
+        "failedToUpdateSubscriber": "Failed to update subscriber",
+        "confirmDeleteSubscriber": "Are you sure you want to delete this subscriber? This action cannot be undone.",
+        "noSubscribers": "No subscribers yet",
+        "noSubscribersMessage": "Start building your audience by adding subscribers",
+        "searchPlaceholder": "Search by name or email...",
+        "sendEmail": "Send Email",
+        "sendEmailDescription": "Send emails to individual subscribers or groups",
+        "sendTo": "Send To",
+        "sendType": {
+            "single": "Single Email",
+            "multiple": "Multiple Emails",
+            "group": "Specific Group"
+        },
+        "toEmail": "To Email",
+        "toEmailPlaceholder": "recipient@example.com",
+        "multipleEmails": "Multiple Emails",
+        "multipleEmailsPlaceholder": "email1@example.com\nemail2@example.com\nemail3@example.com",
+        "multipleEmailsHelp": "Enter one email address per line",
+        "selectGroupLabel": "Select Group",
+        "chooseGroup": "Choose a group...",
+        "subject": "Subject",
+        "subjectPlaceholder": "Email subject",
+        "message": "Message",
+        "messagePlaceholder": "Type your message here...",
+        "send": "Send",
+        "sending": "Sending...",
+        "emailSentSuccess": "Email sent successfully!",
+        "failedToSendEmail": "Failed to send email",
+        "errorSendingEmail": "Error sending email",
+        "unexpectedError": "An unexpected error occurred",
+        "pleaseEnterEmail": "Please enter an email address",
+        "pleaseEnterAtLeastOneEmail": "Please enter at least one email address",
+        "pleaseSelectGroup": "Please select a group",
+        "pleaseEnterValidEmails": "Please enter at least one valid email address",
+        "groupNotFound": "Selected group not found",
+        "noActiveSubscribers": "No active subscribers",
+        "noActiveSubscribersInGroup": "No active subscribers found in the \"{groupName}\" group.",
+        "pleaseSelectValidRecipient": "Please select a valid recipient or group",
+        "noRecipientsFound": "No recipients found. Please check your selection.",
+        "formError": "Form Error",
+        "checkAllRequiredFields": "Please check all required fields"
+    },
+    "upgradeConfirmation": {
+        "title": "Upgrade to Yearly Billing",
+        "backToDashboard": "Back to Dashboard",
+        "invalidUpgradeRequest": "Invalid Upgrade Request",
+        "returnToDashboard": "Return to Dashboard",
+        "whatHappening": "What's Happening",
+        "upgradeDescription1": "Your",
+        "upgradeDescription2": "subscription will be upgraded to yearly billing immediately. The remaining value from your current monthly plan will be deducted from the total yearly amount, so you'll pay less upfront. No refund will be issued.",
+        "currentPlan": "Current Plan:",
+        "upgradingTo": "Upgrading To:",
+        "deductedAmount": "Deducted Amount for Unused Days:",
+        "creditedToward": "Credited toward this upgrade",
+        "yearlyBillingStarts": "Yearly Billing Starts:",
+        "immediatelyAfterUpgrade": "Immediately after upgrade",
+        "nextBillingDate": "Next Billing Date:",
+        "yourSavings": "Your Savings",
+        "monthlyPlan12Months": "Monthly Plan (12 months):",
+        "yearlyPlan": "Yearly Plan:",
+        "totalSavings": "Total Savings:",
+        "save": "Save",
+        "savePerMonth": "per month with yearly billing!",
+        "billingInformation": "Billing Information",
+        "accountEmail": "Account Email:",
+        "username": "Username:",
+        "documentType": "Document Type",
+        "invoiceVatNeeded": "Invoice (I need VAT number)",
+        "receiptNoVatNeeded": "Receipt (No VAT number needed)",
+        "vatNumber": "VAT Number",
+        "enterVatNumber": "Enter VAT number",
+        "yearlySubscriptionSummary": "Yearly Subscription Summary",
+        "equivalentTo": "Equivalent to:",
+        "annualTotal": "Annual Total:",
+        "upgradeToYearlyNow": "Upgrade to Yearly Now",
+        "upgradeAgreement": "By upgrading now, you agree to immediate yearly billing. The value of any unused days from your current monthly plan will be deducted from the yearly total, which will be charged immediately.",
+        "upgradeSuccessful": "Upgrade Successful!",
+        "upgradeSuccessfulDesc": "Your subscription has been upgraded to yearly billing. The value of any unused days from your previous monthly plan has been deducted from the total amount.",
+        "upgradeFailed": "Upgrade Failed",
+        "monthly": "Monthly",
+        "yearly": "Yearly"
+    },
+    "footer": {
+        "aboutUs": "About Us",
+        "aboutUsDescription": "We provide cutting-edge subscription management solutions for modern businesses.",
+        "quickLinks": "Quick Links",
+        "contactUs": "Contact Us",
+        "legal": "Legal",
+        "legalInfo": "Legal Information",
+        "termsOfService": "Terms of Service",
+        "privacyPolicy": "Privacy Policy",
+        "cookiePolicy": "Cookie Policy",
+        "billingPolicy": "Billing & Subscription",
+        "aup": "Acceptable Use Policy",
+        "allRightsReserved": "All rights reserved"
+    },
+    "about": {
+        "hero": {
+            "subtitle": "OUR GOAL FOR HAYC",
+            "mainTitle": "To deliver professional websites fast, continuously evolving with new features, and giving small and medium businesses the tools they need to grow",
+            "description1": "with 0% risk",
+            "description2": "",
+            "description3": ""
+        },
+        "howItWorks": {
+            "title": "How does hayc work?",
+            "description": "With hayc the process is simple: we start with a short call to understand your needs, you sign up and provide your content through an easy form, and we take care of everything.",
+            "guarantee": "In just 15 days your website is online,",
+            "continuedDescription": "with ongoing support and new features for as long as your subscription is active."
+        },
+        "differences": {
+            "title": "What makes us different from others?",
+            "customCoded": {
+                "title": "Custom Coded Websites",
+                "description": "We are a team with professional programmers who know how to build websites from scratch. ",
+                "highlight": "We are not builders ",
+                "continuedDescription": "like for example Wix, Squarespace and others. What we do, is we customize your own website, which can be connected to your work organization and your goals."
+            },
+            "zeroRisk": {
+                "title": "0% risk for your money",
+                "description": "We always try to do everything as perfectly as possible and continue working on it year after year. To do this, if you are not happy with any of your money, you can get it within the first 30 days. It is a risk-free business for you!"
+            },
+            "fullPayment": {
+                "title": "We want you to pay full price",
+                "description": "We always want you to pay 100% of your price. We create strategic combined tools which will cost you thousands of euros to find and purchase for your business and we offer them at a very low cost."
+            }
+        },
+        "cta": {
+            "title": "Interested in something else?",
+            "subtitle": "Get in touch now!",
+            "button": "Contact Us"
+        }
+    },
+    "websiteProgress": {
+        "title": "Website Development Progress",
+        "noProgress": "No website development in progress",
+        "progress": "Development Progress",
+        "progressCompleted": "completed",
+        "changeRequest": "Request for Change on the Website",
+        "changes": "Changes",
+        "uploadMedia": "Upload Media",
+        "noWebsites": "No websites found.",
+        "loading": "Loading...",
+        "nearlyFull": "Nearly Full",
+        "unlimited": "Unlimited",
+        "actionRequired": "Action Required",
+        "websiteDevelopment": "Website Development Progress",
+        "viewOnboardingForm": "View Onboarding Form",
+        "of": "of",
+        "stagesCompleted": "stages completed",
+        "uploadSuccessful": "Upload Successful",
+        "file": "File",
+        "uploadedSuccessfully": "uploaded successfully",
+        "uploadError": "Upload Error",
+        "uploadErrorDescription": "Failed to upload file. Please try again.",
+        "uploadServiceUnavailable": "Upload Service Unavailable",
+        "uploadServiceDescription": "Please refresh the page and try again.",
+        "onboardingFormDialog": {
+            "title": "Onboarding Form Response",
+            "description": "View the information submitted in your onboarding form",
+            "noData": "No onboarding form data available for this website",
+            "close": "Close"
+        },
+        "stages": {
+            "planning": {
+                "title": "Planning & Design",
+                "description": "Requirements Gathering, Structure and Functionality Design"
+            },
+            "development": "Development",
+            "testing": "Testing",
+            "deployment": "Deployment",
+            "completed": "Completed",
+            "welcome": {
+                "title": "Welcome & Project Setup",
+                "description": "Welcome to hayc! We start right away by setting up your project and preparing everything for a smooth launch"
+            },
+            "layout": {
+                "title": "Layout Selection",
+                "description": "We choose the best layout for your website based on your preferences or the examples you’ve shared with us"
+            },
+            "content": {
+                "title": "Content Collection & Organization",
+                "description": "We organize the information you provide (via our form or email) and distribute your content within the selected layout"
+            },
+            "preview": {
+                "title": "First Demo Preview",
+                "description": "Your website draft is ready! You receive a private link to view it and give us your feedback"
+            },
+            "feedback": {
+                "title": "Feedback & Improvements",
+                "description": "We make any quick changes or adjustments based on your feedback to ensure everything feels just right"
+            },
+            "launch": {
+                "title": "Website Launch",
+                "description": "Your website goes live and is ready for your business!"
+            },
+            "uiux": {
+                "title": "UI/UX Development",
+                "description": "User interface and experience design"
+            },
+            "backend": {
+                "title": "Backend Development",
+                "description": "Server functionality and database implementation"
+            },
+            "delivery": {
+                "title": "Final Version & Delivery",
+                "description": "Final checks and website delivery"
+            },
+            "contentCreation": {
+                "title": "Content Creation",
+                "description": "Website content writing and organization"
+            },
+            "seo": {
+                "title": "SEO Optimization",
+                "description": "Search engine optimization and performance improvement"
+            },
+            "security": {
+                "title": "Security Implementation",
+                "description": "Security measures and protection installation"
+            },
+            "analytics": {
+                "title": "Analytics Installation",
+                "description": "Analytics and tracking implementation"
+            },
+            "maintenance": {
+                "title": "Maintenance Setup",
+                "description": "Ongoing maintenance and support setup"
+            }
+        },
+        "changeRequestForm": {
+            "title": "Request Website Change",
+            "description": "Submit a change request for",
+            "subject": "Subject",
+            "subjectPlaceholder": "Brief description of the change",
+            "message": "Message",
+            "messagePlaceholder": "Brief description of the change",
+            "submit": "Submit Request",
+            "confirm": "Confirm",
+            "submiting": "Submitting...",
+            "cancel": "Cancel",
+            "confirmTitle": "Confirm Website Change Request",
+            "confirmDescription": "Are you sure you want to submit a website change request for",
+            "successful": "Request Submitted Successfully!",
+            "successfulDesc1": "Your website change request for",
+            "successfulDesc2": "has been successfully submitted.",
+            "successfulDesc3": "Our team will review your request and get back to you soon. You will receive an email confirmation with the details of your request.",
+            "thankYouMessage": "Thank you for choosing our services!",
+            "ok": "OK"
+        }
+    },
+    "tips": {
+        "title": "Tips & Insights",
+        "description": "Expert tech tips below to read helpful insights and recommendations.",
+        "noTips": "No tips available yet",
+        "noTipsDescription": "Check back later for helpful tips and insights.",
+        "readMore": "Read More",
+        "by": "by",
+        "emailNotifications": "Email notifications for new tips",
+        "loadMore": "Load More",
+        "showLess": "Show Less",
+        "moreItems": "{count} more",
+        "success": "Success",
+        "notificationPreferenceUpdated": "Notification preference updated successfully"
+    },
+    "tabs": {
+        "overview": "Overview",
+        "websiteProgress": "Website Progress",
+        "websiteChanges": "Website Changes",
+        "tips": "Tips"
+    },
+    "websiteChanges": {
+        "title": "Website Changes",
+        "remainingChanges": "Remaining Changes",
+        "noChanges": "No changes recorded this month.",
+        "changesAllowed": "Changes allowed this month:",
+        "changeRequestRecorded": "Change request recorded successfully.",
+        "changesRemaining": "Changes Remaining",
+        "changesUsed": "Changes Used",
+        "domain": "Domain",
+        "noChangesDescription": "No changes have been requested yet",
+        "recentChanges": "Recent Changes",
+        "recordedBy": "Recorded by",
+        "unlimited": "Unlimited"
+    },
+    "reviewsProgram": {
+        "title": "Get Your Next Month FREE!",
+        "subtitle": "Leave 3 reviews on Facebook, Trustpilot, and G2 to unlock a free month",
+        "loading": "Loading...",
+        "step1": {
+            "title": "Step 1: Facebook Review",
+            "description": "Share your experience on our Facebook page. Your feedback helps other businesses discover HAYC!",
+            "button": "Leave Facebook Review"
+        },
+        "step2": {
+            "title": "Step 2: Trustpilot Review",
+            "description": "Leave an honest review on Trustpilot to help build trust with potential customers.",
+            "button": "Leave Trustpilot Review"
+        },
+        "step3": {
+            "title": "Step 3: G2 Review",
+            "description": "Leave a review on G2 to help other businesses discover our services. Use your work email for easier verification.",
+            "button": "Leave G2 Review"
+        },
+        "step4": {
+            "title": "Step 4: Verify Your Reviews",
+            "description": "After leaving all three reviews, click the button below to notify our team. The platforms must approve your reviews so they appear publicly. Once we can see them live, we'll credit your account within 24-48 hours. Remember to use your work email for easier verification!",
+            "button": "✓ Check My Reviews",
+            "submitting": "Submitting..."
+        },
+        "success": {
+            "title": "Review check submitted successfully!",
+            "description": "We'll verify your reviews and credit your account soon."
+        },
+        "terms": {
+            "title": "Terms & Conditions:",
+            "item1": "All three reviews must be genuine and reflect your actual experience with HAYC",
+            "item2": "Reviews must be approved by the platforms and appear publicly for the reward to be granted",
+            "item3": "Fraudulent or duplicate reviews (including copied text or fake accounts) will void eligibility",
+            "item4": "Free month credit applies to your next billing cycle after verification",
+            "item5": "Offer limited to one free month per customer/account",
+            "item6": "Use your work email when possible to help platforms verify your reviews faster",
+            "item7": "Must have an active subscription to participate",
+            "item8": "HAYC reserves the right to modify or end this offer at any time without prior notice",
+            "item9": "The reward cannot be transferred, exchanged for cash, or combined with other offers"
+        },
+        "promoTitle": "Get Your Next Month FREE!",
+        "promoDescription": "Leave 3 reviews on Facebook, Trustpilot, and G2 to unlock a free month",
+        "claimOffer": "I want a FREE month",
+        "notifications": {
+            "success": "Review Check Submitted!",
+            "successDescription": "We'll verify your reviews and credit your account within 24-48 hours.",
+            "error": "Error",
+            "errorDescription": "Failed to submit review check. Please try again."
+        }
+    },
+    "preCheckout": {
+        "planDetails": "Plan Details",
+        "setupFee": "Setup Fee",
+        "oneTime": "one-time",
+        "total": "Total",
+        "today": "today",
+        "then": "Then",
+        "perMonth": "/month",
+        "perYear": "/year",
+        "title": "Complete Your {{planName}} Subscription",
+        "backToPlans": "Back to Plans",
+        "invalidPlanSelected": "Invalid Plan Selected",
+        "returnToPlans": "Return to Plans",
+        "noPlanSelected": "No Plan Selected",
+        "selectPlanFirst": "Please select a subscription plan first.",
+        "viewPlans": "View Plans",
+        "yourInformation": "Your Information",
+        "email": "Email",
+        "emailPlaceholder": "your@email.com",
+        "username": "Username",
+        "usernamePlaceholder": "username",
+        "phoneOptional": "Phone (Optional)",
+        "phonePlaceholder": "+1234567890",
+        "documentType": "Document Type",
+        "invoiceVatNeeded": "Invoice (I need VAT number)",
+        "receiptNoVatNeeded": "Receipt (No VAT number needed)",
+        "vatNumber": "VAT Number",
+        "vatNumberPlaceholder": "VAT number",
+        "city": "City",
+        "cityPlaceholder": "Enter city",
+        "street": "Street",
+        "streetPlaceholder": "Enter street address",
+        "number": "Street Number",
+        "numberPlaceholder": "Enter street number",
+        "postalCode": "Postal Code",
+        "postalCodePlaceholder": "Enter postal code",
+        "password": "Password",
+        "passwordPlaceholder": "Enter your password",
+        "planDetails": "Plan Details",
+        "addOns": "Add-ons:",
+        "setupFee": "Setup Fee",
+        "total": "Total",
+        "processing": "Processing...",
+        "completePurchase": "Complete Purchase",
+        "chooseAddOns": "Choose Your Add-ons",
+        "advancedAnalytics": "Advanced Analytics",
+        "advancedAnalyticsDesc": "Get detailed insights and analytics for your business",
+        "prioritySupport": "Priority Support",
+        "prioritySupportDesc": "24/7 priority support with dedicated account manager",
+        "extraStorage": "Extra Storage",
+        "extraStorageDesc": "Additional 500GB of secure storage",
+        "loading": "Loading...",
+        "youreGetting": "You're Getting:",
+        "professionalWebsite": "Your professional website built for you",
+        "professionalWebsiteDesc": "Custom design tailored to your business",
+        "hostingDomain": "Hosting & domain setup",
+        "hostingDomainDesc": "Everything configured and ready to go",
+        "oneTime": "One time",
+        "ongoingUpdates": "Ongoing updates and monthly support",
+        "ongoingUpdatesDesc": "We keep your site fresh and running smoothly",
+        "clientDashboard": "Access to client dashboard",
+        "clientDashboardDesc": "Manage your website features anytime, anywhere",
+        "testimonialQuote": "I highly recommend Hayc since the result was even better than I had in mind! Thank you Petros for everything 🙏🏻😇😊",
+        "testimonialAuthor": "Marianthi Katsouda., Psychologist",
+        "guaranteeTitle": "No Lock-In Guarantee",
+        "guaranteeDescription": "We don't lock you in. You can cancel anytime — our goal is to earn your trust month by month with exceptional service and results.",
+        "privacyPolicyAcceptance": "I have read and accept the",
+        "privacyPolicyLink": "Privacy Policy"
+    },
+    "payment": {
+        "paymentError": "Payment Error",
+        "noSessionId": "No session ID found",
+        "sessionFetchError": "Failed to fetch session data",
+        "paymentNotCompleted": "Payment not completed",
+        "errorOccurred": "An error occurred"
+    },
+    "onboarding": {
+        "draftLoaded": "Draft Loaded",
+        "draftLoadedDesc": "Your previous progress has been restored.",
+        "saving": "Saving...",
+        "continueLater": "Continue Later",
+        "websiteLanguage": "Website Language",
+        "english": "English",
+        "welcomeTitle": "Welcome to HAYC!",
+        "welcomeSubtitle": "Your payment has been processed successfully and your subscription is now active.",
+        "welcomeMessage": "IMPORTANT",
+        "welcomeDescriptionStrong": "This is your most important next step! ",
+        "welcomeDescription": "We cannot begin working on your website until you complete the project requirements form",
+        "continueToFormMessage": "The form will gather all the details we need about your business, preferences, and project requirements to create the perfect website for you.",
+        "continueToForm": "Continue to Project Requirements Form",
+        "formDescription": "This will only take a few minutes and is required to start your project.",
+        "required": "REQUIRED",
+        "noticeDescription": "Complete this form to start your project. We cannot begin without these details!",
+        "formTitle": "Project Requirements Form",
+        "step": "Step",
+        "stepOf": "of",
+        "previous": "Previous",
+        "mainContactPerson": "Main Contact Person",
+        "noteUpdateLater": "Note: You can update or refine this later",
+        "next": "Next",
+        "submitting": "Submitting...",
+        "submitForm": "Submit Requirements",
+        "goDashboard": "Go to Dashboard",
+        "tryAgain": "Try Again",
+        "formSubtitle": "Help us understand your project needs",
+        "businessInformation": "Business Information",
+        "fullName": "Full Name",
+        "fullNamePlaceholder": "Enter your full name",
+        "businessName": "Your site title",
+        "businessNamePlaceholder": "Enter your site title",
+        "email": "Email Address",
+        "emailPlaceholder": "Enter your email address",
+        "phone": "Phone Number",
+        "phonePlaceholder": "Enter your phone number",
+        "websiteDetails": "Website Details",
+        "websiteType": "Type of Website",
+        "websiteTypePlaceholder": "Select website type",
+        "websiteTypeOptions": {
+            "corporate": "Corporate/Business",
+            "portfolio": "Portfolio",
+            "blog": "Blog",
+            "restaurant": "Restaurant",
+            "landing": "Landing Page",
+            "educational": "Educational",
+            "other": "Other"
+        },
+        "languageOptions": {
+            "english": "English",
+            "greek": "Greek (Ελληνικά)"
+        },
+        "existingWebsite": "Do you have an existing website?",
+        "existingWebsiteUrl": "Current Website URL (if any)",
+        "existingWebsiteUrlPlaceholder": "https://yourwebsite.com",
+        "inspirationWebsites": "Inspiration/Reference Websites",
+        "inspirationWebsitesPlaceholder": "URLs of a website you like",
+        "projectRequirements": "Project Requirements",
+        "specificRequirements": "Specific Requirements or Features",
+        "specificRequirementsPlaceholder": "Describe any specific features, functionality, or requirements you need",
+        "designPreferences": "Design Preferences",
+        "designPreferencesPlaceholder": "Describe your preferred style, colors, layout preferences, etc.",
+        "contentStatus": "Content Status",
+        "contentStatusPlaceholder": "Select content status",
+        "contentStatusOptions": {
+            "ready": "Content is ready",
+            "partial": "Content is partially ready",
+            "needHelp": "Need help with content creation"
+        },
+        "timeline": "Expected Timeline",
+        "timelinePlaceholder": "Select expected timeline",
+        "timelineOptions": {
+            "asap": "As soon as possible",
+            "1week": "Within 1 week",
+            "2weeks": "Within 2 weeks",
+            "1month": "Within 1 month",
+            "flexible": "Flexible"
+        },
+        "budget": "Budget Range (Optional)",
+        "budgetPlaceholder": "Enter your budget range",
+        "additionalInfo": "Additional Information",
+        "additionalInfoPlaceholder": "Any other information you'd like to share about your project",
+        "formSuccess": "Requirements Submitted Successfully!",
+        "formSuccessMessage": "Thank you for providing your project requirements. Our team will review your submission and get back to you within 24 hours to discuss the next steps.",
+        "formSuccessNote": "You will receive a confirmation email shortly with all the details you provided.",
+        "backToDashboard": "Back to Dashboard",
+        "requiredField": "This field is required",
+        "validEmail": "Please enter a valid email address",
+        "validPhone": "Please enter a valid phone number",
+        "validUrl": "Please enter a valid URL",
+        "yes": "Yes",
+        "no": "No",
+        "notSure": "Not Sure",
+        "domainQuestion": "Do you already own a domain name?",
+        "servicesQuestion": "What kind of services/products does your business offer?",
+        "servicesPlaceholder": "Describe your services or products in detail...",
+        "priceRange": "Product/Service Price Range (€)",
+        "min": "Min",
+        "max": "Max",
+        "dragHandles": "Drag the handles to set your price range",
+        "businessAddress": "Business Address",
+        "businessAddressPlaceholder": "Enter your complete business address...",
+        "howDidYouHear": "How did you hear about us?",
+        "selectOption": "Select an option",
+        "howDidYouHearOptions": {
+            "googleSearch": "Google Search",
+            "socialMedia": "Social Media",
+            "friendReferral": "Friend/Referral",
+            "onlineAd": "Online Advertisement",
+            "radioTv": "Radio/TV",
+            "other": "Other"
+        },
+        "referenceSource": "Reference Source",
+        "googleSearch": "Google Search",
+        "socialMedia": "Social Media",
+        "friendReferral": "Friend/Business Referral",
+        "advertising": "Advertising",
+        "other": "Other",
+        "uploadLogo": "Upload Business Logo",
+        "clickToUpload": "Click to upload your business logo",
+        "fileFormats": "PNG, JPG, GIF up to 10MB",
+        "chooseFile": "Choose File",
+        "logoPreview": "Business Logo Preview",
+        "preferredDateTime": "Preferred Date and Time",
+        "uploadSuccessful": "Upload Successful",
+        "uploadSuccessfulDesc": "Business logo \"{filename}\" uploaded successfully.",
+        "uploadError": "Upload Error",
+        "uploadErrorDesc": "Failed to upload business logo. Please try again.",
+        "uploadServiceUnavailable": "Upload Service Unavailable",
+        "uploadServiceUnavailableDesc": "Please refresh the page and try again.",
+        "correctErrors": "Please correct the errors below.",
+        "correctErrorsDesc": "Make sure all required fields are filled in correctly.",
+        "submissionFailed": "Submission Failed",
+        "submissionFailedDesc": "There was an error submitting your form. Please try again.",
+        "stepTitles": {
+            "businessInformation": "Business Information",
+            "domain": "Domain",
+            "professionalEmails": "Professional Emails",
+            "websiteFoundation": "Website Foundation",
+            "designPreferences": "Design Preferences",
+            "socialMedia": "Social Media",
+            "practicalInformation": "Practical Information",
+            "reviewPayment": "Review & Payment",
+            "reviewSubmit": "Review & Submit",
+            "confirmation": "Confirmation"
+        },
+        "pageTitle": "Complete Your Website Setup | hayc",
+        "required": "REQUIRED",
+        "noticeDescription": "You need to complete this form before you can use your dashboard.",
+        "paymentSuccessful": "Payment Successful!",
+        "paymentSuccessfulDesc": "Your subscription is now active. Please complete the form below to start your project.",
+        "welcomeTitle": "Welcome!",
+        "welcomeMessage": "One last important step!",
+        "welcomeDescriptionStrong": "Complete the form below before you can use your Dashboard.",
+        "welcomeDescription": " We know some questions look too detailed, but you can skip what you don't know right now and add it later!",
+        "continueToForm": "Continue to Form",
+        "formDescription": "It only takes 5 minutes to complete",
+        "deadlineFuture": "Deadline must be today or in the future",
+        "validation": {
+            "emailTypo": "Please check your email address. Did you mean gmail.com, yahoo.com, or outlook.com?",
+            "emailInvalid": "Please enter a valid email address",
+            "projectDeadlineMin": "Project deadline must be at least 15 days from today",
+            "redirectInboxRequired": "Please provide the email address where emails should be forwarded",
+            "domainRequired": "Please provide your domain name",
+            "domainConnectionRequired": "Please select who will connect the domain",
+            "domainPurchaseRequired": "Please select who will buy the domain",
+            "domainNamesRequired": "Please provide your preferred domain names",
+            "requiredFieldsError": "Please complete all required fields before continuing.",
+            "requiredFieldsTitle": "Required fields missing",
+            "requiredFieldsDescription": "Missing required information: {fields}"
+        },
+        "placeholders": {
+            "businessName": "Enter your business name",
+            "websiteLanguage": "Select the language for your website",
+            "contactName": "Contact person's name",
+            "contactPhone": "Contact phone number",
+            "contactEmail": "contact@business.com",
+            "businessDescription": "Briefly describe what your business offers...",
+            "existingDomain": "www.yourbusiness.com",
+            "preferredDomains": "option1.com\noption2.gr\noption3.com",
+            "emailNames": "info\nsales\nsupport",
+            "redirectInboxAddress": "your.main@gmail.com",
+            "websiteLink": "https://www.yourwebsite.com",
+            "websiteChanges": "Describe what you like about your current website and what you'd like to change...",
+            "emailCount": "e.g., 3",
+            "preferredFonts": "Any specific font you'd like us to use",
+            "color1": "#3B82F6",
+            "color2": "#FFFFFF",
+            "color3": "#1F2937",
+            "color4": "#10B981",
+            "facebookLink": "https://facebook.com/yourbusiness",
+            "instagramLink": "https://instagram.com/yourbusiness",
+            "linkedinLink": "https://linkedin.com/company/yourbusiness",
+            "tiktokLink": "https://tiktok.com/@yourbusiness",
+            "youtubeLink": "https://youtube.com/@yourbusiness",
+            "otherSocialLinks": "Any other social media links...",
+            "additionalNotes": "Any additional information or comments...",
+            "customTemplateRequest": "Tell us about your dream website design, features you need, or any specific inspiration you have in mind..."
+        },
+        "helperTexts": {
+            "accountEmailNote": "This is the email associated with your account and cannot be changed.",
+            "contactEmailNote": "Email of the person responsible for website communication (can be different from account email).",
+            "redirectInboxNote": "Provide the email address where all professional emails should be forwarded.",
+            "projectDeadlineNote": "If there's a specific date you need idealy the site ready (optional)",
+            "uploadTextContentNote": "You can also upload more text content from your dashboard after form submission.",
+            "uploadMediaContentNote": "You can also upload more files from your dashboard after form submission.",
+            "colorPaletteNote": "Note: The following colors help us find the best combinations that will suit your website.",
+            "primaryColorDesc": "The main color of your brand, used for buttons and highlights.",
+            "backgroundColorDesc": "The background color of your website, usually white or light.",
+            "textColorDesc": "The color of the main text across your website.",
+            "accentColorDesc": "An optional color used for accents or secondary highlights."
+        },
+        "options": {
+            "yes": "Yes",
+            "no": "No",
+            "domainConnectionMyself": "I will connect it myself, I know how",
+            "domainConnectionYou": "Please connect it for me, I don’t know how",
+            "domainPurchaseMyself": "I will purchase the domain myself on my own platform",
+            "domainPurchaseYou": "Please purchase the domain for me",
+            "weWillSendDNSDetails": "We will send you the DNS configuration details so you can update your domain's nameservers.",
+            "weWillNeedRegistrarCredentials": "We'll need your domain registrar login credentials to configure the DNS settings for you.",
+            "emailRedirectOne": "Forward all professional emails to one main inbox (e.g., Gmail)",
+            "emailRedirectSeparate": "I will use my professional email normally",
+            "logoServiceNone": "No additional logo service needed",
+            "logoServiceBasic": "Basic Logo Design (350€)",
+            "logoServicePremium": "Brand Identity Package (750€)",
+            "deliverablesBasicLogo": "Deliverables: 2 formats (horizontal and vertical), and your own editable file.",
+            "deliverablesBrandIdentity": "Deliverables: Logos - Color palette - Fonts - Design for cards, design for letters, branded social media assets.",
+            "siteStyleStraight": "Straight / Angular",
+            "domainNotice": "⚠️ Note: Once a domain is purchased, it cannot be changed.",
+            "siteStyleCurved": "Curved / Rounded",
+            "siteStyleStraightDesc": "Sharp edges and straight lines",
+            "siteStyleCurvedDesc": "Soft edges and rounded corners"
+        },
+        "uploadTexts": {
+            "uploadTextFiles": "Upload your text content files (Word docs, PDFs, etc.)",
+            "textFileFormats": "DOC, DOCX, PDF, TXT (max 10MB each)",
+            "chooseFiles": "Choose Files",
+            "filesUploaded": "file(s) uploaded",
+            "uploadMediaFiles": "Upload your photos, videos, and documents",
+            "mediaFileFormats": "Images: JPG, PNG, GIF | Videos: MP4, MOV | Documents: PDF, DOC, DOCX (max 50MB each)",
+            "uploadLogoFiles": "Upload your logo files",
+            "logoFileFormats": "PNG, JPG, JPEG, GIF, WEBP (max 10MB)",
+            "logoPreviewAlt": "Logo preview"
+        },
+        "labels": {
+            "whatIsYourDomain": "What is your domain name?",
+            "whoWillConnect": "Who will connect the domain to your new website?",
+            "whoWillBuy": "Domain purchase? *",
+            "IwillConnectItMyself": "I'll do it myself (I know how to change DNS)",
+            "youWillConnectItForMe": "Please do it for me (I'll provide registrar access)",
+            "onceDomainPurchased": "Once we start building your website, we'll send you the DNS configuration details so you can connect it yourself.",
+            "onceDomainPurchasedCredentials": "Once you purchase your domain, we'll need your registrar credentials for the platform you made the purchase.",
+            "actionPurchaseAndConnectDomain": "🛒 Action: Purchase and connect domain",
+            "weWillPurchaseAndConnectDomain": "We'll purchase your preferred domain and handle all DNS configuration for you.",
+            "primaryColor": "Κύριο Χρώμα",
+            "backgroundColor": "Χρώμα Φόντου",
+            "textColor": "Χρώμα Κειμένου",
+            "accentColor": "Χρώμα Έμφασης",
+            "colorLabels": {
+                "color1": "Color 1",
+                "color2": "Color 2",
+                "color3": "Color 3",
+                "color4": "Color 4"
+            }
+        },
+        "pages": {
+            "home": "Home",
+            "about": "About",
+            "services": "Services",
+            "digitalProducts": "Digital Products",
+            "blog": "Blog",
+            "contact": "Contact",
+            "other": "Other"
+        },
+        "templateSelection": {
+            "title": "Choose a Layout That Inspires You",
+            "description": "Select a template that matches your visual preferences. This helps us understand what you like. If you don't find what you're looking for, no worries - we can find something for you!",
+            "browseTemplates": "Browse Templates",
+            "changeTemplate": "Change Template",
+            "additionalNotes": "Write us if you have any notes about the layout.",
+            "customTemplateLabel": "Describe Your Ideal Website Layout"
+        },
+        "templates": {
+            "subtitle": "Choose a design that fits your business style",
+            "allCategories": "All Categories",
+            "preview": "Preview",
+            "select": "Select",
+            "loading": "Loading templates...",
+            "noResults": "No templates found for this category.",
+            "categories": {
+                "business": "Business & Services",
+                "restaurant": "Restaurants & Food",
+                "hospitality": "Hospitality & Tourism",
+                "health": "Health & Wellness",
+                "education": "Education",
+                "arts": "Creativity & Arts",
+                "technology": "Technology",
+                "realestate": "Real Estate",
+                "construction": "Construction & Trades",
+                "beauty": "Beauty & Care",
+                "services": "Professional Services",
+                "custom": "Custom",
+                "agriculture": "Agriculture & Farming",
+                "real_estate": "Real Estate",
+                "professional_services": "Professional Services",
+                "health_wellness": "Health & Wellness",
+                "education_coaching": "Education & Coaching",
+                "tourism_hospitality": "Tourism & Hospitality",
+                "restaurants_food": "Restaurants & Food",
+                "transportation": "Transportation & Logistics",
+                "psychologist": "Psychologists & Therapy"
+            }
+        },
+        "socialMediaSection": {
+            "provideLinks": "Provide links to your social media accounts:"
+        },
+        "reviewPayment": {
+            "logoServiceSelected": "Logo Design Service Selected",
+            "selectedService": "Selected Service:",
+            "price": "Price:",
+            "whatsIncluded": "What's included:",
+            "basicLogoDesign": "Basic Logo Design",
+            "brandIdentityPackage": "Brand Identity Package",
+            "basicLogoFeatures": {
+                "feature1": "✓ Professional logo design",
+                "feature2": "✓ 2 initial concepts",
+                "feature3": "✓ 2 rounds of revisions",
+                "feature4": "✓ Final files in multiple formats"
+            },
+            "premiumLogoFeatures": {
+                "feature1": "✓ Complete brand identity package",
+                "feature2": "✓ 3 initial concepts",
+                "feature3": "✓ Unlimited revisions",
+                "feature4": "✓ Logo variations & color schemes",
+                "feature5": "✓ Brand style guide",
+                "feature6": "✓ Social media assets"
+            },
+            "nextStepLabel": "Next Step:",
+            "nextStepDescription": "You'll be redirected to a secure payment page. After successful payment, your onboarding form will be automatically submitted.",
+            "noLogoService": "No logo design service selected. Click \"Continue\" to proceed to the final review."
+        },
+        "reviewSubmit": {
+            "title": "Review Your Information",
+            "businessLabel": "Business:",
+            "contactLabel": "Contact:",
+            "domainLabel": "Domain:",
+            "emailsLabel": "Emails:",
+            "websiteLabel": "Website:",
+            "socialMediaLabel": "Social Media:",
+            "existingDomain": "Existing:",
+            "newDomainNeeded": "New domain needed",
+            "hasExisting": "Has existing",
+            "needsSetup": "Needs setup",
+            "newWebsite": "New website",
+            "hasAccounts": "Has accounts",
+            "noSocialMedia": "No social media",
+            "editInformation": "Edit Information"
+        },
+        "confirmation": {
+            "title": "Your website project has been created!",
+            "description": "Our team is starting immediately. You can track progress inside your hayc dashboard.",
+            "contactNote": "We will only contact you if absolutely necessary."
+        },
+        "paymentDialog": {
+            "title": "Choose Payment Method",
+            "description": "How would you like to pay for your logo design service?",
+            "useSavedCard": "Use Saved Card",
+            "endingIn": "ending in",
+            "useNewCard": "Use New Card",
+            "redirectToPayment": "Redirect to secure payment page",
+            "processing": "Processing..."
+        },
+        "buttons": {
+            "proceedToPayment": "Proceed to Payment"
+        },
+        "toasts": {
+            "initUploadError": "Failed to initialize upload. Please try again.",
+            "prepareUploadError": "Failed to prepare upload. Please try again.",
+            "uploadSuccessful": "Upload Successful",
+            "uploadError": "Failed to upload file. Please try again.",
+            "uploadServiceUnavailable": "Upload service unavailable. Please try again later.",
+            "paymentError": "Failed to initiate payment. Please try again.",
+            "paymentFailed": "Payment requires additional verification. Please use a new card.",
+            "paymentProcessError": "Failed to process payment. Please try again.",
+            "authRequired": "Please log in to submit the onboarding form.",
+            "sessionExpired": "Your session has expired. Please log in again.",
+            "demoDataLoaded": "All form fields have been filled with test data.",
+            "error": "Error"
+        },
+        "fields": {
+            "businessName": "Your site title (as you want it to appear on the website) *",
+            "websiteLanguage": "Website Language *",
+            "contactName": "Name *",
+            "contactPhone": "Phone *",
+            "accountEmail": "Account Email (Your Login Email)",
+            "contactEmail": "Main Contact Person Email *",
+            "businessDescription": "Write us your services *",
+            "hasDomain": "Do you already have a domain name? *",
+            "existingDomain": "Your Domain Name",
+            "domainAccess": "Access Details to Your Domain Provider",
+            "preferredDomains": "Give us 2–3 preferred domain names",
+            "hasEmails": "Do you already have professional emails? *",
+            "emailAccess": "Email Provider Access Details",
+            "existingEmails": "List of Existing Emails",
+            "emailCount": "How many professional emails do you need?",
+            "emailNames": "Name for each professional email",
+            "emailRedirect": "Professional Email Management Preference",
+            "redirectInboxAddress": "Main Inbox Address *",
+            "hasWebsite": "Do you already have a website? *",
+            "websiteLink": "Website Link",
+            "websiteChanges": "What do you want to keep/change?",
+            "wantedPages": "Pages you want (select all that apply):",
+            "notSurePages": "I'm not sure yet, I'd like suggestions",
+            "hasTextContent": "Do you already have text content? *",
+            "uploadTextContent": "Upload Text Content (Optional)",
+            "hasMediaContent": "Do you already have photos/videos? *",
+            "uploadMediaContent": "Upload Photos & Videos (Optional)",
+            "businessLogo": "Logo",
+            "logoDesignService": "Logo Design Service (Optional)",
+            "colorPalette": "Color Palette",
+            "inspirationWebsites": "Websites you like (up to 3 links)",
+            "preferredFonts": "Fonts you like (optional)",
+            "siteStyle": "Style/Feeling you want the site to convey *",
+            "hasSocialMedia": "Do you have business social media accounts? *",
+            "facebookLink": "Facebook",
+            "instagramLink": "Instagram",
+            "linkedinLink": "LinkedIn",
+            "tiktokLink": "TikTok",
+            "youtubeLink": "YouTube",
+            "otherSocialLinks": "Other Social Media",
+            "projectDeadline": "Ideal deadline",
+            "additionalNotes": "Other notes / comments",
+            "emailProvider": "Email Provider",
+            "brandGuide": "Brand Guidelines (Optional)",
+            "googleBusinessLink": "Google Business Profile",
+            "textContentFiles": "Text Content Files",
+            "mediaContentFiles": "Media Content Files"
+        }
+    },
+    "landingPage": {
+        "notice": "Due to high demand, delivery time may vary slightly",
+        "hero": {
+          "title": "Your website, without having to deal with it ever again",
+          "subtitle": "We build it, manage it, and improve it for you — with a fixed monthly cost and zero commission on every sale."
+        },
+        "form": {
+            "title": "Get Started Today",
+            "subtitle": "Enter your details to schedule a free consultation",
+            "emailLabel": "Email Address",
+            "phoneLabel": "Phone Number",
+            "emailPlaceholder": "your@email.com",
+            "phonePlaceholder": "+30 123 456 7890",
+            "submitButton": "Schedule Free Consultation",
+            "submitting": "Processing...",
+            "successTitle": "Almost Ready!",
+            "successSubtitle": "Pick a convenient time for your free consultation",
+            "calendlyPlaceholder": "Calendly Widget Will Appear Here",
+            "calendlyNote": "Replace this with your actual Calendly embed code",
+            "emailValidation": "Please enter a valid email address",
+            "phoneValidation": "Please enter a valid phone number"
+        },
+        "reviews": {
+            "title": "What Our Clients Say",
+            "subtitle": "Real testimonials from businesses we've helped transform",
+            "review1": {
+                "text": "I had the opportunity to work with the www.hayc.gr team and I was completely satisfied with the quality, speed and excellent service they provide. I would like to express special thanks to Petros, who is an excellent professional. His consistency, kindness and willingness to help at every step made our collaboration not only effective but also enjoyable.",
+                "author": "MamaCoach",
+                "role": "Business Owner"
+            },
+            "review2": {
+                "text": "Excellent cooperation with Hayc! Specifically, Petros was always willing to help me and solve several questions I had regarding the website he made for me! I recommend Hayc unreservedly since the result was even better than what I had in mind!",
+                "author": "Marianthi Katsouda",
+                "role": "Website Owner"
+            },
+            "review3": {
+                "text": "A remarkable team of young professionals in the field of Website and Application Development.",
+                "author": "Takis Proios",
+                "role": "Client"
+            },
+            "review4": {
+                "text": "Hayc is fully professional that helped me by building a website for my business. Hayc was super quick and responsive to deliver the website in a really tight schedule and according to specifications. They started working on the project right from day zero, and completed the job successfully in less than 9 days. I highly recommend them to do business with and trust them for the quality of their work.",
+                "author": "Antonis Katsaros",
+                "role": "Business Owner"
+            },
+            "review5": {
+                "text": "Excellent communication, great in their time table everything on time! I hope on a great corporation. Thanks!",
+                "author": "Verified Customer",
+                "role": "Business Partner"
+            },
+            "review6": {
+                "text": "I am so blessed that I met Petros. I'm very happy with his work for my website. He is so professional that I couldn't believe it. Very very fast on his work and excellent in cooperation. I fully recommend him for website! Thanks a lot buddy.",
+                "author": "Happy Client",
+                "role": "Website Owner"
+            }
+        },
+        "benefits": {
+            "title": "Why Choose HAYC for Your Website?",
+            "subtitle": "We deliver results that matter for your business",
+            "benefit1": {
+                "title": "Fast Delivery in 15 Days",
+                "description": "From start to delivery in just 15 days. Your business will be online quickly without sacrificing quality."
+            },
+            "benefit2": {
+                "title": "100% Money-Back Guarantee",
+                "description": "When your website is delivered, if you're not satisfied within 30 days, we'll refund you — no risks, no questions."
+            },
+            "benefit3": {
+                "title": "Built to Grow With You",
+                "description": "Your website isn't a one-off project. With our subscription model, it stays secure, fast, and ready to grow as your business grows."
+            },
+            "benefit4": {
+                "title": "Stress-Free Website Creation",
+                "description": "No technical difficulties, no endless discussions. We handle the design, setup, and management so you can focus entirely on your business."
+            }
+        },
+        "testimonialVideo": {
+            "title": "Watch what people saying",
+            "placeholder": "Customer Testimonial Video",
+            "embedNote": "Replace this with your actual video embed",
+            "quote": "What people saying about their websites.",
+            "author": "Penny Deligiannis - Agapi apostolopoulou"
+        },
+        "howItWorks": {
+            "title": "How We Create Your Perfect Website",
+            "subtitle": "Our proven 4-step process guarantees your success",
+            "step1": {
+                "title": "Discovery Call",
+                "description": "We discuss your goals, show layouts and choose the best starting point."
+            },
+            "step2": {
+                "title": "Sign Up & Form",
+                "description": "You subscribe and fill out a simple form with your content and preferences."
+            },
+            "step3": {
+                "title": "Build & Customize",
+                "description": "We customize your selected layout, add your content and optimize for SEO and mobile."
+            },
+            "step4": {
+                "title": "Launch in 15 Days",
+                "description": "Your website goes live with continuous updates, support and new features."
+            }
+        },
+        "cta1": {
+            "title": "Ready to Get Your Website Live in Just 15 Days?",
+            "subtitle": "Join dozens of businesses already growing with hayc. Stop wasting time and money on agencies — get a professional website, fast!",
+            "button": "Get Started Today",
+            "badge": "Limited Slots This Month"
+        },
+        "qualification": {
+            "title": "Is HAYC Right for Your Business?",
+            "subtitle": "Answer a few quick questions to find out.",
+            "question1": "Do you already have a website, or are we starting from scratch?",
+            "question2": "What's your budget range for your online presence?",
+            "question3": "When do you need your new website live?",
+            "question4": "What's the #1 goal you want your website to achieve?",
+            "resultTitle": "Perfect! You qualify for our services.",
+            "resultDescription": "Based on these criteria, HAYC can help transform your business with a professional website that drives real results.",
+            "resultButton": "Schedule Your Free Consultation"
+        },
+        "faq": {
+            "title": "Frequently Asked Questions",
+            "question1": "How long does it take to create a website?",
+            "answer1": "We deliver each website in just 15 business days after we receive your content and preferences. Fast, professional and stress-free.",
+            "question2": "What's included in the website package?",
+            "answer2": "Your subscription covers everything: a modern responsive website, SEO-friendly setup, contact forms, social media links, analytics, hosting and continuous updates. No hidden costs.",
+            "question3": "Do I own the website?",
+            "answer3": "You own the content, branding and your domain. The website itself is managed through your hayc subscription, which keeps it updated, secure and evolving with new features.",
+            "question4": "Is maintenance included?",
+            "answer4": "Yes — unlike companies that give you a website and disappear, hayc includes hosting, security, updates and support in your subscription. No additional maintenance costs.",
+            "question5": "What happens if I need changes after launch?",
+            "answer5": "Each plan includes monthly change requests, so you can easily request updates without worrying about additional charges. Larger changes can be managed with add-ons.",
+            "question6": "Do you provide hosting?",
+            "answer6": "Yes, hosting is fully included. We manage it for you so your website stays fast, secure and always online."
+        },
+        "final": {
+            "title": "Get Your Website Live in Just 15 Days",
+            "subtitle": "Stop overpaying agencies or struggling with DIY builders. With hayc, you get a professional website — fast, simple, and built to grow with your business.",
+            "stat1": {
+                "value": "15 Days",
+                "label": "Guaranteed Delivery"
+            },
+            "stat2": {
+                "value": "100%",
+                "label": "Money-Back Guarantee"
+            },
+            "stat3": {
+                "value": "Ongoing",
+                "label": "Support & Updates"
+            },
+            "button": "Start Your Website Today",
+            "badges": "🔒 Risk-Free Guarantee • ⚡ Live in 15 Days • 🎯 Built for Growth"
+        },
+        "videoTitle": "Website Creation Video"
+    },
+    "cancellationFeedback": {
+        "title": "We're Sorry to See You Go",
+        "subtitle": "Your feedback helps us improve our service. Please let us know why you're cancelling.",
+        "reason1": "Too expensive for my budget",
+        "reason2": "Not using the service enough",
+        "reason3": "Found a better alternative",
+        "reason4": "Technical issues or bugs",
+        "reason5": "Service didn't meet my expectations",
+        "reason6": "Switching to a different solution",
+        "reason7": "Other reason",
+        "otherPlaceholder": "Please tell us more (optional)",
+        "submitButton": "Submit Feedback",
+        "submitting": "Submitting...",
+        "successTitle": "Thank you for your feedback",
+        "successMessage": "We appreciate you taking the time to share your thoughts. This helps us improve our service.",
+        "backToDashboard": "Back to Dashboard",
+        "selectReason": "Please select a reason",
+        "feedbackSent": "Feedback submitted successfully"
+    },
+    "forgotPassword": {
+        "title": "Forgot Password?",
+        "description": "Enter your email address and we'll send you a link to reset your password.",
+        "emailLabel": "Email Address",
+        "emailPlaceholder": "Enter your email address",
+        "sendButton": "Send Reset Link",
+        "sending": "Sending...",
+        "backToLogin": "Back to Login",
+        "emailSentTitle": "Check Your Email",
+        "emailSentMessage": "We've sent password reset instructions to {email}. Please check your inbox and follow the link to reset your password.",
+        "noEmailReceived": "Didn't receive the email? Check your spam folder or try again.",
+        "sendAnother": "Send Another Email",
+        "emailRequired": "Email Required",
+        "emailRequiredMessage": "Please enter your email address",
+        "resetEmailSent": "Reset Email Sent",
+        "resetEmailSentMessage": "Check your email for password reset instructions",
+        "requestFailed": "Request Failed",
+        "requestError": "Failed to send reset email",
+        "error": "Error",
+        "errorMessage": "Failed to process request. Please try again."
+    },
+    "pagination": {
+        "previous": "Previous",
+        "next": "Next"
+    },
+    "unsubscribe": {
+        "title": "Newsletter Unsubscribe",
+        "subtitle": "Manage your email preferences",
+        "processing": "Processing your request...",
+        "successTitle": "Successfully Unsubscribed",
+        "successMessage": "You have been successfully unsubscribed. You will no longer receive emails from us.",
+        "alreadyTitle": "Already Unsubscribed",
+        "alreadyMessage": "You have already unsubscribed from our newsletter.",
+        "expiredTitle": "Link Expired",
+        "expiredMessage": "This unsubscribe link has expired. Please use the link from a more recent email.",
+        "invalidTitle": "Invalid Link",
+        "invalidMessage": "This unsubscribe link is invalid or has been modified.",
+        "errorTitle": "Something Went Wrong",
+        "errorMessage": "An error occurred while processing your request. Please try again later.",
+        "missingToken": "No unsubscribe token provided.",
+        "backToHome": "Back to Home",
+        "error": "An error occurred. Please try again later."
+    },
+    "emailFooter": {
+        "unsubscribeText": "If you no longer wish to receive these emails, you can",
+        "unsubscribeLink": "unsubscribe here"
+    }
+}
