@@ -36,6 +36,13 @@
       "when": 1771619820435,
       "tag": "0004_jazzy_black_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771621367198,
+      "tag": "0005_smart_sir_ram",
+      "breakpoints": true
     }
   ]
 }
