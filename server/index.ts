@@ -3,6 +3,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { runMigrations } from "./migrate";
+import { pubRouter } from "./routes/pub";
 // Load environment variables from .env file
 import "dotenv/config";
 
@@ -97,6 +98,9 @@ app.get("/health", (_req, res) => res.status(200).send("ok"));
     res.status(status).json({ message });
     throw err;
   });
+
+  // Mount public routes before Vite/static so they are matched first
+  app.use("/pub", pubRouter);
 
   // Setup Vite/static AFTER all API routes
   const isProd = process.env.NODE_ENV === "production";
