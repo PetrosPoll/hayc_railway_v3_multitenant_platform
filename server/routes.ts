@@ -5078,7 +5078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             shouldCreateDraft = true;
 
             // Create demo domain entry
-            await createDemoDomain(websiteProgressEntry.id, websiteProgressEntry.domain);
+            await createDemoDomain(websiteProgressEntry.id);
 
             // Link new website to subscription
             await db
@@ -5133,7 +5133,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           shouldCreateDraft = true;
 
           // Create demo domain entry
-          await createDemoDomain(websiteProgressEntry.id, websiteProgressEntry.domain);
+          await createDemoDomain(websiteProgressEntry.id);
 
           // Link website to subscription
           await db
@@ -5287,7 +5287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           websiteProgressEntry = websiteProgressResult[0];
 
           // Create demo domain entry
-          await createDemoDomain(websiteProgressEntry.id, websiteProgressEntry.domain);
+          await createDemoDomain(websiteProgressEntry.id);
         }
       }
 
@@ -5926,7 +5926,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
 
             // Create demo domain entry
-            await createDemoDomain(websiteProgressEntry.id, websiteProgressEntry.domain);
+            await createDemoDomain(websiteProgressEntry.id);
             
             // Create system tags for the new website
             await storage.createSystemTagsForWebsite(websiteProgressEntry.id);
@@ -16855,7 +16855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
 
       // Create demo domain entry
-      await createDemoDomain(websiteProgressRecord.id, websiteProgressRecord.domain);
+      await createDemoDomain(websiteProgressRecord.id);
       
       // Create system tags for the new website
       await storage.createSystemTagsForWebsite(websiteProgressRecord.id);
