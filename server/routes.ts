@@ -3520,8 +3520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .update(subscriptionsTable)
                   .set({ 
                     status: 'cancelled',
-                    cancelledAt: new Date(),
-                    cancelReason: 'payment_failed'
+                    cancellationReason: 'payment_failed',
                   })
                   .where(eq(subscriptionsTable.id, subscription.id));
               }
@@ -6804,6 +6803,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching payment history:", err);
       res.status(500).json({ error: "Failed to fetch payment history" });
+    }
+  });
+
+  // Subscriptions cancelled due to payment failure (all retries exhausted)
+  app.get("/api/admin/cancelled-due-to-payment-failure", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, 'canViewSubscriptions')) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const cancelledSubscriptions = await db
+        .select({
+          id: subscriptionsTable.id,
+          userId: subscriptionsTable.userId,
+          tier: subscriptionsTable.tier,
+          status: subscriptionsTable.status,
+          price: subscriptionsTable.price,
+          stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
+          createdAt: subscriptionsTable.createdAt,
+          cancellationReason: subscriptionsTable.cancellationReason,
+          username: users.username,
+          email: users.email,
+        })
+        .from(subscriptionsTable)
+        .leftJoin(users, eq(subscriptionsTable.userId, users.id))
+        .where(
+          and(
+            eq(subscriptionsTable.status, 'cancelled'),
+            eq(subscriptionsTable.cancellationReason, 'payment_failed')
+          )
+        )
+        .orderBy(desc(subscriptionsTable.createdAt));
+
+      // Enrich with failed obligation details (attempt count, last failure reason)
+      const obligations = await db
+        .select({
+          subscriptionId: paymentObligations.subscriptionId,
+          attemptCount: paymentObligations.attemptCount,
+          lastFailureReason: paymentObligations.lastFailureReason,
+          dueDate: paymentObligations.dueDate,
+          updatedAt: paymentObligations.updatedAt,
+        })
+        .from(paymentObligations)
+        .where(
+          and(
+            eq(paymentObligations.origin, 'stripe'),
+            eq(paymentObligations.status, 'failed')
+          )
+        )
+        .orderBy(desc(paymentObligations.dueDate));
+
+      const obligationBySub = new Map<number | null, typeof obligations[0]>();
+      for (const o of obligations) {
+        if (o.subscriptionId && !obligationBySub.has(o.subscriptionId)) {
+          obligationBySub.set(o.subscriptionId, o);
+        }
+      }
+      const enriched = cancelledSubscriptions.map(sub => ({
+        ...sub,
+        attemptCount: obligationBySub.get(sub.id)?.attemptCount ?? null,
+        lastFailureReason: obligationBySub.get(sub.id)?.lastFailureReason ?? null,
+        lastDueDate: obligationBySub.get(sub.id)?.dueDate ?? null,
+        cancelledAt: obligationBySub.get(sub.id)?.updatedAt ?? null,
+      }));
+
+      res.json({ subscriptions: enriched });
+    } catch (err) {
+      console.error("Error fetching cancelled subscriptions:", err);
+      res.status(500).json({ error: "Failed to fetch cancelled subscriptions" });
     }
   });
 

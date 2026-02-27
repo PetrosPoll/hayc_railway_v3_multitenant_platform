@@ -56,6 +56,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminWebsiteProgress as AdminWebsiteProgressComponent } from "@/components/ui/admin-website-progress";
 import { TipsManagement } from "@/components/ui/tips-management";
 import { AdminWebsiteChanges } from "@/components/ui/admin-website-changes";
+import { CancelledDueToPaymentFailureList } from "@/components/admin-cancelled-payment-failures";
 import { UserMigrationManager } from "@/components/ui/user-migration-manager";
 import { AdminWebsiteInvoices } from "@/components/ui/admin-website-invoices";
 import { Switch } from "@/components/ui/switch";
@@ -1062,6 +1063,9 @@ export default function AdminDashboard() {
                     <TabsTrigger value="calendar" className="w-full justify-start rounded-md px-3 py-2.5">
                       Calendar
                     </TabsTrigger>
+                    <TabsTrigger value="payment-failures" className="w-full justify-start rounded-md px-3 py-2.5">
+                      Cancelled (Payment Failed)
+                    </TabsTrigger>
                   </>
                 )}
                 {userPermissions?.canManageSettings && (
@@ -1990,6 +1994,9 @@ export default function AdminDashboard() {
                 </h2>
                 <SubscriptionCalendar />
               </section>
+            </TabsContent>
+            <TabsContent value="payment-failures" className="mt-0">
+              <CancelledDueToPaymentFailureList />
             </TabsContent>
             <TabsContent value="website-progress" className="mt-0">
               <section>
