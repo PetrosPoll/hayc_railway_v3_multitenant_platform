@@ -148,6 +148,28 @@ export function SubscriptionCalendar() {
     },
   });
 
+  // Migrate existing custom payments: future dates -> outstanding
+  const migrateFutureMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/admin/custom-payments/migrate-future-to-outstanding', {});
+      return (await res.json()) as { message: string; created: number; skipped: number };
+    },
+    onSuccess: (data: { message: string; created: number; skipped: number }) => {
+      toast({
+        title: "Migration Complete",
+        description: data.message,
+      });
+      qc.invalidateQueries({ queryKey: ["/api/admin/payment-obligations"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Migration Failed",
+        description: error.message || "Failed to migrate",
+        variant: "destructive",
+      });
+    },
+  });
+
   const { data: subscriptionsData } = useQuery<{ subscriptions: Subscription[] }>({
     queryKey: ["/api/admin/subscriptions"],
   });
@@ -780,6 +802,13 @@ export function SubscriptionCalendar() {
                 data-testid="menu-sync-2-months"
               >
                 Last 2 Months
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => migrateFutureMutation.mutate()}
+                disabled={migrateFutureMutation.isPending}
+                data-testid="menu-migrate-future"
+              >
+                {migrateFutureMutation.isPending ? 'Migrating...' : 'Mark Future Custom Payments Outstanding'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

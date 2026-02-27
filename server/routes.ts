@@ -18935,6 +18935,84 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   // Custom Payments API Routes
   // ============================================
   
+  // Migrate existing custom payments: create obligations for future dates (from next month)
+  app.post("/api/admin/custom-payments/migrate-future-to-outstanding", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
+    if (!isAdmin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+      const payments = await storage.getAllCustomPayments();
+      const activePayments = payments.filter((p: { isActive: boolean }) => p.isActive);
+      const now = new Date();
+      const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const twoYearsAhead = new Date(now.getFullYear() + 2, now.getMonth(), 1);
+
+      let created = 0;
+      let skipped = 0;
+
+      for (const payment of activePayments) {
+        const existingObligations = await storage.getObligationsByCustomPaymentId(payment.id);
+        const existingDueDates = new Set(
+          existingObligations
+            .filter((o: { dueDate: Date | null }) => o.dueDate)
+            .map((o: { dueDate: Date }) => new Date(o.dueDate).toISOString().split("T")[0])
+        );
+
+        const excludedDates = new Set((payment.excludedDates || []).map((d: string) =>
+          d.includes("T") ? d.split("T")[0] : d
+        ));
+
+        let currentDate = new Date(payment.startDate);
+        const rangeEnd = new Date(twoYearsAhead.getFullYear(), twoYearsAhead.getMonth() + 1, 0);
+
+        while (currentDate <= rangeEnd) {
+          if (currentDate >= nextMonthStart) {
+            const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`;
+            if (!excludedDates.has(dateKey) && !existingDueDates.has(dateKey)) {
+              await storage.createPaymentObligation({
+                customPaymentId: payment.id,
+                subscriptionId: payment.subscriptionId || null,
+                userId: payment.userId || null,
+                clientName: payment.clientName,
+                amountDue: payment.amount,
+                currency: payment.currency || "eur",
+                dueDate: new Date(currentDate),
+                status: "pending",
+                origin: "custom",
+                notes: "Migrated: future payment marked outstanding",
+              });
+              created++;
+              existingDueDates.add(dateKey);
+            } else {
+              skipped++;
+            }
+          }
+
+          if (payment.frequency === "monthly") {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+          } else if (payment.frequency === "yearly") {
+            currentDate.setFullYear(currentDate.getFullYear() + 1);
+          } else if (payment.frequency === "weekly") {
+            currentDate.setDate(currentDate.getDate() + 7);
+          }
+        }
+      }
+
+      res.json({
+        message: `Migration complete. Created ${created} obligations, skipped ${skipped} (already exist).`,
+        created,
+        skipped,
+      });
+    } catch (error) {
+      console.error("Error migrating custom payments:", error);
+      res.status(500).json({ error: "Failed to migrate custom payments" });
+    }
+  });
+
   // Get all custom payments
   app.get("/api/admin/custom-payments", async (req, res) => {
     if (!req.isAuthenticated()) {
