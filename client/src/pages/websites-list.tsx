@@ -447,7 +447,7 @@ export default function WebsitesList() {
                                   }}
                                   data-testid={`button-view-details-${website.id}`}
                                 >
-                                  {t("dashboard.viewDetails") || "View Details"}
+                                  {t("dashboard.websiteViewDetails") || "Website"}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -458,7 +458,6 @@ export default function WebsitesList() {
                                   }}
                                   data-testid={`button-billing-${website.id}`}
                                 >
-                                  <CreditCard className="h-4 w-4 mr-2" />
                                   {t("dashboard.billing") || "Billing"}
                                 </Button>
                                 <Button
@@ -470,7 +469,6 @@ export default function WebsitesList() {
                                   }}
                                   data-testid={`button-analytics-${website.id}`}
                                 >
-                                  <BarChart3 className="h-4 w-4 mr-2" />
                                   {t("dashboard.analytics") || "Analytics"}
                                 </Button>
                                 <Button
@@ -482,7 +480,6 @@ export default function WebsitesList() {
                                   }}
                                   data-testid={`button-newsletter-${website.id}`}
                                 >
-                                  <Mail className="h-4 w-4 mr-2" />
                                   {t("dashboard.newsletter") || "Newsletter"}
                                 </Button>
                               {website.bookingEnabled && (
@@ -528,7 +525,6 @@ export default function WebsitesList() {
                                   }}
                                   data-testid={`button-booking-${website.id}`}
                                 >
-                                  <CalendarDays className="h-4 w-4 mr-2" />
                                   {t("dashboard.booking") || "Booking"}
                                 </Button>
                               )}

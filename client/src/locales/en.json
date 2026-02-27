@@ -1042,7 +1042,7 @@
         "createNewWebsite": "Create New Website",
         "tips": "Latest Tips",
         "createNewWebsite": "Create New Website",
-        "viewDetails": "View Details",
+        "websiteViewDetails": "Website",
         "userInfo": "User Information",
         "websitesDescription": "Manage your website projects",
         "profile": "Profile",
@@ -1258,7 +1258,6 @@
         "draftOnboarding": "Draft Onboarding Form",
         "continueOnboardingMessage": "Continue filling out the onboarding form to create your website",
         "continueOnboarding": "Continue",
-        "analytics": "Website Analytics",
         "analyticsUpsell": {
             "unlockTitle": "Unlock Website Analytics",
             "unlockDescription": "Get detailed insights into your website's performance with our analytics dashboard. Track visitors, page views, traffic sources, and more.",
