@@ -140,19 +140,8 @@ export const websiteProgress = pgTable("website_progress", {
   bonusEmails: integer("bonus_emails").default(0).notNull(),
   bonusEmailsExpiry: timestamp("bonus_emails_expiry"),
   bookingEnabled: boolean("booking_enabled").default(false).notNull(),
-  status: text("status").notNull().default("draft"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
-
-export const websiteDomains = pgTable("website_domains", {
-  id: serial("id").primaryKey(),
-  websiteProgressId: integer("website_progress_id")
-    .notNull()
-    .references(() => websiteProgress.id, { onDelete: "cascade" }),
-  domain: text("domain").notNull().unique(),
-  isPrimary: boolean("is_primary").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 export const subscriptions = pgTable("subscriptions", {
