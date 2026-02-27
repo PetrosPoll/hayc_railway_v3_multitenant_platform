@@ -4203,17 +4203,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return process.env.VITE_APP_URL || 'https://hayc.gr';
   };
 
-  // Loading email template
+  // Loading email template (el -> gr: templates use gr folder for Greek)
   const loadTemplate = (
     fileName: string,
     replacements: any,
     language: string,
   ): string => {
+    const lang = (language === "el" ? "gr" : language) || "en";
     try {
       const filePath = path.join(
         __dirname,
         "email-templates",
-        language,
+        lang,
         fileName,
       );
       let template = fs.readFileSync(filePath, "utf8");
@@ -16285,7 +16286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const resetData = await sendPasswordResetEmail(user.email, resetToken, user.username);
 
         // Send the actual email using generic template (not migration)
-        const userLanguage = user.language || "en";
+        const userLanguage = (user.language === "el" ? "gr" : user.language) || "en";
         const resetEmailHtml = loadTemplate("password-reset-generic.html", {
           username: user.username,
           email: user.email,
@@ -16362,7 +16363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const resetData = await sendPasswordResetEmail(user.email, resetToken, user.username);
 
           // Send the actual email using your existing email system
-          const userLanguage = user.language || "en";
+          const userLanguage = (user.language === "el" ? "gr" : user.language) || "en";
           const resetEmailHtml = loadTemplate("password-reset-email.html", {
             username: user.username,
             email: user.email,
