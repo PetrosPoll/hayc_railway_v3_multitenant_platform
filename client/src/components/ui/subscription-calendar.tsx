@@ -420,9 +420,25 @@ export function SubscriptionCalendar() {
       }));
     });
 
-  // Combine all payments (Stripe historical + custom)
+  // Add Stripe-origin payment obligations (failed/retrying/delinquent) so they stay visible on calendar
+  const stripeObligationPayments = outstandingObligations
+    .filter(o => o.origin === 'stripe' && o.dueDate)
+    .map(o => ({
+      id: `obligation_${o.id}`,
+      type: 'stripe_obligation' as const,
+      clientName: o.clientName,
+      email: '',
+      amount: o.amountDue / 100,
+      nextPayment: new Date(o.dueDate),
+      tier: undefined as string | undefined,
+      status: o.status as 'retrying' | 'delinquent' | 'failed',
+      obligationId: o.id,
+    }));
+
+  // Combine all payments (Stripe historical + upcoming + failed obligations + custom)
   const allPayments = [
     ...stripePayments,
+    ...stripeObligationPayments,
     ...customPaymentInstances
   ].sort((a, b) => a.nextPayment.getTime() - b.nextPayment.getTime());
 
@@ -470,24 +486,32 @@ export function SubscriptionCalendar() {
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   
-  // Past payments: before today, OR today with 'paid' status
+  const failedStatuses = ['failed', 'retrying', 'delinquent'] as const;
+  const isFailedPayment = (p: { status?: string }) => failedStatuses.includes(p.status as any);
+
+  // Past payments: before today with 'paid' status, OR today with 'paid'
   const pastPayments = monthlyPayments.filter(p => {
     const paymentDate = new Date(p.nextPayment);
     paymentDate.setHours(0, 0, 0, 0);
-    // Before today = always past
+    if (isFailedPayment(p)) return false; // Exclude failed from revenue
     if (paymentDate < today) return true;
-    // Today = past only if status is 'paid'
     if (paymentDate.getTime() === today.getTime() && p.status === 'paid') return true;
     return false;
+  });
+
+  // Failed payments: past due with failed/retrying/delinquent status (keep visible on calendar)
+  const failedPayments = monthlyPayments.filter(p => {
+    const paymentDate = new Date(p.nextPayment);
+    paymentDate.setHours(0, 0, 0, 0);
+    return isFailedPayment(p) && paymentDate <= today;
   });
   
   // Future payments: after today, OR today with non-'paid' status (upcoming, processing, etc.)
   const futurePayments = monthlyPayments.filter(p => {
     const paymentDate = new Date(p.nextPayment);
     paymentDate.setHours(0, 0, 0, 0);
-    // After today = always future
+    if (isFailedPayment(p)) return false; // Exclude from future revenue
     if (paymentDate > today) return true;
-    // Today = future if status is NOT 'paid' (includes 'upcoming', 'processing', etc.)
     if (paymentDate.getTime() === today.getTime() && p.status !== 'paid') return true;
     return false;
   });
@@ -495,13 +519,15 @@ export function SubscriptionCalendar() {
   const totalPastRevenue = pastPayments.reduce((total, payment) => total + payment.amount, 0);
   const totalFutureRevenue = futurePayments.reduce((total, payment) => total + payment.amount, 0);
 
-  // Custom modifiers for the calendar - separate past and future
+  // Custom modifiers for the calendar - past (paid), future (upcoming), failed
   const pastPaymentDates = pastPayments.map(p => p.nextPayment);
   const futurePaymentDates = futurePayments.map(p => p.nextPayment);
+  const failedPaymentDates = failedPayments.map(p => p.nextPayment);
   
   const modifiers = {
     pastPayment: pastPaymentDates,
     futurePayment: futurePaymentDates,
+    failedPayment: failedPaymentDates,
   };
 
   // Custom modifier styles
@@ -517,7 +543,13 @@ export function SubscriptionCalendar() {
       color: 'white',
       borderRadius: '50%',
       fontWeight: 'bold',
-    }
+    },
+    failedPayment: {
+      backgroundColor: '#ef4444',
+      color: 'white',
+      borderRadius: '50%',
+      fontWeight: 'bold',
+    },
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -819,13 +851,16 @@ export function SubscriptionCalendar() {
                 (payment as any).originalId as number,
                 payment.nextPayment
               );
+              const isStripeFailed = payment.type === 'stripe_obligation';
               
-              // Determine card styling: outstanding (yellow) > past/paid (green) > upcoming (blue)
-              const cardStyle = isOutstanding 
-                ? 'bg-yellow-50 border-yellow-500'
-                : isPast 
-                  ? 'bg-green-50 border-green-500' 
-                  : 'bg-blue-50 border-blue-500';
+              // Determine card styling: failed (red) > outstanding (yellow) > past/paid (green) > upcoming (blue)
+              const cardStyle = isStripeFailed
+                ? 'bg-red-50 border-red-500'
+                : isOutstanding 
+                  ? 'bg-yellow-50 border-yellow-500'
+                  : isPast 
+                    ? 'bg-green-50 border-green-500' 
+                    : 'bg-blue-50 border-blue-500';
               
               return (
                 <div 
@@ -834,7 +869,17 @@ export function SubscriptionCalendar() {
                   data-testid={`payment-${payment.id}`}
                 >
                   <div className="flex-1">
-                    {payment.type === 'stripe_paid' || payment.type === 'stripe_upcoming' ? (
+                    {payment.type === 'stripe_obligation' ? (
+                      <>
+                        <p className="font-medium" data-testid={`text-client-${payment.id}`}>{payment.clientName}</p>
+                        <p className="text-sm text-muted-foreground">Stripe subscription payment</p>
+                        <div className="flex gap-2 mt-1">
+                          <span className="inline-block px-2 py-1 text-xs rounded bg-red-100 text-red-800">
+                            {(payment as any).status === 'retrying' ? 'Retrying' : (payment as any).status === 'delinquent' ? 'Delinquent' : 'Failed'}
+                          </span>
+                        </div>
+                      </>
+                    ) : payment.type === 'stripe_paid' || payment.type === 'stripe_upcoming' ? (
                       <>
                         <p className="font-medium" data-testid={`text-client-${payment.id}`}>{payment.clientName}</p>
                         <p className="text-sm text-muted-foreground">{payment.email}</p>
@@ -893,7 +938,7 @@ export function SubscriptionCalendar() {
                       <p className="font-medium">
                         {payment.nextPayment.toLocaleDateString()}
                       </p>
-                      <p className={`text-sm font-medium ${isOutstanding ? 'text-yellow-600' : isPast ? 'text-green-600' : 'text-blue-600'}`}>
+                      <p className={`text-sm font-medium ${isStripeFailed ? 'text-red-600' : isOutstanding ? 'text-yellow-600' : isPast ? 'text-green-600' : 'text-blue-600'}`}>
                         €{payment.amount.toFixed(2)}
                       </p>
                     </div>
