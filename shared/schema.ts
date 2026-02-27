@@ -155,29 +155,6 @@ export const websiteDomains = pgTable("website_domains", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const websitePages = pgTable("website_pages", {
-  id: serial("id").primaryKey(),
-  websiteProgressId: integer("website_progress_id")
-    .notNull()
-    .references(() => websiteProgress.id, { onDelete: "cascade" }),
-  slug: text("slug").notNull(),
-  title: text("title").notNull(),
-  metaTitle: text("meta_title"),
-  metaDescription: text("meta_description"),
-  status: text("status").notNull().default("draft"),
-  contentJson: jsonb("content_json").$type<{
-    sections: Array<{
-      type: string;
-      config?: Record<string, unknown>;
-      items?: Array<Record<string, unknown>>;
-    }>;
-  }>().default({ sections: [] }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().notNull(),
-}, (t) => ({
-  uniquePageSlug: unique().on(t.websiteProgressId, t.slug),
-}));
-
 export const subscriptions = pgTable("subscriptions", {
   id: serial("id").primaryKey(),
   userId: integer("user_id")
