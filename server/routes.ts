@@ -64,7 +64,6 @@ import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUr
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
-import { createDemoDomain } from "./utils/createDemoDomain";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -5076,9 +5075,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             websiteProgressEntry = websiteProgressResult[0];
             shouldCreateDraft = true;
 
-            // Create demo domain entry
-            await createDemoDomain(websiteProgressEntry.id, websiteProgressEntry.domain);
-
             // Link new website to subscription
             await db
               .update(subscriptionsTable)
@@ -5130,9 +5126,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           websiteProgressEntry = websiteProgressResult[0];
           shouldCreateDraft = true;
-
-          // Create demo domain entry
-          await createDemoDomain(websiteProgressEntry.id, websiteProgressEntry.domain);
 
           // Link website to subscription
           await db
@@ -5284,9 +5277,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }).returning();
 
           websiteProgressEntry = websiteProgressResult[0];
-
-          // Create demo domain entry
-          await createDemoDomain(websiteProgressEntry.id, websiteProgressEntry.domain);
         }
       }
 
@@ -5923,9 +5913,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               websiteProgressId: websiteProgressEntry.id, 
               projectName: projectName 
             });
-
-            // Create demo domain entry
-            await createDemoDomain(websiteProgressEntry.id, websiteProgressEntry.domain);
             
             // Create system tags for the new website
             await storage.createSystemTagsForWebsite(websiteProgressEntry.id);
@@ -16925,9 +16912,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           updatedAt: new Date(),
         })
         .returning();
-
-      // Create demo domain entry
-      await createDemoDomain(websiteProgressRecord.id, websiteProgressRecord.domain);
       
       // Create system tags for the new website
       await storage.createSystemTagsForWebsite(websiteProgressRecord.id);
