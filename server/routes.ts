@@ -18988,6 +18988,20 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         notes: notes || null,
       });
 
+      // Default to unpaid: create obligation for start date so admin can mark paid when client pays
+      await storage.createPaymentObligation({
+        customPaymentId: payment.id,
+        subscriptionId: subscriptionId || null,
+        userId: userId || null,
+        clientName,
+        amountDue: Math.round(amount * 100),
+        currency: currency || "eur",
+        dueDate: new Date(startDate),
+        status: "pending",
+        origin: "custom",
+        notes: notes || "Custom payment - unpaid by default",
+      });
+
       res.json({ payment });
     } catch (error) {
       console.error("Error creating custom payment:", error);

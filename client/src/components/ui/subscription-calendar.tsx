@@ -173,6 +173,13 @@ export function SubscriptionCalendar() {
     o => o.status === 'pending' || o.status === 'grace' || o.status === 'retrying' || o.status === 'delinquent' || o.status === 'failed'
   );
 
+  // Outstanding for current month only (for summary and list - changes with calendar month)
+  const outstandingObligationsForMonth = outstandingObligations.filter(o => {
+    if (!o.dueDate) return false;
+    const d = new Date(o.dueDate);
+    return d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear();
+  });
+
   // Helper to check if an OUTSTANDING (unpaid) obligation exists for a specific payment date.
   // Excludes settled/written_off/stopped - when marked as paid, the calendar should show "Paid" not "Outstanding".
   const hasOutstandingObligation = (customPaymentId: number, paymentDate: Date) => {
@@ -208,8 +215,9 @@ export function SubscriptionCalendar() {
       return await apiRequest('POST', '/api/admin/custom-payments', data);
     },
     onSuccess: () => {
-      toast({ title: "Payment Added", description: "Custom payment has been added successfully." });
+      toast({ title: "Payment Added", description: "Custom payment added (unpaid by default). Mark as paid when client pays." });
       qc.invalidateQueries({ queryKey: ["/api/admin/custom-payments"] });
+      qc.invalidateQueries({ queryKey: ["/api/admin/payment-obligations"] });
       setIsDialogOpen(false);
       setNewPayment({
         clientName: '',
@@ -606,12 +614,12 @@ export function SubscriptionCalendar() {
             Total this month: <span className="font-bold text-foreground text-green-600">€{totalMonthlyRevenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </p>
           
-          {/* Outstanding Summary - Always visible */}
-          <div className={`p-2 rounded border mt-2 ${outstandingObligations.length > 0 ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'}`}>
+          {/* Outstanding Summary - Current month only */}
+          <div className={`p-2 rounded border mt-2 ${outstandingObligationsForMonth.length > 0 ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200'}`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertTriangle className={`w-4 h-4 ${outstandingObligations.length > 0 ? 'text-yellow-600' : 'text-gray-400'}`} />
-                <span className={`font-semibold text-sm ${outstandingObligations.length > 0 ? 'text-yellow-800' : 'text-gray-600'}`}>Outstanding</span>
+                <AlertTriangle className={`w-4 h-4 ${outstandingObligationsForMonth.length > 0 ? 'text-yellow-600' : 'text-gray-400'}`} />
+                <span className={`font-semibold text-sm ${outstandingObligationsForMonth.length > 0 ? 'text-yellow-800' : 'text-gray-600'}`}>Outstanding</span>
               </div>
               <TooltipProvider>
                 <Tooltip>
@@ -619,24 +627,24 @@ export function SubscriptionCalendar() {
                     <Button 
                       variant="ghost" 
                       size="sm" 
-                      className={`h-6 w-6 p-0 ${outstandingObligations.length > 0 ? 'text-yellow-700 hover:bg-yellow-100' : 'text-gray-500 hover:bg-gray-100'}`}
+                      className={`h-6 w-6 p-0 ${outstandingObligationsForMonth.length > 0 ? 'text-yellow-700 hover:bg-yellow-100' : 'text-gray-500 hover:bg-gray-100'}`}
                       onClick={() => setOutstandingListOpen(true)}
                       data-testid="button-view-outstanding"
                     >
                       <List className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>View all outstanding debts</TooltipContent>
+                  <TooltipContent>Outstanding for {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
             </div>
-            {outstandingObligations.length > 0 ? (
+            {outstandingObligationsForMonth.length > 0 ? (
               <>
-                <p className="text-lg font-bold text-yellow-600">{outstandingObligations.length} debt{outstandingObligations.length !== 1 ? 's' : ''}</p>
-                <p className="text-yellow-700 text-sm">€{(outstandingObligations.reduce((sum, o) => sum + o.amountDue, 0) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
+                <p className="text-lg font-bold text-yellow-600">{outstandingObligationsForMonth.length} debt{outstandingObligationsForMonth.length !== 1 ? 's' : ''}</p>
+                <p className="text-yellow-700 text-sm">€{(outstandingObligationsForMonth.reduce((sum, o) => sum + o.amountDue, 0) / 100).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</p>
               </>
             ) : (
-              <p className="text-sm text-gray-500">No outstanding debts</p>
+              <p className="text-sm text-gray-500">No outstanding this month</p>
             )}
           </div>
         </div>
@@ -1172,18 +1180,18 @@ export function SubscriptionCalendar() {
         </DialogContent>
       </Dialog>
 
-      {/* Outstanding Debts Section */}
-      {outstandingObligations.length > 0 && (
+      {/* Outstanding Debts Section - Current month only */}
+      {outstandingObligationsForMonth.length > 0 && (
         <Card className="col-span-2 mt-4 border-red-200">
           <CardHeader className="bg-red-50 rounded-t-lg">
             <CardTitle className="flex items-center gap-2 text-red-700">
               <AlertTriangle className="w-5 h-5" />
-              Outstanding Debts ({outstandingObligations.length})
+              Outstanding ({currentMonth.toLocaleDateString('en-US', { month: 'long' })}): {outstandingObligationsForMonth.length}
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
             <div className="space-y-3">
-              {outstandingObligations.map(obligation => {
+              {outstandingObligationsForMonth.map(obligation => {
                 const dueDate = obligation.dueDate ? new Date(obligation.dueDate) : new Date();
                 const daysSinceDue = Math.floor((Date.now() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
                 const monthsActive = Math.max(0, Math.floor(daysSinceDue / 30));
@@ -1294,9 +1302,9 @@ export function SubscriptionCalendar() {
               {/* Total Outstanding */}
               <div className="pt-3 mt-3 border-t border-red-200">
                 <div className="flex justify-between items-center">
-                  <p className="font-semibold text-lg">Total Outstanding:</p>
+                  <p className="font-semibold text-lg">Total Outstanding ({currentMonth.toLocaleDateString('en-US', { month: 'long' })}):</p>
                   <p className="text-2xl font-bold text-red-600">
-                    €{(outstandingObligations.reduce((sum, o) => sum + o.amountDue, 0) / 100).toFixed(2)}
+                    €{(outstandingObligationsForMonth.reduce((sum, o) => sum + o.amountDue, 0) / 100).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -1508,15 +1516,15 @@ export function SubscriptionCalendar() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-yellow-700">
               <AlertTriangle className="w-5 h-5" />
-              All Outstanding Debts ({outstandingObligations.length})
+              Outstanding ({currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}): {outstandingObligationsForMonth.length}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-4">
-            {outstandingObligations.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">No outstanding debts</p>
+            {outstandingObligationsForMonth.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No outstanding debts this month</p>
             ) : (
               <>
-                {outstandingObligations.map(obligation => {
+                {outstandingObligationsForMonth.map(obligation => {
                   const dueDate = obligation.dueDate ? new Date(obligation.dueDate) : new Date();
                   const daysSinceDue = Math.floor((Date.now() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
                   
@@ -1594,7 +1602,7 @@ export function SubscriptionCalendar() {
                   <div className="flex justify-between items-center">
                     <p className="font-semibold">Total Outstanding:</p>
                     <p className="text-xl font-bold text-yellow-600">
-                      €{(outstandingObligations.reduce((sum, o) => sum + o.amountDue, 0) / 100).toFixed(2)}
+                      €{(outstandingObligationsForMonth.reduce((sum, o) => sum + o.amountDue, 0) / 100).toFixed(2)}
                     </p>
                   </div>
                 </div>
