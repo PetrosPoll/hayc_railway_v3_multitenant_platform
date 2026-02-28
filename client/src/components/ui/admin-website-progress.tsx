@@ -54,6 +54,7 @@ type Website = {
   bonusEmails?: number | null
   bonusEmailsExpiry?: string | null
   bookingEnabled?: boolean
+  siteId?: string | null
 }
 
 type User = {
@@ -536,6 +537,8 @@ export function AdminWebsiteProgress() {
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false)
   const [editingDomainId, setEditingDomainId] = useState<number | null>(null)
   const [editedDomainValue, setEditedDomainValue] = useState("")
+  const [editingSiteId, setEditingSiteId] = useState<number | null>(null)
+  const [editedSiteIdValue, setEditedSiteIdValue] = useState("")
   const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>(null)
   const [filterWaitingOnly, setFilterWaitingOnly] = useState(false)
   const [waitingInfoDialog, setWaitingInfoDialog] = useState<{
@@ -718,6 +721,33 @@ export function AdminWebsiteProgress() {
     onError: (err: any) => {
       toast({ description: err.message, variant: "destructive" });
     },
+  });
+
+  const updateSiteIdMutation = useMutation({
+    mutationFn: async ({ websiteId, siteId }: { websiteId: number; siteId: string }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ siteId })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update site ID');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Site ID updated successfully" });
+      setEditingSiteId(null);
+      setEditedSiteIdValue("");
+    },
+    onError: (error: Error) => {
+      toast({ 
+        description: error.message || "Failed to update site ID", 
+        variant: "destructive" 
+      });
+    }
   });
 
   if (isLoading) return <div>Loading...</div>
@@ -1215,6 +1245,83 @@ export function AdminWebsiteProgress() {
                     </div>
                   ))}
                 </div>
+
+                {/* Site ID Section - Admin only */}
+                {userPermissions?.canManageWebsites && (
+                  <div className="mt-6 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Site ID</span>
+                        {editingSiteId === website.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editedSiteIdValue}
+                              onChange={(e) => setEditedSiteIdValue(e.target.value)}
+                              className="h-8 w-48"
+                              placeholder="e.g. honda-website"
+                              data-testid={`input-siteid-edit-${website.id}`}
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                if (editedSiteIdValue.trim()) {
+                                  updateSiteIdMutation.mutate({ 
+                                    websiteId: website.id, 
+                                    siteId: editedSiteIdValue.trim() 
+                                  });
+                                }
+                              }}
+                              disabled={updateSiteIdMutation.isPending || !editedSiteIdValue.trim()}
+                              data-testid={`button-save-siteid-${website.id}`}
+                            >
+                              {updateSiteIdMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingSiteId(null);
+                                setEditedSiteIdValue("");
+                              }}
+                              disabled={updateSiteIdMutation.isPending}
+                              data-testid={`button-cancel-siteid-${website.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className={website.siteId ? "text-sm" : "text-sm text-muted-foreground"}>
+                              {website.siteId || "Not configured"}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                setEditingSiteId(website.id);
+                                setEditedSiteIdValue(website.siteId || "");
+                              }}
+                              data-testid={`button-edit-siteid-${website.id}`}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {website.siteId && (
+                      <p className="text-xs text-muted-foreground mt-2">
+                        S3 config path: sites/{website.siteId}/config/config.json
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Analytics Tracking Code Section */}
                 <AnalyticsTrackingCode websiteId={website.id} domain={website.domain} />

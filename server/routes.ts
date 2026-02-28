@@ -12166,6 +12166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bonusEmails: websiteProgress.bonusEmails,
           bonusEmailsExpiry: websiteProgress.bonusEmailsExpiry,
           bookingEnabled: websiteProgress.bookingEnabled,
+          siteId: websiteProgress.siteId,
         })
         .from(websiteProgress)
         .leftJoin(users, eq(websiteProgress.userId, users.id));
@@ -12342,9 +12343,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled } = req.body;
+      const { domain, bookingEnabled, siteId } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; siteId: string | null; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -12362,8 +12363,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.bookingEnabled = bookingEnabled;
       }
 
+      if (siteId !== undefined) {
+        if (typeof siteId !== 'string') {
+          return res.status(400).json({ error: "siteId must be a string" });
+        }
+        updates.siteId = siteId.trim() || null;
+      }
+
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, siteId" });
       }
 
       const [updatedWebsite] = await db
