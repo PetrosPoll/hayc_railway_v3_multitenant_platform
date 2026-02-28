@@ -60,6 +60,7 @@ import {
   Copy,
   Package,
   CalendarDays,
+  FileEdit,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -68,6 +69,7 @@ import { Subscription } from "@shared/schema";
 import { AVAILABLE_ADDONS } from "@/lib/addons";
 import { BOOKING_APP_BASE_URL } from "@/lib/utils";
 import { Tips } from "@/components/ui/tips";
+import { ContentEditor } from "@/components/content-editor";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -128,6 +130,7 @@ type Website = {
   userEmail: string;
   media?: Array<{ url: string, publicId: string, name: string }>;
   bookingEnabled?: boolean;
+  siteId?: string | null;
   stages: Array<{
     id: number;
     websiteProgressId: number;
@@ -1012,6 +1015,7 @@ export default function WebsiteDashboard() {
       { id: "progress", label: t("dashboard.progress") || "Website", icon: Settings },
       { id: "changes", label: t("dashboard.changes") || "Changes", icon: FileText },
       { id: "media", label: t("dashboard.media") || "Media", icon: ImageIcon },
+      ...(website?.siteId ? [{ id: "content", label: "Content", icon: FileEdit }] : []),
       { id: "billing", label: t("dashboard.billing") || "Billing", icon: CreditCard },
       { id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart },
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
@@ -1029,7 +1033,7 @@ export default function WebsiteDashboard() {
     return website?.bookingEnabled
       ? [...base, bookingItem, ...after]
       : [...base, ...after];
-  }, [t, website?.bookingEnabled, tipsVisibleInUserDashboard]);
+  }, [t, website?.bookingEnabled, tipsVisibleInUserDashboard, website?.siteId]);
 
   if (websiteLoading) {
     return (
@@ -3834,6 +3838,15 @@ export default function WebsiteDashboard() {
 
               {activeSection === "media" && (
                 <div data-testid="section-media">{renderMediaSection()}</div>
+              )}
+
+              {activeSection === "content" && website?.siteId && (
+                <div data-testid="section-content" className="h-full">
+                  <ContentEditor 
+                    websiteId={Number(websiteId)} 
+                    siteId={website.siteId} 
+                  />
+                </div>
               )}
 
               {activeSection === "billing" && (

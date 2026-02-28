@@ -64,6 +64,7 @@ import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUr
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
+import { getConfig, putConfig } from "./s3-config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -12294,6 +12295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           websiteLanguage: websiteProgress.websiteLanguage,
           media: websiteProgress.media,
           bookingEnabled: websiteProgress.bookingEnabled,
+          siteId: websiteProgress.siteId,
           userEmail: users.email,
         })
         .from(websiteProgress)
@@ -19476,6 +19478,92 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     } catch (error) {
       console.error("Error adding partial payment:", error);
       res.status(500).json({ error: "Failed to add partial payment" });
+    }
+  });
+
+  // S3 site config routes
+  app.get("/api/websites/:id/site-config", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const websiteId = parseInt(req.params.id);
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to access this website" });
+      }
+
+      if (!website.siteId) {
+        return res.status(404).json({ error: "No S3 site configured" });
+      }
+
+      const config = await getConfig(website.siteId);
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error fetching site config:", error);
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to fetch site config" });
+    }
+  });
+
+  app.put("/api/websites/:id/site-config", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const websiteId = parseInt(req.params.id);
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to modify this website" });
+      }
+
+      if (!website.siteId) {
+        return res.status(404).json({ error: "No S3 site configured" });
+      }
+
+      if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Request body must be a non-null object" });
+      }
+
+      await putConfig(website.siteId, req.body);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error saving site config:", error);
+      res.status(500).json({ error: "Failed to save site config" });
     }
   });
 

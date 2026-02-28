@@ -23,3 +23,12 @@
     @apply font-sans antialiased bg-background text-[#182B53];
   }
 }
+
+.hayc-field-highlight {
+  animation: haycHighlight 1s ease-out;
+}
+
+@keyframes haycHighlight {
+  0% { background-color: #fef08a; }
+  100% { background-color: transparent; }
+}
