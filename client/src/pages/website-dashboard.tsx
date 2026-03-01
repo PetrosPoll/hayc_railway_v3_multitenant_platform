@@ -61,6 +61,7 @@ import {
   Package,
   CalendarDays,
   FileEdit,
+  ExternalLink,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -343,6 +344,9 @@ export default function WebsiteDashboard() {
 
   // Feedback dialog state
   const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+
+  // Content editor dialog state
+  const [contentEditorOpen, setContentEditorOpen] = useState(false);
 
   // Booking redirect loading state
   const [isBookingLoading, setIsBookingLoading] = useState(false);
@@ -3841,10 +3845,26 @@ export default function WebsiteDashboard() {
               )}
 
               {activeSection === "content" && website?.siteId && (
-                <div data-testid="section-content" className="h-full">
+                <div data-testid="section-content" className="flex flex-col items-center justify-center h-[60vh] gap-6">
+                  <div className="text-center space-y-2">
+                    <h2 className="text-2xl font-semibold">{t("dashboard.contentEditor")}</h2>
+                    <p className="text-muted-foreground max-w-md">
+                      {t("dashboard.contentEditorDescription")}
+                    </p>
+                  </div>
+                  <Button 
+                    size="lg" 
+                    onClick={() => setContentEditorOpen(true)}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    {t("dashboard.openContentEditor")}
+                  </Button>
                   <ContentEditor 
                     websiteId={Number(websiteId)} 
-                    siteId={website.siteId} 
+                    siteId={website.siteId}
+                    open={contentEditorOpen}
+                    onOpenChange={setContentEditorOpen}
                   />
                 </div>
               )}

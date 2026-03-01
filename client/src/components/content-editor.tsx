@@ -13,7 +13,13 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, Trash2 } from "lucide-react";
+import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, Trash2, X, Monitor, Smartphone } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
 function formatLabel(key: string): string {
   return key
@@ -303,15 +309,18 @@ function ConfigSection({ sectionKey, value, onChange }: ConfigSectionProps) {
 interface ContentEditorProps {
   websiteId: number;
   siteId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export function ContentEditor({ websiteId, siteId }: ContentEditorProps) {
+export function ContentEditor({ websiteId, siteId, open, onOpenChange }: ContentEditorProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const [localConfig, setLocalConfig] = useState<Record<string, unknown> | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
 
   const {
     data: queryData,
@@ -415,83 +424,122 @@ export function ContentEditor({ websiteId, siteId }: ContentEditorProps) {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)]">
-      <div className="border-b px-4 py-2 flex items-center gap-4">
-        <Badge variant="outline" className="flex items-center gap-1">
-          <a
-            href={`https://${siteId}.hayc.gr`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 hover:underline"
-          >
-            {siteId}.hayc.gr
-            <ExternalLink className="h-3 w-3" />
-          </a>
-        </Badge>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-none w-screen h-screen p-0 rounded-none border-0 gap-0 [&>button]:hidden">
+        <VisuallyHidden.Root>
+          <DialogTitle>Content Editor</DialogTitle>
+        </VisuallyHidden.Root>
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="border-b px-4 py-2 flex items-center gap-4 shrink-0">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => onOpenChange(false)}
+              className="mr-2"
+            >
+              <X className="h-4 w-4 mr-1" />
+              Close
+            </Button>
+            
+            <Badge variant="outline" className="flex items-center gap-1">
+              <a
+                href={`https://${siteId}.hayc.gr`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:underline"
+              >
+                {siteId}.hayc.gr
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </Badge>
 
-        {savedAt !== null && (
-          <span className="ml-auto text-sm text-green-600">
-            ✓ Changes live within 60 seconds
-          </span>
-        )}
+            {savedAt !== null && (
+              <span className="ml-auto text-sm text-green-600">
+                ✓ Changes live within 60 seconds
+              </span>
+            )}
 
-        <div className={savedAt === null ? "ml-auto flex items-center gap-2" : "flex items-center gap-2"}>
-          <Button variant="outline" size="sm" onClick={handleReloadIframe}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            disabled={!isDirty || mutation.isPending}
-            onClick={handleSave}
-          >
-            {mutation.isPending ? "Saving..." : "Save"}
-          </Button>
-        </div>
-      </div>
-
-      <div className="flex-1 flex overflow-hidden">
-        <div className="w-1/2 h-full border-r">
-          <iframe
-            ref={iframeRef}
-            src={`https://${siteId}.hayc.gr?hayc-edit=true`}
-            className="w-full h-full border-0"
-            title="Site preview"
-          />
-        </div>
-
-        <div className="w-1/2 h-full overflow-y-auto p-4">
-          {isLoading && (
-            <>
-              <Skeleton className="h-24 w-full mb-4" />
-              <Skeleton className="h-24 w-full mb-4" />
-              <Skeleton className="h-24 w-full mb-4" />
-            </>
-          )}
-
-          {isError && (
-            <div className="flex flex-col items-center justify-center gap-4 py-8">
-              <AlertCircle className="h-8 w-8 text-destructive" />
-              <p className="text-muted-foreground">Failed to load config</p>
-              <Button variant="outline" onClick={() => refetch()}>
-                Retry
+            <div className={savedAt === null ? "ml-auto flex items-center gap-2" : "flex items-center gap-2"}>
+              <div className="flex items-center border rounded-md">
+                <Button
+                  variant={previewMode === "desktop" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setPreviewMode("desktop")}
+                  className="rounded-r-none"
+                >
+                  <Monitor className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={previewMode === "mobile" ? "secondary" : "ghost"}
+                  size="sm"
+                  onClick={() => setPreviewMode("mobile")}
+                  className="rounded-l-none"
+                >
+                  <Smartphone className="h-4 w-4" />
+                </Button>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleReloadIframe}>
+                <RefreshCw className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                disabled={!isDirty || mutation.isPending}
+                onClick={handleSave}
+              >
+                {mutation.isPending ? "Saving..." : "Save"}
               </Button>
             </div>
-          )}
+          </div>
 
-          {localConfig !== null && !isLoading && !isError && (
-            <div className="space-y-4">
-              {Object.entries(localConfig).map(([key, value]) => (
-                <ConfigSection
-                  key={key}
-                  sectionKey={key}
-                  value={value}
-                  onChange={handleFieldChange}
-                />
-              ))}
+          <div className="flex-1 flex overflow-hidden min-h-0">
+            <div className="w-3/4 h-full border-r overflow-hidden bg-muted/30 flex items-center justify-center">
+              <iframe
+                ref={iframeRef}
+                src={`https://${siteId}.hayc.gr?hayc-edit=true`}
+                className={`h-full border-0 bg-white transition-all duration-300 ${
+                  previewMode === "mobile" 
+                    ? "w-[390px] rounded-lg shadow-xl border" 
+                    : "w-full"
+                }`}
+                title="Site preview"
+              />
             </div>
-          )}
+
+            <div className="w-1/4 h-full overflow-y-auto p-4 min-h-0">
+              {isLoading && (
+                <>
+                  <Skeleton className="h-24 w-full mb-4" />
+                  <Skeleton className="h-24 w-full mb-4" />
+                  <Skeleton className="h-24 w-full mb-4" />
+                </>
+              )}
+
+              {isError && (
+                <div className="flex flex-col items-center justify-center gap-4 py-8">
+                  <AlertCircle className="h-8 w-8 text-destructive" />
+                  <p className="text-muted-foreground">Failed to load config</p>
+                  <Button variant="outline" onClick={() => refetch()}>
+                    Retry
+                  </Button>
+                </div>
+              )}
+
+              {localConfig !== null && !isLoading && !isError && (
+                <div className="space-y-4">
+                  {Object.entries(localConfig).map(([key, value]) => (
+                    <ConfigSection
+                      key={key}
+                      sectionKey={key}
+                      value={value}
+                      onChange={handleFieldChange}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
