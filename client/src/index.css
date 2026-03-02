@@ -32,3 +32,8 @@
   0% { background-color: #fef08a; }
   100% { background-color: transparent; }
 }
+
+.highlight-flash {
+  background-color: #fef08a !important;
+  transition: background-color 1.5s ease;
+}

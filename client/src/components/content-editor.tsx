@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -66,22 +67,51 @@ interface ConfigFieldProps {
   onChange: (path: string, value: unknown) => void;
 }
 
+function AutoResizeTextarea({ 
+  value, 
+  onChange, 
+  ...props 
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [value]);
+  
+  return (
+    <Textarea
+      ref={textareaRef}
+      value={value}
+      onChange={onChange}
+      className="min-h-[38px] resize-none overflow-hidden"
+      rows={1}
+      {...props}
+    />
+  );
+}
+
 function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
   if (isLocaleString(value)) {
     const localeVal = value as { el: string; en: string };
     return (
       <div data-field-path={path}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
-        <div className="flex gap-2 items-center mb-1">
-          <span className="text-xs text-muted-foreground w-6 shrink-0">EL</span>
-          <Input
+        <div className="flex gap-2 items-start mb-1">
+          <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EL</span>
+          <AutoResizeTextarea
+            data-path={`${path}.el`}
             value={localeVal.el}
             onChange={(e) => onChange(path, { ...localeVal, el: e.target.value })}
           />
         </div>
-        <div className="flex gap-2 items-center">
-          <span className="text-xs text-muted-foreground w-6 shrink-0">EN</span>
-          <Input
+        <div className="flex gap-2 items-start">
+          <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EN</span>
+          <AutoResizeTextarea
+            data-path={`${path}.en`}
             value={localeVal.en}
             onChange={(e) => onChange(path, { ...localeVal, en: e.target.value })}
           />
@@ -95,7 +125,7 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
     return (
       <div data-field-path={path}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
-        <Input value={value} onChange={(e) => onChange(path, e.target.value)} />
+        <AutoResizeTextarea data-path={path} value={value} onChange={(e) => onChange(path, e.target.value)} />
         {showImage && (
           <img src={value} className="mt-1 max-h-20 rounded object-cover" alt="" />
         )}
@@ -108,6 +138,7 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
       <div data-field-path={path}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
         <Input
+          data-path={path}
           type="number"
           value={value}
           onChange={(e) => onChange(path, Number(e.target.value))}
@@ -118,7 +149,7 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
 
   if (typeof value === "boolean") {
     return (
-      <div data-field-path={path} className="flex items-center justify-between">
+      <div data-field-path={path} data-path={path} className="flex items-center justify-between">
         <label className="text-sm font-medium">{formatLabel(fieldKey)}</label>
         <Switch checked={value} onCheckedChange={(checked) => onChange(path, checked)} />
       </div>
@@ -159,10 +190,15 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
   }
 
   if (typeof value === "object" && value !== null) {
+    const filteredEntries = Object.entries(value as Record<string, unknown>)
+      .filter(([key, val]) => !shouldHideField(key, val));
+    
+    if (filteredEntries.length === 0) return null;
+    
     return (
       <div data-field-path={path} className="pl-3 border-l-2 ml-1 mt-1">
         <label className="text-sm font-medium mb-2 block">{formatLabel(fieldKey)}</label>
-        {Object.entries(value as Record<string, unknown>).map(([key, val]) => (
+        {filteredEntries.map(([key, val]) => (
           <div key={key} className="mb-3">
             <ConfigField
               path={`${path}.${key}`}
@@ -257,6 +293,32 @@ interface ConfigSectionProps {
   onChange: (path: string, value: unknown) => void;
 }
 
+const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config"];
+
+function isEmptyValue(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === "string" && value.trim() === "") return true;
+  if (Array.isArray(value) && value.length === 0) return true;
+  if (typeof value === "object" && value !== null) {
+    // Check for empty locale strings {el: "", en: ""}
+    if (isLocaleString(value)) {
+      const localeVal = value as { el: string; en: string };
+      return localeVal.el.trim() === "" && localeVal.en.trim() === "";
+    }
+    // Check for empty objects
+    if (Object.keys(value).length === 0) return true;
+    // Check if all nested values are empty
+    const entries = Object.entries(value);
+    return entries.every(([k, v]) => isEmptyValue(v));
+  }
+  return false;
+}
+
+function shouldHideField(key: string, value: unknown): boolean {
+  if (HIDDEN_KEYS.includes(key)) return true;
+  return isEmptyValue(value);
+}
+
 function ConfigSection({ sectionKey, value, onChange }: ConfigSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -290,15 +352,17 @@ function ConfigSection({ sectionKey, value, onChange }: ConfigSectionProps) {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="pt-0 px-4 pb-4 space-y-3">
-            {Object.entries(value as Record<string, unknown>).map(([key, val]) => (
-              <ConfigField
-                key={key}
-                path={`${sectionKey}.${key}`}
-                fieldKey={key}
-                value={val}
-                onChange={onChange}
-              />
-            ))}
+            {Object.entries(value as Record<string, unknown>)
+              .filter(([key, val]) => !shouldHideField(key, val))
+              .map(([key, val]) => (
+                <ConfigField
+                  key={key}
+                  path={`${sectionKey}.${key}`}
+                  fieldKey={key}
+                  value={val}
+                  onChange={onChange}
+                />
+              ))}
           </CardContent>
         </CollapsibleContent>
       </Card>
@@ -372,11 +436,18 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
       if (event.data?.type !== "HAYC_FIELD_FOCUS") return;
       const path = event.data?.path as string;
       if (!path) return;
-      const el = document.querySelector(`[data-field-path="${path}"]`);
+      
+      // Try exact match on input first, then fall back to wrapper div
+      let el = document.querySelector(`[data-path="${path}"]`);
+      if (!el) {
+        el = document.querySelector(`[data-field-path="${path}"]`);
+      }
+      console.log('[HAYC] looking for path:', path, '| element found:', el);
       if (!el) return;
+      
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("hayc-field-highlight");
-      setTimeout(() => el.classList.remove("hayc-field-highlight"), 1000);
+      el.classList.add("highlight-flash");
+      setTimeout(() => el.classList.remove("highlight-flash"), 1500);
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
@@ -496,6 +567,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
               <iframe
                 ref={iframeRef}
                 src={`https://${siteId}.hayc.gr?hayc-edit=true`}
+                sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation-by-user-activation"
                 className={`h-full border-0 bg-white transition-all duration-300 ${
                   previewMode === "mobile" 
                     ? "w-[390px] rounded-lg shadow-xl border" 
@@ -524,18 +596,20 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                 </div>
               )}
 
-              {localConfig !== null && !isLoading && !isError && (
-                <div className="space-y-4">
-                  {Object.entries(localConfig).map(([key, value]) => (
-                    <ConfigSection
-                      key={key}
-                      sectionKey={key}
-                      value={value}
-                      onChange={handleFieldChange}
-                    />
-                  ))}
-                </div>
-              )}
+          {localConfig !== null && !isLoading && !isError && (
+            <div className="space-y-4">
+              {Object.entries(localConfig)
+                .filter(([key, value]) => !shouldHideField(key, value))
+                .map(([key, value]) => (
+                  <ConfigSection
+                    key={key}
+                    sectionKey={key}
+                    value={value}
+                    onChange={handleFieldChange}
+                  />
+                ))}
+            </div>
+          )}
             </div>
           </div>
         </div>
