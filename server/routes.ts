@@ -187,8 +187,9 @@ function hasPermission(userRole: string, permission: keyof typeof RolePermission
 }
 
 // Create email transporter
+const smtpHost = process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim();
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim(),
+  host: smtpHost,
   port: 465,
   secure: true,
   auth: {
@@ -198,6 +199,15 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
+  connectionTimeout: 15000,
+  greetingTimeout: 10000,
+});
+console.log("[SMTP] Transporter created:", {
+  host: smtpHost || "(not set)",
+  port: 465,
+  userSet: !!process.env.SMTP_USER,
+  passSet: !!process.env.SMTP_PASS,
+  fromSet: !!process.env.SMTP_FROM,
 });
 
 
@@ -16269,63 +16279,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Public endpoint for users to request password reset
   app.post("/api/request-password-reset", async (req, res) => {
+    const logPrefix = "[PWD-RESET]";
     try {
       const { email } = req.body;
+      console.log(`${logPrefix} Request received`, { email: email ? `${email.slice(0, 3)}***` : "(empty)" });
 
       if (!email || !email.trim()) {
         return res.status(400).json({ error: "Email address is required" });
       }
 
-      // Always return success to avoid revealing if user exists
-      // This prevents email enumeration attacks
       const normalizedEmail = email.trim().toLowerCase();
 
-      // Check if user exists
       const user = await storage.getUserByEmail(normalizedEmail);
-      
+      console.log(`${logPrefix} User lookup`, { found: !!user, userId: user?.id });
+
       if (user) {
-        // Generate reset token
         const crypto = await import("crypto");
         const resetToken = crypto.randomBytes(32).toString('hex');
+        console.log(`${logPrefix} Token generated`, { tokenLen: resetToken.length });
 
-        // Update user with reset token
         await storage.updateUser(user.id, { passwordResetToken: resetToken });
+        console.log(`${logPrefix} Token saved to DB`);
 
-        // Prepare reset URL
         const { sendPasswordResetEmail } = await import("./migration");
         const resetData = await sendPasswordResetEmail(user.email, resetToken, user.username);
+        console.log(`${logPrefix} Reset URL built`, { resetUrlLen: resetData.resetUrl?.length });
 
-        // Send the actual email using generic template (not migration)
         const userLanguage = (user.language === "el" ? "gr" : user.language) || "en";
-        const resetEmailHtml = loadTemplate("password-reset-generic.html", {
-          username: user.username,
-          email: user.email,
-          resetUrl: resetData.resetUrl,
-          resetToken: resetToken
-        }, userLanguage);
+        let resetEmailHtml: string;
+        try {
+          resetEmailHtml = loadTemplate("password-reset-generic.html", {
+            username: user.username,
+            email: user.email,
+            resetUrl: resetData.resetUrl,
+            resetToken: resetToken
+          }, userLanguage);
+          console.log(`${logPrefix} Template loaded`, { lang: userLanguage, htmlLen: resetEmailHtml?.length });
+        } catch (templateErr) {
+          console.error(`${logPrefix} Template load failed:`, templateErr);
+          throw templateErr;
+        }
 
-        // Send async to avoid 503 first-byte timeout (external inboxes can be slow/greylisted)
-        transporter.sendMail({
+        const mailOptions = {
           from: process.env.SMTP_FROM,
           to: user.email,
           subject: userLanguage === "gr" ? "🔑 Επαναφορά Κωδικού Πρόσβασης" : "🔑 Reset Your Password",
           html: resetEmailHtml,
-        }).then(() => {
-          console.log(`Password reset email sent to ${user.email}`);
-        }).catch((emailErr) => {
-          console.error(`Password reset email failed for ${user.email}:`, emailErr);
+        };
+        console.log(`${logPrefix} Sending mail`, {
+          from: mailOptions.from,
+          to: mailOptions.to,
+          smtpHost: smtpHost,
+          smtpPort: 465,
         });
+
+        const sendStart = Date.now();
+        transporter.sendMail(mailOptions)
+          .then((info) => {
+            console.log(`${logPrefix} Mail sent OK`, {
+              to: user.email,
+              durationMs: Date.now() - sendStart,
+              messageId: info?.messageId,
+            });
+          })
+          .catch((emailErr) => {
+            console.error(`${logPrefix} Mail send FAILED`, {
+              to: user.email,
+              durationMs: Date.now() - sendStart,
+              error: emailErr?.message,
+              code: emailErr?.code,
+              command: (emailErr as any)?.command,
+              response: (emailErr as any)?.response,
+              responseCode: (emailErr as any)?.responseCode,
+              stack: emailErr?.stack,
+            });
+          });
       } else {
-        console.log(`Password reset requested for non-existent email: ${normalizedEmail}`);
+        console.log(`${logPrefix} User not found`, { email: normalizedEmail });
       }
 
-      // Always return success to prevent email enumeration
-      res.json({ 
-        success: true, 
-        message: "If an account exists with this email, a password reset link has been sent." 
+      res.json({
+        success: true,
+        message: "If an account exists with this email, a password reset link has been sent.",
       });
     } catch (err) {
-      console.error("Error processing password reset request:", err);
+      console.error(`${logPrefix} Request failed:`, err);
       res.status(500).json({ error: "Failed to process password reset request" });
     }
   });
