@@ -190,8 +190,8 @@ function hasPermission(userRole: string, permission: keyof typeof RolePermission
 const smtpHost = process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim();
 const transporter = nodemailer.createTransport({
   host: smtpHost,
-  port: 465,
-  secure: true,
+  port: 587,// changed from 587
+  secure: false,// changed from true — STARTTLS handles encryption
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS?.replace(/^["']|["']$/g, "").trim(),
@@ -204,7 +204,7 @@ const transporter = nodemailer.createTransport({
 });
 console.log("[SMTP] Transporter created:", {
   host: smtpHost || "(not set)",
-  port: 465,
+  port: 587,
   userSet: !!process.env.SMTP_USER,
   passSet: !!process.env.SMTP_PASS,
   fromSet: !!process.env.SMTP_FROM,
