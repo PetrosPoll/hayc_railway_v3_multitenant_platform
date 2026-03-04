@@ -16330,7 +16330,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           from: mailOptions.from,
           to: mailOptions.to,
           smtpHost: smtpHost,
-          smtpPort: 465,
+          smtpPort: 587,
         });
 
         const sendStart = Date.now();
