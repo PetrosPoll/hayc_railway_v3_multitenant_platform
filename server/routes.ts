@@ -186,23 +186,19 @@ function hasPermission(userRole: string, permission: keyof typeof RolePermission
   return false;
 }
 
-// Create email transporter
+// Email configuration - Use SES (works on Railway) or SMTP (works locally)
+const USE_SES = process.env.USE_SES === "true" || !process.env.SMTP_HOST;
 
+// SMTP transporter (for local dev or if SMTP is needed)
 const smtpHost = process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim();
 const smtpPort = process.env.SMTP_PORT;
+const smtpPortNum = parseInt(smtpPort || "465");
+const smtpSecure = smtpPortNum === 465;
 
-console.log("[SMTP] Transporter created:", {
-  host: smtpHost || "(not set)",
-  port: parseInt(smtpPort || "587"),
-  userSet: !!process.env.SMTP_USER,
-  passSet: !!process.env.SMTP_PASS,
-  fromSet: !!process.env.SMTP_FROM,
-});
-
-const transporter = nodemailer.createTransport({
+const transporter = smtpHost ? nodemailer.createTransport({
   host: smtpHost,
-  port: parseInt(smtpPort || "587"),// changed from 587
-  secure: false,// changed from true — STARTTLS handles encryption
+  port: smtpPortNum,
+  secure: smtpSecure,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS?.replace(/^["']|["']$/g, "").trim(),
@@ -210,14 +206,54 @@ const transporter = nodemailer.createTransport({
   tls: {
     rejectUnauthorized: false,
   },
-  connectionTimeout: 15000,
-  greetingTimeout: 10000,
-});
+  connectionTimeout: 30000,
+  greetingTimeout: 15000,
+  socketTimeout: 30000,
+}) : null;
 
-// Test SMTP connection on startup
-transporter.verify()
-  .then(() => console.log("[SMTP] ✅ Connection verified successfully"))
-  .catch((err) => console.error("[SMTP] ❌ Connection verification failed:", err.message));
+// Unified email sender - uses SES by default, falls back to SMTP
+async function sendSystemEmail(options: {
+  from: string;
+  to: string;
+  subject: string;
+  html: string;
+  replyTo?: string;
+}): Promise<{ messageId?: string }> {
+  if (USE_SES) {
+    return EmailService.sendSystemEmail(options);
+  } else if (transporter) {
+    const result = await sendSystemEmail({
+      from: options.from,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      replyTo: options.replyTo,
+    });
+    return { messageId: result.messageId };
+  } else {
+    throw new Error("No email transport configured");
+  }
+}
+
+// Test email connection on startup
+if (USE_SES) {
+  console.log("[Email] Using AWS SES for system emails");
+  EmailService.testConnection()
+    .then((result) => {
+      if (result.success) {
+        console.log("[SES] ✅ Connection verified successfully");
+      } else {
+        console.error("[SES] ❌ Connection verification failed:", result.error);
+      }
+    });
+} else if (transporter) {
+  console.log("[Email] Using SMTP for system emails:", { host: smtpHost, port: smtpPortNum });
+  transporter.verify()
+    .then(() => console.log("[SMTP] ✅ Connection verified successfully"))
+    .catch((err) => console.error("[SMTP] ❌ Connection verification failed:", err.message));
+} else {
+  console.warn("[Email] ⚠️ No email transport configured!");
+}
 
 // Use server-only functions to get subscription plans with price IDs
 const subscriptionPlansWithPriceIds = getSubscriptionPlansWithPriceIds();
@@ -3922,7 +3958,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "en",
         );
 
-        await transporter.sendMail({
+        await sendSystemEmail({
           from: process.env.SMTP_FROM,
           to: "development@hayc.gr",
           subject: `🚨 Subscription Cancelled - Action Required for ${user.username}`,
@@ -4793,8 +4829,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Send email asynchronously without blocking the response
-      transporter.sendMail({
-        from: process.env.SMTP_FROM,
+      sendSystemEmail({
+        from: process.env.SMTP_FROM || "",
         to: "development@hayc.gr",
         subject: `🎯 NEW LEAD ALERT - ${data.email} from Website Creation Page`,
         html: adminEmailHtml,
@@ -4927,7 +4963,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `🔍 Review Check Request - ${user.username}`,
@@ -6222,8 +6258,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
 
             await Promise.race([
-              transporter.sendMail({
-                from: process.env.SMTP_FROM,
+              sendSystemEmail({
+                from: process.env.SMTP_FROM || "",
                 to: data.contactEmail,
                 replyTo: "support@hayc.gr",
                 subject: "🎉 Your website project has been created - hayc",
@@ -6259,8 +6295,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Send notification email to admin
           try {
             await Promise.race([
-              transporter.sendMail({
-                from: process.env.SMTP_FROM,
+              sendSystemEmail({
+                from: process.env.SMTP_FROM || "",
                 to: "development@hayc.gr",
                 subject: `🚀 New Website Project Created - ${data.businessName}`,
                 html: adminEmailHtml,
@@ -6371,7 +6407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       // Send email to the user
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: contactData.email,
         replyTo: "support@hayc.gr",
@@ -6380,7 +6416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Send the email to us
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "info@hayc.gr",
         subject: `New Contact Form Submission: ${contactData.subject}`,
@@ -6496,7 +6532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userLanguage = user.language || "en";
 
       // Send email to support with feedback
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "support@hayc.gr",
         subject: `🔔 Subscription Cancellation Feedback - ${user.username}`,
@@ -7252,7 +7288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (task.type === 'subscription' && task.emailType && task.data) {
                 await sendSubscriptionEmail(task.emailType as any, task.data);
               } else if (task.type === 'admin' && task.to && task.subject && task.html) {
-                await transporter.sendMail({
+                await sendSystemEmail({
                   from: process.env.SMTP_FROM,
                   to: task.to,
                   subject: task.subject,
@@ -7662,7 +7698,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     // Send email to the user
-    await transporter.sendMail({
+    await sendSystemEmail({
       from: process.env.SMTP_FROM,
       to: templateData.email,
       replyTo: "support@hayc.gr",
@@ -13932,8 +13968,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Test SMTP connection (admin only)
-  app.get("/api/admin/test-smtp-connection", async (req, res) => {
+  // Test email connection (admin only) - supports both SES and SMTP
+  app.get("/api/admin/test-email-connection", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
@@ -13944,41 +13980,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Not authorized" });
       }
 
-      const smtpConfig = {
-        host: process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim(),
-        port: 587,
-        user: process.env.SMTP_USER ? "✓ set" : "✗ missing",
-        pass: process.env.SMTP_PASS ? "✓ set" : "✗ missing",
-        from: process.env.SMTP_FROM || "not set",
-      };
-
-      console.log("[SMTP Test] Starting connection test...");
       const startTime = Date.now();
 
-      await transporter.verify();
+      if (USE_SES) {
+        console.log("[SES Test] Starting connection test...");
+        const result = await EmailService.testConnection();
+        const duration = Date.now() - startTime;
 
-      const duration = Date.now() - startTime;
-      console.log(`[SMTP Test] ✅ Connection successful in ${duration}ms`);
+        if (result.success) {
+          console.log(`[SES Test] ✅ Connection successful in ${duration}ms`);
+          res.json({
+            success: true,
+            provider: "AWS SES",
+            message: "SES connection verified successfully",
+            duration: `${duration}ms`,
+            config: {
+              region: process.env.AWS_REGION,
+              accessKeyId: process.env.AWS_ACCESS_KEY_ID ? "✓ set" : "✗ missing",
+              secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ? "✓ set" : "✗ missing",
+              from: process.env.SMTP_FROM || "not set",
+            },
+          });
+        } else {
+          throw new Error(result.error);
+        }
+      } else if (transporter) {
+        console.log("[SMTP Test] Starting connection test...");
+        await transporter.verify();
+        const duration = Date.now() - startTime;
+        console.log(`[SMTP Test] ✅ Connection successful in ${duration}ms`);
 
-      res.json({
-        success: true,
-        message: "SMTP connection verified successfully",
-        duration: `${duration}ms`,
-        config: smtpConfig,
-      });
+        res.json({
+          success: true,
+          provider: "SMTP",
+          message: "SMTP connection verified successfully",
+          duration: `${duration}ms`,
+          config: {
+            host: smtpHost,
+            port: smtpPortNum,
+            user: process.env.SMTP_USER ? "✓ set" : "✗ missing",
+            pass: process.env.SMTP_PASS ? "✓ set" : "✗ missing",
+            from: process.env.SMTP_FROM || "not set",
+          },
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          error: "No email transport configured",
+        });
+      }
     } catch (err: any) {
-      console.error("[SMTP Test] ❌ Connection failed:", err.message);
+      console.error("[Email Test] ❌ Connection failed:", err.message);
       res.status(500).json({
         success: false,
+        provider: USE_SES ? "AWS SES" : "SMTP",
         error: err.message,
         code: err.code,
-        command: err.command,
-        config: {
-          host: process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim(),
-          port: 587,
-          user: process.env.SMTP_USER ? "✓ set" : "✗ missing",
-          pass: process.env.SMTP_PASS ? "✓ set" : "✗ missing",
-        },
       });
     }
   });
@@ -14493,7 +14550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `🚨 Subscription Cancelled (Admin Action) - Tasks Required for ${subscription.username}`,
@@ -14667,7 +14724,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `📅 Yearly Upgrade Scheduled - ${currentUser.username}`,
@@ -15251,7 +15308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `🚀 Yearly Upgrade Completed - ${currentUser.username}`,
@@ -15324,7 +15381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Send admin notification email
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `💎 Legacy Subscriber Upgrade Request - ${currentUser.username}`,
@@ -15402,7 +15459,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Send admin notification email
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `💬 User Feedback - ${currentUser.username}`,
@@ -15489,7 +15546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `🚀 Tier Upgrade Request - ${currentUser.username} (${currentTier} → ${requestedTier})`,
@@ -15710,7 +15767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             user.language || "en",
           );
 
-          await transporter.sendMail({
+          await sendSystemEmail({
             from: process.env.SMTP_FROM,
             to: user.email,
             subject:
@@ -15733,7 +15790,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             "en",
           );
 
-          await transporter.sendMail({
+          await sendSystemEmail({
             from: process.env.SMTP_FROM,
             to: "development@hayc.gr",
             subject: `✅ Review Verified - Refund Processed for ${user.username}`,
@@ -15790,7 +15847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user.language || "en",
         );
 
-        await transporter.sendMail({
+        await sendSystemEmail({
           from: process.env.SMTP_FROM,
           to: user.email,
           subject:
@@ -15811,7 +15868,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "en",
         );
 
-        await transporter.sendMail({
+        await sendSystemEmail({
           from: process.env.SMTP_FROM,
           to: "development@hayc.gr",
           subject: `✅ Review Verified - Coupon Applied for ${user.username}`,
@@ -16381,7 +16438,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const mailOptions = {
-          from: process.env.SMTP_FROM,
+          from: process.env.SMTP_FROM || "",
           to: user.email,
           subject: userLanguage === "gr" ? "🔑 Επαναφορά Κωδικού Πρόσβασης" : "🔑 Reset Your Password",
           html: resetEmailHtml,
@@ -16389,12 +16446,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`${logPrefix} Sending mail`, {
           from: mailOptions.from,
           to: mailOptions.to,
-          smtpHost: smtpHost,
-          smtpPort: 465,
+          usingSES: USE_SES,
         });
 
         const sendStart = Date.now();
-        transporter.sendMail(mailOptions)
+        sendSystemEmail(mailOptions)
           .then((info) => {
             console.log(`${logPrefix} Mail sent OK`, {
               to: user.email,
@@ -16407,11 +16463,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               to: user.email,
               durationMs: Date.now() - sendStart,
               error: emailErr?.message,
-              code: emailErr?.code,
-              command: (emailErr as any)?.command,
-              response: (emailErr as any)?.response,
-              responseCode: (emailErr as any)?.responseCode,
-              stack: emailErr?.stack,
             });
           });
       } else {
@@ -16482,7 +16533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             resetToken: resetToken
           }, userLanguage);
 
-          await transporter.sendMail({
+          await sendSystemEmail({
             from: process.env.SMTP_FROM,
             to: user.email,
             subject: "🔑 Reset Your Password - New Platform Access",
@@ -17133,7 +17184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         targetUser.language || "en",
       );
 
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: targetUser.email,
         replyTo: "support@hayc.gr",
@@ -17155,7 +17206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `🎯 New Website Progress Created - ${websiteProgressRecord.projectName || domain}`,
@@ -17235,7 +17286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             user.language || "en",
           );
 
-          await transporter.sendMail({
+          await sendSystemEmail({
             from: process.env.SMTP_FROM,
             to: user.email,
             replyTo: "support@hayc.gr",
@@ -17294,7 +17345,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
 
           // Send reminder email
-          await transporter.sendMail({
+          await sendSystemEmail({
             from: process.env.SMTP_FROM,
             to: website.userEmail,
             replyTo: "support@hayc.gr",
@@ -17367,7 +17418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       stage.language || "en",
     );
 
-    await transporter.sendMail({
+    await sendSystemEmail({
       from: process.env.SMTP_FROM,
       to: stage.userEmail,
       replyTo: "support@hayc.gr",
@@ -17805,7 +17856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       //   recordedDate: new Date().toLocaleDateString()
       // }, targetUser.language || 'en');
 
-      // await transporter.sendMail({
+      // await sendSystemEmail({
       //   from: process.env.SMTP_FROM,
       //   to: targetUser.email,
       //   subject: '🔧 Website Change Recorded - hayc',
@@ -18263,7 +18314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      await transporter.sendMail({
+      await sendSystemEmail({
         from: process.env.SMTP_FROM,
         to: "development@hayc.gr",
         subject: `🔧 Website Change Request - ${website.projectName || domain}`,
