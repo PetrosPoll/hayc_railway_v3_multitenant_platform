@@ -39,32 +39,12 @@ export async function putConfig(siteId: string, config: Record<string, unknown>)
   const bucket = process.env.S3_BUCKET;
   const configKey = `sites/${siteId}/config/config.json`;
   const historyPrefix = `sites/${siteId}/config/history/`;
-
-  try {
-    const currentConfigResponse = await s3Client.send(new GetObjectCommand({
-      Bucket: bucket,
-      Key: configKey,
-    }));
-    const currentBody = await currentConfigResponse.Body?.transformToString();
-    if (currentBody) {
-      const timestamp = Date.now();
-      await s3Client.send(new PutObjectCommand({
-        Bucket: bucket,
-        Key: `${historyPrefix}${timestamp}.json`,
-        Body: currentBody,
-        ContentType: "application/json",
-      }));
-    }
-  } catch (error: any) {
-    if (error.name !== "NoSuchKey" && error.Code !== "NoSuchKey") {
-      console.error(`Failed to snapshot config for site ${siteId}:`, error.message);
-    }
-  }
+  const configBody = JSON.stringify(config, null, 2);
 
   const command = new PutObjectCommand({
     Bucket: bucket,
     Key: configKey,
-    Body: JSON.stringify(config, null, 2),
+    Body: configBody,
     ContentType: "application/json",
   });
 
@@ -72,6 +52,18 @@ export async function putConfig(siteId: string, config: Record<string, unknown>)
     await s3Client.send(command);
   } catch (error: any) {
     throw new Error(`Failed to save config for site ${siteId}: ${error.message}`);
+  }
+
+  try {
+    const timestamp = Date.now();
+    await s3Client.send(new PutObjectCommand({
+      Bucket: bucket,
+      Key: `${historyPrefix}${timestamp}.json`,
+      Body: configBody,
+      ContentType: "application/json",
+    }));
+  } catch (error: any) {
+    console.error(`Failed to snapshot config for site ${siteId}:`, error.message);
   }
 }
 
