@@ -14,7 +14,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, Trash2, X, Monitor, Smartphone } from "lucide-react";
+import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, Trash2, X, Monitor, Smartphone, History, RotateCcw, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -370,6 +370,381 @@ function ConfigSection({ sectionKey, value, onChange }: ConfigSectionProps) {
   );
 }
 
+interface VersionHistoryItem {
+  versionKey: string;
+  timestamp: number;
+  lastModified: string;
+}
+
+interface DiffLine {
+  type: "added" | "removed" | "unchanged";
+  content: string;
+  lineNumber: number;
+}
+
+function computeDiff(oldText: string, newText: string): DiffLine[] {
+  const oldLines = oldText.split("\n");
+  const newLines = newText.split("\n");
+  const result: DiffLine[] = [];
+  
+  const oldSet = new Set(oldLines);
+  const newSet = new Set(newLines);
+  
+  let oldIdx = 0;
+  let newIdx = 0;
+  let lineNum = 1;
+  
+  while (oldIdx < oldLines.length || newIdx < newLines.length) {
+    if (oldIdx >= oldLines.length) {
+      result.push({ type: "added", content: newLines[newIdx], lineNumber: lineNum++ });
+      newIdx++;
+    } else if (newIdx >= newLines.length) {
+      result.push({ type: "removed", content: oldLines[oldIdx], lineNumber: lineNum++ });
+      oldIdx++;
+    } else if (oldLines[oldIdx] === newLines[newIdx]) {
+      result.push({ type: "unchanged", content: oldLines[oldIdx], lineNumber: lineNum++ });
+      oldIdx++;
+      newIdx++;
+    } else if (!newSet.has(oldLines[oldIdx])) {
+      result.push({ type: "removed", content: oldLines[oldIdx], lineNumber: lineNum++ });
+      oldIdx++;
+    } else if (!oldSet.has(newLines[newIdx])) {
+      result.push({ type: "added", content: newLines[newIdx], lineNumber: lineNum++ });
+      newIdx++;
+    } else {
+      result.push({ type: "removed", content: oldLines[oldIdx], lineNumber: lineNum++ });
+      oldIdx++;
+    }
+  }
+  
+  return result;
+}
+
+interface DiffHunk {
+  lines: DiffLine[];
+}
+
+function getDiffHunks(diffLines: DiffLine[], contextLines: number = 2): DiffHunk[] {
+  const changeIndices: number[] = [];
+  diffLines.forEach((line, idx) => {
+    if (line.type !== "unchanged") {
+      changeIndices.push(idx);
+    }
+  });
+
+  if (changeIndices.length === 0) return [];
+
+  const hunks: DiffHunk[] = [];
+  let currentHunk: DiffLine[] = [];
+  let lastIncludedIdx = -1;
+
+  for (const changeIdx of changeIndices) {
+    const startCtx = Math.max(0, changeIdx - contextLines);
+    const endCtx = Math.min(diffLines.length - 1, changeIdx + contextLines);
+
+    if (lastIncludedIdx >= startCtx - 1) {
+      for (let i = lastIncludedIdx + 1; i <= endCtx; i++) {
+        currentHunk.push(diffLines[i]);
+      }
+    } else {
+      if (currentHunk.length > 0) {
+        hunks.push({ lines: currentHunk });
+      }
+      currentHunk = [];
+      for (let i = startCtx; i <= endCtx; i++) {
+        currentHunk.push(diffLines[i]);
+      }
+    }
+    lastIncludedIdx = endCtx;
+  }
+
+  if (currentHunk.length > 0) {
+    hunks.push({ lines: currentHunk });
+  }
+
+  return hunks;
+}
+
+interface CompareRestoreModalProps {
+  siteId: string;
+  versionKey: string;
+  timestamp: number;
+  currentConfig: Record<string, unknown>;
+  onClose: () => void;
+  onRestoreSuccess: () => void;
+}
+
+function CompareRestoreModal({ siteId, versionKey, timestamp, currentConfig, onClose, onRestoreSuccess }: CompareRestoreModalProps) {
+  const { toast } = useToast();
+  
+  const [fetchId] = useState(() => Date.now());
+  
+  const { data: snapshotConfig, isLoading: snapshotLoading } = useQuery<Record<string, unknown>>({
+    queryKey: ["/api/sites", siteId, "config/snapshot", versionKey, fetchId],
+    queryFn: async () => {
+      const res = await fetch(`/api/sites/${siteId}/config/snapshot?versionKey=${encodeURIComponent(versionKey)}`, {
+        credentials: "include",
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error("Failed to fetch snapshot");
+      return res.json();
+    },
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/sites/${siteId}/config/restore`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ versionKey }),
+      });
+      if (!res.ok) throw new Error("Failed to restore");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Restored",
+        description: "Config restored successfully",
+      });
+      onRestoreSuccess();
+      onClose();
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to restore config",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const isLoading = snapshotLoading;
+  
+  const diffLines = snapshotConfig
+    ? computeDiff(
+        JSON.stringify(currentConfig, null, 2),
+        JSON.stringify(snapshotConfig, null, 2)
+      )
+    : [];
+
+  const diffHunks = getDiffHunks(diffLines, 2);
+  const hasChanges = diffHunks.length > 0;
+
+  const formatTimestamp = (ts: number) => {
+    const date = new Date(ts);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }) + " " + date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
+        <DialogTitle className="flex items-center gap-2">
+          <History className="h-5 w-5" />
+          Compare & Restore — {formatTimestamp(timestamp)}
+        </DialogTitle>
+        
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : !hasChanges ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground">
+              <p>No differences found. The snapshot is identical to the current config.</p>
+            </div>
+          ) : (
+            <>
+              <div className="text-sm text-muted-foreground mb-2 flex gap-4">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-red-100 border border-red-300" /> Your current edits (will be lost)
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-green-100 border border-green-300" /> Snapshot (will be restored)
+                </span>
+              </div>
+              <div className="flex-1 overflow-auto border rounded-md bg-muted/20 font-mono text-xs">
+                {diffHunks.map((hunk, hunkIdx) => (
+                  <div key={hunkIdx}>
+                    {hunkIdx > 0 && (
+                      <div className="px-3 py-1 text-muted-foreground bg-muted/50 border-y text-center">
+                        ···
+                      </div>
+                    )}
+                    {hunk.lines.map((line, lineIdx) => (
+                      <div
+                        key={lineIdx}
+                        className={`px-3 py-0.5 whitespace-pre ${
+                          line.type === "added"
+                            ? "bg-green-100 text-green-900 dark:bg-green-950 dark:text-green-200"
+                            : line.type === "removed"
+                            ? "bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200"
+                            : ""
+                        }`}
+                      >
+                        <span className="inline-block w-6 text-right mr-3 text-muted-foreground select-none">
+                          {line.type === "added" ? "+" : line.type === "removed" ? "-" : " "}
+                        </span>
+                        {line.content}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => restoreMutation.mutate()} 
+            disabled={isLoading || restoreMutation.isPending}
+          >
+            {restoreMutation.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                Restoring...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Finalize Restore
+              </>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface VersionHistorySectionProps {
+  siteId: string;
+  currentConfig: Record<string, unknown>;
+  onRestore: () => void;
+}
+
+function VersionHistorySection({ siteId, currentConfig, onRestore }: VersionHistorySectionProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [compareVersion, setCompareVersion] = useState<VersionHistoryItem | null>(null);
+
+  const {
+    data: history,
+    isLoading,
+    refetch,
+  } = useQuery<VersionHistoryItem[]>({
+    queryKey: ["/api/sites", siteId, "config/history"],
+    queryFn: async () => {
+      const res = await fetch(`/api/sites/${siteId}/config/history`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch history");
+      return res.json();
+    },
+    enabled: isOpen,
+  });
+
+  const formatTimestamp = (ts: number) => {
+    const date = new Date(ts);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }) + " " + date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+  };
+
+  const handleRestoreSuccess = () => {
+    onRestore();
+    refetch();
+  };
+
+  return (
+    <>
+      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+        <Card className="mb-4">
+          <CollapsibleTrigger asChild>
+            <CardHeader className="py-3 px-4 cursor-pointer">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="h-4 w-4" />
+                  <span className="text-sm font-semibold">Version History (Latest 10)</span>
+                </div>
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                />
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0 px-4 pb-4">
+              {isLoading && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              )}
+              {!isLoading && (!history || history.length === 0) && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No version history available
+                </p>
+              )}
+              {!isLoading && history && history.length > 0 && (
+                <div className="space-y-2">
+                  {history.map((item) => (
+                    <div
+                      key={item.versionKey}
+                      className="flex items-center justify-between py-2 px-3 rounded-md border bg-muted/30"
+                    >
+                      <span className="text-sm">
+                        {formatTimestamp(item.timestamp)}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCompareVersion(item)}
+                      >
+                        <RotateCcw className="h-3 w-3 mr-1" />
+                        Restore
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
+      {compareVersion && (
+        <CompareRestoreModal
+          siteId={siteId}
+          versionKey={compareVersion.versionKey}
+          timestamp={compareVersion.timestamp}
+          currentConfig={currentConfig}
+          onClose={() => setCompareVersion(null)}
+          onRestoreSuccess={handleRestoreSuccess}
+        />
+      )}
+    </>
+  );
+}
+
 interface ContentEditorProps {
   websiteId: number;
   siteId: string;
@@ -598,6 +973,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
 
           {localConfig !== null && !isLoading && !isError && (
             <div className="space-y-4">
+              <VersionHistorySection siteId={siteId} currentConfig={localConfig} onRestore={() => { refetch(); handleReloadIframe(); }} />
               {Object.entries(localConfig)
                 .filter(([key, value]) => !shouldHideField(key, value))
                 .map(([key, value]) => (

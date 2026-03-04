@@ -63,7 +63,7 @@ import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUr
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
-import { getConfig, putConfig } from "./s3-config";
+import { getConfig, putConfig, getConfigHistory, getConfigSnapshot, restoreConfig } from "./s3-config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
@@ -19648,6 +19648,167 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     } catch (error: any) {
       console.error("Error saving site config:", error);
       res.status(500).json({ error: "Failed to save site config" });
+    }
+  });
+
+  app.get("/api/sites/:siteId/config", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to access this site" });
+      }
+
+      const config = await getConfig(siteId);
+      res.json(config);
+    } catch (error: any) {
+      console.error("Error fetching site config:", error);
+      if (error.message?.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to fetch site config" });
+    }
+  });
+
+  app.get("/api/sites/:siteId/config/history", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to access this site" });
+      }
+
+      const history = await getConfigHistory(siteId);
+      res.json(history);
+    } catch (error: any) {
+      console.error("Error fetching config history:", error);
+      res.status(500).json({ error: "Failed to fetch config history" });
+    }
+  });
+
+  app.get("/api/sites/:siteId/config/snapshot", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const versionKey = req.query.versionKey as string;
+
+      if (!versionKey) {
+        return res.status(400).json({ error: "versionKey query param is required" });
+      }
+
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to access this site" });
+      }
+
+      const snapshot = await getConfigSnapshot(siteId, versionKey);
+      res.json(snapshot);
+    } catch (error: any) {
+      console.error("Error fetching config snapshot:", error);
+      if (error.message?.includes("Invalid versionKey")) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to fetch config snapshot" });
+    }
+  });
+
+  app.post("/api/sites/:siteId/config/restore", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const { versionKey } = req.body;
+
+      if (!versionKey || typeof versionKey !== "string") {
+        return res.status(400).json({ error: "versionKey is required" });
+      }
+
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to modify this site" });
+      }
+
+      await restoreConfig(siteId, versionKey);
+      res.json({ success: true, restoredFrom: versionKey });
+    } catch (error: any) {
+      console.error("Error restoring config:", error);
+      if (error.message?.includes("Invalid versionKey")) {
+        return res.status(400).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to restore config" });
     }
   });
 
