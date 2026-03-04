@@ -214,7 +214,10 @@ const transporter = nodemailer.createTransport({
   greetingTimeout: 10000,
 });
 
-
+// Test SMTP connection on startup
+transporter.verify()
+  .then(() => console.log("[SMTP] ✅ Connection verified successfully"))
+  .catch((err) => console.error("[SMTP] ❌ Connection verification failed:", err.message));
 
 // Use server-only functions to get subscription plans with price IDs
 const subscriptionPlansWithPriceIds = getSubscriptionPlansWithPriceIds();
@@ -13926,6 +13929,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ error: "Invalid phone number", details: err.errors });
       }
       res.status(500).json({ error: "Failed to update phone number" });
+    }
+  });
+
+  // Test SMTP connection (admin only)
+  app.get("/api/admin/test-smtp-connection", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const adminUser = await storage.getUserById(req.user.id);
+      if (!adminUser || adminUser.role !== UserRole.ADMINISTRATOR) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const smtpConfig = {
+        host: process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim(),
+        port: 587,
+        user: process.env.SMTP_USER ? "✓ set" : "✗ missing",
+        pass: process.env.SMTP_PASS ? "✓ set" : "✗ missing",
+        from: process.env.SMTP_FROM || "not set",
+      };
+
+      console.log("[SMTP Test] Starting connection test...");
+      const startTime = Date.now();
+
+      await transporter.verify();
+
+      const duration = Date.now() - startTime;
+      console.log(`[SMTP Test] ✅ Connection successful in ${duration}ms`);
+
+      res.json({
+        success: true,
+        message: "SMTP connection verified successfully",
+        duration: `${duration}ms`,
+        config: smtpConfig,
+      });
+    } catch (err: any) {
+      console.error("[SMTP Test] ❌ Connection failed:", err.message);
+      res.status(500).json({
+        success: false,
+        error: err.message,
+        code: err.code,
+        command: err.command,
+        config: {
+          host: process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim(),
+          port: 587,
+          user: process.env.SMTP_USER ? "✓ set" : "✗ missing",
+          pass: process.env.SMTP_PASS ? "✓ set" : "✗ missing",
+        },
+      });
     }
   });
 
