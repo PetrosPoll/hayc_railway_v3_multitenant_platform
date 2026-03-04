@@ -38,7 +38,7 @@ Preferred communication style: Simple, everyday language.
 - **Subscription Management**: Multi-tier subscription system with monthly/yearly billing
 - **Website Progress Tracking**: Stage-based progress system with status updates and notifications
 - **Website Change Request System**: Complete lifecycle management with status tracking (pending/in-progress/completed/confirmed), admin tools, and customer feedback collection
-- **Email System**: Automated email notifications using Nodemailer with HTML templates
+- **Email System**: Automated email notifications using AWS SES with HTML templates
 - **File Upload**: Cloudinary integration for asset management
 - **Admin Dashboard**: Comprehensive admin interface for user and subscription management
 - **Multi-language Support**: Dynamic language switching with persistent preferences

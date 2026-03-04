@@ -310,8 +310,7 @@ DATABASE_URL → Neon PostgreSQL
 - **Drizzle ORM** - Database ORM
 - **Passport.js** - Authentication
 - **Stripe** - Payments
-- **AWS SES** - Email sending
-- **Nodemailer** - Email transport
+- **AWS SES** - Email sending (system emails and campaigns)
 
 ### **Database:**
 - **PostgreSQL** - Relational database

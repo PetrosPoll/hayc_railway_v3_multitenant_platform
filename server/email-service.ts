@@ -141,8 +141,7 @@ export class EmailService {
   }
 
   /**
-   * Send system email (nodemailer-compatible interface)
-   * Can be used as a drop-in replacement for transporter.sendMail
+   * Send system email via AWS SES
    */
   static async sendSystemEmail(options: {
     from: string;
