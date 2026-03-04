@@ -57,7 +57,6 @@ import { AdminWebsiteProgress as AdminWebsiteProgressComponent } from "@/compone
 import { TipsManagement } from "@/components/ui/tips-management";
 import { AdminWebsiteChanges } from "@/components/ui/admin-website-changes";
 import { CancelledDueToPaymentFailureList } from "@/components/admin-cancelled-payment-failures";
-import { UserMigrationManager } from "@/components/ui/user-migration-manager";
 import { AdminWebsiteInvoices } from "@/components/ui/admin-website-invoices";
 import { Switch } from "@/components/ui/switch";
 import { RoleManagement } from "@/components/ui/role-management";
@@ -1093,9 +1092,6 @@ export default function AdminDashboard() {
                     <TabsTrigger value="roles" className="w-full justify-start rounded-md px-3 py-2.5">
                       Roles
                     </TabsTrigger>
-                    <TabsTrigger value="user-migration" className="w-full justify-start rounded-md px-3 py-2.5">
-                      User Migration
-                    </TabsTrigger>
                     <TabsTrigger value="system-settings" className="w-full justify-start rounded-md px-3 py-2.5">
                       System Settings
                     </TabsTrigger>
@@ -2025,29 +2021,6 @@ export default function AdminDashboard() {
             <TabsContent value="roles" className="mt-0">
               <section>
                 <RoleManagement />
-              </section>
-            </TabsContent>
-            <TabsContent value="user-migration" className="mt-0">
-              <section>
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-yellow-800">
-                        Temporary Feature - Scheduled for Removal
-                      </h3>
-                      <div className="mt-2 text-sm text-yellow-700">
-                        <p>This User Migration & Password Reset section is scheduled to be removed on <strong>15/12/2025</strong>.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <h2 className="text-xl font-semibold mb-4">User Migration & Password Reset</h2>
-                <UserMigrationManager />
               </section>
             </TabsContent>
             {/* System Settings */}
