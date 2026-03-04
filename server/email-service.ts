@@ -139,4 +139,64 @@ export class EmailService {
 
     return { isValid: true };
   }
+
+  /**
+   * Send system email (nodemailer-compatible interface)
+   * Can be used as a drop-in replacement for transporter.sendMail
+   */
+  static async sendSystemEmail(options: {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+    replyTo?: string;
+  }): Promise<{ messageId?: string }> {
+    const result = await this.sendEmail({
+      to: options.to,
+      subject: options.subject,
+      message: options.subject, // Plain text fallback
+      fromEmail: options.from.includes('<') 
+        ? options.from.match(/<(.+)>/)?.[1] || options.from 
+        : options.from,
+      fromName: options.from.includes('<')
+        ? options.from.match(/^"?([^"<]+)"?\s*</)?.[1]?.trim()
+        : undefined,
+      html: options.html,
+      replyToAddresses: options.replyTo ? [options.replyTo] : undefined,
+    });
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to send email");
+    }
+
+    return { messageId: result.messageId };
+  }
+
+  /**
+   * Test SES connection
+   */
+  static async testConnection(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const validation = this.validateConfiguration();
+      if (!validation.isValid) {
+        return { success: false, error: validation.error };
+      }
+      
+      // SES doesn't have a "verify" like SMTP, but we can check credentials
+      // by attempting to get send quota (doesn't send anything)
+      const { SESClient, GetSendQuotaCommand } = await import("@aws-sdk/client-ses");
+      const client = new SESClient({
+        region: normalizeAwsRegion(process.env.AWS_REGION || "us-east-1"),
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+        },
+      });
+      
+      await client.send(new GetSendQuotaCommand({}));
+      return { success: true };
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    }
+  }
 }
