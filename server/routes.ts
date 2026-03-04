@@ -16304,14 +16304,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           resetToken: resetToken
         }, userLanguage);
 
-        await transporter.sendMail({
+        // Send async to avoid 503 first-byte timeout (external inboxes can be slow/greylisted)
+        transporter.sendMail({
           from: process.env.SMTP_FROM,
           to: user.email,
           subject: userLanguage === "gr" ? "🔑 Επαναφορά Κωδικού Πρόσβασης" : "🔑 Reset Your Password",
           html: resetEmailHtml,
+        }).then(() => {
+          console.log(`Password reset email sent to ${user.email}`);
+        }).catch((emailErr) => {
+          console.error(`Password reset email failed for ${user.email}:`, emailErr);
         });
-
-        console.log(`Password reset email sent to ${user.email}`);
       } else {
         console.log(`Password reset requested for non-existent email: ${normalizedEmail}`);
       }
