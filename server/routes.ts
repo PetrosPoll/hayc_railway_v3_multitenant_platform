@@ -193,7 +193,7 @@ const smtpPort = process.env.SMTP_PORT;
 
 console.log("[SMTP] Transporter created:", {
   host: smtpHost || "(not set)",
-  port: 587,
+  port: parseInt(smtpPort || "587"),
   userSet: !!process.env.SMTP_USER,
   passSet: !!process.env.SMTP_PASS,
   fromSet: !!process.env.SMTP_FROM,
