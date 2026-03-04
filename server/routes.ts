@@ -187,10 +187,21 @@ function hasPermission(userRole: string, permission: keyof typeof RolePermission
 }
 
 // Create email transporter
+
 const smtpHost = process.env.SMTP_HOST?.replace(/^https?:\/\//, "").replace(/\/$/, "").trim();
+const smtpPort = process.env.SMTP_PORT;
+
+console.log("[SMTP] Transporter created:", {
+  host: smtpHost || "(not set)",
+  port: 587,
+  userSet: !!process.env.SMTP_USER,
+  passSet: !!process.env.SMTP_PASS,
+  fromSet: !!process.env.SMTP_FROM,
+});
+
 const transporter = nodemailer.createTransport({
   host: smtpHost,
-  port: 587,// changed from 587
+  port: parseInt(smtpPort || "587"),// changed from 587
   secure: false,// changed from true — STARTTLS handles encryption
   auth: {
     user: process.env.SMTP_USER,
@@ -202,13 +213,7 @@ const transporter = nodemailer.createTransport({
   connectionTimeout: 15000,
   greetingTimeout: 10000,
 });
-console.log("[SMTP] Transporter created:", {
-  host: smtpHost || "(not set)",
-  port: 587,
-  userSet: !!process.env.SMTP_USER,
-  passSet: !!process.env.SMTP_PASS,
-  fromSet: !!process.env.SMTP_FROM,
-});
+
 
 
 // Use server-only functions to get subscription plans with price IDs
