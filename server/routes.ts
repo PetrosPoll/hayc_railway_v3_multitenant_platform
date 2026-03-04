@@ -4214,13 +4214,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return process.env.VITE_APP_URL || 'https://hayc.gr';
   };
 
-  // Loading email template (el -> gr: templates use gr folder for Greek)
+  // Loading email template - normalize locale codes to template folders (en, gr)
   const loadTemplate = (
     fileName: string,
     replacements: any,
     language: string,
   ): string => {
-    const lang = (language === "el" ? "gr" : language) || "en";
+    const l = (language || "en").toLowerCase();
+    const lang = l === "el" ? "gr" : l.startsWith("en") ? "en" : l === "gr" ? "gr" : "en";
     try {
       const filePath = path.join(
         __dirname,
