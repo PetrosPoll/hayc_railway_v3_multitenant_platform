@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/accordion"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/hooks/use-toast"
@@ -1291,7 +1291,7 @@ export function AdminWebsiteProgress() {
                               disabled={updateSiteIdMutation.isPending}
                               data-testid={`button-cancel-siteid-${website.id}`}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <X className="h-4 w-4" />
                             </Button>
                           </div>
                         ) : (
@@ -1311,6 +1311,50 @@ export function AdminWebsiteProgress() {
                             >
                               <Pencil className="h-3 w-3" />
                             </Button>
+                            {website.siteId && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                    disabled={updateSiteIdMutation.isPending}
+                                    data-testid={`button-delete-siteid-${website.id}`}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Delete Site ID</DialogTitle>
+                                    <DialogDescription>
+                                      Are you sure you want to delete the Site ID "{website.siteId}" for {website.projectName || website.domain}? This will remove the S3 config path association.
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter>
+                                    <Button variant="ghost" onClick={() => document.querySelector('dialog')?.close()}>
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => {
+                                        updateSiteIdMutation.mutate({ 
+                                          websiteId: website.id, 
+                                          siteId: "" 
+                                        });
+                                        document.querySelector('dialog')?.close();
+                                      }}
+                                      disabled={updateSiteIdMutation.isPending}
+                                    >
+                                      {updateSiteIdMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      ) : null}
+                                      Delete
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            )}
                           </div>
                         )}
                       </div>
