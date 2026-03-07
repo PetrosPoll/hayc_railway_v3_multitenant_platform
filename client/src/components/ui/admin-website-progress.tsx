@@ -1460,17 +1460,18 @@ export function AdminWebsiteProgress() {
                       </div>
                     </div>
                     <div className="flex items-center justify-between mt-3">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">Custom Domain</span>
+                      <div className={editingCustomDomainId === website.id ? "grid grid-cols-[auto_1fr] items-start gap-x-2 gap-y-1" : "flex items-center gap-2"}>
+                        <span className="text-sm font-medium pt-1.5">Custom Domain</span>
                         {editingCustomDomainId === website.id ? (
-                          <div className="flex items-center gap-2">
-                            <Input
-                              value={editedCustomDomainValue}
-                              onChange={(e) => setEditedCustomDomainValue(e.target.value)}
-                              className="h-8 w-48"
-                              placeholder="e.g. example.com"
-                            />
-                            <Button
+                          <div className="flex flex-col gap-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={editedCustomDomainValue}
+                                onChange={(e) => setEditedCustomDomainValue(e.target.value)}
+                                className="h-8 w-48"
+                                placeholder="domain_name.com"
+                              />
+                              <Button
                               size="sm"
                               variant="ghost"
                               onClick={() => {
@@ -1498,6 +1499,8 @@ export function AdminWebsiteProgress() {
                             >
                               <X className="h-4 w-4" />
                             </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Hostname only, e.g. domain_name.com — no https:// or trailing slash</p>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -1562,13 +1565,13 @@ export function AdminWebsiteProgress() {
                         )}
                       </div>
                     </div>
-                    {website.siteId && (
-                      <p className="text-xs text-muted-foreground mt-2">
-                        S3 config path: sites/{website.siteId}/config/config.json
-                      </p>
-                    )}
                     {website.siteId && userPermissions?.canManageWebsites && (
                       <ContactFormConfigSection website={website} />
+                    )}
+                    {website.siteId && (
+                      <p className="text-xs text-muted-foreground mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
+                        S3 config path: sites/{website.siteId}/config/config.json
+                      </p>
                     )}
                   </div>
                 )}
