@@ -12398,6 +12398,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/admin/websites/:id/contact-config", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const websiteId = parseInt(req.params.id);
+      const { apiUrl } = req.body;
+      if (typeof apiUrl !== "string" || !apiUrl.trim()) {
+        return res.status(400).json({ error: "apiUrl is required" });
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(apiUrl.trim());
+      } catch {
+        return res.status(400).json({ error: "apiUrl must be a valid URL" });
+      }
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        return res.status(400).json({ error: "apiUrl must be http or https" });
+      }
+      const [website] = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+      if (!website.siteId || website.siteId.trim() === "") {
+        return res.status(400).json({ error: "Site ID not set" });
+      }
+      let existingConfig: Record<string, unknown> = {};
+      try {
+        existingConfig = await getConfig(website.siteId);
+      } catch {
+        // config does not exist yet, use empty object
+      }
+      const updatedConfig = {
+        ...existingConfig,
+        siteConfig: {
+          ...(typeof existingConfig.siteConfig === "object" && existingConfig.siteConfig !== null
+            ? (existingConfig.siteConfig as Record<string, unknown>)
+            : {}),
+          siteId: website.siteId,
+          apiUrl: apiUrl.trim(),
+        },
+      };
+      await putConfig(website.siteId, updatedConfig, { skipHistory: true });
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error("Error saving contact config:", err);
+      return res.status(500).json({ error: "Failed to save contact config" });
+    }
+  });
+
   // Admin endpoint to grant bonus emails to a website
   app.post("/api/admin/websites/:id/bonus-emails", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -18452,6 +18510,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Internal server error" });
     }
   });
+
+  const PUBLIC_CONTACT_DEV_ORIGINS = [
+    "http://localhost:5000",
+    "http://localhost:5173",
+    "http://localhost:4173",
+  ];
+
+  async function getAllowedOriginForPublicContact(origin: string | undefined): Promise<string | null> {
+    if (!origin || typeof origin !== "string" || !origin.trim()) return null;
+    const o = origin.trim();
+    if (PUBLIC_CONTACT_DEV_ORIGINS.includes(o)) return o;
+    let host: string;
+    try {
+      host = new URL(o).hostname;
+    } catch {
+      return null;
+    }
+    if (!host) return null;
+    const [row] = await db
+      .select({ id: websiteProgress.id })
+      .from(websiteProgress)
+      .where(eq(websiteProgress.domain, host))
+      .limit(1);
+    return row ? o : null;
+  }
+
+  const publicContactCorsMiddleware: express.RequestHandler = (req, res, next) => {
+    const origin = req.get("Origin");
+    getAllowedOriginForPublicContact(origin ?? undefined)
+      .then((allowed) => {
+        if (allowed) {
+          res.setHeader("Access-Control-Allow-Origin", allowed);
+          res.setHeader("Access-Control-Allow-Methods", "POST");
+          res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+        }
+        if (req.method === "OPTIONS") {
+          return res.sendStatus(204);
+        }
+        next();
+      })
+      .catch((err) => {
+        console.error("[public/contact] CORS origin check error:", err);
+        next();
+      });
+  };
+
+  // Rate limiter for public contact form - 5 per 15 minutes per IP
+  const publicContactLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 5,
+    message: "Too many contact form submissions from this IP, please try again later",
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.options("/public/contact", publicContactCorsMiddleware);
+  app.post("/public/contact", publicContactCorsMiddleware, publicContactLimiter, async (req, res) => {
+    try {
+      const body = req.body as {
+        siteId?: string;
+        name?: string;
+        email?: string;
+        message?: string;
+        _hp?: string;
+      };
+
+      if (body._hp !== undefined && body._hp !== null && String(body._hp).trim() !== "") {
+        return res.status(200).json({ success: true });
+      }
+
+      const contactSchema = z.object({
+        siteId: z.string().min(1, "siteId is required"),
+        name: z.string().min(1, "name is required").max(100, "name must be at most 100 characters"),
+        email: z.string().email("email must be a valid email address"),
+        message: z.string().min(1, "message is required").max(2000, "message must be at most 2000 characters"),
+      });
+      const parseResult = contactSchema.safeParse({
+        siteId: body.siteId,
+        name: body.name,
+        email: body.email,
+        message: body.message,
+      });
+      if (!parseResult.success) {
+        const first = parseResult.error.flatten().fieldErrors;
+        const msg = Object.values(first).flat().find(Boolean) ?? "Validation failed";
+        return res.status(400).json({ error: String(msg) });
+      }
+      const { siteId, name, email, message } = parseResult.data;
+
+      const [website] = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .limit(1);
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      const [onboarding] = await db
+        .select({ accountEmail: onboardingFormResponses.accountEmail })
+        .from(onboardingFormResponses)
+        .where(eq(onboardingFormResponses.websiteProgressId, website.id))
+        .orderBy(desc(onboardingFormResponses.createdAt))
+        .limit(1);
+      const accountEmail = onboarding?.accountEmail?.trim();
+      if (!accountEmail) {
+        return res.status(500).json({ error: "Contact configuration missing" });
+      }
+
+      const fromAddress = process.env.EMAIL_FROM ?? "noreply@hayc.gr";
+      const siteLabel = website.projectName ?? website.domain;
+
+      // Email 1 — Notification to business owner
+      const ownerSubject = `New contact form message from ${name} — ${siteLabel}`;
+      const ownerHtml = loadTemplate(
+        "public-contact-owner-notification.html",
+        {
+          name: escapeHtml(name),
+          email: escapeHtml(email),
+          message: escapeHtml(message),
+          siteLabel: escapeHtml(siteLabel),
+        },
+        "en",
+      );
+
+      // Email 2 — Confirmation to visitor
+      const visitorSubject = `We received your message — ${siteLabel}`;
+      const visitorHtml = loadTemplate(
+        "public-contact-visitor-confirmation.html",
+        {
+          name: escapeHtml(name),
+          message: escapeHtml(message),
+          siteLabel: escapeHtml(siteLabel),
+        },
+        "en",
+      );
+
+      const [ownerResult, visitorResult] = await Promise.all([
+        EmailService.sendEmail({
+          to: accountEmail,
+          subject: ownerSubject,
+          message: ownerSubject,
+          fromEmail: fromAddress,
+          fromName: "Hayc",
+          html: ownerHtml,
+          replyToAddresses: [email],
+        }),
+        EmailService.sendEmail({
+          to: email,
+          subject: visitorSubject,
+          message: visitorSubject,
+          fromEmail: fromAddress,
+          fromName: "Hayc",
+          html: visitorHtml,
+          replyToAddresses: [accountEmail],
+        }),
+      ]);
+
+      if (!ownerResult.success) {
+        console.error("[public/contact] owner notification failed:", ownerResult.error);
+      }
+      if (!visitorResult.success) {
+        console.error("[public/contact] visitor confirmation failed:", visitorResult.error);
+      }
+
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error("[public/contact] error:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  function escapeHtml(s: string): string {
+    return s
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
 
   // Handle CORS preflight for newsletter unsubscribe
   app.options("/api/newsletter/unsubscribe", (req, res) => {

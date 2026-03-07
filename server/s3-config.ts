@@ -35,7 +35,7 @@ export async function getConfig(siteId: string): Promise<Record<string, unknown>
   }
 }
 
-export async function putConfig(siteId: string, config: Record<string, unknown>): Promise<void> {
+export async function putConfig(siteId: string, config: unknown, options?: { skipHistory?: boolean }): Promise<void> {
   const bucket = process.env.S3_BUCKET;
   const configKey = `sites/${siteId}/config/config.json`;
   const historyPrefix = `sites/${siteId}/config/history/`;
@@ -54,16 +54,18 @@ export async function putConfig(siteId: string, config: Record<string, unknown>)
     throw new Error(`Failed to save config for site ${siteId}: ${error.message}`);
   }
 
-  try {
-    const timestamp = Date.now();
-    await s3Client.send(new PutObjectCommand({
-      Bucket: bucket,
-      Key: `${historyPrefix}${timestamp}.json`,
-      Body: configBody,
-      ContentType: "application/json",
-    }));
-  } catch (error: any) {
-    console.error(`Failed to snapshot config for site ${siteId}:`, error.message);
+  if (!options?.skipHistory) {
+    try {
+      const timestamp = Date.now();
+      await s3Client.send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: `${historyPrefix}${timestamp}.json`,
+        Body: configBody,
+        ContentType: "application/json",
+      }));
+    } catch (error: any) {
+      console.error(`Failed to snapshot config for site ${siteId}:`, error.message);
+    }
   }
 }
 

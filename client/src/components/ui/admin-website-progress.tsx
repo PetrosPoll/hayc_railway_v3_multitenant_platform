@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/hooks/use-toast"
 import { Input } from "@/components/ui/input"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
 import {
   Dialog,
@@ -521,6 +521,76 @@ function BonusEmailsSection({ websiteId, bonusEmails, bonusEmailsExpiry }: {
           No active bonus emails. Use "Grant Bonus" to add extra quota.
         </p>
       )}
+    </div>
+  );
+}
+
+function ContactFormConfigSection({ website }: { website: Website }) {
+  const queryClient = useQueryClient();
+  const [apiUrl, setApiUrl] = useState("https://api.hayc.gr");
+  const { data } = useQuery({
+    queryKey: ["/api/websites", website.id, "site-config"],
+    queryFn: async () => {
+      const res = await fetch(`/api/websites/${website.id}/site-config`);
+      if (!res.ok) return null;
+      return res.json();
+    },
+    enabled: !!website.siteId,
+  });
+  useEffect(() => {
+    if (data && typeof (data as Record<string, unknown>)?.siteConfig === "object" && data !== null) {
+      const siteConfig = (data as Record<string, unknown>).siteConfig as Record<string, unknown>;
+      if (typeof siteConfig?.apiUrl === "string" && siteConfig.apiUrl) {
+        setApiUrl(siteConfig.apiUrl);
+      }
+    }
+  }, [data]);
+
+  const saveContactConfigMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/admin/websites/${website.id}/contact-config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiUrl: apiUrl.trim() }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to save");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/websites", website.id, "site-config"] });
+      toast({ description: "Saved to S3" });
+    },
+    onError: (err: Error) => {
+      toast({ description: err.message || "Failed to save", variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
+      <p className="text-xs text-muted-foreground mb-2">Contact Form Settings</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          type="url"
+          value={apiUrl}
+          onChange={(e) => setApiUrl(e.target.value)}
+          placeholder="https://api.hayc.gr"
+          className="flex-1 min-w-[200px] h-8"
+        />
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => saveContactConfigMutation.mutate()}
+          disabled={saveContactConfigMutation.isPending}
+        >
+          {saveContactConfigMutation.isPending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : null}
+          Save to S3
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1363,6 +1433,9 @@ export function AdminWebsiteProgress() {
                       <p className="text-xs text-muted-foreground mt-2">
                         S3 config path: sites/{website.siteId}/config/config.json
                       </p>
+                    )}
+                    {website.siteId && userPermissions?.canManageWebsites && (
+                      <ContactFormConfigSection website={website} />
                     )}
                   </div>
                 )}
