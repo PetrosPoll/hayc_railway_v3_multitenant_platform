@@ -12174,6 +12174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bonusEmailsExpiry: websiteProgress.bonusEmailsExpiry,
           bookingEnabled: websiteProgress.bookingEnabled,
           siteId: websiteProgress.siteId,
+          customDomain: websiteProgress.customDomain,
         })
         .from(websiteProgress)
         .leftJoin(users, eq(websiteProgress.userId, users.id));
@@ -12304,6 +12305,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           media: websiteProgress.media,
           bookingEnabled: websiteProgress.bookingEnabled,
           siteId: websiteProgress.siteId,
+          customDomain: websiteProgress.customDomain,
           userEmail: users.email,
         })
         .from(websiteProgress)
@@ -12350,9 +12352,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, siteId } = req.body;
+      const { domain, bookingEnabled, siteId, customDomain } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; siteId: string | null; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; siteId: string | null; customDomain: string | null; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -12377,8 +12379,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.siteId = siteId.trim() || null;
       }
 
+      if (customDomain !== undefined) {
+        if (typeof customDomain !== 'string') {
+          return res.status(400).json({ error: "customDomain must be a string" });
+        }
+        updates.customDomain = customDomain.trim() || null;
+      }
+
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, siteId" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, siteId, customDomain" });
       }
 
       const [updatedWebsite] = await db
@@ -18521,6 +18530,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!origin || typeof origin !== "string" || !origin.trim()) return null;
     const o = origin.trim();
     if (PUBLIC_CONTACT_DEV_ORIGINS.includes(o)) return o;
+    if (/^https:\/\/[a-zA-Z0-9-]+\.hayc\.gr$/.test(o)) return o;
     let host: string;
     try {
       host = new URL(o).hostname;
@@ -18531,7 +18541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const [row] = await db
       .select({ id: websiteProgress.id })
       .from(websiteProgress)
-      .where(eq(websiteProgress.domain, host))
+      .where(eq(websiteProgress.customDomain, host))
       .limit(1);
     return row ? o : null;
   }

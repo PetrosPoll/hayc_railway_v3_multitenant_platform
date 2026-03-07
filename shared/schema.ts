@@ -141,6 +141,7 @@ export const websiteProgress = pgTable("website_progress", {
   bonusEmailsExpiry: timestamp("bonus_emails_expiry"),
   bookingEnabled: boolean("booking_enabled").default(false).notNull(),
   siteId: text("site_id").unique(),
+  customDomain: text("custom_domain"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

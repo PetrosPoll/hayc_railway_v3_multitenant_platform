@@ -55,6 +55,7 @@ type Website = {
   bonusEmailsExpiry?: string | null
   bookingEnabled?: boolean
   siteId?: string | null
+  customDomain?: string | null
 }
 
 type User = {
@@ -609,6 +610,8 @@ export function AdminWebsiteProgress() {
   const [editedDomainValue, setEditedDomainValue] = useState("")
   const [editingSiteId, setEditingSiteId] = useState<number | null>(null)
   const [editedSiteIdValue, setEditedSiteIdValue] = useState("")
+  const [editingCustomDomainId, setEditingCustomDomainId] = useState<number | null>(null)
+  const [editedCustomDomainValue, setEditedCustomDomainValue] = useState("")
   const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>(null)
   const [filterWaitingOnly, setFilterWaitingOnly] = useState(false)
   const [waitingInfoDialog, setWaitingInfoDialog] = useState<{
@@ -816,6 +819,33 @@ export function AdminWebsiteProgress() {
       toast({ 
         description: error.message || "Failed to update site ID", 
         variant: "destructive" 
+      });
+    }
+  });
+
+  const updateCustomDomainMutation = useMutation({
+    mutationFn: async ({ websiteId, customDomain }: { websiteId: number; customDomain: string }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customDomain })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update custom domain');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Custom domain updated successfully" });
+      setEditingCustomDomainId(null);
+      setEditedCustomDomainValue("");
+    },
+    onError: (error: Error) => {
+      toast({
+        description: error.message || "Failed to update custom domain",
+        variant: "destructive"
       });
     }
   });
@@ -1417,6 +1447,109 @@ export function AdminWebsiteProgress() {
                                       disabled={updateSiteIdMutation.isPending}
                                     >
                                       {updateSiteIdMutation.isPending ? (
+                                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      ) : null}
+                                      Delete
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Custom Domain</span>
+                        {editingCustomDomainId === website.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              value={editedCustomDomainValue}
+                              onChange={(e) => setEditedCustomDomainValue(e.target.value)}
+                              className="h-8 w-48"
+                              placeholder="e.g. example.com"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                updateCustomDomainMutation.mutate({
+                                  websiteId: website.id,
+                                  customDomain: editedCustomDomainValue.trim()
+                                });
+                              }}
+                              disabled={updateCustomDomainMutation.isPending || !editedCustomDomainValue.trim()}
+                            >
+                              {updateCustomDomainMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingCustomDomainId(null);
+                                setEditedCustomDomainValue("");
+                              }}
+                              disabled={updateCustomDomainMutation.isPending}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className={website.customDomain ? "text-sm" : "text-sm text-muted-foreground"}>
+                              {website.customDomain || "Not set"}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                setEditingCustomDomainId(website.id);
+                                setEditedCustomDomainValue(website.customDomain || "");
+                              }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            {website.customDomain && (
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                    disabled={updateCustomDomainMutation.isPending}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Delete Custom Domain</DialogTitle>
+                                    <DialogDescription>
+                                      Are you sure you want to remove the custom domain "{website.customDomain}" for {website.projectName || website.domain}?
+                                    </DialogDescription>
+                                  </DialogHeader>
+                                  <DialogFooter>
+                                    <Button variant="ghost" onClick={() => document.querySelector('dialog')?.close()}>
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      variant="destructive"
+                                      onClick={() => {
+                                        updateCustomDomainMutation.mutate({
+                                          websiteId: website.id,
+                                          customDomain: ""
+                                        });
+                                        document.querySelector('dialog')?.close();
+                                      }}
+                                      disabled={updateCustomDomainMutation.isPending}
+                                    >
+                                      {updateCustomDomainMutation.isPending ? (
                                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
                                       ) : null}
                                       Delete
