@@ -66,6 +66,8 @@ import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
 import { getConfig, putConfig, getConfigHistory, getConfigSnapshot, restoreConfig } from "./s3-config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+let publicContactDailyCount = { count: 0, date: new Date().toDateString() };
+
 /**
  * Helper function to create a DRAFT invoice in the database
  * @param params - Invoice creation parameters
@@ -18578,10 +18580,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
   };
 
-  // Rate limiter for public contact form - 5 per 15 minutes per IP
+  // Rate limiter for public contact form - 2 per 30 minutes per IP
   const publicContactLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 5,
+    windowMs: 30 * 60 * 1000,
+    max: 2,
     message: "Too many contact form submissions from this IP, please try again later",
     standardHeaders: true,
     legacyHeaders: false,
@@ -18601,6 +18603,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (body._hp !== undefined && body._hp !== null && String(body._hp).trim() !== "") {
         return res.status(200).json({ success: true });
       }
+
+      const today = new Date().toDateString();
+      if (publicContactDailyCount.date !== today) {
+        publicContactDailyCount = { count: 0, date: today };
+      }
+      if (publicContactDailyCount.count >= 200) {
+        return res.status(429).json({ error: "Service temporarily unavailable. Please try again tomorrow." });
+      }
+      publicContactDailyCount.count++;
 
       const contactSchema = z.object({
         siteId: z.string().min(1, "siteId is required"),
