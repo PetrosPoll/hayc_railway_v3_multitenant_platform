@@ -33,7 +33,11 @@
   100% { background-color: transparent; }
 }
 
-.highlight-flash {
-  background-color: #fef08a !important;
-  transition: background-color 1.5s ease;
+/* Left border accent — selected row pattern (code editors / admin UIs) */
+.hayc-field-highlighted {
+  border-left: 3px solid hsl(var(--primary));
+  padding-left: 8px;
+  background-color: hsl(var(--primary) / 0.04);
+  border-radius: 0 6px 6px 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }

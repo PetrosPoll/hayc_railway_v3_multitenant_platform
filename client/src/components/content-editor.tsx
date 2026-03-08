@@ -14,7 +14,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, Trash2, X, Monitor, Smartphone, History, RotateCcw, Loader2 } from "lucide-react";
+import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, X, Monitor, Smartphone, History, RotateCcw, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -65,6 +65,9 @@ interface ConfigFieldProps {
   fieldKey: string;
   value: unknown;
   onChange: (path: string, value: unknown) => void;
+  focusedPath?: string | null;
+  highlightedPath?: string | null;
+  readOnlyFields?: string[];
 }
 
 function AutoResizeTextarea({ 
@@ -94,11 +97,13 @@ function AutoResizeTextarea({
   );
 }
 
-function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
+function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlightedPath, readOnlyFields }: ConfigFieldProps) {
+  const highlightClass = highlightedPath === path ? "hayc-field-highlighted" : "";
+  const isReadOnly = readOnlyFields?.includes(fieldKey) ?? false;
   if (isLocaleString(value)) {
     const localeVal = value as { el: string; en: string };
     return (
-      <div data-field-path={path}>
+      <div data-field-path={path} className={highlightClass}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
         <div className="flex gap-2 items-start mb-1">
           <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EL</span>
@@ -123,9 +128,13 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
   if (typeof value === "string") {
     const showImage = /image|photo|logo|background/i.test(fieldKey) && value !== "";
     return (
-      <div data-field-path={path}>
+      <div data-field-path={path} className={highlightClass}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
-        <AutoResizeTextarea data-path={path} value={value} onChange={(e) => onChange(path, e.target.value)} />
+        {isReadOnly ? (
+          <Input data-path={path} value={value} readOnly className="bg-muted/50" />
+        ) : (
+          <AutoResizeTextarea data-path={path} value={value} onChange={(e) => onChange(path, e.target.value)} />
+        )}
         {showImage && (
           <img src={value} className="mt-1 max-h-20 rounded object-cover" alt="" />
         )}
@@ -135,13 +144,15 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
 
   if (typeof value === "number") {
     return (
-      <div data-field-path={path}>
+      <div data-field-path={path} className={highlightClass}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
         <Input
           data-path={path}
           type="number"
           value={value}
           onChange={(e) => onChange(path, Number(e.target.value))}
+          readOnly={isReadOnly}
+          className={isReadOnly ? "bg-muted/50" : undefined}
         />
       </div>
     );
@@ -149,7 +160,7 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
 
   if (typeof value === "boolean") {
     return (
-      <div data-field-path={path} data-path={path} className="flex items-center justify-between">
+      <div data-field-path={path} data-path={path} className={`flex items-center justify-between ${highlightClass}`.trim()}>
         <label className="text-sm font-medium">{formatLabel(fieldKey)}</label>
         <Switch checked={value} onCheckedChange={(checked) => onChange(path, checked)} />
       </div>
@@ -158,7 +169,7 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
 
   if (Array.isArray(value)) {
     return (
-      <div data-field-path={path}>
+      <div data-field-path={path} className={highlightClass}>
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium">{formatLabel(fieldKey)}</span>
           <Badge variant="secondary">{value.length} items</Badge>
@@ -171,20 +182,11 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
             item={item}
             array={value}
             onChange={onChange}
+            forceOpen={focusedPath?.startsWith(`${path}.${index}.`) ?? false}
+            focusedPath={focusedPath}
+            highlightedPath={highlightedPath}
           />
         ))}
-        <Button
-          variant="outline"
-          size="sm"
-          className="w-full mt-2"
-          onClick={() => {
-            const template = value.length > 0 ? value[0] : {};
-            const newItem = createEmptyFromTemplate(template);
-            onChange(path, [...value, newItem]);
-          }}
-        >
-          Add Item
-        </Button>
       </div>
     );
   }
@@ -196,7 +198,7 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
     if (filteredEntries.length === 0) return null;
     
     return (
-      <div data-field-path={path} className="pl-3 border-l-2 ml-1 mt-1">
+      <div data-field-path={path} className={`pl-3 border-l-2 ml-1 mt-1 ${highlightClass}`.trim()}>
         <label className="text-sm font-medium mb-2 block">{formatLabel(fieldKey)}</label>
         {filteredEntries.map(([key, val]) => (
           <div key={key} className="mb-3">
@@ -205,6 +207,8 @@ function ConfigField({ path, fieldKey, value, onChange }: ConfigFieldProps) {
               fieldKey={key}
               value={val}
               onChange={onChange}
+              focusedPath={focusedPath}
+              highlightedPath={highlightedPath}
             />
           </div>
         ))}
@@ -221,6 +225,9 @@ interface ArrayItemCollapsibleProps {
   item: unknown;
   array: unknown[];
   onChange: (path: string, value: unknown) => void;
+  forceOpen?: boolean;
+  focusedPath?: string | null;
+  highlightedPath?: string | null;
 }
 
 function ArrayItemCollapsible({
@@ -229,13 +236,15 @@ function ArrayItemCollapsible({
   item,
   array,
   onChange,
+  forceOpen,
+  focusedPath,
+  highlightedPath,
 }: ArrayItemCollapsibleProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const handleRemove = () => {
-    const newArray = array.filter((_, i) => i !== index);
-    onChange(path, newArray);
-  };
+  useEffect(() => {
+    if (forceOpen) setIsOpen(true);
+  }, [forceOpen]);
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -243,21 +252,9 @@ function ArrayItemCollapsible({
         <CollapsibleTrigger asChild>
           <div className="flex items-center justify-between w-full px-4 py-2 cursor-pointer">
             <span className="text-sm">Item {index + 1}</span>
-            <div className="flex gap-2">
-              <ChevronDown
-                className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-              />
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemove();
-                }}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
+            <ChevronDown
+              className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            />
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -270,6 +267,9 @@ function ArrayItemCollapsible({
                   fieldKey={key}
                   value={val}
                   onChange={onChange}
+                  focusedPath={focusedPath}
+                  highlightedPath={highlightedPath}
+                  readOnlyFields={["path"]}
                 />
               ))
             ) : (
@@ -278,6 +278,8 @@ function ArrayItemCollapsible({
                 fieldKey={`item`}
                 value={item}
                 onChange={onChange}
+                focusedPath={focusedPath}
+                highlightedPath={highlightedPath}
               />
             )}
           </CardContent>
@@ -291,6 +293,9 @@ interface ConfigSectionProps {
   sectionKey: string;
   value: unknown;
   onChange: (path: string, value: unknown) => void;
+  forceOpen?: boolean;
+  focusedPath?: string | null;
+  highlightedPath?: string | null;
 }
 
 const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config"];
@@ -319,8 +324,12 @@ function shouldHideField(key: string, value: unknown): boolean {
   return isEmptyValue(value);
 }
 
-function ConfigSection({ sectionKey, value, onChange }: ConfigSectionProps) {
+function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, highlightedPath }: ConfigSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (forceOpen) setIsOpen(true);
+  }, [forceOpen]);
 
   if (typeof value !== "object" || value === null) {
     return (
@@ -331,6 +340,8 @@ function ConfigSection({ sectionKey, value, onChange }: ConfigSectionProps) {
             fieldKey={sectionKey}
             value={value}
             onChange={onChange}
+            focusedPath={focusedPath}
+            highlightedPath={highlightedPath}
           />
         </CardContent>
       </Card>
@@ -361,6 +372,8 @@ function ConfigSection({ sectionKey, value, onChange }: ConfigSectionProps) {
                   fieldKey={key}
                   value={val}
                   onChange={onChange}
+                  focusedPath={focusedPath}
+                  highlightedPath={highlightedPath}
                 />
               ))}
           </CardContent>
@@ -686,9 +699,22 @@ function VersionHistorySection({ siteId, currentConfig, onRestore }: VersionHist
                   <History className="h-4 w-4" />
                   <span className="text-sm font-semibold">Version History (Latest 10)</span>
                 </div>
-                <ChevronDown
-                  className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
-                />
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      refetch();
+                    }}
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  </Button>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
+                  />
+                </div>
               </div>
             </CardHeader>
           </CollapsibleTrigger>
@@ -760,6 +786,10 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const [localConfig, setLocalConfig] = useState<Record<string, unknown> | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
+  const [focusedSection, setFocusedSection] = useState<string | null>(null);
+  const [focusedPath, setFocusedPath] = useState<string | null>(null);
+  const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
+  const [editMode, setEditMode] = useState(false);
 
   const {
     data: queryData,
@@ -811,18 +841,23 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
       if (event.data?.type !== "HAYC_FIELD_FOCUS") return;
       const path = event.data?.path as string;
       if (!path) return;
-      
-      // Try exact match on input first, then fall back to wrapper div
-      let el = document.querySelector(`[data-path="${path}"]`);
-      if (!el) {
-        el = document.querySelector(`[data-field-path="${path}"]`);
-      }
-      console.log('[HAYC] looking for path:', path, '| element found:', el);
-      if (!el) return;
-      
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("highlight-flash");
-      setTimeout(() => el.classList.remove("highlight-flash"), 1500);
+
+      const sectionKey = path.split('.')[0];
+      setFocusedSection(sectionKey);
+      setFocusedPath(path);
+      setHighlightedPath(path);
+
+      setTimeout(() => {
+        const el = document.querySelector(`[data-path="${path}"]`)
+          ?? document.querySelector(`[data-field-path="${path}"]`)
+          ?? document.querySelector(`[data-path="${path}.el"]`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
+
+      setTimeout(() => {
+        setFocusedSection(null);
+        setFocusedPath(null);
+      }, 100);
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
@@ -906,6 +941,21 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
             )}
 
             <div className={savedAt === null ? "ml-auto flex items-center gap-2" : "flex items-center gap-2"}>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={editMode}
+                  onCheckedChange={(checked) => {
+                    setEditMode(checked);
+                    iframeRef.current?.contentWindow?.postMessage(
+                      { type: "HAYC_EDIT_MODE", payload: { enabled: checked } },
+                      "*"
+                    );
+                  }}
+                />
+                <span className="text-sm font-medium">
+                  Edit mode: {editMode ? "ON" : "OFF"}
+                </span>
+              </div>
               <div className="flex items-center border rounded-md">
                 <Button
                   variant={previewMode === "desktop" ? "secondary" : "ghost"}
@@ -952,7 +1002,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
               />
             </div>
 
-            <div className="w-1/4 h-full overflow-y-auto p-4 min-h-0">
+            <div className="w-1/4 h-full overflow-y-auto p-4 min-h-0" onClick={() => setHighlightedPath(null)}>
               {isLoading && (
                 <>
                   <Skeleton className="h-24 w-full mb-4" />
@@ -982,6 +1032,9 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                     sectionKey={key}
                     value={value}
                     onChange={handleFieldChange}
+                    forceOpen={focusedSection === key}
+                    focusedPath={focusedPath}
+                    highlightedPath={highlightedPath}
                   />
                 ))}
             </div>
