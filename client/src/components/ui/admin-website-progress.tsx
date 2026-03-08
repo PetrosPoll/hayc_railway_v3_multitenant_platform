@@ -55,6 +55,7 @@ type Website = {
   bonusEmailsExpiry?: string | null
   bookingEnabled?: boolean
   siteId?: string | null
+  websiteLanguage?: string | null
   customDomain?: string | null
 }
 
@@ -610,6 +611,8 @@ export function AdminWebsiteProgress() {
   const [editedDomainValue, setEditedDomainValue] = useState("")
   const [editingSiteId, setEditingSiteId] = useState<number | null>(null)
   const [editedSiteIdValue, setEditedSiteIdValue] = useState("")
+  const [editingWebsiteLanguageId, setEditingWebsiteLanguageId] = useState<number | null>(null)
+  const [editedWebsiteLanguageValue, setEditedWebsiteLanguageValue] = useState("")
   const [editingCustomDomainId, setEditingCustomDomainId] = useState<number | null>(null)
   const [editedCustomDomainValue, setEditedCustomDomainValue] = useState("")
   const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>(null)
@@ -819,6 +822,33 @@ export function AdminWebsiteProgress() {
       toast({ 
         description: error.message || "Failed to update site ID", 
         variant: "destructive" 
+      });
+    }
+  });
+
+  const updateWebsiteLanguageMutation = useMutation({
+    mutationFn: async ({ websiteId, websiteLanguage }: { websiteId: number; websiteLanguage: string }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ websiteLanguage })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update website language');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Website language updated successfully" });
+      setEditingWebsiteLanguageId(null);
+      setEditedWebsiteLanguageValue("");
+    },
+    onError: (error: Error) => {
+      toast({
+        description: error.message || "Failed to update website language",
+        variant: "destructive"
       });
     }
   });
@@ -1455,6 +1485,76 @@ export function AdminWebsiteProgress() {
                                 </DialogContent>
                               </Dialog>
                             )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Website Language</span>
+                        {editingWebsiteLanguageId === website.id ? (
+                          <div className="flex items-center gap-2">
+                            <Select
+                              value={editedWebsiteLanguageValue || ""}
+                              onValueChange={(v) => setEditedWebsiteLanguageValue(v)}
+                            >
+                              <SelectTrigger className="h-8 w-48">
+                                <SelectValue placeholder="Select language" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="el">Greek (EL)</SelectItem>
+                                <SelectItem value="en">English (EN)</SelectItem>
+                                <SelectItem value="both">Both (EL + EN)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                if (editedWebsiteLanguageValue) {
+                                  updateWebsiteLanguageMutation.mutate({
+                                    websiteId: website.id,
+                                    websiteLanguage: editedWebsiteLanguageValue
+                                  });
+                                }
+                              }}
+                              disabled={updateWebsiteLanguageMutation.isPending || !editedWebsiteLanguageValue}
+                            >
+                              {updateWebsiteLanguageMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingWebsiteLanguageId(null);
+                                setEditedWebsiteLanguageValue("");
+                              }}
+                              disabled={updateWebsiteLanguageMutation.isPending}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            {console.log("website.websiteLanguage", website.websiteLanguage)}
+                            <span className={website.websiteLanguage ? "text-sm" : "text-sm text-muted-foreground"}>
+                              {website.websiteLanguage || "Not configured"}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                setEditingWebsiteLanguageId(website.id);
+                                setEditedWebsiteLanguageValue(website.websiteLanguage || "");
+                              }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
                           </div>
                         )}
                       </div>

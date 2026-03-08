@@ -68,6 +68,7 @@ interface ConfigFieldProps {
   focusedPath?: string | null;
   highlightedPath?: string | null;
   readOnlyFields?: string[];
+  websiteLanguage?: string;
 }
 
 function AutoResizeTextarea({ 
@@ -97,30 +98,36 @@ function AutoResizeTextarea({
   );
 }
 
-function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlightedPath, readOnlyFields }: ConfigFieldProps) {
+function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlightedPath, readOnlyFields, websiteLanguage }: ConfigFieldProps) {
   const highlightClass = highlightedPath === path ? "hayc-field-highlighted" : "";
   const isReadOnly = readOnlyFields?.includes(fieldKey) ?? false;
   if (isLocaleString(value)) {
     const localeVal = value as { el: string; en: string };
+    const showEl = websiteLanguage !== "en";
+    const showEn = websiteLanguage !== "el";
     return (
       <div data-field-path={path} className={highlightClass}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
-        <div className="flex gap-2 items-start mb-1">
-          <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EL</span>
-          <AutoResizeTextarea
-            data-path={`${path}.el`}
-            value={localeVal.el}
-            onChange={(e) => onChange(path, { ...localeVal, el: e.target.value })}
-          />
-        </div>
-        <div className="flex gap-2 items-start">
-          <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EN</span>
-          <AutoResizeTextarea
-            data-path={`${path}.en`}
-            value={localeVal.en}
-            onChange={(e) => onChange(path, { ...localeVal, en: e.target.value })}
-          />
-        </div>
+        {showEl && (
+          <div className="flex gap-2 items-start mb-1">
+            <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EL</span>
+            <AutoResizeTextarea
+              data-path={`${path}.el`}
+              value={localeVal.el}
+              onChange={(e) => onChange(path, { ...localeVal, el: e.target.value })}
+            />
+          </div>
+        )}
+        {showEn && (
+          <div className="flex gap-2 items-start">
+            <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EN</span>
+            <AutoResizeTextarea
+              data-path={`${path}.en`}
+              value={localeVal.en}
+              onChange={(e) => onChange(path, { ...localeVal, en: e.target.value })}
+            />
+          </div>
+        )}
       </div>
     );
   }
@@ -185,6 +192,7 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
             forceOpen={focusedPath?.startsWith(`${path}.${index}.`) ?? false}
             focusedPath={focusedPath}
             highlightedPath={highlightedPath}
+            websiteLanguage={websiteLanguage}
           />
         ))}
       </div>
@@ -209,6 +217,7 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
               onChange={onChange}
               focusedPath={focusedPath}
               highlightedPath={highlightedPath}
+              websiteLanguage={websiteLanguage}
             />
           </div>
         ))}
@@ -228,6 +237,7 @@ interface ArrayItemCollapsibleProps {
   forceOpen?: boolean;
   focusedPath?: string | null;
   highlightedPath?: string | null;
+  websiteLanguage?: string;
 }
 
 function ArrayItemCollapsible({
@@ -239,6 +249,7 @@ function ArrayItemCollapsible({
   forceOpen,
   focusedPath,
   highlightedPath,
+  websiteLanguage,
 }: ArrayItemCollapsibleProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -270,6 +281,7 @@ function ArrayItemCollapsible({
                   focusedPath={focusedPath}
                   highlightedPath={highlightedPath}
                   readOnlyFields={["path"]}
+                  websiteLanguage={websiteLanguage}
                 />
               ))
             ) : (
@@ -280,6 +292,7 @@ function ArrayItemCollapsible({
                 onChange={onChange}
                 focusedPath={focusedPath}
                 highlightedPath={highlightedPath}
+                websiteLanguage={websiteLanguage}
               />
             )}
           </CardContent>
@@ -296,6 +309,7 @@ interface ConfigSectionProps {
   forceOpen?: boolean;
   focusedPath?: string | null;
   highlightedPath?: string | null;
+  websiteLanguage?: string;
 }
 
 const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config"];
@@ -324,7 +338,7 @@ function shouldHideField(key: string, value: unknown): boolean {
   return isEmptyValue(value);
 }
 
-function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, highlightedPath }: ConfigSectionProps) {
+function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, highlightedPath, websiteLanguage }: ConfigSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -342,6 +356,7 @@ function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, hi
             onChange={onChange}
             focusedPath={focusedPath}
             highlightedPath={highlightedPath}
+            websiteLanguage={websiteLanguage}
           />
         </CardContent>
       </Card>
@@ -374,6 +389,7 @@ function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, hi
                   onChange={onChange}
                   focusedPath={focusedPath}
                   highlightedPath={highlightedPath}
+                  websiteLanguage={websiteLanguage}
                 />
               ))}
           </CardContent>
@@ -791,6 +807,20 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
 
+  const { data: websiteData } = useQuery<{ websiteLanguage?: string }>({
+    queryKey: ["/api/admin/websites", websiteId],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin/websites/${websiteId}`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch website");
+      return res.json();
+    },
+    enabled: !!websiteId,
+  });
+
+  const websiteLanguage = websiteData?.websiteLanguage;
+
   const {
     data: queryData,
     isLoading,
@@ -955,6 +985,11 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                 <span className="text-sm font-medium">
                   Edit mode: {editMode ? "ON" : "OFF"}
                 </span>
+                {websiteLanguage && (
+                  <span className="text-sm text-muted-foreground">
+                    · Language: {websiteLanguage === "el" ? "Greek (EL)" : websiteLanguage === "en" ? "English (EN)" : websiteLanguage === "both" ? "Both (EL + EN)" : websiteLanguage}
+                  </span>
+                )}
               </div>
               <div className="flex items-center border rounded-md">
                 <Button
@@ -999,6 +1034,12 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                     : "w-full"
                 }`}
                 title="Site preview"
+                onLoad={() => {
+                  iframeRef.current?.contentWindow?.postMessage(
+                    { type: "HAYC_EDIT_MODE", payload: { enabled: editMode } },
+                    "*"
+                  );
+                }}
               />
             </div>
 
@@ -1035,6 +1076,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                     forceOpen={focusedSection === key}
                     focusedPath={focusedPath}
                     highlightedPath={highlightedPath}
+                    websiteLanguage={websiteLanguage}
                   />
                 ))}
             </div>

@@ -12174,6 +12174,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bonusEmailsExpiry: websiteProgress.bonusEmailsExpiry,
           bookingEnabled: websiteProgress.bookingEnabled,
           siteId: websiteProgress.siteId,
+          websiteLanguage: websiteProgress.websiteLanguage,
           customDomain: websiteProgress.customDomain,
         })
         .from(websiteProgress)
@@ -12352,9 +12353,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, siteId, customDomain } = req.body;
+      const { domain, bookingEnabled, siteId, customDomain, websiteLanguage } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; siteId: string | null; customDomain: string | null; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -12386,8 +12387,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.customDomain = customDomain.trim() || null;
       }
 
+      if (websiteLanguage !== undefined) {
+        if (typeof websiteLanguage !== 'string') {
+          return res.status(400).json({ error: 'websiteLanguage must be a string' });
+        }
+        const allowed = ['el', 'en', 'both'];
+        if (!allowed.includes(websiteLanguage)) {
+          return res.status(400).json({ error: 'websiteLanguage must be el, en, or both' });
+        }
+        updates.websiteLanguage = websiteLanguage;
+      }
+
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, siteId, customDomain" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, siteId, customDomain, websiteLanguage" });
       }
 
       const [updatedWebsite] = await db
