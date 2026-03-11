@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useState } from "react";
+import { useAuth } from "@/components/ui/authContext";
 
 interface UserResponse {
   user: UserType;
@@ -26,9 +27,11 @@ interface Subscription {
 export function NavMenu() {
   const { pathname } = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const { user: authUser } = useAuth();
   const { data: userData } = useQuery<UserResponse>({
     queryKey: ["/api/user"],
   });
+  const user = authUser ?? userData?.user;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
@@ -190,7 +193,7 @@ export function NavMenu() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-3">
-        {userData?.user?.role !== "subscriber" && (
+        {user && user.role !== "subscriber" && (
           <Link to="/admin">
             <Button
               variant={pathname === "/admin" ? "default" : "ghost"}
@@ -205,9 +208,9 @@ export function NavMenu() {
           </Link>
         )}
 
-        {userData?.user ? (
+        {user ? (
           <>
-            {userData.user.role === "subscriber" && (
+            {user.role === "subscriber" && (
               <>
                 <Link to="/dashboard">
                   <Button
@@ -530,7 +533,7 @@ export function NavMenu() {
                 )}
 
                 {/* User Actions */}
-                {userData?.user?.role !== "subscriber" && (
+                {user && user.role !== "subscriber" && (
                   <Link to="/admin" onClick={() => setIsOpen(false)}>
                     <Button
                       variant={pathname === "/admin" ? "default" : "ghost"}
@@ -545,9 +548,9 @@ export function NavMenu() {
                   </Link>
                 )}
 
-                {userData?.user ? (
+                {user ? (
                   <>
-                    {userData.user.role === "subscriber" && (
+                    {user.role === "subscriber" && (
                       <>
                         <Link to="/dashboard" onClick={() => setIsOpen(false)}>
                           <Button
