@@ -190,7 +190,7 @@ export function NavMenu() {
       </div>
 
       <div className="flex flex-col md:flex-row gap-3">
-        {(userData?.user?.role === "administrator" || userData?.user?.role === "moderator") && (
+        {userData?.user?.role !== "subscriber" && (
           <Link to="/admin">
             <Button
               variant={pathname === "/admin" ? "default" : "ghost"}
@@ -207,7 +207,7 @@ export function NavMenu() {
 
         {userData?.user ? (
           <>
-            {userData.user.role !== "administrator" && (
+            {userData.user.role === "subscriber" && (
               <>
                 <Link to="/dashboard">
                   <Button
@@ -530,7 +530,7 @@ export function NavMenu() {
                 )}
 
                 {/* User Actions */}
-                {userData?.user?.role === "administrator" && (
+                {userData?.user?.role !== "subscriber" && (
                   <Link to="/admin" onClick={() => setIsOpen(false)}>
                     <Button
                       variant={pathname === "/admin" ? "default" : "ghost"}
@@ -547,7 +547,7 @@ export function NavMenu() {
 
                 {userData?.user ? (
                   <>
-                    {userData.user.role !== "administrator" && (
+                    {userData.user.role === "subscriber" && (
                       <>
                         <Link to="/dashboard" onClick={() => setIsOpen(false)}>
                           <Button

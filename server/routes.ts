@@ -485,8 +485,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: await hashPassword(password), // Hash the password before storing
         phone: phone || null, // Optional phone field
         stripeCustomerId: null,
-        role: UserRole.SUBSCRIBER, // Set default role for new registrations
-        language: preferredLanguage, // Save user language preference
+        role: UserRole.SUBSCRIBER,
+        accountKind: AccountKind.CUSTOMER,
+        language: preferredLanguage,
       });
 
       // Check if user already exists
@@ -2570,9 +2571,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   email: customerEmail,
                   phone: session.metadata.phone || null,
                   stripeCustomerId: session.customer as string,
-                  role: UserRole.SUBSCRIBER, // Set role for new users
+                  role: UserRole.SUBSCRIBER,
+                  accountKind: AccountKind.CUSTOMER,
                   password: await hashPassword(session.metadata.password || ""),
-                  language: session.metadata.language || "en", // Use language from session metadata
+                  language: session.metadata.language || "en",
                 });
               } catch (userCreateError) {
                 console.error('❌ Failed to create user:', userCreateError);
@@ -5819,6 +5821,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 password: hashedPassword,
                 phone: data.contactPhone,
                 language: 'en',
+                role: UserRole.SUBSCRIBER,
+                accountKind: AccountKind.CUSTOMER,
               });
 
               // Auto-login newly created users
@@ -5845,6 +5849,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
               password: hashedPassword,
               phone: data.contactPhone,
               language: 'en',
+              role: UserRole.SUBSCRIBER,
+              accountKind: AccountKind.CUSTOMER,
             });
 
             // Auto-login newly created users
