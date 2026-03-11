@@ -142,6 +142,9 @@ export const websiteProgress = pgTable("website_progress", {
   bookingEnabled: boolean("booking_enabled").default(false).notNull(),
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
+  stripeAccountId: text("stripe_account_id"),
+  stripeAccountStatus: text("stripe_account_status").notNull().default("disconnected"),
+  stripeConnectedAt: timestamp("stripe_connected_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

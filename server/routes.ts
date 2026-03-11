@@ -20,7 +20,7 @@ import { getEmailLimitWithAddOns } from "./email-limits";
 import { z } from "zod";
 import * as express from "express";
 import { db, pool } from "./db";
-import { desc, eq, sql, and, or, isNull, inArray, like, gte } from "drizzle-orm";
+import { desc, eq, sql, and, or, isNull, inArray, like, gte, ne } from "drizzle-orm";
 import { setupAuth, hashPassword } from "./auth";
 import passport from "passport";
 import {
@@ -2378,6 +2378,312 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         error: err instanceof Error ? err.message : "Failed to create checkout session",
       });
+    }
+  });
+
+  // ----- Stripe Connect (website-level connected accounts) -----
+  const connectBaseUrl = () => process.env.APP_URL || "https://hayc.gr";
+
+  app.get("/api/websites/:websiteProgressId/stripe/connect", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const websiteProgressId = parseInt(req.params.websiteProgressId, 10);
+      if (Number.isNaN(websiteProgressId)) {
+        return res.status(400).json({ error: "Invalid websiteProgressId" });
+      }
+      const [wp] = await db.select().from(websiteProgress).where(eq(websiteProgress.id, websiteProgressId));
+      if (!wp) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+      const isAdmin = req.user?.role === "admin" || req.user?.role === "administrator";
+      if (!isAdmin && wp.userId !== req.user?.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      if (wp.stripeAccountStatus === "connected") {
+        return res.json({ alreadyConnected: true });
+      }
+      let stripeAccountId = wp.stripeAccountId;
+      if (!stripeAccountId) {
+        const existingRows = await db
+          .select({
+            id: websiteProgress.id,
+            domain: websiteProgress.domain,
+            projectName: websiteProgress.projectName,
+            stripeAccountId: websiteProgress.stripeAccountId,
+          })
+          .from(websiteProgress)
+          .where(
+            and(
+              eq(websiteProgress.userId, wp.userId),
+              eq(websiteProgress.stripeAccountStatus, "connected"),
+              ne(websiteProgress.id, websiteProgressId),
+            ),
+          );
+        if (existingRows.length > 0) {
+          return res.json({
+            existingAccounts: existingRows.map((r) => ({
+              websiteProgressId: r.id,
+              domain: r.domain,
+              projectName: r.projectName,
+              stripeAccountId: r.stripeAccountId,
+            })),
+          });
+        }
+        const owner = await storage.getUser(wp.userId);
+        if (!owner) {
+          return res.status(404).json({ error: "Website owner not found" });
+        }
+        const account = await stripe.accounts.create({
+          type: "standard",
+          email: owner.email,
+        });
+        stripeAccountId = account.id;
+        await db
+          .update(websiteProgress)
+          .set({
+            stripeAccountId,
+            stripeAccountStatus: "pending",
+            updatedAt: new Date(),
+          })
+          .where(eq(websiteProgress.id, websiteProgressId));
+      }
+      const baseUrl = connectBaseUrl();
+      const accountLink = await stripe.accountLinks.create({
+        account: stripeAccountId,
+        refresh_url: `${baseUrl}/api/websites/${websiteProgressId}/stripe/connect/refresh?account=${stripeAccountId}`,
+        return_url: `${baseUrl}/api/websites/${websiteProgressId}/stripe/connect/return?account=${stripeAccountId}`,
+        type: "account_onboarding",
+      });
+      res.json({ url: accountLink.url });
+    } catch (err) {
+      console.error("Stripe Connect start error:", err);
+      res.status(500).json({
+        error: err instanceof Error ? err.message : "Failed to start Connect onboarding",
+      });
+    }
+  });
+
+  app.post("/api/websites/:websiteProgressId/stripe/connect/reuse", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const websiteProgressId = parseInt(req.params.websiteProgressId, 10);
+      if (Number.isNaN(websiteProgressId)) {
+        return res.status(400).json({ error: "Invalid websiteProgressId" });
+      }
+      const [wp] = await db.select().from(websiteProgress).where(eq(websiteProgress.id, websiteProgressId));
+      if (!wp) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+      const isAdmin = req.user?.role === "admin" || req.user?.role === "administrator";
+      if (!isAdmin && wp.userId !== req.user?.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const body = z.object({ stripeAccountId: z.string().min(1) }).safeParse(req.body);
+      if (!body.success) {
+        return res.status(400).json({ error: "stripeAccountId is required" });
+      }
+      const { stripeAccountId } = body.data;
+      const [ownerRow] = await db
+        .select()
+        .from(websiteProgress)
+        .where(
+          and(
+            eq(websiteProgress.userId, wp.userId),
+            eq(websiteProgress.stripeAccountId, stripeAccountId),
+            eq(websiteProgress.stripeAccountStatus, "connected"),
+          ),
+        );
+      if (!ownerRow) {
+        return res.status(400).json({ error: "Stripe account not found or not owned by you" });
+      }
+      await db
+        .update(websiteProgress)
+        .set({
+          stripeAccountId,
+          stripeAccountStatus: "connected",
+          stripeConnectedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(websiteProgress.id, websiteProgressId));
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Stripe Connect reuse error:", err);
+      res.status(500).json({
+        error: err instanceof Error ? err.message : "Failed to reuse account",
+      });
+    }
+  });
+
+  app.get("/api/websites/:websiteProgressId/stripe/connect/return", async (req, res) => {
+    try {
+      const websiteProgressId = parseInt(req.params.websiteProgressId, 10);
+      const accountId = typeof req.query.account === "string" ? req.query.account : null;
+      if (!accountId) {
+        return res.redirect(`${connectBaseUrl()}/dashboard/website/${websiteProgressId}?stripe_error=1`);
+      }
+      const account = await stripe.accounts.retrieve(accountId);
+      const detailsSubmitted = account.details_submitted === true;
+
+      const [wp] = await db
+        .select({ id: websiteProgress.id })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.stripeAccountId, accountId))
+        .limit(1);
+
+      if (wp) {
+        await db
+          .update(websiteProgress)
+          .set({
+            stripeAccountStatus: detailsSubmitted ? "connected" : "pending",
+            stripeConnectedAt: detailsSubmitted ? new Date() : undefined,
+            updatedAt: new Date(),
+          })
+          .where(eq(websiteProgress.id, wp.id));
+      }
+
+      return res.redirect(
+        detailsSubmitted
+          ? `${connectBaseUrl()}/dashboard/website/${websiteProgressId}?stripe_connected=1`
+          : `${connectBaseUrl()}/dashboard/website/${websiteProgressId}?stripe_error=1`
+      );
+    } catch (err) {
+      console.error("Stripe Connect return error:", err);
+      const baseUrl = connectBaseUrl();
+      const id = parseInt(req.params.websiteProgressId, 10);
+      res.redirect(Number.isNaN(id) ? `${baseUrl}/dashboard?stripe_error=1` : `${baseUrl}/dashboard/website/${id}?stripe_error=1`);
+    }
+  });
+
+  app.get("/api/websites/:websiteProgressId/stripe/connect/refresh", async (req, res) => {
+    try {
+      const websiteProgressId = parseInt(req.params.websiteProgressId, 10);
+      const accountId = typeof req.query.account === "string" ? req.query.account : null;
+      if (!accountId) {
+        return res.redirect(`${connectBaseUrl()}/dashboard/website/${websiteProgressId}?stripe_error=1`);
+      }
+      const baseUrl = connectBaseUrl();
+      const accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: `${baseUrl}/api/websites/${websiteProgressId}/stripe/connect/refresh?account=${accountId}`,
+        return_url: `${baseUrl}/api/websites/${websiteProgressId}/stripe/connect/return?account=${accountId}`,
+        type: "account_onboarding",
+      });
+      res.redirect(accountLink.url);
+    } catch (err) {
+      console.error("Stripe Connect refresh error:", err);
+      const id = parseInt(req.params.websiteProgressId, 10);
+      res.redirect(Number.isNaN(id) ? `${connectBaseUrl()}/dashboard?stripe_error=1` : `${connectBaseUrl()}/dashboard/website/${id}?stripe_error=1`);
+    }
+  });
+
+  app.post("/api/websites/:websiteProgressId/stripe/disconnect", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const websiteProgressId = parseInt(req.params.websiteProgressId, 10);
+      if (Number.isNaN(websiteProgressId)) {
+        return res.status(400).json({ error: "Invalid websiteProgressId" });
+      }
+      const [wp] = await db.select().from(websiteProgress).where(eq(websiteProgress.id, websiteProgressId));
+      if (!wp) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+      const isAdmin = req.user?.role === "admin" || req.user?.role === "administrator";
+      if (!isAdmin && wp.userId !== req.user?.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      await db
+        .update(websiteProgress)
+        .set({
+          stripeAccountId: null,
+          stripeAccountStatus: "disconnected",
+          stripeConnectedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(websiteProgress.id, websiteProgressId));
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Stripe Connect disconnect error:", err);
+      res.status(500).json({
+        error: err instanceof Error ? err.message : "Failed to disconnect",
+      });
+    }
+  });
+
+  app.get("/api/websites/:websiteProgressId/stripe/status", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const websiteProgressId = parseInt(req.params.websiteProgressId, 10);
+      if (Number.isNaN(websiteProgressId)) {
+        return res.status(400).json({ error: "Invalid websiteProgressId" });
+      }
+      const [wp] = await db.select().from(websiteProgress).where(eq(websiteProgress.id, websiteProgressId));
+      if (!wp) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+      const isAdmin = req.user?.role === "admin" || req.user?.role === "administrator";
+      if (!isAdmin && wp.userId !== req.user?.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      res.json({
+        stripeAccountId: wp.stripeAccountId ?? null,
+        stripeAccountStatus: wp.stripeAccountStatus,
+        stripeConnectedAt: wp.stripeConnectedAt ?? null,
+      });
+    } catch (err) {
+      console.error("Stripe Connect status error:", err);
+      res.status(500).json({
+        error: err instanceof Error ? err.message : "Failed to get status",
+      });
+    }
+  });
+
+  app.post("/api/webhook/stripe-connect", express.raw({ type: "application/json" }), async (req, res) => {
+    try {
+      const sig = req.headers["stripe-signature"];
+      if (!process.env.STRIPE_CONNECT_WEBHOOK_SECRET || !sig) {
+        return res.status(400).json({ error: "Missing webhook secret or signature" });
+      }
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+      );
+      if (event.type === "account.updated") {
+        const account = event.data.object as Stripe.Account;
+        if (account.details_submitted === true) {
+          const [wp] = await db
+            .select()
+            .from(websiteProgress)
+            .where(eq(websiteProgress.stripeAccountId, account.id));
+          if (wp && wp.stripeAccountStatus !== "connected") {
+            await db
+              .update(websiteProgress)
+              .set({
+                stripeAccountStatus: "connected",
+                stripeConnectedAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(websiteProgress.id, wp.id));
+          }
+        }
+      } else {
+        console.log("[stripe-connect webhook] Unhandled event type:", event.type);
+      }
+      res.json({ received: true });
+    } catch (err: any) {
+      if (err?.type === "StripeSignatureVerificationError") {
+        return res.status(400).json({ error: "Invalid signature" });
+      }
+      console.error("Stripe Connect webhook error:", err);
+      res.status(500).json({ error: "Webhook handler failed" });
     }
   });
 

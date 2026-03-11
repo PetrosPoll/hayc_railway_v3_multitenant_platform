@@ -7,10 +7,10 @@ import { runMigrations } from "./migrate";
 import "dotenv/config";
 
 const app = express();
-// Skip JSON/urlencoded parsing for webhook endpoint - it needs raw body for Stripe signature verification
+// Skip JSON/urlencoded parsing for webhook endpoints - they need raw body for Stripe signature verification
 // Use larger limit for email templates (base64 images can be large) and bulk-import endpoints
 app.use((req, res, next) => {
-  if (req.originalUrl.startsWith('/api/webhook')) {
+  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect') {
     next();
   } else if ((req.originalUrl.startsWith('/api/email-templates') || req.originalUrl.startsWith('/api/admin/templates')) && (req.method === 'POST' || req.method === 'PATCH')) {
     // 50MB limit for email templates (to handle base64-encoded images)
@@ -23,7 +23,7 @@ app.use((req, res, next) => {
   }
 });
 app.use((req, res, next) => {
-  if (req.originalUrl.startsWith('/api/webhook')) {
+  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect') {
     next();
   } else {
     express.urlencoded({ extended: false })(req, res, next);

@@ -43,6 +43,13 @@
       "when": 1772917924806,
       "tag": "0005_worthless_wilson_fisk",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1773254245175,
+      "tag": "0006_thankful_madrox",
+      "breakpoints": true
     }
   ]
 }

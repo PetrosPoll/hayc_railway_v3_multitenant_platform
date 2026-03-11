@@ -62,6 +62,7 @@ import {
   CalendarDays,
   FileEdit,
   ExternalLink,
+  Wallet,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
@@ -351,6 +352,12 @@ export default function WebsiteDashboard() {
   // Booking redirect loading state
   const [isBookingLoading, setIsBookingLoading] = useState(false);
 
+  // Stripe Connect: connect button loading, disconnect confirm dialog, reuse existing accounts
+  const [stripeConnectLoading, setStripeConnectLoading] = useState(false);
+  const [stripeDisconnectConfirmOpen, setStripeDisconnectConfirmOpen] = useState(false);
+  const [existingStripeAccounts, setExistingStripeAccounts] = useState<Array<{ websiteProgressId: number; domain: string; projectName: string | null; stripeAccountId: string }> | null>(null);
+  const [reuseDialogOpen, setReuseDialogOpen] = useState(false);
+
   // Invoice filter state - default to current month and year
   const [selectedInvoiceYear, setSelectedInvoiceYear] = useState<number>(() => {
     const now = new Date();
@@ -360,6 +367,30 @@ export default function WebsiteDashboard() {
     const now = new Date();
     return now.getMonth() + 1;
   });
+
+  // Handle return from Stripe Connect: show toast and clean URL
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const stripeConnected = params.get("stripe_connected");
+    const stripeError = params.get("stripe_error");
+    if (stripeConnected === "1") {
+      toast({
+        title: "Stripe account connected successfully",
+        variant: "default",
+      });
+      params.delete("stripe_connected");
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState(null, "", newUrl);
+    } else if (stripeError === "1") {
+      toast({
+        title: "Something went wrong connecting your Stripe account. Please try again.",
+        variant: "destructive",
+      });
+      params.delete("stripe_error");
+      const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+      window.history.replaceState(null, "", newUrl);
+    }
+  }, [toast]);
 
   // Update URL when activeSection changes (only when user actively changes tabs)
   useEffect(() => {
@@ -665,6 +696,90 @@ export default function WebsiteDashboard() {
       return response.json();
     },
     enabled: !!websiteId,
+  });
+
+  const { data: stripeConnectStatus, isLoading: stripeConnectStatusLoading } = useQuery<{
+    stripeAccountId: string | null;
+    stripeAccountStatus: string;
+    stripeConnectedAt: string | null;
+  }>({
+    queryKey: ["/api/websites", websiteId, "stripe", "status"],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/websites/${websiteId}/stripe/status`,
+        { credentials: "include" },
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch Stripe Connect status");
+      }
+      return response.json();
+    },
+    enabled: !!websiteId && activeSection === "payments",
+  });
+
+  const disconnectStripeMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(
+        `/api/websites/${websiteId}/stripe/disconnect`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to disconnect");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/websites", websiteId, "stripe", "status"],
+      });
+      toast({
+        title: "Stripe account disconnected",
+        variant: "default",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to disconnect",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reuseStripeMutation = useMutation({
+    mutationFn: async (stripeAccountId: string) => {
+      const response = await fetch(
+        `/api/websites/${websiteId}/stripe/connect/reuse`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stripeAccountId }),
+        },
+      );
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to reuse account");
+      }
+    },
+    onSuccess: () => {
+      setReuseDialogOpen(false);
+      setExistingStripeAccounts(null);
+      queryClient.invalidateQueries({
+        queryKey: ["/api/websites", websiteId, "stripe", "status"],
+      });
+      toast({
+        title: "Stripe account connected successfully",
+        variant: "default",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to reuse account",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
 
   // Get the plan subscription (not addon) for tier and usage checks
@@ -1029,14 +1144,19 @@ export default function WebsiteDashboard() {
       label: t("dashboard.booking") || "Booking",
       icon: CalendarDays,
     };
+    const paymentsItem = {
+      id: "payments",
+      label: "Payments",
+      icon: Wallet,
+    };
     const after = [
       { id: "separator", label: "", icon: null },
       { id: "discover", label: t("dashboard.discover") || "Discover", icon: Sparkles },
       ...(tipsVisibleInUserDashboard ? [{ id: "tips", label: t("dashboard.tips") || "Tips", icon: Lightbulb }] : []),
     ];
     return website?.bookingEnabled
-      ? [...base, bookingItem, ...after]
-      : [...base, ...after];
+      ? [...base, bookingItem, paymentsItem, ...after]
+      : [...base, paymentsItem, ...after];
   }, [t, website?.bookingEnabled, tipsVisibleInUserDashboard, website?.siteId]);
 
   if (websiteLoading) {
@@ -1209,6 +1329,16 @@ export default function WebsiteDashboard() {
                 </BreadcrumbItem>
               </>
             )}
+            {activeSection === "payments" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage data-testid="breadcrumb-payments">
+                    Payments
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
             {activeSection === "analytics" && (
               <>
                 <BreadcrumbSeparator />
@@ -1370,6 +1500,140 @@ export default function WebsiteDashboard() {
               <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </div>
           </CardHeader>
+        </Card>
+      </div>
+    );
+  };
+
+  const handleStripeConnectClick = async () => {
+    if (!websiteId) return;
+    setStripeConnectLoading(true);
+    try {
+      const response = await fetch(`/api/websites/${websiteId}/stripe/connect`, {
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to start Connect");
+      }
+      if (data.alreadyConnected) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/websites", websiteId, "stripe", "status"],
+        });
+        return;
+      }
+      if (data.existingAccounts && Array.isArray(data.existingAccounts) && data.existingAccounts.length > 0) {
+        setExistingStripeAccounts(data.existingAccounts);
+        setReuseDialogOpen(true);
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to connect",
+        variant: "destructive",
+      });
+    } finally {
+      setStripeConnectLoading(false);
+    }
+  };
+
+  const renderPaymentsSection = () => {
+    if (stripeConnectStatusLoading) {
+      return (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" data-testid="loader-payments" />
+        </div>
+      );
+    }
+    const status = stripeConnectStatus?.stripeAccountStatus ?? "disconnected";
+    if (status === "disconnected") {
+      return (
+        <div className="space-y-4" data-testid="section-payments">
+          <h2 className="text-2xl font-bold mb-6">Payments</h2>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base font-semibold">Stripe Connect</CardTitle>
+              <CardDescription className="mt-2">
+                Connect your Stripe account to accept payments through HAYC addons (e.g. bookings, products) on this site. You get paid directly; HAYC does not hold funds.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={handleStripeConnectClick}
+                disabled={stripeConnectLoading}
+                data-testid="button-connect-stripe"
+              >
+                {stripeConnectLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <Wallet className="h-4 w-4 mr-2" />
+                )}
+                Connect with Stripe
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    if (status === "pending") {
+      return (
+        <div className="space-y-4" data-testid="section-payments">
+          <h2 className="text-2xl font-bold mb-6">Payments</h2>
+          <div className="flex items-start gap-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 mb-4">
+            <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Stripe onboarding is incomplete. Please finish connecting your account.
+            </p>
+          </div>
+          <Button
+            onClick={handleStripeConnectClick}
+            disabled={stripeConnectLoading}
+            data-testid="button-continue-onboarding"
+          >
+            {stripeConnectLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Continue onboarding
+          </Button>
+        </div>
+      );
+    }
+    // connected
+    const accountId = stripeConnectStatus?.stripeAccountId ?? "";
+    const truncatedId = accountId.length > 12 ? `${accountId.slice(0, 8)}...${accountId.slice(-4)}` : accountId;
+    const connectedAt = stripeConnectStatus?.stripeConnectedAt
+      ? formatDate(stripeConnectStatus.stripeConnectedAt)
+      : "N/A";
+    return (
+      <div className="space-y-4" data-testid="section-payments">
+        <h2 className="text-2xl font-bold mb-6">Payments</h2>
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-semibold">Stripe Connect</CardTitle>
+              <Badge variant="default" className="bg-green-600">Connected</Badge>
+            </div>
+            <CardDescription className="mt-2">
+              Account ID: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{truncatedId}</code>
+            </CardDescription>
+            <p className="text-sm text-muted-foreground mt-1">
+              Connected at: {connectedAt}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              onClick={() => setStripeDisconnectConfirmOpen(true)}
+              data-testid="button-disconnect-stripe"
+            >
+              Disconnect
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
@@ -3880,6 +4144,10 @@ export default function WebsiteDashboard() {
                 </div>
               )}
 
+              {activeSection === "payments" && (
+                <div data-testid="section-payments">{renderPaymentsSection()}</div>
+              )}
+
               {activeSection === "analytics" && (
                 <div data-testid="section-analytics">{renderAnalytics()}</div>
               )}
@@ -3940,6 +4208,116 @@ export default function WebsiteDashboard() {
               ) : (
                 t("dashboard.yesCancelSubscription") || "Yes, Cancel Subscription"
               )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Disconnect Stripe Connect Confirmation */}
+      <AlertDialog
+        open={stripeDisconnectConfirmOpen}
+        onOpenChange={(open) => {
+          if (!open && !disconnectStripeMutation.isPending) {
+            setStripeDisconnectConfirmOpen(false);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect Stripe account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This site will no longer be able to accept payments through HAYC addons until you connect again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={disconnectStripeMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                disconnectStripeMutation.mutate(undefined, {
+                  onSettled: () => setStripeDisconnectConfirmOpen(false),
+                });
+              }}
+              disabled={disconnectStripeMutation.isPending}
+            >
+              {disconnectStripeMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Disconnect
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reuse existing Stripe account */}
+      <AlertDialog
+        open={reuseDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !reuseStripeMutation.isPending) {
+            setReuseDialogOpen(false);
+            setExistingStripeAccounts(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>You already have a connected Stripe account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Would you like to use an existing Stripe account from one of your other websites, or connect a new one?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4 space-y-3">
+            {existingStripeAccounts?.map((acc) => {
+              const label = acc.projectName || acc.domain;
+              const truncatedId = acc.stripeAccountId.length > 12
+                ? `${acc.stripeAccountId.slice(0, 8)}...${acc.stripeAccountId.slice(-4)}`
+                : acc.stripeAccountId;
+              return (
+                <div
+                  key={acc.websiteProgressId}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
+                  <div>
+                    <p className="font-medium">{label}</p>
+                    <p className="text-sm text-muted-foreground">
+                      <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{truncatedId}</code>
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={() => reuseStripeMutation.mutate(acc.stripeAccountId)}
+                    disabled={reuseStripeMutation.isPending}
+                  >
+                    {reuseStripeMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Use this account"
+                    )}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={reuseStripeMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReuseDialogOpen(false);
+                setExistingStripeAccounts(null);
+                toast({
+                  title: "Connect a new account",
+                  description: "Please disconnect the existing account on the other site first and reconnect here.",
+                  variant: "default",
+                });
+              }}
+              disabled={reuseStripeMutation.isPending}
+            >
+              Connect a new account
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
