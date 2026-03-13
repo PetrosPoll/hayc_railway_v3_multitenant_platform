@@ -4728,6 +4728,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // ----- Internal API: Stripe connected account lookup (token-auth, machine-to-machine) -----
+  const INTERNAL_API_TOKEN = process.env.INTERNAL_EMAIL_TOKEN;
+  app.get("/internal/websites/:websiteProgressId/stripe/account", async (req, res) => {
+    if (!INTERNAL_API_TOKEN) {
+      return res.status(503).json({ error: "Internal email token not configured" });
+    }
+
+    const token =
+      (req.headers.authorization?.startsWith("Bearer ")
+        ? req.headers.authorization.slice(7)
+        : null) ?? (req.headers["x-internal-token"] as string | undefined) ?? null;
+    if (token !== INTERNAL_API_TOKEN) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const websiteProgressId = parseInt(req.params.websiteProgressId, 10);
+    if (Number.isNaN(websiteProgressId)) {
+      return res.status(400).json({ error: "Invalid websiteProgressId" });
+    }
+
+    try {
+      const [wp] = await db
+        .select({
+          stripeAccountId: websiteProgress.stripeAccountId,
+          stripeAccountStatus: websiteProgress.stripeAccountStatus,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteProgressId));
+
+      if (!wp) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      if (!wp.stripeAccountId || wp.stripeAccountStatus !== "connected") {
+        return res.json({
+          stripeAccountId: null,
+          stripeAccountStatus: "disconnected",
+        });
+      }
+
+      return res.json({
+        stripeAccountId: wp.stripeAccountId,
+        stripeAccountStatus: wp.stripeAccountStatus,
+      });
+    } catch (error) {
+      console.error("[internal/websites/:websiteProgressId/stripe/account] Error:", error);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Function to submit lead to HubSpot using Contacts API
   async function submitToHubSpot(data: any) {
     const apiKey = process.env.HUBSPOT_API_KEY;
