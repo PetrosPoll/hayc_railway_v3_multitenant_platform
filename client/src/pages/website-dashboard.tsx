@@ -59,6 +59,7 @@ import {
   Tag,
   Copy,
   Package,
+  ShoppingBag,
   CalendarDays,
   FileEdit,
   ExternalLink,
@@ -341,6 +342,24 @@ export default function WebsiteDashboard() {
   >("groups");
   const [showCampaignWizard, setShowCampaignWizard] = useState(false);
 
+  const HDP_URL = import.meta.env.VITE_HDP_INTERNAL_URL as string;
+  const HDP_TOKEN = import.meta.env.VITE_HDP_INTERNAL_TOKEN as string;
+
+  const [showCreateCourse, setShowCreateCourse] = useState(false);
+  const [courses, setCourses] = useState<any[]>([]);
+  const [coursesLoading, setCoursesLoading] = useState(false);
+  const [courseForm, setCourseForm] = useState({
+    title: "",
+    slug: "",
+    description: "",
+    price: "",
+    accessType: "lifetime" as "lifetime" | "limited",
+    accessDays: "",
+    status: "draft" as "draft" | "published",
+  });
+  const [courseFormError, setCourseFormError] = useState<string | null>(null);
+  const [courseFormLoading, setCourseFormLoading] = useState(false);
+
   // Media section state
   const [deleteMediaId, setDeleteMediaId] = useState<string | null>(null);
 
@@ -475,6 +494,23 @@ export default function WebsiteDashboard() {
         description: t("dashboard.bookingErrorDescription") || "Please try again.",
         variant: "destructive",
       });
+    }
+  };
+
+  const fetchCourses = async () => {
+    if (!website?.siteId) return;
+    setCoursesLoading(true);
+    try {
+      const res = await fetch(`${HDP_URL}/internal/sites/${website.siteId}/courses`, {
+        headers: { "x-internal-token": HDP_TOKEN },
+      });
+      if (!res.ok) throw new Error("Failed to fetch courses");
+      const data = await res.json();
+      setCourses(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCoursesLoading(false);
     }
   };
 
@@ -664,6 +700,12 @@ export default function WebsiteDashboard() {
     },
     enabled: !!websiteId,
   });
+
+  useEffect(() => {
+    if (activeSection === "digital-products" && website?.siteId) {
+      fetchCourses();
+    }
+  }, [activeSection, website?.siteId]);
 
   // Fetch media files from Cloudinary folder
   const { data: mediaData, isLoading: mediaLoading } = useQuery<{ media: Array<{ url: string, publicId: string, name: string, previewUrl?: string, format?: string | null }> }>({
@@ -1151,6 +1193,7 @@ export default function WebsiteDashboard() {
       icon: Wallet,
     };
     const after = [
+      { id: "digital-products", label: "Digital Products", icon: ShoppingBag },
       { id: "separator", label: "", icon: null },
       { id: "discover", label: t("dashboard.discover") || "Discover", icon: Sparkles },
       ...(tipsVisibleInUserDashboard ? [{ id: "tips", label: t("dashboard.tips") || "Tips", icon: Lightbulb }] : []),
@@ -4005,6 +4048,322 @@ export default function WebsiteDashboard() {
     );
   };
 
+  const handleCreateCourse = async () => {
+    if (!website?.siteId) return;
+    setCourseFormError(null);
+    setCourseFormLoading(true);
+    try {
+      const body = {
+        title: courseForm.title,
+        slug: courseForm.slug,
+        description: courseForm.description,
+        price: Math.round(parseFloat(courseForm.price) * 100),
+        accessType: courseForm.accessType,
+        ...(courseForm.accessType === "limited" && courseForm.accessDays
+          ? { accessDays: parseInt(courseForm.accessDays) }
+          : {}),
+        status: courseForm.status,
+      };
+      const res = await fetch(`${HDP_URL}/internal/sites/${website.siteId}/courses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-token": HDP_TOKEN,
+        },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || "Failed to create course");
+      }
+      await fetchCourses();
+      setShowCreateCourse(false);
+      setCourseForm({
+        title: "",
+        slug: "",
+        description: "",
+        price: "",
+        accessType: "lifetime",
+        accessDays: "",
+        status: "draft",
+      });
+    } catch (err: any) {
+      setCourseFormError(err.message);
+    } finally {
+      setCourseFormLoading(false);
+    }
+  };
+
+  const renderDigitalProductsSection = () => {
+    if (!website?.siteId) {
+      return (
+        <div data-testid="section-digital-products">
+          <h2 className="text-2xl font-bold mb-2">Digital Products</h2>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-sm text-muted-foreground">
+                Digital Products are not available for this website yet.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    return (
+      <div data-testid="section-digital-products">
+        <h2 className="text-2xl font-bold mb-2">Digital Products</h2>
+        <p className="text-muted-foreground mb-6">
+          Manage and sell digital courses to your audience
+        </p>
+
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="text-sm text-muted-foreground">
+            {coursesLoading ? "Loading..." : `${courses.length} course${courses.length !== 1 ? "s" : ""}`}
+          </div>
+          <button
+            className="flex items-center gap-2 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+            onClick={() => setShowCreateCourse(true)}
+          >
+            <ShoppingBag className="w-4 h-4" />
+            Add course
+          </button>
+        </div>
+
+        {/* Course list */}
+        {coursesLoading ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-sm text-muted-foreground">Loading courses...</p>
+            </CardContent>
+          </Card>
+        ) : courses.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center mb-4">
+                <ShoppingBag className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <p className="font-medium text-sm mb-1">No courses yet</p>
+              <p className="text-sm text-muted-foreground mb-6">
+                Add your first course to start selling digital products
+              </p>
+              <button
+                className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                onClick={() => setShowCreateCourse(true)}
+              >
+                Add course
+              </button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {courses.map((course) => (
+              <Card key={course.id}>
+                <CardContent className="flex items-center justify-between py-4">
+                  <div>
+                    <p className="font-medium text-sm">{course.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {course.status === "published" ? "Published" : "Draft"} ·{" "}
+                      €{(course.price / 100).toFixed(2)} ·{" "}
+                      {course.accessType === "lifetime"
+                        ? "Lifetime access"
+                        : `${course.accessDays} days access`}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full font-medium ${
+                      course.status === "published"
+                        ? "bg-green-50 text-green-700"
+                        : "bg-gray-100 text-gray-500"
+                    }`}
+                  >
+                    {course.status}
+                  </span>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Create course modal */}
+        {showCreateCourse && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-background rounded-xl border shadow-lg w-full max-w-md">
+              <div className="flex items-center justify-between p-6 border-b">
+                <h3 className="font-semibold text-lg">Add course</h3>
+                <button
+                  onClick={() => {
+                    setShowCreateCourse(false);
+                    setCourseFormError(null);
+                  }}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="p-6 flex flex-col gap-4">
+                {courseFormError && (
+                  <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-100 text-red-600 text-sm">
+                    {courseFormError}
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={courseForm.title}
+                    onChange={(e) => {
+                      const title = e.target.value;
+                      const slug = title
+                        .toLowerCase()
+                        .replace(/[^a-z0-9]+/g, "-")
+                        .replace(/(^-|-$)/g, "");
+                      setCourseForm((f) => ({ ...f, title, slug }));
+                    }}
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="e.g. Introduction to Meditation"
+                    disabled={courseFormLoading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Slug
+                  </label>
+                  <input
+                    type="text"
+                    value={courseForm.slug}
+                    onChange={(e) =>
+                      setCourseForm((f) => ({ ...f, slug: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="auto-generated from title"
+                    disabled={courseFormLoading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Description
+                  </label>
+                  <textarea
+                    value={courseForm.description}
+                    onChange={(e) =>
+                      setCourseForm((f) => ({
+                        ...f,
+                        description: e.target.value,
+                      }))
+                    }
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    rows={3}
+                    placeholder="What will students learn?"
+                    disabled={courseFormLoading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Price (€)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={courseForm.price}
+                    onChange={(e) =>
+                      setCourseForm((f) => ({ ...f, price: e.target.value }))
+                    }
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="e.g. 49.00"
+                    disabled={courseFormLoading}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Access type
+                  </label>
+                  <select
+                    value={courseForm.accessType}
+                    onChange={(e) =>
+                      setCourseForm((f) => ({
+                        ...f,
+                        accessType: e.target.value as "lifetime" | "limited",
+                      }))
+                    }
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={courseFormLoading}
+                  >
+                    <option value="lifetime">Lifetime</option>
+                    <option value="limited">Limited (days)</option>
+                  </select>
+                </div>
+                {courseForm.accessType === "limited" && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                      Access duration (days)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={courseForm.accessDays}
+                      onChange={(e) =>
+                        setCourseForm((f) => ({
+                          ...f,
+                          accessDays: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="e.g. 365"
+                      disabled={courseFormLoading}
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Status
+                  </label>
+                  <select
+                    value={courseForm.status}
+                    onChange={(e) =>
+                      setCourseForm((f) => ({
+                        ...f,
+                        status: e.target.value as "draft" | "published",
+                      }))
+                    }
+                    className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    disabled={courseFormLoading}
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="published">Published</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-3 p-6 border-t">
+                <button
+                  onClick={() => {
+                    setShowCreateCourse(false);
+                    setCourseFormError(null);
+                  }}
+                  className="flex-1 px-4 py-2 border rounded-md text-sm font-medium hover:bg-muted transition-colors"
+                  disabled={courseFormLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateCourse}
+                  className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  disabled={courseFormLoading}
+                >
+                  {courseFormLoading ? "Creating..." : "Create course"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderTipsSection = () => {
     return (
       <div data-testid="section-tips">
@@ -4172,6 +4531,12 @@ export default function WebsiteDashboard() {
               {activeSection === "discover" && renderDiscoverSection()}
 
               {activeSection === "tips" && tipsVisibleInUserDashboard && renderTipsSection()}
+
+              {activeSection === "digital-products" && (
+                <div data-testid="section-digital-products">
+                  {renderDigitalProductsSection()}
+                </div>
+              )}
 
               {/* {activeSection === "account" && renderAccountSettings()} */}
             </div>
