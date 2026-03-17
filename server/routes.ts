@@ -12705,6 +12705,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get billing info for a website (per-website, survives subscription sync)
+  app.get("/api/admin/websites/:websiteId/billing", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, 'canViewWebsites')) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const websiteId = parseInt(req.params.websiteId);
+      if (isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website ID" });
+      }
+      const [website] = await db
+        .select({
+          billingVatNumber: websiteProgress.billingVatNumber,
+          billingCity: websiteProgress.billingCity,
+          billingStreet: websiteProgress.billingStreet,
+          billingNumber: websiteProgress.billingNumber,
+          billingPostalCode: websiteProgress.billingPostalCode,
+          billingInvoiceType: websiteProgress.billingInvoiceType,
+          billingClassificationType: websiteProgress.billingClassificationType,
+          billingInvoiceTypeCode: websiteProgress.billingInvoiceTypeCode,
+          billingProductName: websiteProgress.billingProductName,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+      res.json({
+        vatNumber: website.billingVatNumber ?? "",
+        city: website.billingCity ?? "",
+        street: website.billingStreet ?? "",
+        number: website.billingNumber ?? "",
+        postalCode: website.billingPostalCode ?? "",
+        invoiceType: website.billingInvoiceType ?? "invoice",
+        classificationType: website.billingClassificationType ?? "",
+        invoiceTypeCode: website.billingInvoiceTypeCode ?? "",
+        productName: website.billingProductName ?? "",
+      });
+    } catch (err) {
+      console.error("Error fetching website billing:", err);
+      res.status(500).json({ error: "Failed to fetch billing" });
+    }
+  });
+
+  // Update billing info for a website (per-website, survives subscription sync)
+  app.patch("/api/admin/websites/:websiteId/billing", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, 'canManageWebsites')) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+      const websiteId = parseInt(req.params.websiteId);
+      if (isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website ID" });
+      }
+      const {
+        vatNumber,
+        city,
+        street,
+        number,
+        postalCode,
+        invoiceType,
+        classificationType,
+        invoiceTypeCode,
+        productName,
+      } = req.body;
+      const [updated] = await db
+        .update(websiteProgress)
+        .set({
+          billingVatNumber: vatNumber ?? null,
+          billingCity: city ?? null,
+          billingStreet: street ?? null,
+          billingNumber: number ?? null,
+          billingPostalCode: postalCode ?? null,
+          billingInvoiceType: invoiceType ?? "invoice",
+          billingClassificationType: classificationType ?? null,
+          billingInvoiceTypeCode: invoiceTypeCode ?? null,
+          billingProductName: productName ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(websiteProgress.id, websiteId))
+        .returning({ id: websiteProgress.id });
+      if (!updated) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+      res.json({ success: true });
+    } catch (err) {
+      console.error("Error updating website billing:", err);
+      res.status(500).json({ error: "Failed to update billing" });
+    }
+  });
+
   app.patch("/api/admin/websites/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -13486,25 +13586,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .orderBy(desc(onboardingFormResponses.createdAt))
         .limit(1);
 
-      // Fetch subscription related to this website for VAT
+      // Billing: prefer per-website billing (survives subscription sync), then subscription, then user
       const subscriptions = await db
         .select()
         .from(subscriptionsTable)
         .where(eq(subscriptionsTable.websiteProgressId, website.id));
-
-      // Get VAT from subscription (prefer plan subscription, or first one with VAT)
       const planSubscription = subscriptions.find(s => s.productType === 'plan');
       const subscriptionWithVat = subscriptions.find(s => s.vatNumber);
-      const subscriptionVat = planSubscription?.vatNumber || subscriptionWithVat?.vatNumber;
       const subscriptionWithAddress = subscriptions.find(s => s.city && s.street && s.number && s.postalCode);
-      const subscriptionCity = planSubscription?.city || subscriptionWithAddress?.city;
-      const subscriptionStreet = planSubscription?.street || subscriptionWithAddress?.street;
-      const subscriptionNumber = planSubscription?.number || subscriptionWithAddress?.number;
-      const subscriptionPostalCode = planSubscription?.postalCode || subscriptionWithAddress?.postalCode;
-      const subscriptionInvoiceType = planSubscription?.invoiceType || "invoice";
-      const subscriptionClassificationType = planSubscription?.classificationType;
-      const subscriptionInvoiceTypeCode = planSubscription?.invoiceTypeCode;
-      const subscriptionProductName = planSubscription?.productName;
+
+      const vat = website.billingVatNumber ?? planSubscription?.vatNumber ?? subscriptionWithVat?.vatNumber ?? user.vatNumber ?? undefined;
+      const city = website.billingCity ?? planSubscription?.city ?? subscriptionWithAddress?.city ?? undefined;
+      const street = website.billingStreet ?? planSubscription?.street ?? subscriptionWithAddress?.street ?? undefined;
+      const number = website.billingNumber ?? planSubscription?.number ?? subscriptionWithAddress?.number ?? undefined;
+      const postalCode = website.billingPostalCode ?? planSubscription?.postalCode ?? subscriptionWithAddress?.postalCode ?? undefined;
+      const invoiceType = website.billingInvoiceType ?? planSubscription?.invoiceType ?? "invoice";
+      const classificationType = website.billingClassificationType ?? planSubscription?.classificationType ?? undefined;
+      const invoiceTypeCode = website.billingInvoiceTypeCode ?? planSubscription?.invoiceTypeCode ?? undefined;
+      const productName = website.billingProductName ?? planSubscription?.productName ?? undefined;
 
       // Build customer object
       const customerName = onboarding?.contactName || onboarding?.businessName || user.username || user.email;
@@ -13518,11 +13617,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: customerName,
         email: customerEmail,
         countryCode: "GR", // Default to Greece
-        vat: subscriptionVat || user.vatNumber || undefined,
-        city: subscriptionCity || undefined,
-        street: subscriptionStreet || undefined,
-        number: subscriptionNumber || undefined,
-        postalCode: subscriptionPostalCode || undefined
+        vat,
+        city,
+        street,
+        number,
+        postalCode
       };
 
       console.log(`[Wrapp Invoice] Customer info:`, {
@@ -13538,10 +13637,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: invoice.title,
         description: invoice.description || "",
         customer: customer,
-        invoiceType: subscriptionInvoiceType,
-        classificationType: subscriptionClassificationType || undefined,
-        invoiceTypeCode: subscriptionInvoiceTypeCode || undefined,
-        productName: subscriptionProductName || undefined
+        invoiceType,
+        classificationType: classificationType ?? undefined,
+        invoiceTypeCode: invoiceTypeCode ?? undefined,
+        productName: productName ?? undefined
       });
 
       console.log('[Create Invoice] Wrapp response:', wrappResponse);

@@ -50,6 +50,13 @@
       "when": 1773254245175,
       "tag": "0006_thankful_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1773706618433,
+      "tag": "0007_real_white_tiger",
+      "breakpoints": true
     }
   ]
 }

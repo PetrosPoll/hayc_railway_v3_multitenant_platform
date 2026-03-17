@@ -136,39 +136,37 @@ export function AdminWebsiteInvoices() {
     refetchOnMount: 'always',
   });
 
-  // Update billing mutation
-  const updateBillingMutation = useMutation({
-    mutationFn: async ({ subscriptionId, invoiceType, vatNumber, city, street, number, postalCode, classificationType, invoiceTypeCode, productName }: { subscriptionId: number; invoiceType: string; vatNumber: string; city: string; street: string; number: string; postalCode: string; classificationType: string; invoiceTypeCode: string; productName: string }) => {
-      const response = await fetch("/api/admin/update-subscription", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ subscriptionId, invoiceType, vatNumber, city, street, number, postalCode, classificationType, invoiceTypeCode, productName }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to update billing information");
-      }
+  // Fetch website billing (per-website, survives subscription sync)
+  const { data: billingData, isLoading: billingLoading } = useQuery({
+    queryKey: ["/api/admin/websites", selectedWebsiteForBilling, "billing"],
+    queryFn: async () => {
+      if (!selectedWebsiteForBilling) return null;
+      const response = await fetch(`/api/admin/websites/${selectedWebsiteForBilling}/billing`, { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch billing");
       return response.json();
     },
-    onSuccess: () => {
-      const websiteId = expandedWebsiteId || selectedWebsiteForBilling;
-      if (websiteId) {
-        queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
-      }
-      toast({
-        title: "Success",
-        description: "Billing information updated successfully",
+    enabled: !!selectedWebsiteForBilling && billingInfoDialogOpen,
+  });
+
+  // Update website billing mutation (saves to website_progress, not subscription)
+  const updateBillingMutation = useMutation({
+    mutationFn: async ({ websiteId, invoiceType, vatNumber, city, street, number, postalCode, classificationType, invoiceTypeCode, productName }: { websiteId: number; invoiceType: string; vatNumber: string; city: string; street: string; number: string; postalCode: string; classificationType: string; invoiceTypeCode: string; productName: string }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}/billing`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ invoiceType, vatNumber, city, street, number, postalCode, classificationType, invoiceTypeCode, productName }),
       });
+      if (!response.ok) throw new Error("Failed to update billing information");
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites", variables.websiteId, "billing"] });
+      toast({ title: "Success", description: "Billing information updated successfully" });
       setEditingBilling(false);
     },
     onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update billing information",
-        variant: "destructive",
-      });
+      toast({ title: "Error", description: "Failed to update billing information", variant: "destructive" });
     },
   });
 
@@ -251,24 +249,20 @@ export function AdminWebsiteInvoices() {
     selectedInvoiceIdRef.current = selectedInvoiceId;
   }, [selectedInvoiceId]);
 
-  // Initialize billing field values when subscription data loads
+  // Initialize billing field values when website billing data loads
   useEffect(() => {
-    if (subscriptionsData && !editingBilling) {
-      const subscriptions = (subscriptionsData as any[]) || [];
-      const planSubscription = subscriptions.find((sub: any) => sub.productType === "plan");
-      if (planSubscription) {
-        setInvoiceTypeValue(planSubscription.invoiceType || "invoice");
-        setVatValue(planSubscription.vatNumber || "");
-        setCityValue(planSubscription.city || "");
-        setStreetValue(planSubscription.street || "");
-        setNumberValue(planSubscription.number || "");
-        setPostalCodeValue(planSubscription.postalCode || "");
-        setClassificationTypeValue(planSubscription.classificationType || "");
-        setInvoiceTypeCodeValue(planSubscription.invoiceTypeCode || "");
-        setProductNameValue(planSubscription.productName || "");
-      }
+    if (billingData && !editingBilling) {
+      setInvoiceTypeValue(billingData.invoiceType || "invoice");
+      setVatValue(billingData.vatNumber || "");
+      setCityValue(billingData.city || "");
+      setStreetValue(billingData.street || "");
+      setNumberValue(billingData.number || "");
+      setPostalCodeValue(billingData.postalCode || "");
+      setClassificationTypeValue(billingData.classificationType || "");
+      setInvoiceTypeCodeValue(billingData.invoiceTypeCode || "");
+      setProductNameValue(billingData.productName || "");
     }
-  }, [subscriptionsData, editingBilling]);
+  }, [billingData, editingBilling]);
 
   // Close expanded view when switching between all and draft tables
   useEffect(() => {
@@ -1851,27 +1845,15 @@ export function AdminWebsiteInvoices() {
           <DialogHeader>
             <DialogTitle>Billing Information</DialogTitle>
             <DialogDescription>
-              Subscription billing details for this website
+              Billing details for this website (used for Wrapp invoices). Saved per website and not affected by subscription sync.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {(subscriptionsLoading || subscriptionsFetching) ? (
+            {billingLoading ? (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 animate-spin" />
               </div>
-            ) : (() => {
-              const subscriptions = (subscriptionsData as any[]) || [];
-              const planSubscription = subscriptions.find((sub: any) => sub.productType === "plan");
-              
-              if (!planSubscription) {
-                return (
-                  <div className="text-center text-muted-foreground py-4">
-                    No plan subscription found for this website
-                  </div>
-                );
-              }
-
-              return (
+            ) : (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between py-2 border-b">
                     <span className="text-sm font-medium text-muted-foreground">Document Type</span>
@@ -1891,7 +1873,7 @@ export function AdminWebsiteInvoices() {
                       </Select>
                     ) : (
                       <span className="text-sm font-medium capitalize">
-                        {planSubscription.invoiceType || "Not provided"}
+                        {(billingData?.invoiceType) || "Not provided"}
                       </span>
                     )}
                   </div>
@@ -1907,7 +1889,7 @@ export function AdminWebsiteInvoices() {
                       />
                     ) : (
                       <span className="text-sm font-medium">
-                        {planSubscription.vatNumber || (
+                        {(billingData?.vatNumber) || (
                           <span className="text-muted-foreground">Not provided</span>
                         )}
                       </span>
@@ -1925,7 +1907,7 @@ export function AdminWebsiteInvoices() {
                       />
                     ) : (
                       <span className="text-sm font-medium">
-                        {planSubscription.city || (
+                        {(billingData?.city) || (
                           <span className="text-muted-foreground">Not provided</span>
                         )}
                       </span>
@@ -1943,7 +1925,7 @@ export function AdminWebsiteInvoices() {
                       />
                     ) : (
                       <span className="text-sm font-medium">
-                        {planSubscription.street || (
+                        {(billingData?.street) || (
                           <span className="text-muted-foreground">Not provided</span>
                         )}
                       </span>
@@ -1961,7 +1943,7 @@ export function AdminWebsiteInvoices() {
                       />
                     ) : (
                       <span className="text-sm font-medium">
-                        {planSubscription.number || (
+                        {(billingData?.number) || (
                           <span className="text-muted-foreground">Not provided</span>
                         )}
                       </span>
@@ -1979,7 +1961,7 @@ export function AdminWebsiteInvoices() {
                       />
                     ) : (
                       <span className="text-sm font-medium">
-                        {planSubscription.postalCode || (
+                        {(billingData?.postalCode) || (
                           <span className="text-muted-foreground">Not provided</span>
                         )}
                       </span>
@@ -2016,7 +1998,7 @@ export function AdminWebsiteInvoices() {
                       </Select>
                     ) : (
                       <span className="text-sm font-medium">
-                        {planSubscription.invoiceTypeCode || (
+                        {(billingData?.invoiceTypeCode) || (
                           <span className="text-muted-foreground">Not provided</span>
                         )}
                       </span>
@@ -2041,7 +2023,7 @@ export function AdminWebsiteInvoices() {
                       </Select>
                     ) : (
                       <span className="text-sm font-medium">
-                        {planSubscription.classificationType || (
+                        {(billingData?.classificationType) || (
                           <span className="text-muted-foreground">Not provided</span>
                         )}
                       </span>
@@ -2068,7 +2050,7 @@ export function AdminWebsiteInvoices() {
                       </Select>
                     ) : (
                       <span className="text-sm font-medium">
-                        {planSubscription.productName || (
+                        {(billingData?.productName) || (
                           <span className="text-muted-foreground">Not provided</span>
                         )}
                       </span>
@@ -2079,8 +2061,9 @@ export function AdminWebsiteInvoices() {
                       <Button
                         size="sm"
                         onClick={() => {
+                          if (!selectedWebsiteForBilling) return;
                           updateBillingMutation.mutate({
-                            subscriptionId: planSubscription.id,
+                            websiteId: selectedWebsiteForBilling,
                             invoiceType: invoiceTypeValue,
                             vatNumber: vatValue,
                             city: cityValue,
@@ -2092,7 +2075,7 @@ export function AdminWebsiteInvoices() {
                             productName: productNameValue
                           });
                         }}
-                        disabled={updateBillingMutation.isPending}
+                        disabled={updateBillingMutation.isPending || !selectedWebsiteForBilling}
                       >
                         {updateBillingMutation.isPending ? (
                           <>
@@ -2114,7 +2097,7 @@ export function AdminWebsiteInvoices() {
                     </div>
                   ) : (
                     <div className="flex items-center justify-end gap-2 pt-2">
-                      {invoiceFilter === "draft" && selectedInvoiceForBilling && planSubscription?.classificationType && planSubscription?.invoiceTypeCode && planSubscription?.productName && (
+                      {invoiceFilter === "draft" && selectedInvoiceForBilling && billingData?.classificationType && billingData?.invoiceTypeCode && billingData?.productName && (
                         <Button
                           variant="default"
                           size="sm"
@@ -2134,15 +2117,15 @@ export function AdminWebsiteInvoices() {
                         variant="default"
                         size="sm"
                         onClick={() => {
-                          setInvoiceTypeValue(planSubscription.invoiceType || "invoice");
-                          setVatValue(planSubscription.vatNumber || "");
-                          setCityValue(planSubscription.city || "");
-                          setStreetValue(planSubscription.street || "");
-                          setNumberValue(planSubscription.number || "");
-                          setPostalCodeValue(planSubscription.postalCode || "");
-                          setClassificationTypeValue(planSubscription.classificationType || "");
-                          setInvoiceTypeCodeValue(planSubscription.invoiceTypeCode || "");
-                          setProductNameValue(planSubscription.productName || "");
+                          setInvoiceTypeValue((billingData?.invoiceType) || "invoice");
+                          setVatValue(billingData?.vatNumber || "");
+                          setCityValue(billingData?.city || "");
+                          setStreetValue(billingData?.street || "");
+                          setNumberValue(billingData?.number || "");
+                          setPostalCodeValue(billingData?.postalCode || "");
+                          setClassificationTypeValue(billingData?.classificationType || "");
+                          setInvoiceTypeCodeValue(billingData?.invoiceTypeCode || "");
+                          setProductNameValue(billingData?.productName || "");
                           setEditingBilling(true);
                         }}
                       >
@@ -2164,8 +2147,7 @@ export function AdminWebsiteInvoices() {
                     </div>
                   )}
                 </div>
-              );
-            })()}
+            )}
           </div>
           <DialogFooter>
           </DialogFooter>

@@ -145,6 +145,16 @@ export const websiteProgress = pgTable("website_progress", {
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status").notNull().default("disconnected"),
   stripeConnectedAt: timestamp("stripe_connected_at"),
+  // Billing info per website (used for Wrapp invoices; survives subscription sync)
+  billingVatNumber: text("billing_vat_number"),
+  billingCity: text("billing_city"),
+  billingStreet: text("billing_street"),
+  billingNumber: text("billing_number"),
+  billingPostalCode: text("billing_postal_code"),
+  billingInvoiceType: text("billing_invoice_type").default("invoice"),
+  billingClassificationType: text("billing_classification_type"),
+  billingInvoiceTypeCode: text("billing_invoice_type_code"),
+  billingProductName: text("billing_product_name"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
