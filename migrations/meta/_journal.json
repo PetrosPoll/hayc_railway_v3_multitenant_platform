@@ -57,6 +57,13 @@
       "when": 1773706618433,
       "tag": "0007_real_white_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1773776397239,
+      "tag": "0008_lovely_crystal",
+      "breakpoints": true
     }
   ]
 }

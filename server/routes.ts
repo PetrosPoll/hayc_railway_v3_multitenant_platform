@@ -12537,6 +12537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bonusEmails: websiteProgress.bonusEmails,
           bonusEmailsExpiry: websiteProgress.bonusEmailsExpiry,
           bookingEnabled: websiteProgress.bookingEnabled,
+          paymentsEnabled: websiteProgress.paymentsEnabled,
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
           customDomain: websiteProgress.customDomain,
@@ -12669,6 +12670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           websiteLanguage: websiteProgress.websiteLanguage,
           media: websiteProgress.media,
           bookingEnabled: websiteProgress.bookingEnabled,
+          paymentsEnabled: websiteProgress.paymentsEnabled,
           siteId: websiteProgress.siteId,
           customDomain: websiteProgress.customDomain,
           userEmail: users.email,
@@ -12817,9 +12819,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, siteId, customDomain, websiteLanguage } = req.body;
+      const { domain, bookingEnabled, paymentsEnabled, siteId, customDomain, websiteLanguage } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -12835,6 +12837,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "bookingEnabled must be a boolean" });
         }
         updates.bookingEnabled = bookingEnabled;
+      }
+
+      if (paymentsEnabled !== undefined) {
+        if (typeof paymentsEnabled !== 'boolean') {
+          return res.status(400).json({ error: "paymentsEnabled must be a boolean" });
+        }
+        updates.paymentsEnabled = paymentsEnabled;
       }
 
       if (siteId !== undefined) {
@@ -12863,7 +12872,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, siteId, customDomain, websiteLanguage" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, siteId, customDomain, websiteLanguage" });
       }
 
       const [updatedWebsite] = await db

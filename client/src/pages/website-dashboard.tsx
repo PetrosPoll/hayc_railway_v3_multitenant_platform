@@ -132,6 +132,7 @@ type Website = {
   userEmail: string;
   media?: Array<{ url: string, publicId: string, name: string }>;
   bookingEnabled?: boolean;
+   paymentsEnabled?: boolean;
   siteId?: string | null;
   stages: Array<{
     id: number;
@@ -1154,10 +1155,15 @@ export default function WebsiteDashboard() {
       { id: "discover", label: t("dashboard.discover") || "Discover", icon: Sparkles },
       ...(tipsVisibleInUserDashboard ? [{ id: "tips", label: t("dashboard.tips") || "Tips", icon: Lightbulb }] : []),
     ];
-    return website?.bookingEnabled
-      ? [...base, bookingItem, paymentsItem, ...after]
-      : [...base, paymentsItem, ...after];
-  }, [t, website?.bookingEnabled, tipsVisibleInUserDashboard, website?.siteId]);
+    const items: typeof base = [...base];
+    if (website?.bookingEnabled) {
+      items.push(bookingItem);
+    }
+    if (website?.paymentsEnabled) {
+      items.push(paymentsItem);
+    }
+    return [...items, ...after];
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, tipsVisibleInUserDashboard, website?.siteId]);
 
   if (websiteLoading) {
     return (

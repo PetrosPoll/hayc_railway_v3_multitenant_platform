@@ -54,6 +54,7 @@ type Website = {
   bonusEmails?: number | null
   bonusEmailsExpiry?: string | null
   bookingEnabled?: boolean
+  paymentsEnabled?: boolean
   siteId?: string | null
   websiteLanguage?: string | null
   customDomain?: string | null
@@ -799,6 +800,28 @@ export function AdminWebsiteProgress() {
     },
   });
 
+  const updatePaymentsMutation = useMutation({
+    mutationFn: async ({ websiteId, paymentsEnabled }: { websiteId: number; paymentsEnabled: boolean }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentsEnabled })
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update payments setting');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Payments setting updated" });
+    },
+    onError: (err: any) => {
+      toast({ description: err.message, variant: "destructive" });
+    },
+  });
+
   const updateSiteIdMutation = useMutation({
     mutationFn: async ({ websiteId, siteId }: { websiteId: number; siteId: string }) => {
       const response = await fetch(`/api/admin/websites/${websiteId}`, {
@@ -1187,21 +1210,38 @@ export function AdminWebsiteProgress() {
                     </Button>
                     <QuickCopyAnalyticsButton websiteId={website.id} />
                     {userPermissions?.canManageWebsites && (
-                      <div
-                        className="flex items-center gap-2"
-                        onClick={(e) => e.stopPropagation()}
-                        title="Show Booking button on website dashboard for this project"
-                      >
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">Booking</span>
-                        <Switch
-                          checked={website.bookingEnabled ?? false}
-                          onCheckedChange={(checked) => {
-                            updateBookingMutation.mutate({ websiteId: website.id, bookingEnabled: !!checked });
-                          }}
-                          disabled={updateBookingMutation.isPending}
-                          data-testid={`switch-booking-${website.id}`}
-                        />
-                      </div>
+                      <>
+                        <div
+                          className="flex items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Show Booking button on website dashboard for this project"
+                        >
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">Booking</span>
+                          <Switch
+                            checked={website.bookingEnabled ?? false}
+                            onCheckedChange={(checked) => {
+                              updateBookingMutation.mutate({ websiteId: website.id, bookingEnabled: !!checked });
+                            }}
+                            disabled={updateBookingMutation.isPending}
+                            data-testid={`switch-booking-${website.id}`}
+                          />
+                        </div>
+                        <div
+                          className="flex items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Show Payments tab on website dashboard for this project"
+                        >
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">Payments</span>
+                          <Switch
+                            checked={website.paymentsEnabled ?? false}
+                            onCheckedChange={(checked) => {
+                              updatePaymentsMutation.mutate({ websiteId: website.id, paymentsEnabled: !!checked });
+                            }}
+                            disabled={updatePaymentsMutation.isPending}
+                            data-testid={`switch-payments-${website.id}`}
+                          />
+                        </div>
+                      </>
                     )}
                     {userPermissions?.canManageWebsites && (
                       <Dialog>
