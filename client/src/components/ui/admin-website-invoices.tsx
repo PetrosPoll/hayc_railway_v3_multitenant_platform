@@ -292,6 +292,34 @@ export function AdminWebsiteInvoices() {
     productNameValue,
   ]);
 
+  // If "invoice" is selected, prevent receipt-only values from being saved.
+  useEffect(() => {
+    if (!billingInfoDialogOpen || !editingBilling) return;
+    if (isReceipt) return;
+
+    if (invoiceTypeCodeValue === "11.2") {
+      setInvoiceTypeCodeValue("2.1");
+      if (classificationTypeValue === "E3_561_003") setClassificationTypeValue("E3_561_001");
+    }
+
+    if (classificationTypeValue === "E3_561_003") {
+      setClassificationTypeValue("E3_561_001");
+    }
+
+    const receiptAllowedSet = new Set(receiptAllowedProductNames);
+    if (receiptAllowedSet.has(productNameValue)) {
+      setProductNameValue("ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ");
+    }
+  }, [
+    billingInfoDialogOpen,
+    editingBilling,
+    isReceipt,
+    invoiceTypeCodeValue,
+    classificationTypeValue,
+    productNameValue,
+    receiptAllowedProductNames,
+  ]);
+
   // Close expanded view when switching between all and draft tables
   useEffect(() => {
     setExpandedWebsiteId(null);
@@ -2031,7 +2059,9 @@ export function AdminWebsiteInvoices() {
                           <SelectItem value="2.1" disabled={isReceipt}>2.1 - ΤΠΥ Ελλάδα</SelectItem>
                           <SelectItem value="2.2" disabled={isReceipt}>2.2 - ΤΠΥ Ευρωπή</SelectItem>
                           <SelectItem value="2.3" disabled={isReceipt}>2.3 - ΤΠΥ Rest of the World</SelectItem>
-                          <SelectItem value="11.2">11.2 - ΑΠΥ</SelectItem>
+                          <SelectItem value="11.2" disabled={!isReceipt}>
+                            11.2 - ΑΠΥ
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (
@@ -2089,31 +2119,31 @@ export function AdminWebsiteInvoices() {
                         <SelectContent>
                           <SelectItem
                             value="ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ"
-                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ")}
+                            disabled={!isReceipt}
                           >
                             ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ
                           </SelectItem>
                           <SelectItem
                             value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ"
-                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ")}
+                            disabled={isReceipt}
                           >
                             ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ
                           </SelectItem>
                           <SelectItem
                             value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ"
-                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ")}
+                            disabled={isReceipt}
                           >
                             ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ
                           </SelectItem>
                           <SelectItem
                             value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ ΣΕ ΕΥΡΩΠΗ"
-                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ ΣΕ ΕΥΡΩΠΗ")}
+                            disabled={isReceipt}
                           >
                             ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ ΣΕ ΕΥΡΩΠΗ
                           </SelectItem>
                           <SelectItem
                             value="ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ"
-                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ")}
+                            disabled={!isReceipt}
                           >
                             ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ
                           </SelectItem>
