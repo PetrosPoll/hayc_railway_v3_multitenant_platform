@@ -2048,16 +2048,23 @@ export function AdminWebsiteInvoices() {
                       <Select
                         value={classificationTypeValue}
                         onValueChange={setClassificationTypeValue}
-                        disabled={isReceipt}
                       >
                         <SelectTrigger className="w-40 h-8">
                           <SelectValue placeholder="Select classification type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="E3_561_003" disabled>E3_561_003 - ΑΠΥ</SelectItem>
-                          <SelectItem value="E3_561_001" disabled>E3_561_001 - ΤΠΥ Ελλάδα</SelectItem>
-                          <SelectItem value="E3_561_005" disabled>E3_561_005 - ΤΠΥ Ευρώπη</SelectItem>
-                          <SelectItem value="E3_561_006" disabled>E3_561_006 - ΤΠΥ rest of the world</SelectItem>
+                          <SelectItem value="E3_561_003" disabled={!isReceipt}>
+                            E3_561_003 - ΑΠΥ
+                          </SelectItem>
+                          <SelectItem value="E3_561_001" disabled>
+                            E3_561_001 - ΤΠΥ Ελλάδα
+                          </SelectItem>
+                          <SelectItem value="E3_561_005" disabled>
+                            E3_561_005 - ΤΠΥ Ευρώπη
+                          </SelectItem>
+                          <SelectItem value="E3_561_006" disabled>
+                            E3_561_006 - ΤΠΥ rest of the world
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (
