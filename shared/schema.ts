@@ -144,6 +144,7 @@ export const websiteProgress = pgTable("website_progress", {
   digitalProductsEnabled: boolean("digital_products_enabled").default(false).notNull(),
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
+  contactEmail: text("contact_email"),
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status").notNull().default("disconnected"),
   stripeConnectedAt: timestamp("stripe_connected_at"),

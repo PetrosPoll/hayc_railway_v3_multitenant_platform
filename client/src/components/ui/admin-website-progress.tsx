@@ -56,6 +56,7 @@ type Website = {
   bookingEnabled?: boolean
   paymentsEnabled?: boolean
   digitalProductsEnabled?: boolean
+  contactEmail?: string | null
   siteId?: string | null
   websiteLanguage?: string | null
   customDomain?: string | null
@@ -617,6 +618,8 @@ export function AdminWebsiteProgress() {
   const [editedWebsiteLanguageValue, setEditedWebsiteLanguageValue] = useState("")
   const [editingCustomDomainId, setEditingCustomDomainId] = useState<number | null>(null)
   const [editedCustomDomainValue, setEditedCustomDomainValue] = useState("")
+  const [editingContactEmailId, setEditingContactEmailId] = useState<number | null>(null)
+  const [editedContactEmailValue, setEditedContactEmailValue] = useState("")
   const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>(null)
   const [filterWaitingOnly, setFilterWaitingOnly] = useState(false)
   const [waitingInfoDialog, setWaitingInfoDialog] = useState<{
@@ -897,6 +900,30 @@ export function AdminWebsiteProgress() {
         variant: "destructive"
       });
     }
+  });
+
+  const updateContactEmailMutation = useMutation({
+    mutationFn: async ({ websiteId, contactEmail }: { websiteId: number; contactEmail: string }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contactEmail }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update contact email');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Contact email updated" });
+      setEditingContactEmailId(null);
+      setEditedContactEmailValue("");
+    },
+    onError: (err: any) => {
+      toast({ description: err.message, variant: "destructive" });
+    },
   });
 
   const updateCustomDomainMutation = useMutation({
@@ -1640,6 +1667,79 @@ export function AdminWebsiteProgress() {
                                 setEditingWebsiteLanguageId(website.id);
                                 setEditedWebsiteLanguageValue(website.websiteLanguage || "");
                               }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Contact Email</span>
+                        {editingContactEmailId === website.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="email"
+                              value={editedContactEmailValue}
+                              onChange={(e) => setEditedContactEmailValue(e.target.value)}
+                              className="h-8 w-48"
+                              placeholder="contact@domain.com"
+                            />
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                const v = editedContactEmailValue.trim();
+                                if (v) {
+                                  updateContactEmailMutation.mutate({
+                                    websiteId: website.id,
+                                    contactEmail: v,
+                                  });
+                                }
+                              }}
+                              disabled={updateContactEmailMutation.isPending || !editedContactEmailValue.trim()}
+                            >
+                              {updateContactEmailMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingContactEmailId(null);
+                                setEditedContactEmailValue("");
+                              }}
+                              disabled={updateContactEmailMutation.isPending}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={
+                                typeof website.contactEmail === "string" && website.contactEmail
+                                  ? "text-sm"
+                                  : "text-sm text-muted-foreground"
+                              }
+                            >
+                              {typeof website.contactEmail === "string" && website.contactEmail
+                                ? website.contactEmail
+                                : "Not configured"}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 p-0"
+                              onClick={() => {
+                                setEditingContactEmailId(website.id);
+                                setEditedContactEmailValue(website.contactEmail || "");
+                              }}
+                              data-testid={`button-edit-contact-email-${website.id}`}
                             >
                               <Pencil className="h-3 w-3" />
                             </Button>

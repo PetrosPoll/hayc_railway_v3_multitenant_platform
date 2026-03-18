@@ -1,0 +1,1 @@
+ALTER TABLE "website_progress" ADD COLUMN "contact_email" text;

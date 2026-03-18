@@ -12539,6 +12539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bookingEnabled: websiteProgress.bookingEnabled,
           paymentsEnabled: websiteProgress.paymentsEnabled,
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
+          contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
           customDomain: websiteProgress.customDomain,
@@ -12673,6 +12674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bookingEnabled: websiteProgress.bookingEnabled,
           paymentsEnabled: websiteProgress.paymentsEnabled,
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
+          contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           customDomain: websiteProgress.customDomain,
           userEmail: users.email,
@@ -12821,9 +12823,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, siteId, customDomain, websiteLanguage } = req.body;
+      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -12869,6 +12871,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.customDomain = customDomain.trim() || null;
       }
 
+      if (contactEmail !== undefined) {
+        if (typeof contactEmail !== "string") {
+          return res.status(400).json({ error: "contactEmail must be a string" });
+        }
+        updates.contactEmail = contactEmail.trim() || null;
+      }
+
       if (websiteLanguage !== undefined) {
         if (typeof websiteLanguage !== 'string') {
           return res.status(400).json({ error: 'websiteLanguage must be a string' });
@@ -12881,7 +12890,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, siteId, customDomain, websiteLanguage" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
       }
 
       const [updatedWebsite] = await db
@@ -19126,8 +19135,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(onboardingFormResponses.websiteProgressId, website.id))
         .orderBy(desc(onboardingFormResponses.createdAt))
         .limit(1);
-      const accountEmail = onboarding?.accountEmail?.trim();
-      if (!accountEmail) {
+
+      const onboardingAccountEmail = onboarding?.accountEmail?.trim();
+      const ownerEmail = (website.contactEmail || onboardingAccountEmail)?.trim();
+      if (!ownerEmail) {
         return res.status(500).json({ error: "Contact configuration missing" });
       }
 
@@ -19161,7 +19172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const [ownerResult, visitorResult] = await Promise.all([
         EmailService.sendEmail({
-          to: accountEmail,
+          to: ownerEmail,
           subject: ownerSubject,
           message: ownerSubject,
           fromEmail: fromAddress,
@@ -19176,7 +19187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fromEmail: fromAddress,
           fromName: "Hayc",
           html: visitorHtml,
-          replyToAddresses: [accountEmail],
+          replyToAddresses: [ownerEmail],
         }),
       ]);
 
