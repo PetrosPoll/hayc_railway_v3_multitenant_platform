@@ -55,6 +55,7 @@ type Website = {
   bonusEmailsExpiry?: string | null
   bookingEnabled?: boolean
   paymentsEnabled?: boolean
+  digitalProductsEnabled?: boolean
   siteId?: string | null
   websiteLanguage?: string | null
   customDomain?: string | null
@@ -822,6 +823,28 @@ export function AdminWebsiteProgress() {
     },
   });
 
+  const updateDigitalProductsMutation = useMutation({
+    mutationFn: async ({ websiteId, digitalProductsEnabled }: { websiteId: number; digitalProductsEnabled: boolean }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ digitalProductsEnabled }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update digital products setting');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Digital products setting updated" });
+    },
+    onError: (err: any) => {
+      toast({ description: err.message, variant: "destructive" });
+    },
+  });
+
   const updateSiteIdMutation = useMutation({
     mutationFn: async ({ websiteId, siteId }: { websiteId: number; siteId: string }) => {
       const response = await fetch(`/api/admin/websites/${websiteId}`, {
@@ -1241,6 +1264,24 @@ export function AdminWebsiteProgress() {
                             data-testid={`switch-payments-${website.id}`}
                           />
                         </div>
+                        <div
+                          className="flex items-center gap-2"
+                          onClick={(e) => e.stopPropagation()}
+                          title="Show Digital Products tab on website dashboard for this project"
+                        >
+                          <span className="text-xs text-muted-foreground whitespace-nowrap">Digital Products</span>
+                          <Switch
+                            checked={website.digitalProductsEnabled ?? false}
+                            onCheckedChange={(checked) => {
+                              updateDigitalProductsMutation.mutate({
+                                websiteId: website.id,
+                                digitalProductsEnabled: !!checked,
+                              });
+                            }}
+                            disabled={updateDigitalProductsMutation.isPending}
+                            data-testid={`switch-digital-products-${website.id}`}
+                          />
+                        </div>
                       </>
                     )}
                     {userPermissions?.canManageWebsites && (
@@ -1580,9 +1621,16 @@ export function AdminWebsiteProgress() {
                           </div>
                         ) : (
                           <div className="flex items-center gap-2">
-                            {console.log("website.websiteLanguage", website.websiteLanguage)}
-                            <span className={website.websiteLanguage ? "text-sm" : "text-sm text-muted-foreground"}>
-                              {website.websiteLanguage || "Not configured"}
+                            <span
+                              className={
+                                typeof website.websiteLanguage === "string" && website.websiteLanguage
+                                  ? "text-sm"
+                                  : "text-sm text-muted-foreground"
+                              }
+                            >
+                              {typeof website.websiteLanguage === "string" && website.websiteLanguage
+                                ? website.websiteLanguage
+                                : "Not configured"}
                             </span>
                             <Button
                               variant="ghost"

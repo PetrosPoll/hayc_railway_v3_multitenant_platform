@@ -141,6 +141,7 @@ export const websiteProgress = pgTable("website_progress", {
   bonusEmailsExpiry: timestamp("bonus_emails_expiry"),
   bookingEnabled: boolean("booking_enabled").default(false).notNull(),
   paymentsEnabled: boolean("payments_enabled").default(false).notNull(),
+  digitalProductsEnabled: boolean("digital_products_enabled").default(false).notNull(),
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
   stripeAccountId: text("stripe_account_id"),

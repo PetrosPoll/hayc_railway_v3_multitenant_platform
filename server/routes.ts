@@ -12538,6 +12538,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bonusEmailsExpiry: websiteProgress.bonusEmailsExpiry,
           bookingEnabled: websiteProgress.bookingEnabled,
           paymentsEnabled: websiteProgress.paymentsEnabled,
+          digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
           customDomain: websiteProgress.customDomain,
@@ -12671,6 +12672,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           media: websiteProgress.media,
           bookingEnabled: websiteProgress.bookingEnabled,
           paymentsEnabled: websiteProgress.paymentsEnabled,
+          digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
           siteId: websiteProgress.siteId,
           customDomain: websiteProgress.customDomain,
           userEmail: users.email,
@@ -12819,9 +12821,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, paymentsEnabled, siteId, customDomain, websiteLanguage } = req.body;
+      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, siteId, customDomain, websiteLanguage } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -12844,6 +12846,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "paymentsEnabled must be a boolean" });
         }
         updates.paymentsEnabled = paymentsEnabled;
+      }
+
+      if (digitalProductsEnabled !== undefined) {
+        if (typeof digitalProductsEnabled !== "boolean") {
+          return res.status(400).json({ error: "digitalProductsEnabled must be a boolean" });
+        }
+        updates.digitalProductsEnabled = digitalProductsEnabled;
       }
 
       if (siteId !== undefined) {
@@ -12872,7 +12881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, siteId, customDomain, websiteLanguage" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, siteId, customDomain, websiteLanguage" });
       }
 
       const [updatedWebsite] = await db
@@ -20550,6 +20559,138 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(400).json({ error: error.message });
       }
       res.status(500).json({ error: "Failed to restore config" });
+    }
+  });
+
+  // HDP brand (hayc-digital) proxy routes
+  const hdpBrandUpdateSchema = z.object({
+    logoUrl: z.string(),
+    primaryColor: z.string(),
+    primaryForeground: z.string(),
+    fontFamily: z.enum(["Inter", "Roboto", "Lato", "Montserrat", "Playfair Display", "Poppins"]),
+    borderRadius: z.enum(["0px", "4px", "8px", "16px", "9999px"]),
+  });
+
+  app.get("/api/hdp/brand/:siteId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to access this site" });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      if (!HDP_INTERNAL_URL) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(`${HDP_INTERNAL_URL}/api/brand/${encodeURIComponent(siteId)}`, {
+        method: "GET",
+      });
+
+      if (internalRes.status === 204) {
+        return res.sendStatus(204);
+      }
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error fetching HDP brand:", error);
+      res.status(500).json({ error: "Failed to fetch HDP brand config" });
+    }
+  });
+
+  app.put("/api/hdp/brand/:siteId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+
+      if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+        return res.status(400).json({ error: "Request body must be a non-null object" });
+      }
+
+      const parsed = hdpBrandUpdateSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: "Validation failed",
+          details: parsed.error.flatten(),
+        });
+      }
+
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to modify this site" });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(`${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/brand`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-token": HDP_INTERNAL_TOKEN,
+        },
+        body: JSON.stringify(parsed.data),
+      });
+
+      if (internalRes.status === 204) {
+        return res.sendStatus(204);
+      }
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error updating HDP brand:", error);
+      res.status(500).json({ error: "Failed to update HDP brand config" });
     }
   });
 

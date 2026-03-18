@@ -73,6 +73,7 @@ import { AVAILABLE_ADDONS } from "@/lib/addons";
 import { BOOKING_APP_BASE_URL } from "@/lib/utils";
 import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
+import { HdpBrandModal } from "@/components/HdpBrandModal";
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -134,6 +135,7 @@ type Website = {
   media?: Array<{ url: string, publicId: string, name: string }>;
   bookingEnabled?: boolean;
    paymentsEnabled?: boolean;
+  digitalProductsEnabled?: boolean;
   siteId?: string | null;
   stages: Array<{
     id: number;
@@ -368,6 +370,9 @@ export default function WebsiteDashboard() {
 
   // Content editor dialog state
   const [contentEditorOpen, setContentEditorOpen] = useState(false);
+
+  // HDP brand config modal state
+  const [hdpBrandModalOpen, setHdpBrandModalOpen] = useState(false);
 
   // Booking redirect loading state
   const [isBookingLoading, setIsBookingLoading] = useState(false);
@@ -1193,7 +1198,9 @@ export default function WebsiteDashboard() {
       icon: Wallet,
     };
     const after = [
-      { id: "digital-products", label: "Digital Products", icon: ShoppingBag },
+      ...(website?.digitalProductsEnabled
+        ? [{ id: "digital-products", label: "Digital Products", icon: ShoppingBag }]
+        : []),
       { id: "separator", label: "", icon: null },
       { id: "discover", label: t("dashboard.discover") || "Discover", icon: Sparkles },
       ...(tipsVisibleInUserDashboard ? [{ id: "tips", label: t("dashboard.tips") || "Tips", icon: Lightbulb }] : []),
@@ -1206,7 +1213,7 @@ export default function WebsiteDashboard() {
       items.push(paymentsItem);
     }
     return [...items, ...after];
-  }, [t, website?.bookingEnabled, website?.paymentsEnabled, tipsVisibleInUserDashboard, website?.siteId]);
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, website?.siteId]);
 
   if (websiteLoading) {
     return (
@@ -4095,6 +4102,24 @@ export default function WebsiteDashboard() {
   };
 
   const renderDigitalProductsSection = () => {
+    if (!website?.digitalProductsEnabled) {
+      return (
+        <div data-testid="section-digital-products">
+          <h2 className="text-2xl font-bold mb-2">Digital Products</h2>
+          <p className="text-muted-foreground mb-6">
+            Digital Products are disabled for this website.
+          </p>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-sm text-muted-foreground">
+                Ask your admin to enable Digital Products for this project.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
     if (!website?.siteId) {
       return (
         <div data-testid="section-digital-products">
@@ -4129,6 +4154,17 @@ export default function WebsiteDashboard() {
             <ShoppingBag className="w-4 h-4" />
             Add course
           </button>
+        </div>
+
+        <div className="flex justify-end mb-6">
+          <Button
+            variant="outline"
+            onClick={() => setHdpBrandModalOpen(true)}
+            disabled={!website?.siteId}
+            data-testid="button-configure-look-feel"
+          >
+            Configure Look & Feel
+          </Button>
         </div>
 
         {/* Course list */}
@@ -4543,6 +4579,14 @@ export default function WebsiteDashboard() {
           </div>
         </SidebarInset>
       </div>
+
+      {website?.siteId ? (
+        <HdpBrandModal
+          open={hdpBrandModalOpen}
+          onOpenChange={setHdpBrandModalOpen}
+          siteId={website.siteId}
+        />
+      ) : null}
 
       {/* Cancel Subscription Confirmation Dialog */}
       <AlertDialog
