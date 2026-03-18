@@ -70,6 +70,11 @@ export function AdminWebsiteInvoices() {
   const [classificationTypeValue, setClassificationTypeValue] = useState("");
   const [invoiceTypeCodeValue, setInvoiceTypeCodeValue] = useState("");
   const [productNameValue, setProductNameValue] = useState("");
+  const isReceipt = invoiceTypeValue === "receipt";
+  const receiptAllowedProductNames = [
+    "ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ",
+    "ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ",
+  ];
   const [invoiceFilter, setInvoiceFilter] = useState<"all" | "draft">("all");
   
   // Sort state
@@ -263,6 +268,29 @@ export function AdminWebsiteInvoices() {
       setProductNameValue(billingData.productName || "");
     }
   }, [billingData, editingBilling]);
+
+  // When "receipt" is selected, enforce Wrapp/Greek tax mapping.
+  // - Invoice Type Code must be 11.2
+  // - Classification Type must be E3_561_003
+  // - Product name must be one of the two "ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ..." options
+  useEffect(() => {
+    if (!billingInfoDialogOpen || !editingBilling) return;
+    if (!isReceipt) return;
+
+    if (invoiceTypeCodeValue !== "11.2") setInvoiceTypeCodeValue("11.2");
+    if (classificationTypeValue !== "E3_561_003") setClassificationTypeValue("E3_561_003");
+
+    if (!receiptAllowedProductNames.includes(productNameValue)) {
+      setProductNameValue(receiptAllowedProductNames[0] || "");
+    }
+  }, [
+    billingInfoDialogOpen,
+    editingBilling,
+    isReceipt,
+    invoiceTypeCodeValue,
+    classificationTypeValue,
+    productNameValue,
+  ]);
 
   // Close expanded view when switching between all and draft tables
   useEffect(() => {
@@ -1861,7 +1889,7 @@ export function AdminWebsiteInvoices() {
                       <Select
                         value={invoiceTypeValue}
                         onValueChange={setInvoiceTypeValue}
-                        disabled={updateBillingMutation.isPending}
+                        disabled={updateBillingMutation.isPending || isReceipt}
                       >
                         <SelectTrigger className="w-40 h-8">
                           <SelectValue />
@@ -1877,96 +1905,106 @@ export function AdminWebsiteInvoices() {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <span className="text-sm font-medium text-muted-foreground">VAT Number</span>
-                    {editingBilling ? (
-                      <Input
-                        value={vatValue}
-                        onChange={(e) => setVatValue(e.target.value)}
-                        className="w-40 h-8"
-                        placeholder="Enter VAT"
-                        disabled={updateBillingMutation.isPending}
-                      />
-                    ) : (
-                      <span className="text-sm font-medium">
-                        {(billingData?.vatNumber) || (
-                          <span className="text-muted-foreground">Not provided</span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <span className="text-sm font-medium text-muted-foreground">City</span>
-                    {editingBilling ? (
-                      <Input
-                        value={cityValue}
-                        onChange={(e) => setCityValue(e.target.value)}
-                        className="w-40 h-8"
-                        placeholder="Enter city"
-                        disabled={updateBillingMutation.isPending}
-                      />
-                    ) : (
-                      <span className="text-sm font-medium">
-                        {(billingData?.city) || (
-                          <span className="text-muted-foreground">Not provided</span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <span className="text-sm font-medium text-muted-foreground">Street</span>
-                    {editingBilling ? (
-                      <Input
-                        value={streetValue}
-                        onChange={(e) => setStreetValue(e.target.value)}
-                        className="w-40 h-8"
-                        placeholder="Enter street"
-                        disabled={updateBillingMutation.isPending}
-                      />
-                    ) : (
-                      <span className="text-sm font-medium">
-                        {(billingData?.street) || (
-                          <span className="text-muted-foreground">Not provided</span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <span className="text-sm font-medium text-muted-foreground">Number</span>
-                    {editingBilling ? (
-                      <Input
-                        value={numberValue}
-                        onChange={(e) => setNumberValue(e.target.value)}
-                        className="w-40 h-8"
-                        placeholder="Enter number"
-                        disabled={updateBillingMutation.isPending}
-                      />
-                    ) : (
-                      <span className="text-sm font-medium">
-                        {(billingData?.number) || (
-                          <span className="text-muted-foreground">Not provided</span>
-                        )}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center justify-between py-2 border-b">
-                    <span className="text-sm font-medium text-muted-foreground">Postal Code</span>
-                    {editingBilling ? (
-                      <Input
-                        value={postalCodeValue}
-                        onChange={(e) => setPostalCodeValue(e.target.value)}
-                        className="w-40 h-8"
-                        placeholder="Enter postal code"
-                        disabled={updateBillingMutation.isPending}
-                      />
-                    ) : (
-                      <span className="text-sm font-medium">
-                        {(billingData?.postalCode) || (
-                          <span className="text-muted-foreground">Not provided</span>
-                        )}
-                      </span>
-                    )}
-                  </div>
+                  {!isReceipt && (
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-sm font-medium text-muted-foreground">VAT Number</span>
+                      {editingBilling ? (
+                        <Input
+                          value={vatValue}
+                          onChange={(e) => setVatValue(e.target.value)}
+                          className="w-40 h-8"
+                          placeholder="Enter VAT"
+                          disabled={updateBillingMutation.isPending}
+                        />
+                      ) : (
+                        <span className="text-sm font-medium">
+                          {(billingData?.vatNumber) || (
+                            <span className="text-muted-foreground">Not provided</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {!isReceipt && (
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-sm font-medium text-muted-foreground">City</span>
+                      {editingBilling ? (
+                        <Input
+                          value={cityValue}
+                          onChange={(e) => setCityValue(e.target.value)}
+                          className="w-40 h-8"
+                          placeholder="Enter city"
+                          disabled={updateBillingMutation.isPending}
+                        />
+                      ) : (
+                        <span className="text-sm font-medium">
+                          {(billingData?.city) || (
+                            <span className="text-muted-foreground">Not provided</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {!isReceipt && (
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-sm font-medium text-muted-foreground">Street</span>
+                      {editingBilling ? (
+                        <Input
+                          value={streetValue}
+                          onChange={(e) => setStreetValue(e.target.value)}
+                          className="w-40 h-8"
+                          placeholder="Enter street"
+                          disabled={updateBillingMutation.isPending}
+                        />
+                      ) : (
+                        <span className="text-sm font-medium">
+                          {(billingData?.street) || (
+                            <span className="text-muted-foreground">Not provided</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {!isReceipt && (
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-sm font-medium text-muted-foreground">Number</span>
+                      {editingBilling ? (
+                        <Input
+                          value={numberValue}
+                          onChange={(e) => setNumberValue(e.target.value)}
+                          className="w-40 h-8"
+                          placeholder="Enter number"
+                          disabled={updateBillingMutation.isPending}
+                        />
+                      ) : (
+                        <span className="text-sm font-medium">
+                          {(billingData?.number) || (
+                            <span className="text-muted-foreground">Not provided</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {!isReceipt && (
+                    <div className="flex items-center justify-between py-2 border-b">
+                      <span className="text-sm font-medium text-muted-foreground">Postal Code</span>
+                      {editingBilling ? (
+                        <Input
+                          value={postalCodeValue}
+                          onChange={(e) => setPostalCodeValue(e.target.value)}
+                          className="w-40 h-8"
+                          placeholder="Enter postal code"
+                          disabled={updateBillingMutation.isPending}
+                        />
+                      ) : (
+                        <span className="text-sm font-medium">
+                          {(billingData?.postalCode) || (
+                            <span className="text-muted-foreground">Not provided</span>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between py-2 border-b">
                     <span className="text-sm font-medium text-muted-foreground">Invoice Type Code</span>
                     {editingBilling ? (
@@ -1990,9 +2028,9 @@ export function AdminWebsiteInvoices() {
                           <SelectValue placeholder="Select invoice type code" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="2.1">2.1 - ΤΠΥ Ελλάδα</SelectItem>
-                          <SelectItem value="2.2">2.2 - ΤΠΥ Ευρωπή</SelectItem>
-                          <SelectItem value="2.3">2.3 - ΤΠΥ Rest of the World</SelectItem>
+                          <SelectItem value="2.1" disabled={isReceipt}>2.1 - ΤΠΥ Ελλάδα</SelectItem>
+                          <SelectItem value="2.2" disabled={isReceipt}>2.2 - ΤΠΥ Ευρωπή</SelectItem>
+                          <SelectItem value="2.3" disabled={isReceipt}>2.3 - ΤΠΥ Rest of the World</SelectItem>
                           <SelectItem value="11.2">11.2 - ΑΠΥ</SelectItem>
                         </SelectContent>
                       </Select>
@@ -2010,6 +2048,7 @@ export function AdminWebsiteInvoices() {
                       <Select
                         value={classificationTypeValue}
                         onValueChange={setClassificationTypeValue}
+                        disabled={isReceipt}
                       >
                         <SelectTrigger className="w-40 h-8">
                           <SelectValue placeholder="Select classification type" />
@@ -2041,11 +2080,36 @@ export function AdminWebsiteInvoices() {
                           <SelectValue placeholder="Select product name" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ">ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ</SelectItem>
-                          <SelectItem value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ">ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ</SelectItem>
-                          <SelectItem value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ">ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ</SelectItem>
-                          <SelectItem value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ ΣΕ ΕΥΡΩΠΗ">ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ ΣΕ ΕΥΡΩΠΗ</SelectItem>
-                          <SelectItem value="ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ">ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ</SelectItem>
+                          <SelectItem
+                            value="ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ"
+                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ")}
+                          >
+                            ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΞΩΤΕΡΙΚΟΥ
+                          </SelectItem>
+                          <SelectItem
+                            value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ"
+                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ")}
+                          >
+                            ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ, ΤΡΙΤΩΝ ΧΩΡΩΝ
+                          </SelectItem>
+                          <SelectItem
+                            value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ"
+                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ")}
+                          >
+                            ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ
+                          </SelectItem>
+                          <SelectItem
+                            value="ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ ΣΕ ΕΥΡΩΠΗ"
+                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ ΣΕ ΕΥΡΩΠΗ")}
+                          >
+                            ΥΠΗΡΕΣΙΕΣ ΠΡΟΓΡΑΜΜΑΤΙΣΜΟΥ, ΣΧΕΔΙΑΣΜΟΥ ΚΑΙ ΑΝΑΠΤΥΞΗΣ ΛΟΓΙΣΜΙΚΟΥ ΣΕ ΕΥΡΩΠΗ
+                          </SelectItem>
+                          <SelectItem
+                            value="ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ"
+                            disabled={isReceipt && !receiptAllowedProductNames.includes("ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ")}
+                          >
+                            ΛΙΑΝΙΚΗ ΠΑΡΟΧΗ ΥΠΗΡΕΣΙΩΝ ΕΝΤΟΣ ΕΛΛΑΔΟΣ
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (
