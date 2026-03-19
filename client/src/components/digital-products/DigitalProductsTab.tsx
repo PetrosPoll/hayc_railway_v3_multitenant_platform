@@ -13,11 +13,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useTranslation } from "react-i18next";
 import { Product, ProductStatus, ProductType } from "@/types/digital-products";
 import { ProductTypeFilter } from "@/components/digital-products/ProductTypeFilter";
 import { ProductsTable } from "@/components/digital-products/ProductsTable";
 import { CreateProductButton } from "@/components/digital-products/CreateProductButton";
-import { CourseFormModal } from "@/components/digital-products/CourseFormModal";
+import { CourseDrawer } from "@/components/digital-products/CourseDrawer";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 
 interface Props {
@@ -30,6 +31,7 @@ function typeLabel(type: ProductType): string {
 }
 
 export function DigitalProductsTab({ siteId }: Props) {
+  const { t } = useTranslation();
   const HDP_URL = import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined;
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
@@ -61,11 +63,11 @@ export function DigitalProductsTab({ siteId }: Props) {
         setProducts([]);
       }
     } catch (_err) {
-      setError("Failed to load products. Please try again.");
+      setError(t("digitalProductsManagement.toasts.failedToLoadProducts"));
     } finally {
       setIsLoading(false);
     }
-  }, [siteId]);
+  }, [siteId, t]);
 
   useEffect(() => {
     fetchProducts();
@@ -117,13 +119,13 @@ export function DigitalProductsTab({ siteId }: Props) {
 
       await fetchProducts();
       toast({
-        title: "Success",
-        description: "Product deleted",
+        title: t("digitalProductsManagement.toasts.successTitle"),
+        description: t("digitalProductsManagement.toasts.productDeleted"),
       });
     } catch (_err) {
       toast({
-        title: "Error",
-        description: "Failed to delete product",
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.toasts.failedToDeleteProduct"),
         variant: "destructive",
       });
     } finally {
@@ -152,13 +154,13 @@ export function DigitalProductsTab({ siteId }: Props) {
 
       await fetchProducts();
       toast({
-        title: "Success",
-        description: "Status updated",
+        title: t("digitalProductsManagement.toasts.successTitle"),
+        description: t("digitalProductsManagement.toasts.statusUpdated"),
       });
     } catch (_err) {
       toast({
-        title: "Error",
-        description: "Failed to update status",
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.toasts.failedToUpdateStatus"),
         variant: "destructive",
       });
     }
@@ -172,7 +174,7 @@ export function DigitalProductsTab({ siteId }: Props) {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold mb-2">Digital Products</h2>
+      <h2 className="text-2xl font-bold mb-2">{t("digitalProductsManagement.title")}</h2>
 
       <div className="flex items-center justify-between mb-6 gap-4">
         <ProductTypeFilter
@@ -187,7 +189,7 @@ export function DigitalProductsTab({ siteId }: Props) {
             onClick={() => setBrandModalOpen(true)}
             data-testid="button-configure-look-feel"
           >
-            Configure Look & Feel
+            {t("digitalProductsManagement.configureLookAndFeel")}
           </Button>
           <CreateProductButton onSelect={handleCreateSelect} />
         </div>
@@ -204,20 +206,24 @@ export function DigitalProductsTab({ siteId }: Props) {
           <CardContent className="py-8">
             <p className="text-sm text-red-600 mb-4">{error}</p>
             <Button type="button" variant="outline" onClick={fetchProducts}>
-              Retry
+              {t("digitalProductsManagement.common.retry")}
             </Button>
           </CardContent>
         </Card>
       ) : products.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No products yet. Click Create to add your first one.
+            {t("digitalProductsManagement.empty.noProducts")}
           </CardContent>
         </Card>
       ) : filteredProducts.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No {activeType ? `${typeLabel(activeType)}s` : "products"} found.
+            {activeType
+              ? t("digitalProductsManagement.empty.noTypeFound", {
+                  type: t(`digitalProductsManagement.types.${typeLabel(activeType)}`),
+                })
+              : t("digitalProductsManagement.empty.noProductsFound")}
           </CardContent>
         </Card>
       ) : (
@@ -230,14 +236,14 @@ export function DigitalProductsTab({ siteId }: Props) {
         />
       )}
 
-      <CourseFormModal
+      <CourseDrawer
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
         onSuccess={fetchProducts}
         siteId={siteId}
       />
 
-      <CourseFormModal
+      <CourseDrawer
         open={!!editingProduct}
         onClose={() => setEditingProduct(null)}
         onSuccess={fetchProducts}
@@ -255,13 +261,15 @@ export function DigitalProductsTab({ siteId }: Props) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogTitle>{t("digitalProductsManagement.deleteDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this product? This action cannot be undone.
+              {t("digitalProductsManagement.deleteDialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={!!deletingId}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={!!deletingId}>
+              {t("digitalProductsManagement.common.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
@@ -269,7 +277,9 @@ export function DigitalProductsTab({ siteId }: Props) {
               }}
               disabled={!!deletingId}
             >
-              {deletingId ? "Deleting..." : "Delete"}
+              {deletingId
+                ? t("digitalProductsManagement.actions.deleting")
+                : t("digitalProductsManagement.actions.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

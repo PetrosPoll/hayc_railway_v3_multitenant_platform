@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { useTranslation } from "react-i18next";
 import { ProductType } from "@/types/digital-products";
 
 interface Props {
@@ -7,12 +8,14 @@ interface Props {
   onChange: (type: ProductType) => void;
 }
 
-function getTypeLabel(type: ProductType): string {
-  if (type === "course") return "Courses";
-  return "Products";
-}
-
 export function ProductTypeFilter({ types, active, onChange }: Props) {
+  const { t } = useTranslation();
+
+  function getTypeLabel(type: ProductType): string {
+    if (type === "course") return t("digitalProductsManagement.filters.courses");
+    return t("digitalProductsManagement.filters.products");
+  }
+
   if (types.length === 0) return null;
 
   return (

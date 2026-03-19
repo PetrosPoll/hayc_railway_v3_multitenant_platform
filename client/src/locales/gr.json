@@ -1158,6 +1158,8 @@
         "analytics": "Αναλυτικά Στοιχεία",
         "newsletter": "Ενημερωτικό Δελτίο",
         "booking": "Κρατήσεις",
+        "payments": "Πληρωμές",
+        "digitalProducts": "Ψηφιακά Προϊόντα",
         "bookingOpening": "Άνοιγμα συστήματος κρατήσεων...",
         "bookingError": "Δεν ήταν δυνατό το άνοιγμα του συστήματος κρατήσεων",
         "bookingErrorDescription": "Παρακαλώ δοκιμάστε ξανά.",
@@ -2704,6 +2706,118 @@
         "tips": "Συμβουλές",
         "websiteChanges": "Αλλαγές Ιστοσελίδας",
         "websiteProgress": "Πρόοδος Ιστοσελίδας"
+    },
+    "digitalProductsManagement": {
+        "title": "Ψηφιακά Προϊόντα",
+        "configureLookAndFeel": "Ρύθμιση Εμφάνισης",
+        "types": {
+            "course": "μάθημα",
+            "products": "προϊόντα"
+        },
+        "filters": {
+            "courses": "Μαθήματα",
+            "products": "Προϊόντα"
+        },
+        "create": {
+            "button": "Δημιουργία",
+            "courseOption": "Μάθημα"
+        },
+        "table": {
+            "title": "Τίτλος",
+            "price": "Τιμή",
+            "status": "Κατάσταση",
+            "actions": "Ενέργειες"
+        },
+        "status": {
+            "draft": "Πρόχειρο",
+            "published": "Δημοσιευμένο"
+        },
+        "actions": {
+            "edit": "Επεξεργασία",
+            "publish": "Δημοσίευση",
+            "unpublish": "Απόσυρση",
+            "delete": "Διαγραφή",
+            "deleting": "Διαγραφή..."
+        },
+        "common": {
+            "close": "Κλείσιμο",
+            "cancel": "Ακύρωση",
+            "save": "Αποθήκευση",
+            "saveChanges": "Αποθήκευση αλλαγών",
+            "saving": "Αποθήκευση...",
+            "retry": "Δοκιμή ξανά"
+        },
+        "empty": {
+            "noProducts": "Δεν υπάρχουν προϊόντα ακόμα. Πατήστε Δημιουργία για να προσθέσετε το πρώτο σας.",
+            "noTypeFound": "Δεν βρέθηκαν {{type}}.",
+            "noProductsFound": "Δεν βρέθηκαν προϊόντα."
+        },
+        "deleteDialog": {
+            "title": "Είστε σίγουροι;",
+            "description": "Είστε σίγουροι ότι θέλετε να διαγράψετε αυτό το προϊόν; Αυτή η ενέργεια δεν αναιρείται."
+        },
+        "toasts": {
+            "successTitle": "Επιτυχία",
+            "errorTitle": "Σφάλμα",
+            "productDeleted": "Το προϊόν διαγράφηκε",
+            "failedToDeleteProduct": "Αποτυχία διαγραφής προϊόντος",
+            "statusUpdated": "Η κατάσταση ενημερώθηκε",
+            "failedToUpdateStatus": "Αποτυχία ενημέρωσης κατάστασης",
+            "courseUpdated": "Το μάθημα ενημερώθηκε",
+            "courseCreated": "Το μάθημα δημιουργήθηκε",
+            "failedToUpdateCourse": "Αποτυχία ενημέρωσης μαθήματος",
+            "failedToCreateCourse": "Αποτυχία δημιουργίας μαθήματος",
+            "failedToLoadProducts": "Αποτυχία φόρτωσης προϊόντων. Παρακαλώ δοκιμάστε ξανά."
+        },
+        "courseDrawer": {
+            "closeDrawerAria": "Κλείσιμο συρταριού μαθήματος",
+            "newTitle": "Νέο Μάθημα",
+            "editTitle": "Επεξεργασία Μαθήματος",
+            "fields": {
+                "title": "Τίτλος",
+                "description": "Περιγραφή",
+                "priceEur": "Τιμή (EUR)",
+                "thumbnailUrl": "URL μικρογραφίας",
+                "status": "Κατάσταση"
+            },
+            "placeholders": {
+                "courseTitle": "Τίτλος μαθήματος",
+                "optionalDescription": "Προαιρετική περιγραφή",
+                "selectStatus": "Επιλέξτε κατάσταση"
+            }
+        },
+        "brandModal": {
+            "title": "Ρύθμιση Εμφάνισης",
+            "subtitle": "Προσαρμόστε πώς φαίνεται το HDP store σας στους πελάτες σας. Αυτές οι ρυθμίσεις εφαρμόζονται στην πύλη ψηφιακών προϊόντων και όχι στην κύρια ιστοσελίδα σας.",
+            "fields": {
+                "brandName": "Όνομα επωνυμίας",
+                "logoUrl": "URL λογοτύπου",
+                "primaryColor": "Κύριο χρώμα",
+                "textColorOnPrimary": "Χρώμα κειμένου πάνω στο κύριο",
+                "fontFamily": "Γραμματοσειρά",
+                "borderRadius": "Ακτίνα γωνιών"
+            },
+            "placeholders": {
+                "brandName": "π.χ. FC Barcelona",
+                "logoUrl": "https://example.com/logo.png",
+                "selectFont": "Επιλέξτε γραμματοσειρά",
+                "selectBorderRadius": "Επιλέξτε ακτίνα γωνιών"
+            },
+            "borderRadiusOptions": {
+                "none": "Καθόλου (0px)",
+                "small": "Μικρή (4px)",
+                "medium": "Μεσαία (8px)",
+                "large": "Μεγάλη (16px)",
+                "full": "Πλήρης (9999px)"
+            },
+            "actions": {
+                "preview": "Προεπισκόπηση"
+            },
+            "toasts": {
+                "lookAndFeelUpdated": "Η εμφάνιση ενημερώθηκε",
+                "somethingWentWrong": "Κάτι πήγε στραβά, δοκιμάστε ξανά"
+            }
+        }
     },
     "cancellationFeedback": {
         "title": "Λυπούμαστε που φεύγετε",

@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTranslation } from "react-i18next";
 import { Product, ProductStatus } from "@/types/digital-products";
 
 interface Props {
@@ -29,15 +30,17 @@ function formatPrice(priceInCents: number, currency: string): string {
 }
 
 export function ProductsTable({ products, onEdit, onDelete, onStatusToggle, deletingId }: Props) {
+  const { t } = useTranslation();
+
   return (
     <div className="rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Price</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>{t("digitalProductsManagement.table.title")}</TableHead>
+            <TableHead>{t("digitalProductsManagement.table.price")}</TableHead>
+            <TableHead>{t("digitalProductsManagement.table.status")}</TableHead>
+            <TableHead className="text-right">{t("digitalProductsManagement.table.actions")}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -54,7 +57,9 @@ export function ProductsTable({ products, onEdit, onDelete, onStatusToggle, dele
                       : "bg-gray-100 text-gray-700 hover:bg-gray-100"
                   }
                 >
-                  {product.status}
+                  {product.status === "published"
+                    ? t("digitalProductsManagement.status.published")
+                    : t("digitalProductsManagement.status.draft")}
                 </Badge>
               </TableCell>
               <TableCell className="text-right">
@@ -65,7 +70,7 @@ export function ProductsTable({ products, onEdit, onDelete, onStatusToggle, dele
                     type="button"
                     onClick={() => onEdit(product)}
                   >
-                    Edit
+                    {t("digitalProductsManagement.actions.edit")}
                   </Button>
                   <Button
                     variant="outline"
@@ -73,7 +78,9 @@ export function ProductsTable({ products, onEdit, onDelete, onStatusToggle, dele
                     type="button"
                     onClick={() => onStatusToggle(product.id, product.status)}
                   >
-                    {product.status === "published" ? "Unpublish" : "Publish"}
+                    {product.status === "published"
+                      ? t("digitalProductsManagement.actions.unpublish")
+                      : t("digitalProductsManagement.actions.publish")}
                   </Button>
                   <Button
                     variant="destructive"
@@ -85,10 +92,10 @@ export function ProductsTable({ products, onEdit, onDelete, onStatusToggle, dele
                     {deletingId === product.id ? (
                       <span className="inline-flex items-center gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        Deleting...
+                        {t("digitalProductsManagement.actions.deleting")}
                       </span>
                     ) : (
-                      "Delete"
+                      t("digitalProductsManagement.actions.delete")
                     )}
                   </Button>
                 </div>

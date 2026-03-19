@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export type HdpFontFamily = "Inter" | "Roboto" | "Lato" | "Montserrat" | "Playfair Display" | "Poppins";
 export type HdpBorderRadius = "0px" | "4px" | "8px" | "16px" | "9999px";
@@ -27,12 +28,12 @@ interface HdpBrandFormState {
 }
 
 const FONT_FAMILIES: HdpFontFamily[] = ["Inter", "Roboto", "Lato", "Montserrat", "Playfair Display", "Poppins"];
-const BORDER_RADII: Array<{ value: HdpBorderRadius; label: string }> = [
-  { value: "0px", label: "None (0px)" },
-  { value: "4px", label: "Small (4px)" },
-  { value: "8px", label: "Medium (8px)" },
-  { value: "16px", label: "Large (16px)" },
-  { value: "9999px", label: "Full (9999px)" },
+const BORDER_RADII: Array<{ value: HdpBorderRadius; labelKey: string }> = [
+  { value: "0px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.none" },
+  { value: "4px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.small" },
+  { value: "8px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.medium" },
+  { value: "16px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.large" },
+  { value: "9999px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.full" },
 ];
 
 const DEFAULT_FORM: HdpBrandFormState = {
@@ -125,6 +126,7 @@ function pickBrandRoot(brandJson: any) {
 }
 
 export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBrandModalProps) {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -225,7 +227,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
       } catch (_err) {
         if (cancelled) return;
         toast({
-          title: "Something went wrong, please try again",
+          title: t("digitalProductsManagement.brandModal.toasts.somethingWentWrong"),
           variant: "destructive",
         });
       } finally {
@@ -238,7 +240,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
     return () => {
       cancelled = true;
     };
-  }, [open, siteId, toast]);
+  }, [open, siteId, t, toast]);
 
   const handleSave = async () => {
     if (!siteId || !canSave) return;
@@ -264,12 +266,12 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
       }
 
       toast({
-        title: "Look & feel updated",
+        title: t("digitalProductsManagement.brandModal.toasts.lookAndFeelUpdated"),
       });
       onOpenChange(false);
     } catch (_err) {
       toast({
-        title: "Something went wrong, please try again",
+        title: t("digitalProductsManagement.brandModal.toasts.somethingWentWrong"),
         variant: "destructive",
       });
     } finally {
@@ -281,9 +283,9 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Configure Look &amp; Feel</DialogTitle>
+          <DialogTitle>{t("digitalProductsManagement.brandModal.title")}</DialogTitle>
           <DialogDescription>
-            Update the branding (logo, colors, font, and border radius) for this site.
+            {t("digitalProductsManagement.brandModal.subtitle")}
           </DialogDescription>
         </DialogHeader>
 
@@ -294,29 +296,31 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
         ) : (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="hdp-brand-name">Brand name</Label>
+              <Label htmlFor="hdp-brand-name">{t("digitalProductsManagement.brandModal.fields.brandName")}</Label>
               <Input
                 id="hdp-brand-name"
                 value={form.brandName}
                 onChange={(e) => setForm((prev) => ({ ...prev, brandName: e.target.value }))}
-                placeholder="e.g. FC Barcelona"
+                placeholder={t("digitalProductsManagement.brandModal.placeholders.brandName")}
                 disabled={isSaving}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="hdp-brand-logo-url">Logo URL</Label>
+              <Label htmlFor="hdp-brand-logo-url">
+                {t("digitalProductsManagement.brandModal.fields.logoUrl")}
+              </Label>
               <Input
                 id="hdp-brand-logo-url"
                 value={form.logoUrl}
                 onChange={(e) => setForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
-                placeholder="https://example.com/logo.png"
+                placeholder={t("digitalProductsManagement.brandModal.placeholders.logoUrl")}
                 disabled={isSaving}
               />
             </div>
 
             <div className="space-y-2">
-              <Label>Primary color</Label>
+              <Label>{t("digitalProductsManagement.brandModal.fields.primaryColor")}</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -335,7 +339,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
             </div>
 
             <div className="space-y-2">
-              <Label>Text color on primary</Label>
+              <Label>{t("digitalProductsManagement.brandModal.fields.textColorOnPrimary")}</Label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
@@ -354,14 +358,14 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
             </div>
 
             <div className="space-y-2">
-              <Label>Font family</Label>
+              <Label>{t("digitalProductsManagement.brandModal.fields.fontFamily")}</Label>
               <Select
                 value={form.fontFamily}
                 onValueChange={(val) => setForm((prev) => ({ ...prev, fontFamily: val as HdpFontFamily }))}
                 disabled={isSaving}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a font" />
+                  <SelectValue placeholder={t("digitalProductsManagement.brandModal.placeholders.selectFont")} />
                 </SelectTrigger>
                 <SelectContent>
                   {FONT_FAMILIES.map((font) => (
@@ -374,19 +378,21 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
             </div>
 
             <div className="space-y-2">
-              <Label>Border radius</Label>
+              <Label>{t("digitalProductsManagement.brandModal.fields.borderRadius")}</Label>
               <Select
                 value={form.borderRadius}
                 onValueChange={(val) => setForm((prev) => ({ ...prev, borderRadius: val as HdpBorderRadius }))}
                 disabled={isSaving}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select border radius" />
+                  <SelectValue
+                    placeholder={t("digitalProductsManagement.brandModal.placeholders.selectBorderRadius")}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {BORDER_RADII.map((opt) => (
                     <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
+                      {t(opt.labelKey)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -403,7 +409,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
               onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
               disabled={isSaving || isLoading}
             >
-              Preview
+              {t("digitalProductsManagement.brandModal.actions.preview")}
             </Button>
           ) : null}
           <Button
@@ -412,16 +418,16 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
             onClick={() => onOpenChange(false)}
             disabled={isSaving || isLoading}
           >
-            Cancel
+            {t("digitalProductsManagement.common.cancel")}
           </Button>
           <Button type="button" onClick={handleSave} disabled={!canSave}>
             {isSaving ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Saving...
+                {t("digitalProductsManagement.common.saving")}
               </>
             ) : (
-              "Save"
+              t("digitalProductsManagement.common.save")
             )}
           </Button>
         </DialogFooter>

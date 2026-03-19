@@ -1156,12 +1156,12 @@ export default function WebsiteDashboard() {
     };
     const paymentsItem = {
       id: "payments",
-      label: "Payments",
+      label: t("dashboard.payments") || "Payments",
       icon: Wallet,
     };
     const after = [
       ...(website?.digitalProductsEnabled
-        ? [{ id: "digital-products", label: "Digital Products", icon: ShoppingBag }]
+        ? [{ id: "digital-products", label: t("dashboard.digitalProducts") || "Digital Products", icon: ShoppingBag }]
         : []),
       { id: "separator", label: "", icon: null },
       { id: "discover", label: t("dashboard.discover") || "Discover", icon: Sparkles },
