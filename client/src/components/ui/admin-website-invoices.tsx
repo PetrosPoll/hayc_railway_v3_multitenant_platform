@@ -1279,24 +1279,25 @@ export function AdminWebsiteInvoices() {
                                 View PDF
                               </Button>
                               }
-                              {invoice.pdfUrl &&
+                              {invoice.status === "DRAFT" && (
                               <Button
                                 variant="destructive"
                                 size="sm"
                                 onClick={() => {
                                   if (
                                     confirm(
-                                      "Are you sure you want to delete this invoice?"
+                                      "Are you sure you want to delete this draft invoice? This cannot be undone."
                                     )
                                   ) {
                                     deleteInvoiceMutation.mutate(invoice.id);
                                   }
                                 }}
-                                disabled={true}
+                                disabled={deleteInvoiceMutation.isPending}
                                 data-testid={`button-delete-invoice-${invoice.id}`}
                               >
                                 <Trash2 className="h-4 w-4" />
-                              </Button>    }
+                              </Button>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1616,25 +1617,25 @@ export function AdminWebsiteInvoices() {
                                             View PDF
                                           </Button>
                                           }
-                                          {invoice.pdfUrl &&
+                                          {invoice.status === "DRAFT" && (
                                           <Button
                                             variant="destructive"
                                             size="sm"
                                             onClick={() => {
                                               if (
                                                 confirm(
-                                                  "Are you sure you want to delete this invoice?"
+                                                  "Are you sure you want to delete this draft invoice? This cannot be undone."
                                                 )
                                               ) {
                                                 deleteInvoiceMutation.mutate(invoice.id);
                                               }
                                             }}
-                                            // disabled={deleteInvoiceMutation.isPending}
-                                            disabled={true}
+                                            disabled={deleteInvoiceMutation.isPending}
                                             data-testid={`button-delete-invoice-${invoice.id}`}
                                           >
                                             <Trash2 className="h-4 w-4" />
-                                          </Button>    }
+                                          </Button>
+                                          )}
                                     </div>
                                   </TableCell>
                                 </TableRow>

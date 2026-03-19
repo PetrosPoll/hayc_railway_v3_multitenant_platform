@@ -13418,7 +13418,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Delete an invoice
+  // Admin: Delete a draft invoice (DRAFT status only)
   app.delete("/api/admin/invoices/:invoiceId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -13431,6 +13431,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const invoiceId = parseInt(req.params.invoiceId);
+      const [invoice] = await db
+        .select({ status: websiteInvoices.status })
+        .from(websiteInvoices)
+        .where(eq(websiteInvoices.id, invoiceId))
+        .limit(1);
+
+      if (!invoice) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      if (invoice.status !== "DRAFT") {
+        return res.status(400).json({ error: "Only draft invoices can be deleted" });
+      }
+
       await storage.deleteWebsiteInvoice(invoiceId);
 
       res.json({ success: true });
