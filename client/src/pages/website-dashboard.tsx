@@ -4585,6 +4585,7 @@ export default function WebsiteDashboard() {
           open={hdpBrandModalOpen}
           onOpenChange={setHdpBrandModalOpen}
           siteId={website.siteId}
+          previewUrl={HDP_URL ? `${HDP_URL}?siteId=${encodeURIComponent(website.siteId)}` : ""}
         />
       ) : null}
 

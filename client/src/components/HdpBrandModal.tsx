@@ -14,9 +14,11 @@ interface HdpBrandModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   siteId: string;
+  previewUrl?: string;
 }
 
 interface HdpBrandFormState {
+  brandName: string;
   logoUrl: string;
   primaryColor: string;
   primaryForeground: string;
@@ -34,6 +36,7 @@ const BORDER_RADII: Array<{ value: HdpBorderRadius; label: string }> = [
 ];
 
 const DEFAULT_FORM: HdpBrandFormState = {
+  brandName: "",
   logoUrl: "",
   primaryColor: "#182B53",
   primaryForeground: "#FFFFFF",
@@ -121,7 +124,7 @@ function pickBrandRoot(brandJson: any) {
   );
 }
 
-export function HdpBrandModal({ open, onOpenChange, siteId }: HdpBrandModalProps) {
+export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBrandModalProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -170,6 +173,10 @@ export function HdpBrandModal({ open, onOpenChange, siteId }: HdpBrandModalProps
           "";
 
         const next: HdpBrandFormState = {
+          brandName:
+            getFirstString(brandRoot, ["brandName", "brand_name", "name"]) ??
+            getFirstString(themeRoot, ["brandName", "brand_name", "name"]) ??
+            "",
           logoUrl:
             (logoUrl ? logoUrl : typeof logoFromConfig === "string" ? logoFromConfig : ""),
           primaryColor: normalizeHexColor(
@@ -243,6 +250,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId }: HdpBrandModalProps
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          brandName: form.brandName,
           logoUrl: form.logoUrl,
           primaryColor: form.primaryColor,
           primaryForeground: form.primaryForeground,
@@ -285,6 +293,17 @@ export function HdpBrandModal({ open, onOpenChange, siteId }: HdpBrandModalProps
           </div>
         ) : (
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="hdp-brand-name">Brand name</Label>
+              <Input
+                id="hdp-brand-name"
+                value={form.brandName}
+                onChange={(e) => setForm((prev) => ({ ...prev, brandName: e.target.value }))}
+                placeholder="e.g. FC Barcelona"
+                disabled={isSaving}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="hdp-brand-logo-url">Logo URL</Label>
               <Input
@@ -377,6 +396,16 @@ export function HdpBrandModal({ open, onOpenChange, siteId }: HdpBrandModalProps
         )}
 
         <DialogFooter className="gap-2 sm:gap-0">
+          {previewUrl ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}
+              disabled={isSaving || isLoading}
+            >
+              Preview
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"

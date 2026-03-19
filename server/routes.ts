@@ -20575,6 +20575,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
 
   // HDP brand (hayc-digital) proxy routes
   const hdpBrandUpdateSchema = z.object({
+    brandName: z.string(),
     logoUrl: z.string(),
     primaryColor: z.string(),
     primaryForeground: z.string(),
