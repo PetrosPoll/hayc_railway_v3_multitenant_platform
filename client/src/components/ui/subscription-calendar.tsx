@@ -429,11 +429,18 @@ export function SubscriptionCalendar() {
         11
       );
       
-      // For stopped payments, only show past dates (historical records)
-      // For active payments, show all dates
-      const filteredDates = payment.isActive 
-        ? dates 
-        : dates.filter(dateInfo => dateInfo.isPast);
+      // For stopped payments, hide occurrences from the month it was stopped (updatedAt).
+      // This prevents a "cancelled in the past" payment from still showing up in later calendar months.
+      const stopDate = !payment.isActive && payment.updatedAt ? new Date(payment.updatedAt) : null;
+      const stopMonthStart = stopDate
+        ? new Date(stopDate.getFullYear(), stopDate.getMonth(), 1)
+        : null;
+
+      const filteredDates = payment.isActive
+        ? dates
+        : stopMonthStart
+          ? dates.filter(dateInfo => dateInfo.date < stopMonthStart)
+          : dates.filter(dateInfo => dateInfo.isPast);
       
       return filteredDates.map((dateInfo) => ({
         id: `${payment.id}-${dateInfo.date.getTime()}`, // Unique ID for display
