@@ -20706,6 +20706,240 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
+  app.get("/api/hdp/products/:siteId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to access this site" });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(`${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/products`, {
+        method: "GET",
+        headers: {
+          "x-internal-token": HDP_INTERNAL_TOKEN,
+        },
+      });
+
+      if (internalRes.status === 204) {
+        return res.sendStatus(204);
+      }
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error fetching HDP products:", error);
+      res.status(500).json({ error: "Failed to fetch HDP products" });
+    }
+  });
+
+  app.post("/api/hdp/products/:siteId/courses", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to modify this site" });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(`${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/courses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-internal-token": HDP_INTERNAL_TOKEN,
+        },
+        body: JSON.stringify(req.body),
+      });
+
+      if (internalRes.status === 204) {
+        return res.sendStatus(204);
+      }
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error creating HDP course:", error);
+      res.status(500).json({ error: "Failed to create HDP course" });
+    }
+  });
+
+  app.patch("/api/hdp/products/:siteId/courses/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId, id } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to modify this site" });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(
+        `${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/courses/${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-token": HDP_INTERNAL_TOKEN,
+          },
+          body: JSON.stringify(req.body),
+        }
+      );
+
+      if (internalRes.status === 204) {
+        return res.sendStatus(204);
+      }
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error updating HDP course:", error);
+      res.status(500).json({ error: "Failed to update HDP course" });
+    }
+  });
+
+  app.delete("/api/hdp/products/:siteId/courses/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId, id } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to modify this site" });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(
+        `${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/courses/${encodeURIComponent(id)}`,
+        {
+          method: "DELETE",
+          headers: {
+            "x-internal-token": HDP_INTERNAL_TOKEN,
+          },
+        }
+      );
+
+      if (internalRes.status === 204) {
+        return res.sendStatus(204);
+      }
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error deleting HDP course:", error);
+      res.status(500).json({ error: "Failed to delete HDP course" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
