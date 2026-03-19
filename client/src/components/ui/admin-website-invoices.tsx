@@ -185,10 +185,8 @@ export function AdminWebsiteInvoices() {
     return acc;
   }, {});
 
-  // Get all draft invoices
-  const draftInvoices = allInvoices.filter((invoice: any) => 
-    invoice.status?.toLowerCase() === "draft"
-  );
+  // To do invoices: no PDF yet — need "Create with Wrapp" and/or "Generate PDF". Done when "View PDF" appears.
+  const draftInvoices = allInvoices.filter((invoice: any) => !invoice.pdfUrl);
 
   // Auto-populate form when dialog opens
   useEffect(() => {
@@ -1093,7 +1091,7 @@ export function AdminWebsiteInvoices() {
             onClick={() => setInvoiceFilter("draft")}
             variant={invoiceFilter === "draft" ? "default" : "outline"}
           >
-            Draft Invoices
+            To do Invoices
           </Button>
           <Button
             onClick={handleUpdateInvoices}
@@ -1118,7 +1116,7 @@ export function AdminWebsiteInvoices() {
       {invoiceFilter === "draft" ? (
         draftInvoices.length === 0 ? (
           <div className="text-center text-gray-500 py-8">
-            No draft invoices found
+            No to do invoices — create with Wrapp to move them out of this list
           </div>
         ) : (
           <div className="p-4 bg-muted/50 rounded-lg">
@@ -1174,7 +1172,7 @@ export function AdminWebsiteInvoices() {
 
               return filteredInvoices.length === 0 ? (
                 <div className="text-center text-muted-foreground py-4">
-                  No draft invoices found for the selected month
+                  No to do invoices for the selected month
                 </div>
               ) : (
                 <Table>
