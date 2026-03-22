@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
 import {
   Select,
   SelectContent,
@@ -67,6 +69,15 @@ type DeleteTarget =
   | { type: "chapter"; chapterId: string; label: string }
   | { type: "lesson"; chapterId: string; lessonId: string; label: string }
   | null;
+
+type LessonEditTab = "details" | "attachments";
+
+interface LessonAttachment {
+  id: string;
+  title: string;
+  cloudinaryUrl: string;
+  fileType?: string;
+}
 
 function toStatus(value: unknown): ItemStatus {
   return value === "published" ? "published" : "draft";
@@ -140,6 +151,56 @@ function buildLessonPayload(draft: LessonDraftState): Record<string, unknown> {
   return payload;
 }
 
+function normalizeLessonAttachment(raw: Record<string, unknown>): LessonAttachment {
+  const id = raw.id ?? raw.attachmentId;
+  const url =
+    typeof raw.cloudinaryUrl === "string"
+      ? raw.cloudinaryUrl
+      : typeof raw.url === "string"
+        ? raw.url
+        : "";
+  return {
+    id: id != null ? String(id) : "",
+    title: typeof raw.title === "string" ? raw.title : "",
+    cloudinaryUrl: url,
+    fileType: typeof raw.fileType === "string" ? raw.fileType : undefined,
+  };
+}
+
+function parseAttachmentsPayload(data: unknown): LessonAttachment[] {
+  if (Array.isArray(data)) {
+    return (data as Record<string, unknown>[]).map(normalizeLessonAttachment).filter((a) => a.id);
+  }
+  if (data && typeof data === "object") {
+    const o = data as Record<string, unknown>;
+    const list = o.attachments ?? o.items;
+    if (Array.isArray(list)) {
+      return (list as Record<string, unknown>[]).map(normalizeLessonAttachment).filter((a) => a.id);
+    }
+  }
+  return [];
+}
+
+function fileTypeDisplayLabel(fileType: string): string {
+  switch (fileType.toLowerCase()) {
+    case "pdf":
+      return "PDF";
+    case "doc":
+    case "docx":
+      return "DOC";
+    case "xls":
+    case "xlsx":
+      return "XLS";
+    case "ppt":
+    case "pptx":
+      return "PPT";
+    case "zip":
+      return "ZIP";
+    default:
+      return fileType.toUpperCase() || "FILE";
+  }
+}
+
 export function CourseCurriculumTab({ siteId, courseId }: Props) {
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [lessonsByChapter, setLessonsByChapter] = useState<Record<string, Lesson[]>>({});
@@ -176,6 +237,13 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
   const [newLessonTitleError, setNewLessonTitleError] = useState<string | null>(null);
   const [lessonTitleErrorsById, setLessonTitleErrorsById] = useState<Record<string, string | null>>({});
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+  const [lessonEditTabByLessonId, setLessonEditTabByLessonId] = useState<Record<string, LessonEditTab>>({});
+  const [attachmentsByLessonId, setAttachmentsByLessonId] = useState<Record<string, LessonAttachment[]>>({});
+  const [attachmentsLoadingByLessonId, setAttachmentsLoadingByLessonId] = useState<Record<string, boolean>>({});
+  const [attachmentUploadingLessonId, setAttachmentUploadingLessonId] = useState<string | null>(null);
+  const [deletingAttachmentKey, setDeletingAttachmentKey] = useState<string | null>(null);
+
+  const { toast } = useToast();
 
   const hasCourseId = !!courseId;
 
@@ -387,9 +455,200 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
     }
   };
 
+  const attachmentsUrl = (chapterId: string, lessonId: string) => {
+    if (!courseBaseUrl) return null;
+    return `${courseBaseUrl}/chapters/${encodeURIComponent(chapterId)}/lessons/${encodeURIComponent(lessonId)}/attachments`;
+  };
+
+  const loadAttachments = async (chapterId: string, lessonId: string) => {
+    const url = attachmentsUrl(chapterId, lessonId);
+    if (!url) return;
+    setAttachmentsLoadingByLessonId((prev) => ({ ...prev, [lessonId]: true }));
+    try {
+      const response = await fetch(url, { credentials: "include" });
+      if (!response.ok) {
+        throw new Error("Failed to load attachments");
+      }
+      const data = response.status === 204 ? [] : await response.json();
+      const list = parseAttachmentsPayload(data);
+      setAttachmentsByLessonId((prev) => ({ ...prev, [lessonId]: list }));
+    } catch (_e) {
+      toast({
+        title: "Error",
+        description: "Failed to load attachments.",
+        variant: "destructive",
+      });
+    } finally {
+      setAttachmentsLoadingByLessonId((prev) => ({ ...prev, [lessonId]: false }));
+    }
+  };
+
+  const openLessonAttachmentUpload = async (chapterId: string, lessonId: string) => {
+    if (!courseBaseUrl) return;
+    const w = window as Window & { cloudinary?: { createUploadWidget: (opts: unknown, cb: unknown) => { open: () => void } } };
+    if (!w.cloudinary) {
+      toast({
+        title: "Error",
+        description: "Upload widget not ready. Please refresh the page and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const folder = `hdp/${siteId}/lessons/${lessonId}`;
+
+    let cloudinaryConfig = { apiKey: "", cloudName: "" };
+    try {
+      const configResponse = await fetch("/api/cloudinary/signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paramsToSign: { folder } }),
+        credentials: "include",
+      });
+      if (!configResponse.ok) {
+        throw new Error("Failed to get configuration");
+      }
+      const configData = await configResponse.json();
+      cloudinaryConfig.apiKey = configData.apiKey;
+      cloudinaryConfig.cloudName = configData.cloudName;
+    } catch (_e) {
+      toast({
+        title: "Error",
+        description: "Failed to initialize upload. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAttachmentUploadingLessonId(lessonId);
+
+    const postAttachment = async (info: {
+      original_filename?: string;
+      secure_url?: string;
+      format?: string;
+      resource_type?: string;
+    }) => {
+      const attachmentsEndpoint = attachmentsUrl(chapterId, lessonId);
+      if (!attachmentsEndpoint) return;
+      const ext = (info.original_filename?.split(".").pop() ?? "").toLowerCase();
+      const fileType = info.format || ext || info.resource_type;
+      const body = {
+        title: info.original_filename ?? "attachment",
+        cloudinaryUrl: info.secure_url ?? "",
+        fileType,
+      };
+      const response = await fetch(attachmentsEndpoint, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to save attachment");
+      }
+      await loadAttachments(chapterId, lessonId);
+      toast({ title: "Uploaded", description: "Attachment added to this lesson." });
+    };
+
+    const widget = w.cloudinary.createUploadWidget(
+      {
+        cloudName: cloudinaryConfig.cloudName,
+        apiKey: cloudinaryConfig.apiKey,
+        uploadSignature: async (callback: (args: { signature: string; timestamp: number }) => void, paramsToSign: Record<string, unknown>) => {
+          try {
+            const response = await fetch("/api/cloudinary/signature", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ paramsToSign }),
+              credentials: "include",
+            });
+            if (!response.ok) {
+              throw new Error("Failed to get upload signature");
+            }
+            const data = await response.json();
+            callback({ signature: data.signature, timestamp: data.timestamp });
+          } catch (_err) {
+            toast({
+              title: "Error",
+              description: "Failed to prepare upload. Please try again.",
+              variant: "destructive",
+            });
+          }
+        },
+        folder,
+        resourceType: "raw",
+        clientAllowedFormats: ["pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "zip"],
+        maxFileSize: 20000000,
+        multiple: false,
+        sources: ["local"],
+      },
+      (error: unknown, result: { event?: string; info?: Record<string, unknown> }) => {
+        if (error) {
+          toast({
+            title: "Upload Error",
+            description: "Failed to upload file. Please try again.",
+            variant: "destructive",
+          });
+          setAttachmentUploadingLessonId(null);
+          return;
+        }
+        if (result?.event === "success" && result.info) {
+          const info = result.info as {
+            original_filename?: string;
+            secure_url?: string;
+            format?: string;
+            resource_type?: string;
+          };
+          void postAttachment(info)
+            .catch(() => {
+              toast({
+                title: "Error",
+                description: "Upload succeeded but saving the attachment failed.",
+                variant: "destructive",
+              });
+            })
+            .finally(() => setAttachmentUploadingLessonId(null));
+          return;
+        }
+        if (result?.event === "close" || result?.event === "abort") {
+          setAttachmentUploadingLessonId(null);
+        }
+      }
+    );
+
+    widget.open();
+  };
+
+  const deleteLessonAttachment = async (chapterId: string, lessonId: string, attachmentId: string) => {
+    const base = attachmentsUrl(chapterId, lessonId);
+    if (!base) return;
+    const key = `${lessonId}:${attachmentId}`;
+    setDeletingAttachmentKey(key);
+    try {
+      const response = await fetch(`${base}/${encodeURIComponent(attachmentId)}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok && response.status !== 204) {
+        throw new Error("Failed to delete");
+      }
+      await loadAttachments(chapterId, lessonId);
+      toast({ title: "Removed", description: "Attachment deleted." });
+    } catch (_e) {
+      toast({
+        title: "Error",
+        description: "Failed to delete attachment.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingAttachmentKey(null);
+    }
+  };
+
   const startLessonEdit = (chapterId: string, lesson: Lesson) => {
     setExpandedLessonId(lesson.id);
     setExpandedLessonChapterId(chapterId);
+    setLessonEditTabByLessonId((prev) => ({ ...prev, [lesson.id]: "details" }));
     setLessonTitleErrorsById((prev) => ({ ...prev, [lesson.id]: null }));
     setLessonDraftsById((prev) => ({
       ...prev,
@@ -696,6 +955,9 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                       isFreePreview: lesson.isFreePreview,
                       status: lesson.status,
                     };
+                    const lessonTab = lessonEditTabByLessonId[lesson.id] ?? "details";
+                    const lessonAttachments = attachmentsByLessonId[lesson.id] ?? [];
+                    const attachmentsLoading = attachmentsLoadingByLessonId[lesson.id] === true;
                     return (
                       <div key={lesson.id} className="rounded-md border">
                         <div
@@ -763,120 +1025,203 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         </div>
 
                         {isLessonExpanded ? (
-                          <div className="space-y-3 border-t p-3">
-                            <div className="space-y-1">
-                              <Label>Title</Label>
-                              <Input
-                                value={lessonDraft.title}
-                                onChange={(e) => {
-                                  setLessonDraftsById((prev) => ({
-                                    ...prev,
-                                    [lesson.id]: { ...lessonDraft, title: e.target.value },
-                                  }));
-                                  if (e.target.value.trim().length > 0) {
-                                    setLessonTitleErrorsById((prev) => ({ ...prev, [lesson.id]: null }));
-                                  }
-                                }}
-                              />
-                              {lessonTitleErrorsById[lesson.id] ? (
-                                <p className="text-xs text-destructive">{lessonTitleErrorsById[lesson.id]}</p>
-                              ) : null}
-                            </div>
-                            <div className="space-y-1">
-                              <Label>Description</Label>
-                              <Textarea
-                                rows={3}
-                                value={lessonDraft.description}
-                                onChange={(e) =>
-                                  setLessonDraftsById((prev) => ({
-                                    ...prev,
-                                    [lesson.id]: { ...lessonDraft, description: e.target.value },
-                                  }))
+                          <div className="border-t">
+                            <Tabs
+                              value={lessonTab}
+                              onValueChange={(v) => {
+                                const next = v as LessonEditTab;
+                                setLessonEditTabByLessonId((prev) => ({ ...prev, [lesson.id]: next }));
+                                if (next === "attachments") {
+                                  void loadAttachments(chapter.id, lesson.id);
                                 }
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label>Video URL</Label>
-                              <Input
-                                value={lessonDraft.videoUrl}
-                                onChange={(e) =>
-                                  setLessonDraftsById((prev) => ({
-                                    ...prev,
-                                    [lesson.id]: { ...lessonDraft, videoUrl: e.target.value },
-                                  }))
-                                }
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label>Duration (seconds)</Label>
-                              <Input
-                                type="number"
-                                min={0}
-                                step={1}
-                                value={lessonDraft.videoDurationSeconds}
-                                onChange={(e) =>
-                                  setLessonDraftsById((prev) => ({
-                                    ...prev,
-                                    [lesson.id]: { ...lessonDraft, videoDurationSeconds: e.target.value },
-                                  }))
-                                }
-                              />
-                            </div>
-                            <div className="flex items-center justify-between rounded-md border px-3 py-2">
-                              <Label htmlFor={`lesson-preview-${lesson.id}`}>Free Preview</Label>
-                              <Switch
-                                id={`lesson-preview-${lesson.id}`}
-                                checked={lessonDraft.isFreePreview}
-                                onCheckedChange={(checked) =>
-                                  setLessonDraftsById((prev) => ({
-                                    ...prev,
-                                    [lesson.id]: { ...lessonDraft, isFreePreview: checked === true },
-                                  }))
-                                }
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label>Status</Label>
-                              <Select
-                                value={lessonDraft.status}
-                                onValueChange={(value) =>
-                                  setLessonDraftsById((prev) => ({
-                                    ...prev,
-                                    [lesson.id]: { ...lessonDraft, status: value as ItemStatus },
-                                  }))
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="draft">Draft</SelectItem>
-                                  <SelectItem value="published">Published</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                disabled={lessonDraft.title.trim().length === 0 || isSaving}
-                                onClick={() => saveLessonEdit(chapter.id, lesson.id)}
-                              >
-                                Save
-                              </Button>
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setExpandedLessonId(null);
-                                  setExpandedLessonChapterId(null);
-                                  setLessonTitleErrorsById((prev) => ({ ...prev, [lesson.id]: null }));
-                                }}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
+                              }}
+                            >
+                              <TabsList className="mx-3 mt-3 h-9 w-fit justify-start rounded-md bg-muted p-1">
+                                <TabsTrigger value="details">Details</TabsTrigger>
+                                <TabsTrigger value="attachments">Attachments</TabsTrigger>
+                              </TabsList>
+                              <TabsContent value="details" className="space-y-3 p-3 pt-4">
+                                <div className="space-y-1">
+                                  <Label>Title</Label>
+                                  <Input
+                                    value={lessonDraft.title}
+                                    onChange={(e) => {
+                                      setLessonDraftsById((prev) => ({
+                                        ...prev,
+                                        [lesson.id]: { ...lessonDraft, title: e.target.value },
+                                      }));
+                                      if (e.target.value.trim().length > 0) {
+                                        setLessonTitleErrorsById((prev) => ({ ...prev, [lesson.id]: null }));
+                                      }
+                                    }}
+                                  />
+                                  {lessonTitleErrorsById[lesson.id] ? (
+                                    <p className="text-xs text-destructive">{lessonTitleErrorsById[lesson.id]}</p>
+                                  ) : null}
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Description</Label>
+                                  <Textarea
+                                    rows={3}
+                                    value={lessonDraft.description}
+                                    onChange={(e) =>
+                                      setLessonDraftsById((prev) => ({
+                                        ...prev,
+                                        [lesson.id]: { ...lessonDraft, description: e.target.value },
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Video URL</Label>
+                                  <Input
+                                    value={lessonDraft.videoUrl}
+                                    onChange={(e) =>
+                                      setLessonDraftsById((prev) => ({
+                                        ...prev,
+                                        [lesson.id]: { ...lessonDraft, videoUrl: e.target.value },
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Duration (seconds)</Label>
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    step={1}
+                                    value={lessonDraft.videoDurationSeconds}
+                                    onChange={(e) =>
+                                      setLessonDraftsById((prev) => ({
+                                        ...prev,
+                                        [lesson.id]: { ...lessonDraft, videoDurationSeconds: e.target.value },
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                                  <Label htmlFor={`lesson-preview-${lesson.id}`}>Free Preview</Label>
+                                  <Switch
+                                    id={`lesson-preview-${lesson.id}`}
+                                    checked={lessonDraft.isFreePreview}
+                                    onCheckedChange={(checked) =>
+                                      setLessonDraftsById((prev) => ({
+                                        ...prev,
+                                        [lesson.id]: { ...lessonDraft, isFreePreview: checked === true },
+                                      }))
+                                    }
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label>Status</Label>
+                                  <Select
+                                    value={lessonDraft.status}
+                                    onValueChange={(value) =>
+                                      setLessonDraftsById((prev) => ({
+                                        ...prev,
+                                        [lesson.id]: { ...lessonDraft, status: value as ItemStatus },
+                                      }))
+                                    }
+                                  >
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="draft">Draft</SelectItem>
+                                      <SelectItem value="published">Published</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={lessonDraft.title.trim().length === 0 || isSaving}
+                                    onClick={() => saveLessonEdit(chapter.id, lesson.id)}
+                                  >
+                                    Save
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setExpandedLessonId(null);
+                                      setExpandedLessonChapterId(null);
+                                      setLessonTitleErrorsById((prev) => ({ ...prev, [lesson.id]: null }));
+                                    }}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </TabsContent>
+                              <TabsContent value="attachments" className="space-y-3 p-3 pt-4">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={
+                                      attachmentUploadingLessonId === lesson.id ||
+                                      isSaving ||
+                                      !courseBaseUrl
+                                    }
+                                    onClick={() => openLessonAttachmentUpload(chapter.id, lesson.id)}
+                                  >
+                                    {attachmentUploadingLessonId === lesson.id ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Uploading…
+                                      </>
+                                    ) : (
+                                      "Upload File"
+                                    )}
+                                  </Button>
+                                </div>
+                                {attachmentsLoading ? (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading attachments…
+                                  </div>
+                                ) : lessonAttachments.length === 0 ? (
+                                  <p className="text-sm text-muted-foreground">No attachments yet.</p>
+                                ) : (
+                                  <ul className="divide-y rounded-md border">
+                                    {lessonAttachments.map((att) => {
+                                      const delKey = `${lesson.id}:${att.id}`;
+                                      return (
+                                        <li
+                                          key={att.id}
+                                          className="flex items-center justify-between gap-3 p-3 text-sm"
+                                        >
+                                          <div className="min-w-0 flex-1">
+                                            <p className="truncate font-medium">{att.title}</p>
+                                            <p className="text-muted-foreground">
+                                              {fileTypeDisplayLabel(att.fileType ?? "")}
+                                            </p>
+                                          </div>
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                            disabled={deletingAttachmentKey === delKey || isSaving}
+                                            aria-label="Delete attachment"
+                                            onClick={() => deleteLessonAttachment(chapter.id, lesson.id, att.id)}
+                                          >
+                                            {deletingAttachmentKey === delKey ? (
+                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                              <Trash2 className="h-4 w-4" />
+                                            )}
+                                          </Button>
+                                        </li>
+                                      );
+                                    })}
+                                  </ul>
+                                )}
+                              </TabsContent>
+                            </Tabs>
                           </div>
                         ) : null}
                       </div>

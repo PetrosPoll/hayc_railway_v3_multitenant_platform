@@ -20,6 +20,7 @@ import { ProductsTable } from "@/components/digital-products/ProductsTable";
 import { CreateProductButton } from "@/components/digital-products/CreateProductButton";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 import { CourseEditorView } from "@/components/digital-products/CourseEditorView";
+import { CoursePreviewModal } from "@/components/digital-products/CoursePreviewModal";
 
 interface Props {
   siteId: string;
@@ -29,6 +30,9 @@ function typeLabel(type: ProductType): string {
   if (type === "course") return "course";
   return type;
 }
+
+const HDP_WIDGET_BASE =
+  (import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined)?.trim().replace(/\/$/, "") || "https://hdp.hayc.gr";
 
 export function DigitalProductsTab({ siteId }: Props) {
   const { t } = useTranslation();
@@ -43,6 +47,7 @@ export function DigitalProductsTab({ siteId }: Props) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [brandModalOpen, setBrandModalOpen] = useState(false);
+  const [previewCourse, setPreviewCourse] = useState<Product | null>(null);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -134,6 +139,16 @@ export function DigitalProductsTab({ siteId }: Props) {
       setConfirmDeleteId(null);
     }
   };
+
+  const handlePreviewCourse = useCallback((product: Product) => {
+    if (product.type !== "course") return;
+    setPreviewCourse(product);
+  }, []);
+
+  const previewIframeSrc = useMemo(() => {
+    if (!previewCourse || previewCourse.type !== "course") return null;
+    return `${HDP_WIDGET_BASE}/widget?siteId=${encodeURIComponent(siteId)}&courseId=${encodeURIComponent(previewCourse.id)}`;
+  }, [previewCourse, siteId]);
 
   const handleStatusToggle = async (id: string, currentStatus: ProductStatus) => {
     const nextStatus: ProductStatus = currentStatus === "published" ? "draft" : "published";
@@ -260,6 +275,7 @@ export function DigitalProductsTab({ siteId }: Props) {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onStatusToggle={handleStatusToggle}
+          onPreviewCourse={handlePreviewCourse}
           deletingId={deletingId}
         />
       )}
@@ -303,6 +319,14 @@ export function DigitalProductsTab({ siteId }: Props) {
         onOpenChange={setBrandModalOpen}
         siteId={siteId}
         previewUrl={HDP_URL ? `${HDP_URL}?siteId=${encodeURIComponent(siteId)}` : undefined}
+      />
+
+      <CoursePreviewModal
+        open={!!previewCourse}
+        onOpenChange={(open) => {
+          if (!open) setPreviewCourse(null);
+        }}
+        src={previewIframeSrc}
       />
     </div>
   );
