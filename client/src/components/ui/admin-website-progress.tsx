@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/accordion"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X } from "lucide-react"
+import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X, MoreHorizontal } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/hooks/use-toast"
@@ -25,7 +25,15 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Switch } from "@/components/ui/switch"
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { OnboardingFormResponse } from "@shared/schema"
 import { ENVATO_TEMPLATES } from "@/data/envato-templates"
 import { formatOnboardingValue } from "@/lib/onboarding-formatters"
@@ -68,43 +76,137 @@ type User = {
   username: string
 }
 
-function QuickCopyAnalyticsButton({ websiteId }: { websiteId: number }) {
-  const [copied, setCopied] = useState(false);
-
+function WebsiteProgressRowActions({
+  website,
+  canManageWebsites,
+  onOpenOnboarding,
+  onRequestDelete,
+  updateBookingMutation,
+  updatePaymentsMutation,
+  updateDigitalProductsMutation,
+}: {
+  website: Website
+  canManageWebsites?: boolean
+  onOpenOnboarding: () => void
+  onRequestDelete: () => void
+  updateBookingMutation: {
+    mutate: (v: { websiteId: number; bookingEnabled: boolean }) => void;
+    isPending: boolean;
+  };
+  updatePaymentsMutation: {
+    mutate: (v: { websiteId: number; paymentsEnabled: boolean }) => void;
+    isPending: boolean;
+  };
+  updateDigitalProductsMutation: {
+    mutate: (v: { websiteId: number; digitalProductsEnabled: boolean }) => void;
+    isPending: boolean;
+  };
+}) {
   const { data: analyticsData } = useQuery({
-    queryKey: ["/api/analytics/keys", websiteId],
+    queryKey: ["/api/analytics/keys", website.id],
     queryFn: async () => {
-      const response = await fetch(`/api/analytics/keys/${websiteId}`);
+      const response = await fetch(`/api/analytics/keys/${website.id}`);
       if (!response.ok) throw new Error("Failed to fetch analytics key");
       return response.json();
     },
   });
 
-  const copyToClipboard = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const copyAnalytics = () => {
     if (analyticsData?.trackingScript) {
       navigator.clipboard.writeText(analyticsData.trackingScript);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
       toast({ description: "Analytics tracking code copied to clipboard!" });
     }
   };
 
+  const settingsPending =
+    updateBookingMutation.isPending ||
+    updatePaymentsMutation.isPending ||
+    updateDigitalProductsMutation.isPending;
+
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-8 w-8 p-0"
-      onClick={copyToClipboard}
-      disabled={!analyticsData}
-      data-testid={`button-copy-analytics-${websiteId}`}
-    >
-      {copied ? (
-        <Check className="h-4 w-4 text-green-600" />
-      ) : (
-        <Copy className="h-4 w-4" />
-      )}
-    </Button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 shrink-0 gap-1"
+          data-testid={`button-website-actions-${website.id}`}
+        >
+          Actions
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenuItem
+          onSelect={() => {
+            onOpenOnboarding();
+          }}
+        >
+          <FileText className="h-4 w-4" />
+          View onboarding form
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          disabled={!analyticsData?.trackingScript}
+          onSelect={() => copyAnalytics()}
+          data-testid={`menu-copy-analytics-${website.id}`}
+        >
+          <Copy className="h-4 w-4" />
+          Copy analytics code
+        </DropdownMenuItem>
+        {canManageWebsites ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+              Website dashboard tabs
+            </DropdownMenuLabel>
+            <DropdownMenuCheckboxItem
+              checked={website.bookingEnabled ?? false}
+              disabled={settingsPending}
+              onCheckedChange={(checked) => {
+                updateBookingMutation.mutate({
+                  websiteId: website.id,
+                  bookingEnabled: !!checked,
+                });
+              }}
+            >
+              Booking
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={website.paymentsEnabled ?? false}
+              disabled={settingsPending}
+              onCheckedChange={(checked) => {
+                updatePaymentsMutation.mutate({
+                  websiteId: website.id,
+                  paymentsEnabled: !!checked,
+                });
+              }}
+            >
+              Payments
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={website.digitalProductsEnabled ?? false}
+              disabled={settingsPending}
+              onCheckedChange={(checked) => {
+                updateDigitalProductsMutation.mutate({
+                  websiteId: website.id,
+                  digitalProductsEnabled: !!checked,
+                });
+              }}
+            >
+              Digital products
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={() => onRequestDelete()}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete progress
+            </DropdownMenuItem>
+          </>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -642,6 +744,7 @@ export function AdminWebsiteProgress() {
   const [tempWaitingInfo, setTempWaitingInfo] = useState("")
   const [tempReminderInterval, setTempReminderInterval] = useState(1)
   const [pendingStatusChanges, setPendingStatusChanges] = useState<Record<string, string>>({})
+  const [websitePendingDelete, setWebsitePendingDelete] = useState<Website | null>(null)
 
   // Get current user permissions
   const { data: userData } = useQuery<{ user: any; permissions: any }>({
@@ -1163,10 +1266,10 @@ export function AdminWebsiteProgress() {
               className="border rounded-lg"
             >
               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                <div className="flex items-center justify-between w-full mr-4">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between w-full min-w-0 mr-4 text-left">
+                  <div className="flex min-w-0 flex-col gap-0.5">
                     {editingDomainId === website.id ? (
-                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex flex-wrap items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Input
                           value={editedDomainValue}
                           onChange={(e) => setEditedDomainValue(e.target.value)}
@@ -1208,145 +1311,53 @@ export function AdminWebsiteProgress() {
                         </Button>
                       </div>
                     ) : (
-                      <>
-                        <div className="font-semibold text-lg">
-                          {website.projectName || website.domain}
-                        </div>
-                        {/* {userPermissions?.canManageWebsites && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditingDomainId(website.id);
-                              setEditedDomainValue(website.domain);
-                            }}
-                            data-testid={`button-edit-domain-${website.id}`}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        )} */}
-                      </>
+                      <div className="font-semibold text-lg truncate">
+                        {website.projectName || website.domain}
+                      </div>
                     )}
-                    <div className="text-sm text-muted-foreground">
-                      ({website.userEmail})
-                    </div>
+                    {editingDomainId !== website.id && (
+                      <div className="text-sm text-muted-foreground truncate">
+                        {website.userEmail}
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center gap-2">
-                    {website.onboardingStatus && (
-                      <span className={`text-xs px-2 py-1 rounded ${
-                        website.onboardingStatus === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                        website.onboardingStatus === 'draft' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                        'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                      }`}>
-                        {website.onboardingStatus}
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {website.onboardingStatus ? (
+                      <span
+                        className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                          website.onboardingStatus === "completed"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : website.onboardingStatus === "draft"
+                              ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        }`}
+                      >
+                        {website.onboardingStatus === "completed"
+                          ? "Form: Completed"
+                          : website.onboardingStatus === "draft"
+                            ? "Form: Draft"
+                            : `Form: ${website.onboardingStatus}`}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        No onboarding form
                       </span>
                     )}
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground whitespace-nowrap">
                       {Math.round(progress)}% completed
                     </span>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="text-blue-600 hover:text-blue-700"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedWebsiteId(website.id)
-                        setIsOnboardingDialogOpen(true)
+                    <WebsiteProgressRowActions
+                      website={website}
+                      canManageWebsites={userPermissions?.canManageWebsites}
+                      onOpenOnboarding={() => {
+                        setSelectedWebsiteId(website.id);
+                        setIsOnboardingDialogOpen(true);
                       }}
-                    >
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                    <QuickCopyAnalyticsButton websiteId={website.id} />
-                    {userPermissions?.canManageWebsites && (
-                      <>
-                        <div
-                          className="flex items-center gap-2"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Show Booking button on website dashboard for this project"
-                        >
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">Booking</span>
-                          <Switch
-                            checked={website.bookingEnabled ?? false}
-                            onCheckedChange={(checked) => {
-                              updateBookingMutation.mutate({ websiteId: website.id, bookingEnabled: !!checked });
-                            }}
-                            disabled={updateBookingMutation.isPending}
-                            data-testid={`switch-booking-${website.id}`}
-                          />
-                        </div>
-                        <div
-                          className="flex items-center gap-2"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Show Payments tab on website dashboard for this project"
-                        >
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">Payments</span>
-                          <Switch
-                            checked={website.paymentsEnabled ?? false}
-                            onCheckedChange={(checked) => {
-                              updatePaymentsMutation.mutate({ websiteId: website.id, paymentsEnabled: !!checked });
-                            }}
-                            disabled={updatePaymentsMutation.isPending}
-                            data-testid={`switch-payments-${website.id}`}
-                          />
-                        </div>
-                        <div
-                          className="flex items-center gap-2"
-                          onClick={(e) => e.stopPropagation()}
-                          title="Show Digital Products tab on website dashboard for this project"
-                        >
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">Digital Products</span>
-                          <Switch
-                            checked={website.digitalProductsEnabled ?? false}
-                            onCheckedChange={(checked) => {
-                              updateDigitalProductsMutation.mutate({
-                                websiteId: website.id,
-                                digitalProductsEnabled: !!checked,
-                              });
-                            }}
-                            disabled={updateDigitalProductsMutation.isPending}
-                            data-testid={`switch-digital-products-${website.id}`}
-                          />
-                        </div>
-                      </>
-                    )}
-                    {userPermissions?.canManageWebsites && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="text-destructive hover:text-destructive"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Delete Website Progress</DialogTitle>
-                            <DialogDescription>
-                              Are you sure you want to delete the progress for {website.projectName || website.domain}? This action cannot be undone.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <DialogFooter>
-                            <Button variant="ghost" onClick={() => document.querySelector('dialog')?.close()}>
-                              Cancel
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              onClick={() => {
-                                deleteWebsiteMutation.mutate(website.id)
-                                document.querySelector('dialog')?.close()
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    )}
+                      onRequestDelete={() => setWebsitePendingDelete(website)}
+                      updateBookingMutation={updateBookingMutation}
+                      updatePaymentsMutation={updatePaymentsMutation}
+                      updateDigitalProductsMutation={updateDigitalProductsMutation}
+                    />
                   </div>
                 </div>
               </AccordionTrigger>
@@ -2020,6 +2031,45 @@ export function AdminWebsiteProgress() {
               data-testid="button-save-waiting-info"
             >
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!websitePendingDelete}
+        onOpenChange={(open) => {
+          if (!open) setWebsitePendingDelete(null);
+        }}
+      >
+        <DialogContent onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Delete Website Progress</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the progress for{" "}
+              {websitePendingDelete?.projectName || websitePendingDelete?.domain}? This action cannot
+              be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWebsitePendingDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={deleteWebsiteMutation.isPending}
+              onClick={() => {
+                if (websitePendingDelete) {
+                  deleteWebsiteMutation.mutate(websitePendingDelete.id);
+                  setWebsitePendingDelete(null);
+                }
+              }}
+            >
+              {deleteWebsiteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Delete"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
