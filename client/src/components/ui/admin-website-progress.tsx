@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/accordion"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X, MoreHorizontal } from "lucide-react"
+import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X, MoreHorizontal, BarChart3 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/hooks/use-toast"
@@ -80,6 +80,8 @@ function WebsiteProgressRowActions({
   website,
   canManageWebsites,
   onOpenOnboarding,
+  onOpenAnalyticsDialog,
+  onOpenNewsletterDialog,
   onRequestDelete,
   updateBookingMutation,
   updatePaymentsMutation,
@@ -88,6 +90,8 @@ function WebsiteProgressRowActions({
   website: Website
   canManageWebsites?: boolean
   onOpenOnboarding: () => void
+  onOpenAnalyticsDialog: () => void
+  onOpenNewsletterDialog: () => void
   onRequestDelete: () => void
   updateBookingMutation: {
     mutate: (v: { websiteId: number; bookingEnabled: boolean }) => void;
@@ -144,6 +148,20 @@ function WebsiteProgressRowActions({
         >
           <FileText className="h-4 w-4" />
           View onboarding form
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => onOpenAnalyticsDialog()}
+          data-testid={`menu-view-analytics-${website.id}`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          View analytics code
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onSelect={() => onOpenNewsletterDialog()}
+          data-testid={`menu-view-newsletter-${website.id}`}
+        >
+          <Mail className="h-4 w-4" />
+          View newsletter code
         </DropdownMenuItem>
         <DropdownMenuItem
           disabled={!analyticsData?.trackingScript}
@@ -210,9 +228,20 @@ function WebsiteProgressRowActions({
   );
 }
 
-function AnalyticsTrackingCode({ websiteId, domain }: { websiteId: number; domain: string }) {
-  const { t } = useTranslation();
+function AnalyticsTrackingCode({
+  websiteId,
+  domain: _domain,
+  variant = "accordion",
+}: {
+  websiteId: number;
+  domain: string;
+  variant?: "accordion" | "dialog";
+}) {
   const [copied, setCopied] = useState(false);
+  const isDialog = variant === "dialog";
+  const boxClass = isDialog
+    ? "mt-0 p-4 border rounded-lg bg-muted/50"
+    : "mt-6 p-4 border rounded-lg bg-muted/50";
 
   const { data: analyticsData, isLoading } = useQuery({
     queryKey: ["/api/analytics/keys", websiteId],
@@ -233,10 +262,10 @@ function AnalyticsTrackingCode({ websiteId, domain }: { websiteId: number; domai
 
   if (isLoading) {
     return (
-      <div className="mt-6 p-4 border rounded-lg bg-muted/50">
-        <h3 className="font-semibold text-lg mb-2">
-          Analytics Tracking Code
-        </h3>
+      <div className={boxClass}>
+        {!isDialog && (
+          <h3 className="font-semibold text-lg mb-2">Analytics Tracking Code</h3>
+        )}
         <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span className="text-sm text-muted-foreground">Loading tracking code...</span>
@@ -245,14 +274,24 @@ function AnalyticsTrackingCode({ websiteId, domain }: { websiteId: number; domai
     );
   }
 
-  if (!analyticsData) return null;
+  if (!analyticsData) {
+    return (
+      <div className={boxClass}>
+        <p className="text-sm text-muted-foreground">
+          No analytics configuration is available for this website yet.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-6 p-4 border rounded-lg bg-muted/50">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-lg">
-          Analytics Tracking Code
-        </h3>
+    <div className={boxClass}>
+      <div
+        className={`flex items-center mb-3 ${isDialog ? "justify-end" : "justify-between"}`}
+      >
+        {!isDialog && (
+          <h3 className="font-semibold text-lg">Analytics Tracking Code</h3>
+        )}
         <Button
           variant="outline"
           size="sm"
@@ -298,9 +337,21 @@ function AnalyticsTrackingCode({ websiteId, domain }: { websiteId: number; domai
   );
 }
 
-function NewsletterIntegrationCode({ websiteId, domain }: { websiteId: number; domain: string }) {
+function NewsletterIntegrationCode({
+  websiteId,
+  domain: _domain,
+  variant = "accordion",
+}: {
+  websiteId: number;
+  domain: string;
+  variant?: "accordion" | "dialog";
+}) {
   const [copied, setCopied] = useState(false);
   const [copiedApiKey, setCopiedApiKey] = useState(false);
+  const isDialog = variant === "dialog";
+  const boxClass = isDialog
+    ? "mt-0 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20"
+    : "mt-6 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20";
 
   const { data: analyticsData, isLoading } = useQuery({
     queryKey: ["/api/analytics/keys", websiteId],
@@ -348,10 +399,10 @@ on_sent_ok: "fetch('${apiEndpoint}', {
 
   if (isLoading) {
     return (
-      <div className="mt-6 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
-        <h3 className="font-semibold text-lg mb-2">
-          Newsletter Integration
-        </h3>
+      <div className={boxClass}>
+        {!isDialog && (
+          <h3 className="font-semibold text-lg mb-2">Newsletter Integration</h3>
+        )}
         <div className="flex items-center gap-2">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span className="text-sm text-muted-foreground">Loading integration code...</span>
@@ -360,17 +411,28 @@ on_sent_ok: "fetch('${apiEndpoint}', {
     );
   }
 
-  if (!analyticsData) return null;
+  if (!analyticsData) {
+    return (
+      <div className={boxClass}>
+        <p className="text-sm text-muted-foreground">
+          No newsletter integration data is available for this website yet. Analytics keys must be set
+          up first.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-6 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-lg flex items-center gap-2">
-          <Mail className="h-5 w-5" />
-          Newsletter Integration
-        </h3>
-      </div>
-      
+    <div className={boxClass}>
+      {!isDialog && (
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-lg flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Newsletter Integration
+          </h3>
+        </div>
+      )}
+
       <div className="space-y-4">
         <div>
           <Label className="text-sm font-medium">API Key (same as analytics):</Label>
@@ -745,6 +807,11 @@ export function AdminWebsiteProgress() {
   const [tempReminderInterval, setTempReminderInterval] = useState(1)
   const [pendingStatusChanges, setPendingStatusChanges] = useState<Record<string, string>>({})
   const [websitePendingDelete, setWebsitePendingDelete] = useState<Website | null>(null)
+  const [integrationCodeDialog, setIntegrationCodeDialog] = useState<{
+    websiteId: number;
+    domain: string;
+    panel: "analytics" | "newsletter";
+  } | null>(null)
 
   // Get current user permissions
   const { data: userData } = useQuery<{ user: any; permissions: any }>({
@@ -1353,6 +1420,20 @@ export function AdminWebsiteProgress() {
                         setSelectedWebsiteId(website.id);
                         setIsOnboardingDialogOpen(true);
                       }}
+                      onOpenAnalyticsDialog={() =>
+                        setIntegrationCodeDialog({
+                          websiteId: website.id,
+                          domain: website.domain,
+                          panel: "analytics",
+                        })
+                      }
+                      onOpenNewsletterDialog={() =>
+                        setIntegrationCodeDialog({
+                          websiteId: website.id,
+                          domain: website.domain,
+                          panel: "newsletter",
+                        })
+                      }
                       onRequestDelete={() => setWebsitePendingDelete(website)}
                       updateBookingMutation={updateBookingMutation}
                       updatePaymentsMutation={updatePaymentsMutation}
@@ -1875,12 +1956,6 @@ export function AdminWebsiteProgress() {
                   </div>
                 )}
 
-                {/* Analytics Tracking Code Section */}
-                <AnalyticsTrackingCode websiteId={website.id} domain={website.domain} />
-
-                {/* Newsletter Integration Section */}
-                <NewsletterIntegrationCode websiteId={website.id} domain={website.domain} />
-
                 {/* Bonus Emails Section - Admin only */}
                 {userPermissions?.canManageWebsites && (
                   <BonusEmailsSection 
@@ -2072,6 +2147,41 @@ export function AdminWebsiteProgress() {
               )}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!integrationCodeDialog}
+        onOpenChange={(open) => {
+          if (!open) setIntegrationCodeDialog(null);
+        }}
+      >
+        <DialogContent
+          className="max-w-4xl max-h-[85vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {integrationCodeDialog?.panel === "analytics"
+                ? "Analytics tracking code"
+                : "Newsletter integration"}
+            </DialogTitle>
+            <DialogDescription>{integrationCodeDialog?.domain}</DialogDescription>
+          </DialogHeader>
+          {integrationCodeDialog?.panel === "analytics" && (
+            <AnalyticsTrackingCode
+              websiteId={integrationCodeDialog.websiteId}
+              domain={integrationCodeDialog.domain}
+              variant="dialog"
+            />
+          )}
+          {integrationCodeDialog?.panel === "newsletter" && (
+            <NewsletterIntegrationCode
+              websiteId={integrationCodeDialog.websiteId}
+              domain={integrationCodeDialog.domain}
+              variant="dialog"
+            />
+          )}
         </DialogContent>
       </Dialog>
 
