@@ -106,22 +106,6 @@ function WebsiteProgressRowActions({
     isPending: boolean;
   };
 }) {
-  const { data: analyticsData } = useQuery({
-    queryKey: ["/api/analytics/keys", website.id],
-    queryFn: async () => {
-      const response = await fetch(`/api/analytics/keys/${website.id}`);
-      if (!response.ok) throw new Error("Failed to fetch analytics key");
-      return response.json();
-    },
-  });
-
-  const copyAnalytics = () => {
-    if (analyticsData?.trackingScript) {
-      navigator.clipboard.writeText(analyticsData.trackingScript);
-      toast({ description: "Analytics tracking code copied to clipboard!" });
-    }
-  };
-
   const settingsPending =
     updateBookingMutation.isPending ||
     updatePaymentsMutation.isPending ||
@@ -162,14 +146,6 @@ function WebsiteProgressRowActions({
         >
           <Mail className="h-4 w-4" />
           View newsletter code
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          disabled={!analyticsData?.trackingScript}
-          onSelect={() => copyAnalytics()}
-          data-testid={`menu-copy-analytics-${website.id}`}
-        >
-          <Copy className="h-4 w-4" />
-          Copy analytics code
         </DropdownMenuItem>
         {canManageWebsites ? (
           <>
@@ -784,7 +760,7 @@ export function AdminWebsiteProgress() {
   const [editedCustomDomainValue, setEditedCustomDomainValue] = useState("")
   const [editingContactEmailId, setEditingContactEmailId] = useState<number | null>(null)
   const [editedContactEmailValue, setEditedContactEmailValue] = useState("")
-  const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>(null)
+  const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>("desc")
   const [filterWaitingOnly, setFilterWaitingOnly] = useState(false)
   const [waitingInfoDialog, setWaitingInfoDialog] = useState<{
     isOpen: boolean;
@@ -1130,29 +1106,32 @@ export function AdminWebsiteProgress() {
     .filter(w => !filterWaitingOnly || (w.stages?.some(s => s.status === 'waiting') ?? false))
   
   // Apply sorting by completion percentage if active
-  const userWebsites = sortByProgress 
+  const userWebsites = sortByProgress
     ? [...filteredWebsites].sort((a, b) => {
-        const aCompleted = a.stages.filter(s => s.status === 'completed').length
-        const aTotal = a.stages.length || 1
-        const aProgress = (aCompleted / aTotal) * 100
-        
-        const bCompleted = b.stages.filter(s => s.status === 'completed').length
-        const bTotal = b.stages.length || 1
-        const bProgress = (bCompleted / bTotal) * 100
-        
-        return sortByProgress === "asc" ? aProgress - bProgress : bProgress - aProgress
+        const aCompleted = a.stages.filter((s) => s.status === "completed").length;
+        const aTotal = a.stages.length || 1;
+        const aProgress = (aCompleted / aTotal) * 100;
+
+        const bCompleted = b.stages.filter((s) => s.status === "completed").length;
+        const bTotal = b.stages.length || 1;
+        const bProgress = (bCompleted / bTotal) * 100;
+
+        const byProgress =
+          sortByProgress === "asc" ? aProgress - bProgress : bProgress - aProgress;
+        if (byProgress !== 0) return byProgress;
+        return a.id - b.id;
       })
-    : filteredWebsites
-  
+    : filteredWebsites;
+
   const handleProgressSort = () => {
-    if (!sortByProgress) {
-      setSortByProgress("asc")
+    if (sortByProgress === "desc") {
+      setSortByProgress("asc");
     } else if (sortByProgress === "asc") {
-      setSortByProgress("desc")
+      setSortByProgress(null);
     } else {
-      setSortByProgress(null)
+      setSortByProgress("desc");
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
