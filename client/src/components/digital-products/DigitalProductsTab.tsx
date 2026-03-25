@@ -14,6 +14,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useTranslation } from "react-i18next";
+import {
+  normalizeBuyersResponse,
+  type NormalizedBuyer,
+} from "@/components/digital-products/buyersTableUtils";
+import { BuyersTable } from "@/components/digital-products/BuyersTable";
 import { Product, ProductStatus, ProductType } from "@/types/digital-products";
 import { ProductTypeFilter } from "@/components/digital-products/ProductTypeFilter";
 import { ProductsTable } from "@/components/digital-products/ProductsTable";
@@ -24,6 +29,8 @@ import { CoursePreviewModal } from "@/components/digital-products/CoursePreviewM
 
 interface Props {
   siteId: string;
+  /** Courses list vs buyers — controlled by website dashboard sidebar */
+  listMode?: "courses" | "buyers";
 }
 
 function typeLabel(type: ProductType): string {
@@ -34,16 +41,19 @@ function typeLabel(type: ProductType): string {
 const HDP_WIDGET_BASE =
   (import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined)?.trim().replace(/\/$/, "") || "https://hdp.hayc.gr";
 
-export function DigitalProductsTab({ siteId }: Props) {
+export function DigitalProductsTab({ siteId, listMode = "courses" }: Props) {
   const { t } = useTranslation();
   const HDP_URL = import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined;
   const { toast } = useToast();
   const [view, setView] = useState<"list" | "course-new" | "course-edit">("list");
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
-  const [activeType, setActiveType] = useState<ProductType | null>(null);
+  const [activeFilter, setActiveFilter] = useState<ProductType | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [buyers, setBuyers] = useState<NormalizedBuyer[]>([]);
+  const [buyersLoading, setBuyersLoading] = useState(false);
+  const [buyersError, setBuyersError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [brandModalOpen, setBrandModalOpen] = useState(false);
@@ -98,24 +108,69 @@ export function DigitalProductsTab({ siteId }: Props) {
     fetchProducts();
   }, [fetchProducts]);
 
+  const fetchBuyers = useCallback(async () => {
+    setBuyersLoading(true);
+    setBuyersError(null);
+    try {
+      const res = await fetch(`/api/hdp/buyers/${encodeURIComponent(siteId)}`, {
+        credentials: "include",
+      });
+      const contentType = res.headers.get("content-type") || "";
+      let payload: unknown = null;
+      if (contentType.includes("application/json")) {
+        try {
+          payload = await res.json();
+        } catch {
+          payload = null;
+        }
+      }
+      if (!res.ok) {
+        const msg =
+          payload &&
+          typeof payload === "object" &&
+          payload !== null &&
+          typeof (payload as { error?: unknown }).error === "string"
+            ? (payload as { error: string }).error
+            : t("digitalProductsManagement.buyers.loadError");
+        setBuyersError(msg);
+        setBuyers([]);
+        return;
+      }
+      if (res.status === 204) {
+        setBuyers([]);
+        return;
+      }
+      setBuyers(normalizeBuyersResponse(payload));
+    } catch {
+      setBuyersError(t("digitalProductsManagement.buyers.loadError"));
+      setBuyers([]);
+    } finally {
+      setBuyersLoading(false);
+    }
+  }, [siteId, t]);
+
+  useEffect(() => {
+    if (listMode === "buyers") {
+      void fetchBuyers();
+    }
+  }, [listMode, fetchBuyers]);
+
   const types = useMemo(() => {
     return Array.from(new Set(products.map((product) => product.type)));
   }, [products]);
 
   useEffect(() => {
-    if (types.length === 0) {
-      setActiveType(null);
-      return;
+    if (listMode === "buyers") return;
+    if (types.length === 0) return;
+    if (activeFilter === null || !types.includes(activeFilter)) {
+      setActiveFilter(types[0]);
     }
-    if (!activeType || !types.includes(activeType)) {
-      setActiveType(types[0]);
-    }
-  }, [types, activeType]);
+  }, [types, activeFilter, listMode]);
 
   const filteredProducts = useMemo(() => {
-    if (!activeType) return products;
-    return products.filter((product) => product.type === activeType);
-  }, [products, activeType]);
+    if (!activeFilter) return [];
+    return products.filter((product) => product.type === activeFilter);
+  }, [products, activeFilter]);
 
   const handleEdit = (product: Product) => {
     setSelectedCourseId(product.id);
@@ -320,12 +375,12 @@ export function DigitalProductsTab({ siteId }: Props) {
       <h2 className="text-2xl font-bold mb-2">{t("digitalProductsManagement.title")}</h2>
 
       <div className="flex items-center justify-between mb-6 gap-4">
-        <ProductTypeFilter
-          types={types}
-          active={activeType}
-          onChange={setActiveType}
-        />
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {listMode === "courses" ? (
+            <ProductTypeFilter types={types} active={activeFilter} onChange={setActiveFilter} />
+          ) : null}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             type="button"
             variant="outline"
@@ -334,10 +389,11 @@ export function DigitalProductsTab({ siteId }: Props) {
           >
             {t("digitalProductsManagement.configureLookAndFeel")}
           </Button>
-          <CreateProductButton onSelect={handleCreateSelect} />
+          {listMode === "courses" ? <CreateProductButton onSelect={handleCreateSelect} /> : null}
         </div>
       </div>
 
+      {listMode === "courses" ? (
       <Card className="mb-6">
         <CardContent className="pt-6 space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -385,8 +441,34 @@ export function DigitalProductsTab({ siteId }: Props) {
           ) : null}
         </CardContent>
       </Card>
+      ) : null}
 
-      {isLoading ? (
+      {listMode === "buyers" ? (
+        buyersLoading ? (
+          <Card>
+            <CardContent className="py-12 flex items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </CardContent>
+          </Card>
+        ) : buyersError ? (
+          <Card>
+            <CardContent className="py-8">
+              <p className="text-sm text-red-600 mb-4">{buyersError}</p>
+              <Button type="button" variant="outline" onClick={() => void fetchBuyers()}>
+                {t("digitalProductsManagement.common.retry")}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : buyers.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-sm text-muted-foreground">
+              {t("digitalProductsManagement.buyers.empty")}
+            </CardContent>
+          </Card>
+        ) : (
+          <BuyersTable buyers={buyers} />
+        )
+      ) : isLoading ? (
         <Card>
           <CardContent className="py-12 flex items-center justify-center">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -410,9 +492,9 @@ export function DigitalProductsTab({ siteId }: Props) {
       ) : filteredProducts.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            {activeType
+            {activeFilter
               ? t("digitalProductsManagement.empty.noTypeFound", {
-                  type: t(`digitalProductsManagement.types.${typeLabel(activeType)}`),
+                  type: t(`digitalProductsManagement.types.${typeLabel(activeFilter)}`),
                 })
               : t("digitalProductsManagement.empty.noProductsFound")}
           </CardContent>

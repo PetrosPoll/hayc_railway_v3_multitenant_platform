@@ -20779,6 +20779,62 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
+  app.get("/api/hdp/buyers/:siteId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to access this site" });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(`${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/buyers`, {
+        method: "GET",
+        headers: {
+          "x-internal-token": HDP_INTERNAL_TOKEN,
+        },
+      });
+
+      if (internalRes.status === 204) {
+        return res.sendStatus(204);
+      }
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error fetching HDP buyers:", error);
+      res.status(500).json({ error: "Failed to fetch buyers" });
+    }
+  });
+
   app.post("/api/hdp/products/:siteId/sync", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });

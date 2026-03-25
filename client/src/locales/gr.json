@@ -2943,7 +2943,21 @@
         },
         "filters": {
             "courses": "Μαθήματα",
-            "products": "Προϊόντα"
+            "products": "Προϊόντα",
+            "buyers": "Αγοραστές"
+        },
+        "buyers": {
+            "loadError": "Δεν ήταν δυνατή η φόρτωση αγοραστών. Δοκιμάστε ξανά.",
+            "empty": "Δεν υπάρχουν ακόμα αγοραστές.",
+            "free": "Δωρεάν",
+            "coursesCount": "{{count}} μαθήματα",
+            "table": {
+                "name": "Όνομα",
+                "email": "Email",
+                "coursesEnrolled": "Εγγεγραμμένα μαθήματα",
+                "totalSpent": "Συνολική δαπάνη",
+                "memberSince": "Μέλος από"
+            }
         },
         "create": {
             "button": "Δημιουργία",

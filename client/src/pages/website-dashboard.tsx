@@ -22,6 +22,9 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarProvider,
   SidebarInset,
   SidebarTrigger,
@@ -156,6 +159,8 @@ type SidebarMenuContentProps = {
   }>;
   activeSection: string;
   setActiveSection: (section: string) => void;
+  digitalProductsSubView: "courses" | "buyers";
+  setDigitalProductsSubView: (view: "courses" | "buyers") => void;
   setBillingView: (view: any) => void;
   setNewsletterView: (view: any) => void;
   handleLogout: () => void;
@@ -169,6 +174,8 @@ function SidebarMenuContent({
   menuItems,
   activeSection,
   setActiveSection,
+  digitalProductsSubView,
+  setDigitalProductsSubView,
   setBillingView,
   setNewsletterView,
   handleLogout,
@@ -267,6 +274,59 @@ function SidebarMenuContent({
           );
         }
 
+        if (item.id === "digital-products") {
+          const Icon = item.icon;
+          const sectionActive = activeSection === "digital-products";
+          const parentActive =
+            sectionActive && digitalProductsSubView === "courses";
+          const buyersActive =
+            sectionActive && digitalProductsSubView === "buyers";
+          return (
+            <SidebarMenuItem key={item.id}>
+              <SidebarMenuButton
+                isActive={parentActive}
+                onClick={() => {
+                  handleMenuClick(() => {
+                    setActiveSection("digital-products");
+                    setDigitalProductsSubView("courses");
+                  });
+                }}
+                data-testid={`menu-${item.id}`}
+              >
+                {Icon && <Icon className="h-4 w-4" />}
+                <span>{item.label}</span>
+              </SidebarMenuButton>
+              {sectionActive ? (
+                <SidebarMenuSub>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={buyersActive}
+                      size="md"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleMenuClick(() => {
+                            setActiveSection("digital-products");
+                            setDigitalProductsSubView("buyers");
+                          });
+                        }}
+                        data-testid="menu-digital-products-buyers"
+                      >
+                        <Users className="h-4 w-4" />
+                        <span>
+                          {t("digitalProductsManagement.filters.buyers")}
+                        </span>
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                </SidebarMenuSub>
+              ) : null}
+            </SidebarMenuItem>
+          );
+        }
+
         const Icon = item.icon;
         const isActive = activeSection === item.id;
         return (
@@ -355,6 +415,10 @@ export default function WebsiteDashboard() {
   // Content editor dialog state
   const [contentEditorOpen, setContentEditorOpen] = useState(false);
 
+  const [digitalProductsSubView, setDigitalProductsSubView] = useState<
+    "courses" | "buyers"
+  >("courses");
+
   // HDP brand config modal state
   const [hdpBrandModalOpen, setHdpBrandModalOpen] = useState(false);
 
@@ -410,6 +474,12 @@ export default function WebsiteDashboard() {
       lastTabRef.current = activeSection;
     }
   }, [activeSection, setSearchParams]);
+
+  useEffect(() => {
+    if (activeSection !== "digital-products") {
+      setDigitalProductsSubView("courses");
+    }
+  }, [activeSection]);
 
   // Fetch email templates at the top level
   const { data: emailTemplates, isLoading: templatesLoading } = useQuery<any[]>(
@@ -4005,7 +4075,12 @@ export default function WebsiteDashboard() {
       );
     }
 
-    return <DigitalProductsTab siteId={website.siteId} />;
+    return (
+      <DigitalProductsTab
+        siteId={website.siteId}
+        listMode={digitalProductsSubView}
+      />
+    );
   };
 
   const renderTipsSection = () => {
@@ -4052,6 +4127,8 @@ export default function WebsiteDashboard() {
                   menuItems={menuItems}
                   activeSection={activeSection}
                   setActiveSection={setActiveSection}
+                  digitalProductsSubView={digitalProductsSubView}
+                  setDigitalProductsSubView={setDigitalProductsSubView}
                   setBillingView={setBillingView}
                   setNewsletterView={setNewsletterView}
                   handleLogout={handleLogout}

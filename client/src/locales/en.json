@@ -2944,7 +2944,21 @@
         },
         "filters": {
             "courses": "Courses",
-            "products": "Products"
+            "products": "Products",
+            "buyers": "Buyers"
+        },
+        "buyers": {
+            "loadError": "Could not load buyers. Please try again.",
+            "empty": "No buyers yet.",
+            "free": "Free",
+            "coursesCount": "{{count}} courses",
+            "table": {
+                "name": "Name",
+                "email": "Email",
+                "coursesEnrolled": "Courses enrolled",
+                "totalSpent": "Total spent",
+                "memberSince": "Member since"
+            }
         },
         "create": {
             "button": "Create",
