@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +26,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  detectVideoDurationSeconds,
+  lessonSecondsToDurationMinutesField,
+  secondsToDurationMinutesDecimal,
+} from "@/components/digital-products/videoLessonDuration";
 
 type ItemStatus = "draft" | "published";
 
@@ -49,13 +54,17 @@ interface Lesson {
 interface Props {
   siteId: string;
   courseId?: string;
+  onTotalLessonMinutesChange?: (totalMinutes: number) => void;
+  /** After a silent course PATCH syncs estimated duration from lessons; updates form + saved baseline. */
+  onCourseEstimatedMinutesSynced?: (minutes: number) => void;
 }
 
 interface LessonDraftState {
   title: string;
   description: string;
   videoUrl: string;
-  videoDurationSeconds: string;
+  /** Whole minutes (rounded up from seconds when auto-detected); maps to API `videoDurationSeconds` on save. */
+  durationMinutes: string;
   isFreePreview: boolean;
   status: ItemStatus;
 }
@@ -134,6 +143,27 @@ function buildChapterPayload(draft: ChapterDraftState): Record<string, unknown> 
   return payload;
 }
 
+/** Matches `buildLessonPayload` duration → seconds (for course total). */
+function videoSecondsFromLessonDraft(draft: LessonDraftState): number {
+  const durationMinutesText = draft.durationMinutes.trim();
+  if (durationMinutesText.length === 0) return 0;
+  const minutes = Number(durationMinutesText);
+  if (!Number.isFinite(minutes) || minutes < 0) return 0;
+  return Math.round(minutes * 60);
+}
+
+function sumServerLessonVideoSeconds(lessonsByChapter: Record<string, Lesson[]>): number {
+  let s = 0;
+  for (const lessons of Object.values(lessonsByChapter)) {
+    for (const lesson of lessons) {
+      if (lesson.videoDurationSeconds != null && Number.isFinite(lesson.videoDurationSeconds)) {
+        s += lesson.videoDurationSeconds;
+      }
+    }
+  }
+  return s;
+}
+
 function buildLessonPayload(draft: LessonDraftState): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     title: draft.title.trim(),
@@ -142,12 +172,14 @@ function buildLessonPayload(draft: LessonDraftState): Record<string, unknown> {
   };
   const description = trimmedOrUndefined(draft.description);
   const videoUrl = trimmedOrUndefined(draft.videoUrl);
-  const durationText = draft.videoDurationSeconds.trim();
+  const durationMinutesText = draft.durationMinutes.trim();
   if (description !== undefined) payload.description = description;
   if (videoUrl !== undefined) payload.videoUrl = videoUrl;
-  if (durationText.length > 0) {
-    const parsed = Number(durationText);
-    if (Number.isFinite(parsed)) payload.videoDurationSeconds = parsed;
+  if (durationMinutesText.length > 0) {
+    const minutes = Number(durationMinutesText);
+    if (Number.isFinite(minutes) && minutes >= 0) {
+      payload.videoDurationSeconds = Math.round(minutes * 60);
+    }
   }
   return payload;
 }
@@ -202,7 +234,12 @@ function fileTypeDisplayLabel(fileType: string): string {
   }
 }
 
-export function CourseCurriculumTab({ siteId, courseId }: Props) {
+export function CourseCurriculumTab({
+  siteId,
+  courseId,
+  onTotalLessonMinutesChange,
+  onCourseEstimatedMinutesSynced,
+}: Props) {
   const { t } = useTranslation();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [lessonsByChapter, setLessonsByChapter] = useState<Record<string, Lesson[]>>({});
@@ -232,7 +269,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
     title: "",
     description: "",
     videoUrl: "",
-    videoDurationSeconds: "",
+    durationMinutes: "",
     isFreePreview: false,
     status: "draft",
   });
@@ -244,6 +281,18 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
   const [attachmentsLoadingByLessonId, setAttachmentsLoadingByLessonId] = useState<Record<string, boolean>>({});
   const [attachmentUploadingLessonId, setAttachmentUploadingLessonId] = useState<string | null>(null);
   const [deletingAttachmentKey, setDeletingAttachmentKey] = useState<string | null>(null);
+
+  const [lessonVideoUrlDetectingById, setLessonVideoUrlDetectingById] = useState<Record<string, boolean>>({});
+  const [lessonVideoUrlDetectSuccessMinutesById, setLessonVideoUrlDetectSuccessMinutesById] = useState<
+    Record<string, number>
+  >({});
+  const [newLessonVideoUrlDetecting, setNewLessonVideoUrlDetecting] = useState(false);
+  const [newLessonVideoUrlDetectSuccessMinutes, setNewLessonVideoUrlDetectSuccessMinutes] = useState<
+    number | null
+  >(null);
+
+  const lessonVideoBlurTokenRef = useRef<Record<string, number>>({});
+  const newLessonVideoBlurTokenRef = useRef(0);
 
   const { toast } = useToast();
 
@@ -304,10 +353,137 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
     }
   };
 
+  async function silentPatchCourseEstimatedMinutes(mergedLessonsByChapter: Record<string, Lesson[]>) {
+    if (!courseBaseUrl) return;
+    const estimated = Math.round(sumServerLessonVideoSeconds(mergedLessonsByChapter) / 60);
+    try {
+      const res = await fetch(courseBaseUrl, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estimatedDurationMinutes: estimated }),
+      });
+      if (!res.ok) return;
+      onCourseEstimatedMinutesSynced?.(estimated);
+    } catch {
+      // silent
+    }
+  }
+
   useEffect(() => {
     if (!hasCourseId || !courseBaseUrl) return;
     loadCurriculum();
   }, [hasCourseId, courseBaseUrl]);
+
+  const totalLessonMinutes = useMemo(() => {
+    let totalSeconds = 0;
+    for (const chapter of chapters) {
+      const lessons = lessonsByChapter[chapter.id] ?? [];
+      for (const lesson of lessons) {
+        if (
+          expandedLessonId === lesson.id &&
+          expandedLessonChapterId === chapter.id &&
+          lessonDraftsById[lesson.id]
+        ) {
+          totalSeconds += videoSecondsFromLessonDraft(lessonDraftsById[lesson.id]);
+        } else {
+          const sec = lesson.videoDurationSeconds;
+          if (sec != null && Number.isFinite(sec)) totalSeconds += sec;
+        }
+      }
+      if (addingLessonForChapter === chapter.id) {
+        totalSeconds += videoSecondsFromLessonDraft(newLessonDraft);
+      }
+    }
+    return Math.round(totalSeconds / 60);
+  }, [
+    chapters,
+    lessonsByChapter,
+    expandedLessonId,
+    expandedLessonChapterId,
+    lessonDraftsById,
+    addingLessonForChapter,
+    newLessonDraft.durationMinutes,
+  ]);
+
+  useEffect(() => {
+    if (!onTotalLessonMinutesChange || isLoading || !hasCourseId) return;
+    onTotalLessonMinutesChange(totalLessonMinutes);
+  }, [totalLessonMinutes, onTotalLessonMinutesChange, isLoading, hasCourseId]);
+
+  const runLessonVideoUrlDetect = async (lessonId: string, url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) {
+      setLessonVideoUrlDetectingById((p) => ({ ...p, [lessonId]: false }));
+      setLessonVideoUrlDetectSuccessMinutesById((p) => {
+        const n = { ...p };
+        delete n[lessonId];
+        return n;
+      });
+      return;
+    }
+
+    const token = (lessonVideoBlurTokenRef.current[lessonId] ?? 0) + 1;
+    lessonVideoBlurTokenRef.current[lessonId] = token;
+
+    setLessonVideoUrlDetectingById((p) => ({ ...p, [lessonId]: true }));
+    setLessonVideoUrlDetectSuccessMinutesById((p) => {
+      const n = { ...p };
+      delete n[lessonId];
+      return n;
+    });
+
+    try {
+      const seconds = await detectVideoDurationSeconds(trimmed);
+      if (lessonVideoBlurTokenRef.current[lessonId] !== token) return;
+      if (seconds === null) return;
+
+      const minutes = secondsToDurationMinutesDecimal(seconds);
+      setLessonDraftsById((prev) => {
+        const d = prev[lessonId];
+        if (!d) return prev;
+        return { ...prev, [lessonId]: { ...d, durationMinutes: String(minutes) } };
+      });
+      setLessonVideoUrlDetectSuccessMinutesById((p) => ({ ...p, [lessonId]: minutes }));
+    } catch {
+      // Silent by product requirement.
+    } finally {
+      if (lessonVideoBlurTokenRef.current[lessonId] === token) {
+        setLessonVideoUrlDetectingById((p) => ({ ...p, [lessonId]: false }));
+      }
+    }
+  };
+
+  const runNewLessonVideoUrlDetect = async (url: string) => {
+    const trimmed = url.trim();
+    if (!trimmed) {
+      setNewLessonVideoUrlDetecting(false);
+      setNewLessonVideoUrlDetectSuccessMinutes(null);
+      return;
+    }
+
+    const token = newLessonVideoBlurTokenRef.current + 1;
+    newLessonVideoBlurTokenRef.current = token;
+
+    setNewLessonVideoUrlDetecting(true);
+    setNewLessonVideoUrlDetectSuccessMinutes(null);
+
+    try {
+      const seconds = await detectVideoDurationSeconds(trimmed);
+      if (newLessonVideoBlurTokenRef.current !== token) return;
+      if (seconds === null) return;
+
+      const minutes = secondsToDurationMinutesDecimal(seconds);
+      setNewLessonDraft((prev) => ({ ...prev, durationMinutes: String(minutes) }));
+      setNewLessonVideoUrlDetectSuccessMinutes(minutes);
+    } catch {
+      // Silent by product requirement.
+    } finally {
+      if (newLessonVideoBlurTokenRef.current === token) {
+        setNewLessonVideoUrlDetecting(false);
+      }
+    }
+  };
 
   const toggleChapterExpanded = (chapterId: string) => {
     setExpandedChapterIds((prev) =>
@@ -664,8 +840,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         title: lesson.title,
         description: lesson.description,
         videoUrl: lesson.videoUrl,
-        videoDurationSeconds:
-          lesson.videoDurationSeconds === null ? "" : String(lesson.videoDurationSeconds),
+        durationMinutes: lessonSecondsToDurationMinutesField(lesson.videoDurationSeconds),
         isFreePreview: lesson.isFreePreview,
         status: lesson.status,
       },
@@ -700,7 +875,14 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
       setLessonTitleErrorsById((prev) => ({ ...prev, [lessonId]: null }));
       setExpandedLessonId(null);
       setExpandedLessonChapterId(null);
-      await refreshChapterLessons(chapterId);
+      try {
+        const freshLessons = await loadLessonsForChapter(chapterId);
+        setLessonsByChapter((prev) => ({ ...prev, [chapterId]: freshLessons }));
+        const merged = { ...lessonsByChapter, [chapterId]: freshLessons };
+        await silentPatchCourseEstimatedMinutes(merged);
+      } catch (_e) {
+        setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToLoadLessons"));
+      }
     } catch (_error) {
       setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToUpdateLesson"));
     } finally {
@@ -733,13 +915,22 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         title: "",
         description: "",
         videoUrl: "",
-        videoDurationSeconds: "",
+        durationMinutes: "",
         isFreePreview: false,
         status: "draft",
       });
       setNewLessonTitleError(null);
+      setNewLessonVideoUrlDetecting(false);
+      setNewLessonVideoUrlDetectSuccessMinutes(null);
       setAddingLessonForChapter(null);
-      await refreshChapterLessons(chapterId);
+      try {
+        const freshLessons = await loadLessonsForChapter(chapterId);
+        setLessonsByChapter((prev) => ({ ...prev, [chapterId]: freshLessons }));
+        const merged = { ...lessonsByChapter, [chapterId]: freshLessons };
+        await silentPatchCourseEstimatedMinutes(merged);
+      } catch (_e) {
+        setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToLoadLessons"));
+      }
       if (!expandedChapterIds.includes(chapterId)) {
         setExpandedChapterIds((prev) => [...prev, chapterId]);
       }
@@ -934,7 +1125,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={chapterDraft.title.trim().length === 0 || isSaving}
+                      disabled={isSaving}
                       onClick={saveChapterEdit}
                     >
                       {t("digitalProductsManagement.common.save")}
@@ -963,8 +1154,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                       title: lesson.title,
                       description: lesson.description,
                       videoUrl: lesson.videoUrl,
-                      videoDurationSeconds:
-                        lesson.videoDurationSeconds === null ? "" : String(lesson.videoDurationSeconds),
+                      durationMinutes: lessonSecondsToDurationMinutesField(lesson.videoDurationSeconds),
                       isFreePreview: lesson.isFreePreview,
                       status: lesson.status,
                     };
@@ -1091,27 +1281,55 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                 </div>
                                 <div className="space-y-1">
                                   <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.videoUrl")}</Label>
-                                  <Input
-                                    value={lessonDraft.videoUrl}
-                                    onChange={(e) =>
-                                      setLessonDraftsById((prev) => ({
-                                        ...prev,
-                                        [lesson.id]: { ...lessonDraft, videoUrl: e.target.value },
-                                      }))
-                                    }
-                                  />
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <Input
+                                      className="min-w-0 flex-1"
+                                      value={lessonDraft.videoUrl}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        setLessonDraftsById((prev) => ({
+                                          ...prev,
+                                          [lesson.id]: { ...lessonDraft, videoUrl: v },
+                                        }));
+                                        setLessonVideoUrlDetectSuccessMinutesById((p) => {
+                                          const n = { ...p };
+                                          delete n[lesson.id];
+                                          return n;
+                                        });
+                                      }}
+                                      onBlur={(e) => void runLessonVideoUrlDetect(lesson.id, e.currentTarget.value)}
+                                    />
+                                    {lessonVideoUrlDetectingById[lesson.id] ? (
+                                      <span
+                                        className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                                        aria-live="polite"
+                                      >
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                                      </span>
+                                    ) : lessonVideoUrlDetectSuccessMinutesById[lesson.id] != null ? (
+                                      <span
+                                        className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                                        aria-live="polite"
+                                      >
+                                        <Check className="h-3.5 w-3.5 text-green-600" aria-hidden />
+                                        {t("digitalProductsManagement.courseEditor.curriculum.fields.videoDurationDetected", {
+                                          minutes: lessonVideoUrlDetectSuccessMinutesById[lesson.id],
+                                        })}
+                                      </span>
+                                    ) : null}
+                                  </div>
                                 </div>
                                 <div className="space-y-1">
-                                  <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.durationSeconds")}</Label>
+                                  <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.durationMinutes")}</Label>
                                   <Input
                                     type="number"
                                     min={0}
-                                    step={1}
-                                    value={lessonDraft.videoDurationSeconds}
+                                    step="0.01"
+                                    value={lessonDraft.durationMinutes}
                                     onChange={(e) =>
                                       setLessonDraftsById((prev) => ({
                                         ...prev,
-                                        [lesson.id]: { ...lessonDraft, videoDurationSeconds: e.target.value },
+                                        [lesson.id]: { ...lessonDraft, durationMinutes: e.target.value },
                                       }))
                                     }
                                   />
@@ -1155,7 +1373,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                   <Button
                                     type="button"
                                     size="sm"
-                                    disabled={lessonDraft.title.trim().length === 0 || isSaving}
+                                    disabled={isSaving}
                                     onClick={() => saveLessonEdit(chapter.id, lesson.id)}
                                   >
                                     {t("digitalProductsManagement.common.save")}
@@ -1279,24 +1497,47 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                       </div>
                       <div className="space-y-1">
                         <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.videoUrl")}</Label>
-                        <Input
-                          value={newLessonDraft.videoUrl}
-                          onChange={(e) =>
-                            setNewLessonDraft((prev) => ({ ...prev, videoUrl: e.target.value }))
-                          }
-                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Input
+                            className="min-w-0 flex-1"
+                            value={newLessonDraft.videoUrl}
+                            onChange={(e) => {
+                              setNewLessonDraft((prev) => ({ ...prev, videoUrl: e.target.value }));
+                              setNewLessonVideoUrlDetectSuccessMinutes(null);
+                            }}
+                            onBlur={(e) => void runNewLessonVideoUrlDetect(e.currentTarget.value)}
+                          />
+                          {newLessonVideoUrlDetecting ? (
+                            <span
+                              className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                              aria-live="polite"
+                            >
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                            </span>
+                          ) : newLessonVideoUrlDetectSuccessMinutes != null ? (
+                            <span
+                              className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
+                              aria-live="polite"
+                            >
+                              <Check className="h-3.5 w-3.5 text-green-600" aria-hidden />
+                              {t("digitalProductsManagement.courseEditor.curriculum.fields.videoDurationDetected", {
+                                minutes: newLessonVideoUrlDetectSuccessMinutes,
+                              })}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                       <div className="space-y-1">
-                        <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.durationSeconds")}</Label>
+                        <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.durationMinutes")}</Label>
                         <Input
                           type="number"
                           min={0}
-                          step={1}
-                          value={newLessonDraft.videoDurationSeconds}
+                          step="0.01"
+                          value={newLessonDraft.durationMinutes}
                           onChange={(e) =>
                             setNewLessonDraft((prev) => ({
                               ...prev,
-                              videoDurationSeconds: e.target.value,
+                              durationMinutes: e.target.value,
                             }))
                           }
                         />
@@ -1334,7 +1575,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         <Button
                           type="button"
                           size="sm"
-                          disabled={newLessonDraft.title.trim().length === 0 || isSaving}
+                          disabled={isSaving}
                           onClick={() => addLesson(chapter.id)}
                         >
                           {t("digitalProductsManagement.common.save")}
@@ -1349,11 +1590,13 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                               title: "",
                               description: "",
                               videoUrl: "",
-                              videoDurationSeconds: "",
+                              durationMinutes: "",
                               isFreePreview: false,
                               status: "draft",
                             });
                             setNewLessonTitleError(null);
+                            setNewLessonVideoUrlDetecting(false);
+                            setNewLessonVideoUrlDetectSuccessMinutes(null);
                           }}
                         >
                           {t("digitalProductsManagement.common.cancel")}
@@ -1371,11 +1614,13 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                           title: "",
                           description: "",
                           videoUrl: "",
-                          videoDurationSeconds: "",
+                          durationMinutes: "",
                           isFreePreview: false,
                           status: "draft",
                         });
                         setNewLessonTitleError(null);
+                        setNewLessonVideoUrlDetecting(false);
+                        setNewLessonVideoUrlDetectSuccessMinutes(null);
                       }}
                     >
                       {t("digitalProductsManagement.courseEditor.curriculum.actions.addLesson")}
@@ -1434,7 +1679,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
             <Button
               type="button"
               size="sm"
-              disabled={newChapterDraft.title.trim().length === 0 || isSaving}
+              disabled={isSaving}
               onClick={addChapter}
             >
               {t("digitalProductsManagement.common.save")}

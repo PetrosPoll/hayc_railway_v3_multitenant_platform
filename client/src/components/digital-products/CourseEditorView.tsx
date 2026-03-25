@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -187,7 +187,8 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
     const changes: Partial<typeof currentPayload> = {};
     for (const key of keys) {
       if (currentPayload[key] !== (originalPayload as typeof currentPayload)[key]) {
-        changes[key] = currentPayload[key];
+        (changes as Record<keyof typeof currentPayload, (typeof currentPayload)[keyof typeof currentPayload]>)[key] =
+          currentPayload[key];
       }
     }
     return changes;
@@ -195,6 +196,21 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
 
   const hasUnsavedChanges = Object.keys(changedFields).length > 0;
   const canSave = !!siteId && form.title.trim().length > 0 && hasUnsavedChanges && !isSaving && !isLoading;
+
+  const onTotalLessonMinutesChange = useCallback((totalMinutes: number) => {
+    setForm((prev) => ({
+      ...prev,
+      estimatedDurationMinutes: String(Math.round(totalMinutes)),
+    }));
+  }, []);
+
+  const onCourseEstimatedMinutesSynced = useCallback((minutes: number) => {
+    setForm((prev) => ({ ...prev, estimatedDurationMinutes: String(minutes) }));
+    setOriginalPayload((prev) => ({
+      ...prev,
+      estimatedDurationMinutes: minutes,
+    }));
+  }, []);
 
   const onSave = async () => {
     if (!canSave) return;
@@ -204,7 +220,25 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
         ? `/api/hdp/products/${encodeURIComponent(siteId)}/courses/${encodeURIComponent(courseId)}`
         : `/api/hdp/products/${encodeURIComponent(siteId)}/courses`;
       const method = isEditMode ? "PATCH" : "POST";
-      const body = isEditMode ? changedFields : currentPayload;
+      const body = isEditMode
+        ? {
+            ...changedFields,
+            ...("estimatedDurationMinutes" in changedFields
+              ? {
+                  estimatedDurationMinutes:
+                    changedFields.estimatedDurationMinutes === null || changedFields.estimatedDurationMinutes === undefined
+                      ? changedFields.estimatedDurationMinutes
+                      : Math.round(parseFloat(String(changedFields.estimatedDurationMinutes))),
+                }
+              : {}),
+          }
+        : {
+            ...currentPayload,
+            estimatedDurationMinutes:
+              currentPayload.estimatedDurationMinutes === null
+                ? null
+                : Math.round(parseFloat(String(currentPayload.estimatedDurationMinutes))),
+          };
 
       const response = await fetch(url, {
         method,
@@ -262,7 +296,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
             {isEditMode ? resolvedTitle : t("digitalProductsManagement.courseEditor.defaultNewCourseTitle")}
           </h1>
         </div>
-        <Button type="button" onClick={onSave} disabled={!canSave}>
+        <Button type="button" onClick={onSave} disabled={isSaving}>
           {isSaving ? t("digitalProductsManagement.common.saving") : t("digitalProductsManagement.common.save")}
         </Button>
       </div>
@@ -372,7 +406,12 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
         </TabsContent>
 
         <TabsContent value="curriculum" className="pt-4">
-          <CourseCurriculumTab siteId={siteId} courseId={courseId} />
+          <CourseCurriculumTab
+            siteId={siteId}
+            courseId={courseId}
+            onTotalLessonMinutesChange={onTotalLessonMinutesChange}
+            onCourseEstimatedMinutesSynced={onCourseEstimatedMinutesSynced}
+          />
         </TabsContent>
 
         <TabsContent value="certificate" className="pt-4 space-y-3">

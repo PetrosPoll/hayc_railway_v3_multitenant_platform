@@ -3063,6 +3063,8 @@
                     "introVideoUrl": "Intro Video URL",
                     "videoUrl": "Video URL",
                     "durationSeconds": "Duration (seconds)",
+                    "durationMinutes": "Duration (minutes)",
+                    "videoDurationDetected": "Duration detected: {{minutes}}m",
                     "freePreview": "Free Preview"
                 },
                 "placeholders": {

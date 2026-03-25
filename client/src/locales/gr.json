@@ -3062,6 +3062,8 @@
                     "introVideoUrl": "URL εισαγωγικού βίντεο",
                     "videoUrl": "URL βίντεο",
                     "durationSeconds": "Διάρκεια (δευτερόλεπτα)",
+                    "durationMinutes": "Διάρκεια (λεπτά)",
+                    "videoDurationDetected": "Εντοπίστηκε διάρκεια: {{minutes}} λεπτά",
                     "freePreview": "Δωρεάν προεπισκόπηση"
                 },
                 "placeholders": {

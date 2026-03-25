@@ -21,13 +21,15 @@ interface Props {
   deletingId: string | null;
 }
 
-function formatPrice(priceInCents: number, currency: string): string {
+function formatPrice(price: number | string, currency: string): string {
+  const amount = typeof price === "string" ? Number.parseFloat(price) : price;
+  if (!Number.isFinite(amount)) return "—";
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: (currency || "EUR").toUpperCase(),
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(priceInCents / 100);
+  }).format(amount);
 }
 
 export function ProductsTable({
