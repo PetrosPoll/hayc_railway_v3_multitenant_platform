@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -202,6 +203,7 @@ function fileTypeDisplayLabel(fileType: string): string {
 }
 
 export function CourseCurriculumTab({ siteId, courseId }: Props) {
+  const { t } = useTranslation();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [lessonsByChapter, setLessonsByChapter] = useState<Record<string, Lesson[]>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -259,7 +261,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
       { credentials: "include" }
     );
     if (!response.ok) {
-      throw new Error("Failed to load lessons");
+      throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToLoadLessons"));
     }
     const data = response.status === 204 ? [] : await response.json();
     return getArrayPayload(data, "lessons").map(normalizeLesson);
@@ -272,7 +274,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
     try {
       const response = await fetch(`${courseBaseUrl}/chapters`, { credentials: "include" });
       if (!response.ok) {
-        throw new Error("Failed to load chapters");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToLoadChapters"));
       }
       const chapterData = response.status === 204 ? [] : await response.json();
       const loadedChapters = getArrayPayload(chapterData, "chapters").map(normalizeChapter);
@@ -287,7 +289,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
       }
       setLessonsByChapter(nextLessons);
     } catch (_error) {
-      setError("Failed to load curriculum.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToLoadCurriculum"));
     } finally {
       setIsLoading(false);
     }
@@ -298,7 +300,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
       const lessons = await loadLessonsForChapter(chapterId);
       setLessonsByChapter((prev) => ({ ...prev, [chapterId]: lessons }));
     } catch (_error) {
-      setError("Failed to load lessons.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToLoadLessons"));
     }
   };
 
@@ -337,11 +339,11 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         }),
       });
       if (!response.ok) {
-        throw new Error("Failed to reorder chapters");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToReorderChapters"));
       }
       await loadCurriculum();
     } catch (_error) {
-      setError("Failed to reorder chapters.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToReorderChapters"));
     } finally {
       setIsSaving(false);
     }
@@ -376,11 +378,11 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         }
       );
       if (!response.ok) {
-        throw new Error("Failed to reorder lessons");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToReorderLessons"));
       }
       await refreshChapterLessons(chapterId);
     } catch (_error) {
-      setError("Failed to reorder lessons.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToReorderLessons"));
     } finally {
       setIsSaving(false);
     }
@@ -399,7 +401,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
   const saveChapterEdit = async () => {
     if (!courseBaseUrl || !editingChapterId) return;
     if (chapterDraft.title.trim().length === 0) {
-      setChapterTitleError("Title is required");
+      setChapterTitleError(t("digitalProductsManagement.courseEditor.curriculum.validation.titleRequired"));
       return;
     }
     setIsSaving(true);
@@ -415,12 +417,12 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         }
       );
       if (!response.ok) {
-        throw new Error("Failed to update chapter");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToUpdateChapter"));
       }
       setEditingChapterId(null);
       await loadCurriculum();
     } catch (_error) {
-      setError("Failed to update chapter.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToUpdateChapter"));
     } finally {
       setIsSaving(false);
     }
@@ -429,7 +431,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
   const addChapter = async () => {
     if (!courseBaseUrl) return;
     if (newChapterDraft.title.trim().length === 0) {
-      setNewChapterTitleError("Title is required");
+      setNewChapterTitleError(t("digitalProductsManagement.courseEditor.curriculum.validation.titleRequired"));
       return;
     }
     setIsSaving(true);
@@ -442,14 +444,14 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         body: JSON.stringify(buildChapterPayload(newChapterDraft)),
       });
       if (!response.ok) {
-        throw new Error("Failed to create chapter");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToCreateChapter"));
       }
       setNewChapterDraft({ title: "", introVideoUrl: "", status: "draft" });
       setNewChapterTitleError(null);
       setShowAddChapter(false);
       await loadCurriculum();
     } catch (_error) {
-      setError("Failed to create chapter.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToCreateChapter"));
     } finally {
       setIsSaving(false);
     }
@@ -467,15 +469,15 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
     try {
       const response = await fetch(url, { credentials: "include" });
       if (!response.ok) {
-        throw new Error("Failed to load attachments");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToLoadAttachments"));
       }
       const data = response.status === 204 ? [] : await response.json();
       const list = parseAttachmentsPayload(data);
       setAttachmentsByLessonId((prev) => ({ ...prev, [lessonId]: list }));
     } catch (_e) {
       toast({
-        title: "Error",
-        description: "Failed to load attachments.",
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.errors.failedToLoadAttachments"),
         variant: "destructive",
       });
     } finally {
@@ -488,8 +490,8 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
     const w = window as Window & { cloudinary?: { createUploadWidget: (opts: unknown, cb: unknown) => { open: () => void } } };
     if (!w.cloudinary) {
       toast({
-        title: "Error",
-        description: "Upload widget not ready. Please refresh the page and try again.",
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.errors.uploadWidgetNotReady"),
         variant: "destructive",
       });
       return;
@@ -506,15 +508,15 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         credentials: "include",
       });
       if (!configResponse.ok) {
-        throw new Error("Failed to get configuration");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToGetConfiguration"));
       }
       const configData = await configResponse.json();
       cloudinaryConfig.apiKey = configData.apiKey;
       cloudinaryConfig.cloudName = configData.cloudName;
     } catch (_e) {
       toast({
-        title: "Error",
-        description: "Failed to initialize upload. Please try again.",
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.errors.failedToInitializeUpload"),
         variant: "destructive",
       });
       return;
@@ -533,7 +535,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
       const ext = (info.original_filename?.split(".").pop() ?? "").toLowerCase();
       const fileType = info.format || ext || info.resource_type;
       const body = {
-        title: info.original_filename ?? "attachment",
+        title: info.original_filename ?? t("digitalProductsManagement.courseEditor.curriculum.attachments.defaultTitle"),
         cloudinaryUrl: info.secure_url ?? "",
         fileType,
       };
@@ -544,10 +546,13 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         body: JSON.stringify(body),
       });
       if (!response.ok) {
-        throw new Error("Failed to save attachment");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToSaveAttachment"));
       }
       await loadAttachments(chapterId, lessonId);
-      toast({ title: "Uploaded", description: "Attachment added to this lesson." });
+      toast({
+        title: t("digitalProductsManagement.courseEditor.curriculum.attachments.uploadedTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.attachments.uploadedDescription"),
+      });
     };
 
     const widget = w.cloudinary.createUploadWidget(
@@ -563,14 +568,14 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
               credentials: "include",
             });
             if (!response.ok) {
-              throw new Error("Failed to get upload signature");
+              throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToGetUploadSignature"));
             }
             const data = await response.json();
             callback({ signature: data.signature, timestamp: data.timestamp });
           } catch (_err) {
             toast({
-              title: "Error",
-              description: "Failed to prepare upload. Please try again.",
+              title: t("digitalProductsManagement.toasts.errorTitle"),
+              description: t("digitalProductsManagement.courseEditor.curriculum.errors.failedToPrepareUpload"),
               variant: "destructive",
             });
           }
@@ -585,8 +590,8 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
       (error: unknown, result: { event?: string; info?: Record<string, unknown> }) => {
         if (error) {
           toast({
-            title: "Upload Error",
-            description: "Failed to upload file. Please try again.",
+            title: t("digitalProductsManagement.courseEditor.curriculum.attachments.uploadErrorTitle"),
+            description: t("digitalProductsManagement.courseEditor.curriculum.errors.failedToUploadFile"),
             variant: "destructive",
           });
           setAttachmentUploadingLessonId(null);
@@ -602,8 +607,8 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
           void postAttachment(info)
             .catch(() => {
               toast({
-                title: "Error",
-                description: "Upload succeeded but saving the attachment failed.",
+                title: t("digitalProductsManagement.toasts.errorTitle"),
+                description: t("digitalProductsManagement.courseEditor.curriculum.errors.uploadSucceededButSaveFailed"),
                 variant: "destructive",
               });
             })
@@ -630,14 +635,17 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         credentials: "include",
       });
       if (!response.ok && response.status !== 204) {
-        throw new Error("Failed to delete");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToDeleteAttachment"));
       }
       await loadAttachments(chapterId, lessonId);
-      toast({ title: "Removed", description: "Attachment deleted." });
+      toast({
+        title: t("digitalProductsManagement.courseEditor.curriculum.attachments.removedTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.attachments.removedDescription"),
+      });
     } catch (_e) {
       toast({
-        title: "Error",
-        description: "Failed to delete attachment.",
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.errors.failedToDeleteAttachment"),
         variant: "destructive",
       });
     } finally {
@@ -668,7 +676,10 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
     const lessonDraft = lessonDraftsById[lessonId];
     if (!courseBaseUrl || !lessonDraft) return;
     if (lessonDraft.title.trim().length === 0) {
-      setLessonTitleErrorsById((prev) => ({ ...prev, [lessonId]: "Title is required" }));
+      setLessonTitleErrorsById((prev) => ({
+        ...prev,
+        [lessonId]: t("digitalProductsManagement.courseEditor.curriculum.validation.titleRequired"),
+      }));
       return;
     }
     setIsSaving(true);
@@ -684,14 +695,14 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         }
       );
       if (!response.ok) {
-        throw new Error("Failed to update lesson");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToUpdateLesson"));
       }
       setLessonTitleErrorsById((prev) => ({ ...prev, [lessonId]: null }));
       setExpandedLessonId(null);
       setExpandedLessonChapterId(null);
       await refreshChapterLessons(chapterId);
     } catch (_error) {
-      setError("Failed to update lesson.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToUpdateLesson"));
     } finally {
       setIsSaving(false);
     }
@@ -700,7 +711,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
   const addLesson = async (chapterId: string) => {
     if (!courseBaseUrl) return;
     if (newLessonDraft.title.trim().length === 0) {
-      setNewLessonTitleError("Title is required");
+      setNewLessonTitleError(t("digitalProductsManagement.courseEditor.curriculum.validation.titleRequired"));
       return;
     }
     setIsSaving(true);
@@ -716,7 +727,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         }
       );
       if (!response.ok) {
-        throw new Error("Failed to create lesson");
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToCreateLesson"));
       }
       setNewLessonDraft({
         title: "",
@@ -733,7 +744,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
         setExpandedChapterIds((prev) => [...prev, chapterId]);
       }
     } catch (_error) {
-      setError("Failed to create lesson.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToCreateLesson"));
     } finally {
       setIsSaving(false);
     }
@@ -753,7 +764,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
           }
         );
         if (!response.ok) {
-          throw new Error("Failed to delete chapter");
+          throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToDeleteChapter"));
         }
         await loadCurriculum();
       } else {
@@ -765,13 +776,13 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
           }
         );
         if (!response.ok) {
-          throw new Error("Failed to delete lesson");
+          throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToDeleteLesson"));
         }
         await refreshChapterLessons(deleteTarget.chapterId);
       }
       setDeleteTarget(null);
     } catch (_error) {
-      setError("Failed to delete item.");
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToDeleteItem"));
     } finally {
       setIsSaving(false);
     }
@@ -780,7 +791,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
   if (!hasCourseId) {
     return (
       <p className="text-sm text-muted-foreground">
-        Save the course details first before adding curriculum.
+        {t("digitalProductsManagement.courseEditor.curriculum.saveCourseFirst")}
       </p>
     );
   }
@@ -788,7 +799,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">Curriculum</h3>
+        <h3 className="text-sm font-medium">{t("digitalProductsManagement.courseEditor.tabs.curriculum")}</h3>
         <Button
           type="button"
           variant="outline"
@@ -796,14 +807,14 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
           disabled={isSaving}
           onClick={() => setShowAddChapter(true)}
         >
-          + Add Chapter
+          {t("digitalProductsManagement.courseEditor.curriculum.actions.addChapter")}
         </Button>
       </div>
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
-          Loading curriculum...
+          {t("digitalProductsManagement.courseEditor.curriculum.loadingCurriculum")}
         </div>
       ) : null}
 
@@ -834,7 +845,9 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         : "bg-gray-100 text-gray-700 hover:bg-gray-100"
                     }
                   >
-                    {chapter.status === "published" ? "Published" : "Draft"}
+                    {chapter.status === "published"
+                      ? t("digitalProductsManagement.status.published")
+                      : t("digitalProductsManagement.status.draft")}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -857,7 +870,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                     ↓
                   </Button>
                   <Button type="button" variant="outline" size="sm" onClick={() => startChapterEdit(chapter)}>
-                    Edit
+                    {t("digitalProductsManagement.actions.edit")}
                   </Button>
                   <Button
                     type="button"
@@ -871,7 +884,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                       })
                     }
                   >
-                    Delete
+                    {t("digitalProductsManagement.actions.delete")}
                   </Button>
                 </div>
               </div>
@@ -879,7 +892,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
               {editingChapterId === chapter.id ? (
                 <div className="space-y-3 border-t p-3">
                   <div className="space-y-1">
-                    <Label>Title</Label>
+                    <Label>{t("digitalProductsManagement.courseEditor.fields.title")}</Label>
                     <Input
                       value={chapterDraft.title}
                       onChange={(e) => {
@@ -892,7 +905,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                     {chapterTitleError ? <p className="text-xs text-destructive">{chapterTitleError}</p> : null}
                   </div>
                   <div className="space-y-1">
-                    <Label>Intro Video URL</Label>
+                    <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.introVideoUrl")}</Label>
                     <Input
                       value={chapterDraft.introVideoUrl}
                       onChange={(e) =>
@@ -901,7 +914,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label>Status</Label>
+                    <Label>{t("digitalProductsManagement.table.status")}</Label>
                     <Select
                       value={chapterDraft.status}
                       onValueChange={(value) =>
@@ -912,8 +925,8 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
+                        <SelectItem value="draft">{t("digitalProductsManagement.status.draft")}</SelectItem>
+                        <SelectItem value="published">{t("digitalProductsManagement.status.published")}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -924,7 +937,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                       disabled={chapterDraft.title.trim().length === 0 || isSaving}
                       onClick={saveChapterEdit}
                     >
-                      Save
+                      {t("digitalProductsManagement.common.save")}
                     </Button>
                     <Button
                       type="button"
@@ -935,7 +948,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         setChapterTitleError(null);
                       }}
                     >
-                      Cancel
+                      {t("digitalProductsManagement.common.cancel")}
                     </Button>
                   </div>
                 </div>
@@ -973,7 +986,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                             <span className="truncate">{lesson.title}</span>
                             {lesson.isFreePreview ? (
                               <Badge variant="secondary" className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-                                Free Preview
+                                {t("digitalProductsManagement.courseEditor.curriculum.fields.freePreview")}
                               </Badge>
                             ) : null}
                             <Badge
@@ -984,7 +997,9 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                   : "bg-gray-100 text-gray-700 hover:bg-gray-100"
                               }
                             >
-                              {lesson.status === "published" ? "Published" : "Draft"}
+                              {lesson.status === "published"
+                                ? t("digitalProductsManagement.status.published")
+                                : t("digitalProductsManagement.status.draft")}
                             </Badge>
                           </div>
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -1019,7 +1034,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                 })
                               }
                             >
-                              Delete
+                              {t("digitalProductsManagement.actions.delete")}
                             </Button>
                           </div>
                         </div>
@@ -1037,12 +1052,14 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                               }}
                             >
                               <TabsList className="mx-3 mt-3 h-9 w-fit justify-start rounded-md bg-muted p-1">
-                                <TabsTrigger value="details">Details</TabsTrigger>
-                                <TabsTrigger value="attachments">Attachments</TabsTrigger>
+                                <TabsTrigger value="details">{t("digitalProductsManagement.courseEditor.tabs.details")}</TabsTrigger>
+                                <TabsTrigger value="attachments">
+                                  {t("digitalProductsManagement.courseEditor.curriculum.tabs.attachments")}
+                                </TabsTrigger>
                               </TabsList>
                               <TabsContent value="details" className="space-y-3 p-3 pt-4">
                                 <div className="space-y-1">
-                                  <Label>Title</Label>
+                                  <Label>{t("digitalProductsManagement.courseEditor.fields.title")}</Label>
                                   <Input
                                     value={lessonDraft.title}
                                     onChange={(e) => {
@@ -1060,7 +1077,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                   ) : null}
                                 </div>
                                 <div className="space-y-1">
-                                  <Label>Description</Label>
+                                  <Label>{t("digitalProductsManagement.courseEditor.fields.description")}</Label>
                                   <Textarea
                                     rows={3}
                                     value={lessonDraft.description}
@@ -1073,7 +1090,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label>Video URL</Label>
+                                  <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.videoUrl")}</Label>
                                   <Input
                                     value={lessonDraft.videoUrl}
                                     onChange={(e) =>
@@ -1085,7 +1102,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label>Duration (seconds)</Label>
+                                  <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.durationSeconds")}</Label>
                                   <Input
                                     type="number"
                                     min={0}
@@ -1100,7 +1117,9 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                   />
                                 </div>
                                 <div className="flex items-center justify-between rounded-md border px-3 py-2">
-                                  <Label htmlFor={`lesson-preview-${lesson.id}`}>Free Preview</Label>
+                                  <Label htmlFor={`lesson-preview-${lesson.id}`}>
+                                    {t("digitalProductsManagement.courseEditor.curriculum.fields.freePreview")}
+                                  </Label>
                                   <Switch
                                     id={`lesson-preview-${lesson.id}`}
                                     checked={lessonDraft.isFreePreview}
@@ -1113,7 +1132,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                   />
                                 </div>
                                 <div className="space-y-1">
-                                  <Label>Status</Label>
+                                  <Label>{t("digitalProductsManagement.table.status")}</Label>
                                   <Select
                                     value={lessonDraft.status}
                                     onValueChange={(value) =>
@@ -1127,8 +1146,8 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="draft">Draft</SelectItem>
-                                      <SelectItem value="published">Published</SelectItem>
+                                      <SelectItem value="draft">{t("digitalProductsManagement.status.draft")}</SelectItem>
+                                      <SelectItem value="published">{t("digitalProductsManagement.status.published")}</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -1139,7 +1158,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                     disabled={lessonDraft.title.trim().length === 0 || isSaving}
                                     onClick={() => saveLessonEdit(chapter.id, lesson.id)}
                                   >
-                                    Save
+                                    {t("digitalProductsManagement.common.save")}
                                   </Button>
                                   <Button
                                     type="button"
@@ -1151,7 +1170,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                       setLessonTitleErrorsById((prev) => ({ ...prev, [lesson.id]: null }));
                                     }}
                                   >
-                                    Cancel
+                                    {t("digitalProductsManagement.common.cancel")}
                                   </Button>
                                 </div>
                               </TabsContent>
@@ -1171,20 +1190,22 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                     {attachmentUploadingLessonId === lesson.id ? (
                                       <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Uploading…
+                                        {t("digitalProductsManagement.courseEditor.curriculum.attachments.uploading")}
                                       </>
                                     ) : (
-                                      "Upload File"
+                                      t("digitalProductsManagement.courseEditor.curriculum.attachments.uploadFile")
                                     )}
                                   </Button>
                                 </div>
                                 {attachmentsLoading ? (
                                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                    Loading attachments…
+                                    {t("digitalProductsManagement.courseEditor.curriculum.attachments.loading")}
                                   </div>
                                 ) : lessonAttachments.length === 0 ? (
-                                  <p className="text-sm text-muted-foreground">No attachments yet.</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    {t("digitalProductsManagement.courseEditor.curriculum.attachments.empty")}
+                                  </p>
                                 ) : (
                                   <ul className="divide-y rounded-md border">
                                     {lessonAttachments.map((att) => {
@@ -1206,7 +1227,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                                             size="icon"
                                             className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                                             disabled={deletingAttachmentKey === delKey || isSaving}
-                                            aria-label="Delete attachment"
+                                            aria-label={t("digitalProductsManagement.courseEditor.curriculum.attachments.deleteAriaLabel")}
                                             onClick={() => deleteLessonAttachment(chapter.id, lesson.id, att.id)}
                                           >
                                             {deletingAttachmentKey === delKey ? (
@@ -1231,7 +1252,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                   {addingLessonForChapter === chapter.id ? (
                     <div className="space-y-2 rounded-md border p-3">
                       <div className="space-y-1">
-                        <Label>Title</Label>
+                        <Label>{t("digitalProductsManagement.courseEditor.fields.title")}</Label>
                         <Input
                           value={newLessonDraft.title}
                           onChange={(e) => {
@@ -1240,14 +1261,14 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                               setNewLessonTitleError(null);
                             }
                           }}
-                          placeholder="Lesson title"
+                          placeholder={t("digitalProductsManagement.courseEditor.curriculum.placeholders.lessonTitle")}
                         />
                         {newLessonTitleError ? (
                           <p className="text-xs text-destructive">{newLessonTitleError}</p>
                         ) : null}
                       </div>
                       <div className="space-y-1">
-                        <Label>Description</Label>
+                        <Label>{t("digitalProductsManagement.courseEditor.fields.description")}</Label>
                         <Textarea
                           rows={3}
                           value={newLessonDraft.description}
@@ -1257,7 +1278,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label>Video URL</Label>
+                        <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.videoUrl")}</Label>
                         <Input
                           value={newLessonDraft.videoUrl}
                           onChange={(e) =>
@@ -1266,7 +1287,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label>Duration (seconds)</Label>
+                        <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.durationSeconds")}</Label>
                         <Input
                           type="number"
                           min={0}
@@ -1281,7 +1302,9 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         />
                       </div>
                       <div className="flex items-center justify-between rounded-md border px-3 py-2">
-                        <Label htmlFor={`new-lesson-preview-${chapter.id}`}>Free Preview</Label>
+                        <Label htmlFor={`new-lesson-preview-${chapter.id}`}>
+                          {t("digitalProductsManagement.courseEditor.curriculum.fields.freePreview")}
+                        </Label>
                         <Switch
                           id={`new-lesson-preview-${chapter.id}`}
                           checked={newLessonDraft.isFreePreview}
@@ -1291,7 +1314,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         />
                       </div>
                       <div className="space-y-1">
-                        <Label>Status</Label>
+                        <Label>{t("digitalProductsManagement.table.status")}</Label>
                         <Select
                           value={newLessonDraft.status}
                           onValueChange={(value) =>
@@ -1302,8 +1325,8 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="draft">Draft</SelectItem>
-                            <SelectItem value="published">Published</SelectItem>
+                            <SelectItem value="draft">{t("digitalProductsManagement.status.draft")}</SelectItem>
+                            <SelectItem value="published">{t("digitalProductsManagement.status.published")}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -1314,7 +1337,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                           disabled={newLessonDraft.title.trim().length === 0 || isSaving}
                           onClick={() => addLesson(chapter.id)}
                         >
-                          Save
+                          {t("digitalProductsManagement.common.save")}
                         </Button>
                         <Button
                           type="button"
@@ -1333,7 +1356,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                             setNewLessonTitleError(null);
                           }}
                         >
-                          Cancel
+                          {t("digitalProductsManagement.common.cancel")}
                         </Button>
                       </div>
                     </div>
@@ -1355,7 +1378,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                         setNewLessonTitleError(null);
                       }}
                     >
-                      + Add Lesson
+                      {t("digitalProductsManagement.courseEditor.curriculum.actions.addLesson")}
                     </Button>
                   )}
                 </div>
@@ -1368,7 +1391,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
       {showAddChapter ? (
         <div className="space-y-2 rounded-md border p-3">
           <div className="space-y-1">
-            <Label>Title</Label>
+            <Label>{t("digitalProductsManagement.courseEditor.fields.title")}</Label>
             <Input
               value={newChapterDraft.title}
               onChange={(e) => {
@@ -1377,12 +1400,12 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                   setNewChapterTitleError(null);
                 }
               }}
-              placeholder="Chapter title"
+              placeholder={t("digitalProductsManagement.courseEditor.curriculum.placeholders.chapterTitle")}
             />
             {newChapterTitleError ? <p className="text-xs text-destructive">{newChapterTitleError}</p> : null}
           </div>
           <div className="space-y-1">
-            <Label>Intro Video URL</Label>
+            <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.introVideoUrl")}</Label>
             <Input
               value={newChapterDraft.introVideoUrl}
               onChange={(e) =>
@@ -1391,7 +1414,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
             />
           </div>
           <div className="space-y-1">
-            <Label>Status</Label>
+            <Label>{t("digitalProductsManagement.table.status")}</Label>
             <Select
               value={newChapterDraft.status}
               onValueChange={(value) =>
@@ -1402,8 +1425,8 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="draft">{t("digitalProductsManagement.status.draft")}</SelectItem>
+                <SelectItem value="published">{t("digitalProductsManagement.status.published")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1414,7 +1437,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
               disabled={newChapterDraft.title.trim().length === 0 || isSaving}
               onClick={addChapter}
             >
-              Save
+              {t("digitalProductsManagement.common.save")}
             </Button>
             <Button
               type="button"
@@ -1426,7 +1449,7 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                 setNewChapterTitleError(null);
               }}
             >
-              Cancel
+              {t("digitalProductsManagement.common.cancel")}
             </Button>
           </div>
         </div>
@@ -1442,9 +1465,13 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm delete</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("digitalProductsManagement.courseEditor.curriculum.deleteDialog.title")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteTarget?.label}"?
+              {t("digitalProductsManagement.courseEditor.curriculum.deleteDialog.description", {
+                label: deleteTarget?.label ?? "",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1456,7 +1483,9 @@ export function CourseCurriculumTab({ siteId, courseId }: Props) {
                 confirmDelete();
               }}
             >
-              {isSaving ? "Deleting..." : "Delete"}
+              {isSaving
+                ? t("digitalProductsManagement.courseEditor.curriculum.deleteDialog.deleting")
+                : t("digitalProductsManagement.actions.delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

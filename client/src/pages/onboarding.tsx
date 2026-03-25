@@ -585,8 +585,8 @@ export default function Onboarding() {
       } catch (error) {
         console.error("Error initializing onboarding:", error);
         toast({
-          title: "Error",
-          description: "Failed to initialize onboarding. Please refresh the page.",
+          title: t("onboarding.toasts.error"),
+          description: t("onboarding.toasts.initializeError"),
           variant: "destructive",
         });
       }
@@ -1184,8 +1184,8 @@ export default function Onboarding() {
       } catch (error) {
         console.error("Failed to get configuration:", error);
         toast({
-          title: "Error",
-          description: "Failed to initialize upload. Please try again.",
+          title: t("onboarding.toasts.error"),
+          description: t("onboarding.toasts.initUploadError"),
           variant: "destructive",
         });
         return;
@@ -1213,8 +1213,8 @@ export default function Onboarding() {
             } catch (error) {
               console.error("Signature error:", error);
               toast({
-                title: "Error",
-                description: "Failed to prepare upload. Please try again.",
+                title: t("onboarding.toasts.error"),
+                description: t("onboarding.toasts.prepareUploadError"),
                 variant: "destructive",
               });
             }
@@ -1316,8 +1316,8 @@ export default function Onboarding() {
       } catch (error) {
         console.error("Failed to get configuration:", error);
         toast({
-          title: "Error",
-          description: "Failed to initialize upload. Please try again.",
+          title: t("onboarding.toasts.error"),
+          description: t("onboarding.toasts.initUploadError"),
           variant: "destructive",
         });
         return;
@@ -1345,8 +1345,8 @@ export default function Onboarding() {
             } catch (error) {
               console.error("Signature error:", error);
               toast({
-                title: "Error",
-                description: "Failed to prepare upload. Please try again.",
+                title: t("onboarding.toasts.error"),
+                description: t("onboarding.toasts.prepareUploadError"),
                 variant: "destructive",
               });
             }
@@ -1369,13 +1369,15 @@ export default function Onboarding() {
 
             form.setValue(fieldName, [...currentFiles, newFile]);
             toast({
-              title: "Upload Successful",
-              description: `${result.info.original_filename} uploaded successfully`,
+              title: t("onboarding.toasts.uploadSuccessful"),
+              description: t("onboarding.uploadSuccessfulDesc", {
+                filename: result.info.original_filename,
+              }),
             });
           } else if (error) {
             toast({
-              title: "Upload Error",
-              description: "Failed to upload file. Please try again.",
+              title: t("onboarding.uploadError"),
+              description: t("onboarding.toasts.uploadError"),
               variant: "destructive",
             });
           }
@@ -1383,8 +1385,8 @@ export default function Onboarding() {
       );
     } else {
       toast({
-        title: "Upload Service Unavailable",
-        description: "Please try again later.",
+        title: t("onboarding.uploadServiceUnavailable"),
+        description: t("onboarding.toasts.uploadServiceUnavailable"),
         variant: "destructive",
       });
     }
@@ -1612,8 +1614,8 @@ export default function Onboarding() {
     if (!isFormValid) {
       setShowValidationErrors(true);
       toast({
-        title: "Please correct the errors",
-        description: "Make sure all required fields are filled correctly",
+        title: t("onboarding.correctErrors"),
+        description: t("onboarding.correctErrorsDesc"),
         variant: "destructive",
       });
       return;
@@ -1959,7 +1961,7 @@ export default function Onboarding() {
                     <FormControl>
                       <Input
                         type="email"
-                        placeholder="account@email.com"
+                        placeholder={t("onboarding.placeholders.accountEmail")}
                         value={user?.email || field.value || ""}
                         disabled
                         className="bg-gray-50 text-gray-600"
@@ -2330,7 +2332,7 @@ export default function Onboarding() {
                       </FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Provider name (Gmail, Outlook, etc.), login credentials..."
+                          placeholder={t("onboarding.placeholders.emailProvider")}
                           className="min-h-[80px]"
                           value={field.value || ""}
                           onChange={field.onChange}
@@ -2353,7 +2355,7 @@ export default function Onboarding() {
                       </FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="info@yourbusiness.com&#10;sales@yourbusiness.com&#10;support@yourbusiness.com"
+                          placeholder={t("onboarding.placeholders.existingEmails")}
                           className="min-h-[80px]"
                           value={field.value || ""}
                           onChange={field.onChange}
@@ -2380,7 +2382,7 @@ export default function Onboarding() {
                       <FormControl>
                         <Input
                           type="number"
-                          placeholder="e.g., 3"
+                          placeholder={t("onboarding.placeholders.emailCount")}
                           value={field.value || ""}
                           onChange={field.onChange}
                           onBlur={field.onBlur}
@@ -2400,7 +2402,7 @@ export default function Onboarding() {
                       <FormLabel>{t("onboarding.fields.emailNames")}</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="info&#10;sales&#10;support"
+                          placeholder={t("onboarding.placeholders.emailNames")}
                           className="min-h-[80px]"
                           value={field.value || ""}
                           onChange={field.onChange}
@@ -2986,7 +2988,7 @@ export default function Onboarding() {
                         />
                         <Input
                           type="text"
-                          placeholder="#3B82F6"
+                          placeholder={t("onboarding.placeholders.color1")}
                           value={field.value?.split("|")[0] || ""}
                           onChange={(e) => {
                             const colors = field.value?.split("|") || [
@@ -3035,7 +3037,7 @@ export default function Onboarding() {
                         />
                         <Input
                           type="text"
-                          placeholder="#FFFFFF"
+                          placeholder={t("onboarding.placeholders.color2")}
                           value={field.value?.split("|")[1] || ""}
                           onChange={(e) => {
                             const colors = field.value?.split("|") || [
@@ -3084,7 +3086,7 @@ export default function Onboarding() {
                         />
                         <Input
                           type="text"
-                          placeholder="#1F2937"
+                          placeholder={t("onboarding.placeholders.color3")}
                           value={field.value?.split("|")[2] || ""}
                           onChange={(e) => {
                             const colors = field.value?.split("|") || [
@@ -3133,7 +3135,7 @@ export default function Onboarding() {
                         />
                         <Input
                           type="text"
-                          placeholder="#10B981"
+                          placeholder={t("onboarding.placeholders.color4")}
                           value={field.value?.split("|")[3] || ""}
                           onChange={(e) => {
                             const colors = field.value?.split("|") || [
@@ -3189,7 +3191,7 @@ export default function Onboarding() {
                   <FormLabel>{t("onboarding.fields.preferredFonts")}</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Any specific font you'd like us to use"
+                      placeholder={t("onboarding.placeholders.preferredFonts")}
                       value={field.value || ""}
                       onChange={field.onChange}
                       onBlur={field.onBlur}

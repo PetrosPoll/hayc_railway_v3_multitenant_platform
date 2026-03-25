@@ -147,7 +147,7 @@ export default function WebsitesList() {
     if (!status) {
       return {
         variant: "secondary" as const,
-        label: "No Subscription"
+        label: t("status.noSubscription")
       };
     }
 
@@ -155,39 +155,39 @@ export default function WebsitesList() {
       case "active":
         return {
           variant: "default" as const,
-          label: "Active"
+          label: t("status.active")
         };
       case "canceled":
       case "cancelled":
         return {
           variant: "destructive" as const,
-          label: "Cancelled"
+          label: t("status.cancelled")
         };
       case "past_due":
         return {
           variant: "destructive" as const,
-          label: "Past Due"
+          label: t("status.pastDue")
         };
       case "unpaid":
         return {
           variant: "destructive" as const,
-          label: "Unpaid"
+          label: t("status.unpaid")
         };
       case "incomplete":
       case "incomplete_expired":
         return {
           variant: "secondary" as const,
-          label: "Incomplete"
+          label: t("status.incomplete")
         };
       case "trialing":
         return {
           variant: "outline" as const,
-          label: "Trial"
+          label: t("status.trial")
         };
       case "paused":
         return {
           variant: "secondary" as const,
-          label: "Paused"
+          label: t("status.paused")
         };
       default:
         return {
@@ -330,7 +330,11 @@ export default function WebsitesList() {
                               </p>
                               {website.subscriptionTier && (
                                 <Badge className="mt-2" variant="outline" data-testid={`badge-tier-draft-${website.id}`}>
-                                  {website.subscriptionTier.charAt(0).toUpperCase() + website.subscriptionTier.slice(1)} Plan
+                                  {t("dashboard.planSuffix", {
+                                    tier:
+                                      website.subscriptionTier.charAt(0).toUpperCase() +
+                                      website.subscriptionTier.slice(1),
+                                  })}
                                 </Badge>
                               )}
                             </div>

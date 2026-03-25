@@ -52,18 +52,18 @@ export function WebsiteChanges() {
 
   const getStatusBadge = (used: number, allowed: number) => {
     if (allowed === -1) {
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Unlimited</Badge>;
+      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">{t("websiteChanges.unlimited")}</Badge>;
     }
 
     if (used >= allowed) {
-      return <Badge variant="destructive">Limit Reached</Badge>;
+      return <Badge variant="destructive">{t("websiteChanges.limitReached")}</Badge>;
     }
 
     if (used >= allowed * 0.8) {
-      return <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-200">Nearly Full</Badge>;
+      return <Badge variant="secondary" className="bg-yellow-50 text-yellow-700 border-yellow-200">{t("websiteChanges.nearlyFull")}</Badge>;
     }
 
-    return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Available</Badge>;
+    return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">{t("websiteChanges.available")}</Badge>;
   };
 
   if (isLoading) {
@@ -77,7 +77,7 @@ export function WebsiteChanges() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold tracking-tight">Website Changes</h2>
+        <h2 className="text-2xl font-bold tracking-tight">{t("websiteChanges.title")}</h2>
       </div>
 
       {/* Changes List */}
@@ -90,7 +90,7 @@ export function WebsiteChanges() {
                   <div>
                     <CardTitle className="text-lg">{changes.domain}</CardTitle>
                     <CardDescription>
-                      Changes for this month
+                      {t("websiteChanges.changesForThisMonth")}
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
@@ -102,7 +102,7 @@ export function WebsiteChanges() {
                 {/* Usage Progress */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span>Changes Used</span>
+                    <span>{t("websiteChanges.changesUsed")}</span>
                     <span className="font-medium">
                       {changes.changesUsed} / {changes.changesAllowed === -1 ? '∞' : changes.changesAllowed}
                     </span>
@@ -121,7 +121,7 @@ export function WebsiteChanges() {
                 {/* Change Logs - Filter to only show actual changes for THIS domain */}
                 {changes.changeLogs && changes.changeLogs.length > 0 && (
                   <div className="space-y-3">
-                    <h4 className="font-medium text-gray-900">Recent Changes</h4>
+                    <h4 className="font-medium text-gray-900">{t("websiteChanges.recentChanges")}</h4>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
                       {changes.changeLogs
                         .filter(log => 
@@ -154,7 +154,7 @@ export function WebsiteChanges() {
                             .filter(log => 
                               !log.changeDescription.startsWith('Admin adjustment:') && 
                               !log.changeDescription.startsWith('Admin limit update:')
-                            ).length - 3} more changes...
+                            ).length - 3} {t("websiteChanges.moreChanges")}
                         </p>
                       )}
                       {changes.changeLogs
@@ -163,7 +163,7 @@ export function WebsiteChanges() {
                           !log.changeDescription.startsWith('Admin limit update:')
                         ).length === 0 && (
                         <p className="text-sm text-gray-500 text-center py-2">
-                          No changes recorded yet for {changes.domain}
+                          {t("websiteChanges.noChangesRecordedForDomain", { domain: changes.domain })}
                         </p>
                       )}
                     </div>
@@ -175,10 +175,10 @@ export function WebsiteChanges() {
         ) : (
           <div className="text-center py-12">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              No website changes found
+              {t("websiteChanges.noWebsiteChangesFound")}
             </h3>
             <p className="text-gray-600">
-              No website changes have been recorded for this month yet.
+              {t("websiteChanges.noWebsiteChangesForMonthYet")}
             </p>
           </div>
         )}

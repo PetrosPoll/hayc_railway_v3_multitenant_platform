@@ -120,15 +120,15 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/newsletter/campaigns", websiteProgressId] });
       toast({
-        title: "Campaign sent successfully",
-        description: "Your campaign has been sent to all recipients.",
+        title: t("dashboard.campaigns.toast.sentTitle"),
+        description: t("dashboard.campaigns.toast.sentDescription"),
       });
       setSendingCampaignId(null);
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to send campaign",
-        description: error.message || "An error occurred while sending the campaign.",
+        title: t("dashboard.campaigns.toast.sendFailedTitle"),
+        description: error.message || t("dashboard.campaigns.toast.sendFailedDescription"),
         variant: "destructive",
       });
       setSendingCampaignId(null);
@@ -145,14 +145,14 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/newsletter/campaigns", websiteProgressId] });
       toast({
-        title: "Campaign duplicated",
-        description: "A copy of the campaign has been created as a draft.",
+        title: t("dashboard.campaigns.toast.duplicatedTitle"),
+        description: t("dashboard.campaigns.toast.duplicatedDescription"),
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to duplicate campaign",
-        description: error.message || "An error occurred while duplicating the campaign.",
+        title: t("dashboard.campaigns.toast.duplicateFailedTitle"),
+        description: error.message || t("dashboard.campaigns.toast.duplicateFailedDescription"),
         variant: "destructive",
       });
     },
@@ -166,15 +166,15 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/newsletter/campaigns", websiteProgressId] });
       toast({
-        title: "Campaign deleted",
-        description: "The campaign has been permanently deleted.",
+        title: t("dashboard.campaigns.toast.deletedTitle"),
+        description: t("dashboard.campaigns.toast.deletedDescription"),
       });
       setDeletingCampaignId(null);
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to delete campaign",
-        description: error.message || "An error occurred while deleting the campaign.",
+        title: t("dashboard.campaigns.toast.deleteFailedTitle"),
+        description: error.message || t("dashboard.campaigns.toast.deleteFailedDescription"),
         variant: "destructive",
       });
       setDeletingCampaignId(null);
@@ -193,14 +193,14 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
       setSelectedCampaigns(new Set());
       setShowBulkDeleteDialog(false);
       toast({
-        title: "Campaigns deleted",
-        description: `${deletedIds.length} campaign(s) have been deleted.`,
+        title: t("dashboard.campaigns.toast.bulkDeletedTitle"),
+        description: t("dashboard.campaigns.toast.bulkDeletedDescription", { count: deletedIds.length }),
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Failed to delete campaigns",
-        description: error.message || "An error occurred while deleting the campaigns.",
+        title: t("dashboard.campaigns.toast.bulkDeleteFailedTitle"),
+        description: error.message || t("dashboard.campaigns.toast.bulkDeleteFailedDescription"),
         variant: "destructive",
       });
     },
@@ -265,7 +265,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   };
 
   const handleCancelSchedule = async (campaignId: number) => {
-    if (!window.confirm('Are you sure you want to cancel the schedule? The campaign will be saved as a draft.')) {
+    if (!window.confirm(t("dashboard.campaigns.cancelSchedule.confirm"))) {
       return;
     }
 
@@ -279,21 +279,21 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
       if (response.ok) {
         queryClient.invalidateQueries({ queryKey: ["/api/newsletter/campaigns", websiteProgressId] });
         toast({
-          title: 'Schedule cancelled',
-          description: 'Campaign has been moved back to drafts',
+          title: t("dashboard.campaigns.toast.scheduleCancelledTitle"),
+          description: t("dashboard.campaigns.toast.scheduleCancelledDescription"),
         });
       } else {
         const error = await response.json();
         toast({
-          title: 'Error',
-          description: error.error || 'Failed to cancel schedule',
+          title: t("dashboard.error"),
+          description: error.error || t("dashboard.campaigns.toast.cancelScheduleFailedDescription"),
           variant: 'destructive',
         });
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to cancel schedule',
+        title: t("dashboard.error"),
+        description: t("dashboard.campaigns.toast.cancelScheduleFailedDescription"),
         variant: 'destructive',
       });
     }
@@ -552,7 +552,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               data-testid={`button-cancel-schedule-${campaign.id}`}
             >
               <X className="h-4 w-4 mr-2" />
-              Cancel Schedule
+              {t("dashboard.campaigns.cancelSchedule.button")}
             </Button>
             <Button
               variant="outline"
@@ -579,10 +579,10 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
 
   const renderEmptyState = () => {
     const messages = {
-      all: "No campaigns yet. Create your first campaign to get started.",
-      draft: "No draft campaigns. Create a new campaign to begin.",
-      scheduled: "No scheduled campaigns. Schedule a campaign to see it here.",
-      sent: "No sent campaigns yet. Send a campaign to see analytics here."
+      all: t("dashboard.campaigns.empty.all"),
+      draft: t("dashboard.campaigns.empty.draft"),
+      scheduled: t("dashboard.campaigns.empty.scheduled"),
+      sent: t("dashboard.campaigns.empty.sent")
     };
 
     return (
@@ -647,14 +647,14 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
                 />
                 <span className="text-sm text-muted-foreground whitespace-nowrap">
                   {selectedCampaigns.size > 0 
-                    ? `${selectedCampaigns.size} ${t("dashboard.campaigns.selected") || "selected"}` 
-                    : t("dashboard.campaigns.selectAll") || "Select all"}
+                    ? `${selectedCampaigns.size} ${t("dashboard.campaigns.selected")}` 
+                    : t("dashboard.campaigns.selectAll")}
                 </span>
               </div>
               <div className="relative flex-1 w-full sm:w-auto">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={t("dashboard.campaigns.searchPlaceholder") || "Search campaigns..."}
+                  placeholder={t("dashboard.campaigns.searchPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
@@ -664,15 +664,15 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               <Select value={sortBy} onValueChange={setSortBy}>
                 <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-sort-campaigns">
                   <ArrowUpDown className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Sort by..." />
+                  <SelectValue placeholder={t("dashboard.campaigns.sortPlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="date-desc">{t("dashboard.campaigns.sort.newestFirst") || "Newest First"}</SelectItem>
-                  <SelectItem value="date-asc">{t("dashboard.campaigns.sort.oldestFirst") || "Oldest First"}</SelectItem>
-                  <SelectItem value="title-asc">{t("dashboard.campaigns.sort.titleAZ") || "Title (A-Z)"}</SelectItem>
-                  <SelectItem value="title-desc">{t("dashboard.campaigns.sort.titleZA") || "Title (Z-A)"}</SelectItem>
-                  <SelectItem value="opens-desc">{t("dashboard.campaigns.sort.mostOpens") || "Most Opens"}</SelectItem>
-                  <SelectItem value="clicks-desc">{t("dashboard.campaigns.sort.mostClicks") || "Most Clicks"}</SelectItem>
+                  <SelectItem value="date-desc">{t("dashboard.campaigns.sort.newestFirst")}</SelectItem>
+                  <SelectItem value="date-asc">{t("dashboard.campaigns.sort.oldestFirst")}</SelectItem>
+                  <SelectItem value="title-asc">{t("dashboard.campaigns.sort.titleAZ")}</SelectItem>
+                  <SelectItem value="title-desc">{t("dashboard.campaigns.sort.titleZA")}</SelectItem>
+                  <SelectItem value="opens-desc">{t("dashboard.campaigns.sort.mostOpens")}</SelectItem>
+                  <SelectItem value="clicks-desc">{t("dashboard.campaigns.sort.mostClicks")}</SelectItem>
                 </SelectContent>
               </Select>
               {selectedCampaigns.size > 0 && (
@@ -688,7 +688,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
                   ) : (
                     <Trash2 className="h-4 w-4 mr-2" />
                   )}
-                  {t("dashboard.campaigns.delete") || "Delete"} ({selectedCampaigns.size})
+                  {t("dashboard.campaigns.delete")} ({selectedCampaigns.size})
                 </Button>
               )}
             </div>
@@ -750,7 +750,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
                 }
                 return null;
               })()}
-              <div className="mt-6 h-2 w-full max-w-sm overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Sending campaign">
+              <div className="mt-6 h-2 w-full max-w-sm overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={t("dashboard.campaigns.sendDialog.sendingAriaLabel")}>
                 <div
                   className="h-full w-1/3 rounded-full bg-primary"
                   style={{ animation: "progress-indeterminate 1.5s ease-in-out infinite" }}
@@ -785,14 +785,14 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
       <AlertDialog open={deletingCampaignId !== null} onOpenChange={(open) => !open && setDeletingCampaignId(null)}>
         <AlertDialogContent data-testid="delete-campaign-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+            <AlertDialogTitle>{t("dashboard.campaigns.deleteDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this campaign? This action cannot be undone.
+              {t("dashboard.campaigns.deleteDialog.description")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="cancel-delete-campaign">
-              Cancel
+              {t("dashboard.campaigns.deleteDialog.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteCampaign}
@@ -803,7 +803,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               {deleteCampaignMutation.isPending ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
-              Delete
+              {t("dashboard.campaigns.deleteDialog.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -812,15 +812,14 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
       <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
         <AlertDialogContent data-testid="bulk-delete-dialog">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("dashboard.campaigns.bulkDeleteDialog.title") || "Delete Campaigns"}</AlertDialogTitle>
+            <AlertDialogTitle>{t("dashboard.campaigns.bulkDeleteDialog.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("dashboard.campaigns.bulkDeleteDialog.description", { count: selectedCampaigns.size }) || 
-                `Are you sure you want to delete ${selectedCampaigns.size} campaign(s)? This action cannot be undone.`}
+              {t("dashboard.campaigns.bulkDeleteDialog.description", { count: selectedCampaigns.size })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel data-testid="cancel-bulk-delete">
-              {t("dashboard.campaigns.bulkDeleteDialog.cancel") || "Cancel"}
+              {t("dashboard.campaigns.bulkDeleteDialog.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmBulkDelete}
@@ -831,10 +830,10 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               {bulkDeleteMutation.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t("dashboard.campaigns.bulkDeleteDialog.deleting") || "Deleting..."}
+                  {t("dashboard.campaigns.bulkDeleteDialog.deleting")}
                 </>
               ) : (
-                t("dashboard.campaigns.bulkDeleteDialog.confirm") || "Delete"
+                t("dashboard.campaigns.bulkDeleteDialog.confirm")
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

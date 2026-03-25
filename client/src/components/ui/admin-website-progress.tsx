@@ -2231,7 +2231,7 @@ export function AdminWebsiteProgress() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Has Domain</Label>
-                    <p className="text-sm">{formatOnboardingValue('hasDomain', onboardingResponse.hasDomain)}</p>
+                    <p className="text-sm">{formatOnboardingValue('hasDomain', onboardingResponse.hasDomain, t)}</p>
                   </div>
                   {onboardingResponse.existingDomain && (
                     <div>
@@ -2248,13 +2248,13 @@ export function AdminWebsiteProgress() {
                   {onboardingResponse.domainConnectionPreference && (
                     <div>
                       <Label className="text-sm font-medium">Domain Connection Preference</Label>
-                      <p className="text-sm">{formatOnboardingValue('domainConnectionPreference', onboardingResponse.domainConnectionPreference)}</p>
+                      <p className="text-sm">{formatOnboardingValue('domainConnectionPreference', onboardingResponse.domainConnectionPreference, t)}</p>
                     </div>
                   )}
                   {onboardingResponse.domainPurchasePreference && (
                     <div>
                       <Label className="text-sm font-medium">Domain Purchase Preference</Label>
-                      <p className="text-sm">{formatOnboardingValue('domainPurchasePreference', onboardingResponse.domainPurchasePreference)}</p>
+                      <p className="text-sm">{formatOnboardingValue('domainPurchasePreference', onboardingResponse.domainPurchasePreference, t)}</p>
                     </div>
                   )}
                   {onboardingResponse.preferredDomains && (
@@ -2272,7 +2272,7 @@ export function AdminWebsiteProgress() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Has Professional Emails</Label>
-                    <p className="text-sm">{formatOnboardingValue('hasEmails', onboardingResponse.hasEmails)}</p>
+                    <p className="text-sm">{formatOnboardingValue('hasEmails', onboardingResponse.hasEmails, t)}</p>
                   </div>
                   {onboardingResponse.emailProvider && (
                     <div>
@@ -2307,7 +2307,7 @@ export function AdminWebsiteProgress() {
                   {onboardingResponse.emailRedirect && (
                     <div>
                       <Label className="text-sm font-medium">Email Redirect</Label>
-                      <p className="text-sm">{formatOnboardingValue('emailRedirect', onboardingResponse.emailRedirect)}</p>
+                      <p className="text-sm">{formatOnboardingValue('emailRedirect', onboardingResponse.emailRedirect, t)}</p>
                     </div>
                   )}
                   {onboardingResponse.redirectInboxAddress && (
@@ -2325,7 +2325,7 @@ export function AdminWebsiteProgress() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Has Existing Website</Label>
-                    <p className="text-sm">{formatOnboardingValue('hasWebsite', onboardingResponse.hasWebsite)}</p>
+                    <p className="text-sm">{formatOnboardingValue('hasWebsite', onboardingResponse.hasWebsite, t)}</p>
                   </div>
                   {onboardingResponse.websiteLink && (
                     <div>
@@ -2341,16 +2341,16 @@ export function AdminWebsiteProgress() {
                   )}
                   <div>
                     <Label className="text-sm font-medium">Has Text Content</Label>
-                    <p className="text-sm">{formatOnboardingValue('hasTextContent', onboardingResponse.hasTextContent)}</p>
+                    <p className="text-sm">{formatOnboardingValue('hasTextContent', onboardingResponse.hasTextContent, t)}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Has Media Content</Label>
-                    <p className="text-sm">{formatOnboardingValue('hasMediaContent', onboardingResponse.hasMediaContent)}</p>
+                    <p className="text-sm">{formatOnboardingValue('hasMediaContent', onboardingResponse.hasMediaContent, t)}</p>
                   </div>
                   {onboardingResponse.notSurePages !== undefined && (
                     <div>
                       <Label className="text-sm font-medium">Not Sure About Pages</Label>
-                      <p className="text-sm">{formatOnboardingValue('notSurePages', onboardingResponse.notSurePages)}</p>
+                      <p className="text-sm">{formatOnboardingValue('notSurePages', onboardingResponse.notSurePages, t)}</p>
                     </div>
                   )}
                 </div>
@@ -2381,7 +2381,7 @@ export function AdminWebsiteProgress() {
                   )}
                   <div>
                     <Label className="text-sm font-medium">Create Text Logo</Label>
-                    <p className="text-sm">{formatOnboardingValue('createTextLogo', onboardingResponse.createTextLogo)}</p>
+                    <p className="text-sm">{formatOnboardingValue('createTextLogo', onboardingResponse.createTextLogo, t)}</p>
                   </div>
                   {onboardingResponse.colorPalette && (
                     <div>
@@ -2398,7 +2398,7 @@ export function AdminWebsiteProgress() {
                   {onboardingResponse.siteStyle && (
                     <div>
                       <Label className="text-sm font-medium">Site Style</Label>
-                      <p className="text-sm">{formatOnboardingValue('siteStyle', onboardingResponse.siteStyle)}</p>
+                      <p className="text-sm">{formatOnboardingValue('siteStyle', onboardingResponse.siteStyle, t)}</p>
                     </div>
                   )}
                   {onboardingResponse.selectedTemplateId && (
@@ -2430,7 +2430,7 @@ export function AdminWebsiteProgress() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-sm font-medium">Has Social Media</Label>
-                    <p className="text-sm">{formatOnboardingValue('hasSocialMedia', onboardingResponse.hasSocialMedia)}</p>
+                    <p className="text-sm">{formatOnboardingValue('hasSocialMedia', onboardingResponse.hasSocialMedia, t)}</p>
                   </div>
                   {onboardingResponse.facebookLink && (
                     <div>
@@ -2471,7 +2471,7 @@ export function AdminWebsiteProgress() {
                   {onboardingResponse.logoDesignService && (
                     <div>
                       <Label className="text-sm font-medium">Logo Design Service</Label>
-                      <p className="text-sm">{formatOnboardingValue('logoDesignService', onboardingResponse.logoDesignService)}</p>
+                      <p className="text-sm">{formatOnboardingValue('logoDesignService', onboardingResponse.logoDesignService, t)}</p>
                     </div>
                   )}
                 </div>
@@ -2506,7 +2506,7 @@ export function AdminWebsiteProgress() {
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Status</Label>
-                    <p className="text-sm">{formatOnboardingValue('status', onboardingResponse.status) || 'N/A'}</p>
+                    <p className="text-sm">{formatOnboardingValue('status', onboardingResponse.status, t) || t("common.notAvailable")}</p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium">Submitted At</Label>

@@ -150,7 +150,9 @@ export function SubscriptionCard({
           <CardTitle className="text-2xl font-bold text-[#182B53]">
             {plan.name}
             {isCurrentPlan && (
-              <span className="ml-2 text-sm text-green-500">(Current Plan)</span>
+              <span className="ml-2 text-sm text-green-500">
+                ({t("dashboard.currentPlanBadge")})
+              </span>
             )}
           </CardTitle>
           <div className="mt-2 space-y-2">
@@ -215,7 +217,7 @@ export function SubscriptionCard({
             disabled={loading}
           >
             {loading
-              ? "Loading..."
+              ? t("dashboard.loading")
               : isCurrentPlan
                 ? t("home.plans.subscribe.again")
                 : t("home.plans.subscribe.now")}

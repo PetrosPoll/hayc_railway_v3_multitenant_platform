@@ -384,7 +384,7 @@ export default function WebsiteDashboard() {
     const stripeError = params.get("stripe_error");
     if (stripeConnected === "1") {
       toast({
-        title: "Stripe account connected successfully",
+        title: t("dashboard.stripeConnectedSuccess"),
         variant: "default",
       });
       params.delete("stripe_connected");
@@ -392,14 +392,14 @@ export default function WebsiteDashboard() {
       window.history.replaceState(null, "", newUrl);
     } else if (stripeError === "1") {
       toast({
-        title: "Something went wrong connecting your Stripe account. Please try again.",
+        title: t("dashboard.stripeConnectFailed"),
         variant: "destructive",
       });
       params.delete("stripe_error");
       const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
       window.history.replaceState(null, "", newUrl);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   // Update URL when activeSection changes (only when user actively changes tabs)
   useEffect(() => {
@@ -503,8 +503,8 @@ export default function WebsiteDashboard() {
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to logout. Please try again.",
+        title: t("dashboard.error"),
+        description: t("dashboard.logoutFailed"),
         variant: "destructive",
       });
     }
@@ -742,13 +742,13 @@ export default function WebsiteDashboard() {
         queryKey: ["/api/websites", websiteId, "stripe", "status"],
       });
       toast({
-        title: "Stripe account disconnected",
+        title: t("dashboard.stripeDisconnected"),
         variant: "default",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to disconnect",
+        title: t("dashboard.stripeDisconnectFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -778,13 +778,13 @@ export default function WebsiteDashboard() {
         queryKey: ["/api/websites", websiteId, "stripe", "status"],
       });
       toast({
-        title: "Stripe account connected successfully",
+        title: t("dashboard.stripeConnectedSuccess"),
         variant: "default",
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to reuse account",
+        title: t("dashboard.stripeReuseFailed"),
         description: error.message,
         variant: "destructive",
       });
@@ -848,8 +848,8 @@ export default function WebsiteDashboard() {
     },
     onError: () => {
       toast({
-        title: "Error",
-        description: "Failed to open payment management. Please try again.",
+        title: t("dashboard.error"),
+        description: t("dashboard.paymentManagementOpenFailed"),
         variant: "destructive",
       });
     },
@@ -1027,13 +1027,13 @@ export default function WebsiteDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "media"] });
       toast({
         title: t("dashboard.success") || "Success",
-        description: "Media uploaded successfully",
+        description: t("dashboard.mediaUploadedSuccess"),
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to upload media",
+        title: t("dashboard.error"),
+        description: error.message || t("dashboard.mediaUploadFailed"),
         variant: "destructive",
       });
     },
@@ -1056,13 +1056,13 @@ export default function WebsiteDashboard() {
       setDeleteMediaId(null);
       toast({
         title: t("dashboard.success") || "Success",
-        description: "Media deleted successfully",
+        description: t("dashboard.mediaDeletedSuccess"),
       });
     },
     onError: (error: Error) => {
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete media",
+        title: t("dashboard.error"),
+        description: error.message || t("dashboard.mediaDeleteFailed"),
         variant: "destructive",
       });
     },
@@ -1131,7 +1131,7 @@ export default function WebsiteDashboard() {
     },
     onError: (error: any) => {
       toast({
-        title: "Error",
+        title: t("dashboard.error"),
         description: error.message,
         variant: "destructive",
       });
@@ -1143,7 +1143,7 @@ export default function WebsiteDashboard() {
       { id: "progress", label: t("dashboard.progress") || "Website", icon: Settings },
       { id: "changes", label: t("dashboard.changes") || "Changes", icon: FileText },
       { id: "media", label: t("dashboard.media") || "Media", icon: ImageIcon },
-      ...(website?.siteId ? [{ id: "content", label: "Content", icon: FileEdit }] : []),
+      ...(website?.siteId ? [{ id: "content", label: t("dashboard.content"), icon: FileEdit }] : []),
       { id: "billing", label: t("dashboard.billing") || "Billing", icon: CreditCard },
       { id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart },
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
@@ -1195,13 +1195,13 @@ export default function WebsiteDashboard() {
             className="text-2xl font-semibold mb-4"
             data-testid="heading-website-not-found"
           >
-            Website not found
+            {t("dashboard.websiteNotFound")}
           </h2>
           <Button
             onClick={() => navigate("/dashboard")}
             data-testid="button-back-to-websites"
           >
-            Back to Websites
+            {t("dashboard.backToWebsites")}
           </Button>
         </div>
       </div>
@@ -1550,8 +1550,8 @@ export default function WebsiteDashboard() {
       }
     } catch (err) {
       toast({
-        title: "Error",
-        description: err instanceof Error ? err.message : "Failed to connect",
+        title: t("dashboard.error"),
+        description: err instanceof Error ? err.message : t("dashboard.stripeConnectStartFailed"),
         variant: "destructive",
       });
     } finally {
@@ -1571,12 +1571,12 @@ export default function WebsiteDashboard() {
     if (status === "disconnected") {
       return (
         <div className="space-y-4" data-testid="section-payments">
-          <h2 className="text-2xl font-bold mb-6">Payments</h2>
+          <h2 className="text-2xl font-bold mb-6">{t("dashboard.payments")}</h2>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold">Stripe Connect</CardTitle>
+              <CardTitle className="text-base font-semibold">{t("dashboard.stripeConnectTitle")}</CardTitle>
               <CardDescription className="mt-2">
-                Connect your Stripe account to accept payments through HAYC addons (e.g. bookings, products) on this site. You get paid directly; HAYC does not hold funds.
+                {t("dashboard.stripeConnectDescription")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1590,7 +1590,7 @@ export default function WebsiteDashboard() {
                 ) : (
                   <Wallet className="h-4 w-4 mr-2" />
                 )}
-                Connect with Stripe
+                {t("dashboard.connectWithStripe")}
               </Button>
             </CardContent>
           </Card>
@@ -1600,11 +1600,11 @@ export default function WebsiteDashboard() {
     if (status === "pending") {
       return (
         <div className="space-y-4" data-testid="section-payments">
-          <h2 className="text-2xl font-bold mb-6">Payments</h2>
+          <h2 className="text-2xl font-bold mb-6">{t("dashboard.payments")}</h2>
           <div className="flex items-start gap-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 mb-4">
             <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-amber-800 dark:text-amber-200">
-              Stripe onboarding is incomplete. Please finish connecting your account.
+              {t("dashboard.stripeOnboardingIncomplete")}
             </p>
           </div>
           <Button
@@ -1615,7 +1615,7 @@ export default function WebsiteDashboard() {
             {stripeConnectLoading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : null}
-            Continue onboarding
+            {t("dashboard.continueOnboarding")}
           </Button>
         </div>
       );
@@ -1625,21 +1625,21 @@ export default function WebsiteDashboard() {
     const truncatedId = accountId.length > 12 ? `${accountId.slice(0, 8)}...${accountId.slice(-4)}` : accountId;
     const connectedAt = stripeConnectStatus?.stripeConnectedAt
       ? formatDate(stripeConnectStatus.stripeConnectedAt)
-      : "N/A";
+      : t("dashboard.notAvailable");
     return (
       <div className="space-y-4" data-testid="section-payments">
-        <h2 className="text-2xl font-bold mb-6">Payments</h2>
+        <h2 className="text-2xl font-bold mb-6">{t("dashboard.payments")}</h2>
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base font-semibold">Stripe Connect</CardTitle>
-              <Badge variant="default" className="bg-green-600">Connected</Badge>
+              <CardTitle className="text-base font-semibold">{t("dashboard.stripeConnectTitle")}</CardTitle>
+              <Badge variant="default" className="bg-green-600">{t("status.connected")}</Badge>
             </div>
             <CardDescription className="mt-2">
-              Account ID: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{truncatedId}</code>
+              {t("dashboard.accountId")}: <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{truncatedId}</code>
             </CardDescription>
             <p className="text-sm text-muted-foreground mt-1">
-              Connected at: {connectedAt}
+              {t("dashboard.connectedAt")}: {connectedAt}
             </p>
           </CardHeader>
           <CardContent>
@@ -1648,7 +1648,7 @@ export default function WebsiteDashboard() {
               onClick={() => setStripeDisconnectConfirmOpen(true)}
               data-testid="button-disconnect-stripe"
             >
-              Disconnect
+              {t("actions.disconnect")}
             </Button>
           </CardContent>
         </Card>
@@ -3299,8 +3299,8 @@ export default function WebsiteDashboard() {
     const handleUploadClick = async () => {
       if (!window.cloudinary) {
         toast({
-          title: "Error",
-          description: "Upload widget not ready. Please refresh the page and try again.",
+          title: t("dashboard.error"),
+          description: t("dashboard.uploadWidgetNotReady"),
           variant: "destructive",
         });
         console.error("Cloudinary widget script not loaded");
@@ -3327,8 +3327,8 @@ export default function WebsiteDashboard() {
       } catch (error) {
         console.error("Failed to get configuration:", error);
         toast({
-          title: "Error",
-          description: "Failed to initialize upload. Please try again.",
+          title: t("dashboard.error"),
+          description: t("dashboard.uploadInitFailed"),
           variant: "destructive",
         });
         return;
@@ -3356,8 +3356,8 @@ export default function WebsiteDashboard() {
             } catch (error) {
               console.error("Signature generation error:", error);
               toast({
-                title: "Error",
-                description: "Failed to prepare upload. Please try again.",
+                title: t("dashboard.error"),
+                description: t("dashboard.uploadPrepareFailed"),
                 variant: "destructive",
               });
             }
@@ -3390,8 +3390,8 @@ export default function WebsiteDashboard() {
           if (error) {
             console.error("Upload error:", error);
             toast({
-              title: "Error",
-              description: "Upload failed. Please try again.",
+              title: t("dashboard.error"),
+              description: t("dashboard.uploadFailed"),
               variant: "destructive",
             });
             return;
@@ -3409,8 +3409,8 @@ export default function WebsiteDashboard() {
 
       if (!widget) {
         toast({
-          title: "Error",
-          description: "Failed to initialize upload widget. Please refresh and try again.",
+          title: t("dashboard.error"),
+          description: t("dashboard.uploadWidgetInitFailed"),
           variant: "destructive",
         });
         return;
@@ -3536,7 +3536,7 @@ export default function WebsiteDashboard() {
                       data-testid={`button-view-${file.publicId}`}
                     >
                       <Eye className="h-4 w-4 mr-2" />
-                      View
+                      {t("actions.view")}
                     </Button>
                     {/* <Button
                       variant="outline"
@@ -3577,7 +3577,7 @@ export default function WebsiteDashboard() {
                     data-testid={`button-delete-${file.publicId}`}
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
+                    {t("actions.delete")}
                   </Button>
                 </CardContent>
               </Card>
@@ -3589,14 +3589,14 @@ export default function WebsiteDashboard() {
         <AlertDialog open={deleteMediaId !== null} onOpenChange={(open) => !open && setDeleteMediaId(null)}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Media File?</AlertDialogTitle>
+              <AlertDialogTitle>{t("dashboard.deleteMediaFileTitle")}</AlertDialogTitle>
               <AlertDialogDescription>
-                This will permanently delete the file from your website media library. This action cannot be undone.
+                {t("dashboard.deleteMediaFileDescription")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deleteMediaMutation.isPending}>
-                Cancel
+                {t("actions.cancel")}
               </AlertDialogCancel>
               <Button
                 variant="destructive"
@@ -3606,10 +3606,10 @@ export default function WebsiteDashboard() {
                 {deleteMediaMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Deleting...
+                    {t("actions.deleting")}
                   </>
                 ) : (
-                  "Delete"
+                  t("actions.delete")
                 )}
               </Button>
             </AlertDialogFooter>
@@ -3975,14 +3975,14 @@ export default function WebsiteDashboard() {
     if (!website?.digitalProductsEnabled) {
       return (
         <div data-testid="section-digital-products">
-          <h2 className="text-2xl font-bold mb-2">Digital Products</h2>
+          <h2 className="text-2xl font-bold mb-2">{t("dashboard.digitalProducts")}</h2>
           <p className="text-muted-foreground mb-6">
-            Digital Products are disabled for this website.
+            {t("dashboard.digitalProductsDisabled")}
           </p>
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                Ask your admin to enable Digital Products for this project.
+                {t("dashboard.askAdminEnableDigitalProducts")}
               </p>
             </CardContent>
           </Card>
@@ -3993,11 +3993,11 @@ export default function WebsiteDashboard() {
     if (!website?.siteId) {
       return (
         <div data-testid="section-digital-products">
-          <h2 className="text-2xl font-bold mb-2">Digital Products</h2>
+          <h2 className="text-2xl font-bold mb-2">{t("dashboard.digitalProducts")}</h2>
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-sm text-muted-foreground">
-                Digital Products are not available for this website yet.
+                {t("dashboard.digitalProductsNotAvailableYet")}
               </p>
             </CardContent>
           </Card>
@@ -4248,14 +4248,14 @@ export default function WebsiteDashboard() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Disconnect Stripe account?</AlertDialogTitle>
+            <AlertDialogTitle>{t("dashboard.disconnectStripeTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              This site will no longer be able to accept payments through HAYC addons until you connect again.
+              {t("dashboard.disconnectStripeDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={disconnectStripeMutation.isPending}>
-              Cancel
+              {t("actions.cancel")}
             </AlertDialogCancel>
             <Button
               variant="destructive"
@@ -4269,7 +4269,7 @@ export default function WebsiteDashboard() {
               {disconnectStripeMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
-              Disconnect
+              {t("actions.disconnect")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -4287,9 +4287,9 @@ export default function WebsiteDashboard() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>You already have a connected Stripe account</AlertDialogTitle>
+            <AlertDialogTitle>{t("dashboard.existingStripeAccountTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              Would you like to use an existing Stripe account from one of your other websites, or connect a new one?
+              {t("dashboard.existingStripeAccountDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-4 space-y-3">
@@ -4317,7 +4317,7 @@ export default function WebsiteDashboard() {
                     {reuseStripeMutation.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      "Use this account"
+                      t("dashboard.useThisAccount")
                     )}
                   </Button>
                 </div>
@@ -4326,7 +4326,7 @@ export default function WebsiteDashboard() {
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={reuseStripeMutation.isPending}>
-              Cancel
+              {t("actions.cancel")}
             </AlertDialogCancel>
             <Button
               variant="outline"
@@ -4334,14 +4334,14 @@ export default function WebsiteDashboard() {
                 setReuseDialogOpen(false);
                 setExistingStripeAccounts(null);
                 toast({
-                  title: "Connect a new account",
-                  description: "Please disconnect the existing account on the other site first and reconnect here.",
+                  title: t("dashboard.connectNewAccount"),
+                  description: t("dashboard.connectNewAccountDescription"),
                   variant: "default",
                 });
               }}
               disabled={reuseStripeMutation.isPending}
             >
-              Connect a new account
+              {t("dashboard.connectNewAccount")}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -61,8 +61,8 @@ export default function Profile() {
         },
         onError: () => {
             toast({
-                title: "Error",
-                description: "Failed to update language preference",
+                title: t("dashboard.error"),
+                description: t("dashboard.failedToUpdateLanguagePreference"),
                 variant: "destructive",
             });
         },
@@ -119,7 +119,7 @@ export default function Profile() {
                                         variant={(userData?.user?.language || i18n.language) === "en" ? "default" : "outline"}
                                         data-testid="button-language-en"
                                     >
-                                        🇬🇧 English
+                                        {t("dashboard.languageOptions.english")}
                                     </Button>
                                     <Button
                                         onClick={() => updateLanguageMutation.mutate("gr")}
@@ -127,7 +127,7 @@ export default function Profile() {
                                         variant={(userData?.user?.language || i18n.language) === "gr" ? "default" : "outline"}
                                         data-testid="button-language-gr"
                                     >
-                                        🇬🇷 Ελληνικά (Greek)
+                                        {t("dashboard.languageOptions.greek")}
                                     </Button>
                                 </div>
                                 {updateLanguageMutation.isPending && (

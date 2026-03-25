@@ -22,27 +22,27 @@ import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 
 const CONTACT_STATUSES = [
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'active', label: 'Subscribed' },
-  { value: 'pending', label: 'Pending' },
+  { value: 'confirmed' },
+  { value: 'active' },
+  { value: 'pending' },
 ] as const;
 
-const campaignFormSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
+const createCampaignFormSchema = (t: (key: string) => string) => z.object({
+  title: z.string().min(1, t("dashboard.campaigns.wizard.validation.titleRequired")),
   description: z.string().optional(),
   purpose: z.string().optional(),
   tagIds: z.array(z.number()).default([]),
   excludedTagIds: z.array(z.number()).default([]),
   statusFilters: z.array(z.string()).default(['confirmed', 'active', 'pending']),
-  subject: z.string().min(1, 'Subject is required'),
-  senderName: z.string().min(1, 'Sender name is required'),
-  senderEmail: z.string().email('Valid email is required').min(1, 'Sender email is required'),
+  subject: z.string().min(1, t("dashboard.campaigns.wizard.validation.subjectRequired")),
+  senderName: z.string().min(1, t("dashboard.campaigns.wizard.validation.senderNameRequired")),
+  senderEmail: z.string().email(t("dashboard.campaigns.wizard.validation.validEmailRequired")).min(1, t("dashboard.campaigns.wizard.validation.senderEmailRequired")),
   message: z.string().optional(),
   templateId: z.number().optional(),
   scheduledFor: z.string().optional(),
 });
 
-type CampaignFormData = z.infer<typeof campaignFormSchema>;
+type CampaignFormData = z.infer<ReturnType<typeof createCampaignFormSchema>>;
 
 interface CampaignWizardProps {
   open: boolean;
@@ -71,6 +71,7 @@ export function CampaignWizard({
   const [selectedHour, setSelectedHour] = useState<string>('12');
   const [selectedMinute, setSelectedMinute] = useState<string>('00');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const campaignFormSchema = createCampaignFormSchema(t);
 
   const form = useForm<CampaignFormData>({
     resolver: zodResolver(campaignFormSchema),
@@ -240,10 +241,10 @@ export function CampaignWizard({
   });
 
   const steps = [
-    { number: 1, title: "Campaign Details", icon: Mail },
-    { number: 2, title: "Email Design", icon: Eye },
-    { number: 3, title: "Recipients", icon: Users },
-    { number: 4, title: "Review & Send", icon: Send },
+    { number: 1, title: t("dashboard.campaigns.wizard.steps.1"), icon: Mail },
+    { number: 2, title: t("dashboard.campaigns.wizard.steps.2"), icon: Eye },
+    { number: 3, title: t("dashboard.campaigns.wizard.steps.3"), icon: Users },
+    { number: 4, title: t("dashboard.campaigns.wizard.steps.4"), icon: Send },
   ];
 
   const handleNext = async (e?: React.MouseEvent) => {
@@ -258,8 +259,8 @@ export function CampaignWizard({
       const templateId = form.getValues('templateId');
       if (!templateId) {
         toast({
-          title: 'Template required',
-          description: 'Please select an email template before continuing',
+          title: t("dashboard.campaigns.wizard.validation.templateRequiredTitle"),
+          description: t("dashboard.campaigns.wizard.validation.templateRequiredStepDescription"),
           variant: 'destructive',
         });
         return;
@@ -322,8 +323,8 @@ export function CampaignWizard({
     // Ensure template is selected
     if (!data.templateId) {
       toast({
-        title: 'Template required',
-        description: 'Please select an email template before sending the campaign',
+        title: t("dashboard.campaigns.wizard.validation.templateRequiredTitle"),
+        description: t("dashboard.campaigns.wizard.validation.templateRequiredSubmitDescription"),
         variant: 'destructive',
       });
       return;
@@ -332,8 +333,8 @@ export function CampaignWizard({
     // Validate scheduling: if "Schedule for later" is selected, must have a time set
     if (scheduleType === 'later' && !data.scheduledFor) {
       toast({
-        title: 'Schedule time required',
-        description: 'Please select a time to schedule the campaign or choose "Send Now"',
+        title: t("dashboard.campaigns.wizard.validation.scheduleTimeRequiredTitle"),
+        description: t("dashboard.campaigns.wizard.validation.scheduleTimeRequiredDescription"),
         variant: 'destructive',
       });
       return;
@@ -367,8 +368,8 @@ export function CampaignWizard({
 
       if (response.ok) {
         toast({
-          title: editingCampaign ? 'Campaign updated' : 'Campaign created',
-          description: editingCampaign ? 'Campaign has been updated successfully' : 'Campaign has been created successfully',
+          title: editingCampaign ? t("dashboard.campaigns.toast.updatedTitle") : t("dashboard.campaigns.toast.createdTitle"),
+          description: editingCampaign ? t("dashboard.campaigns.toast.updatedDescription") : t("dashboard.campaigns.toast.createdDescription"),
         });
         onSuccess();
         onClose();
@@ -378,8 +379,8 @@ export function CampaignWizard({
       }
     } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to save campaign',
+        title: t("dashboard.error"),
+        description: t("dashboard.campaigns.toast.saveFailedDescription"),
         variant: 'destructive',
       });
     } finally {
@@ -619,7 +620,7 @@ export function CampaignWizard({
                       <FormItem>
                         <FormLabel>{t("dashboard.campaigns.wizard.fields.senderEmail")}</FormLabel>
                         <FormControl>
-                          <Input {...field} type="email" placeholder="hello@yourcompany.com" />
+                          <Input {...field} type="email" placeholder={t("dashboard.campaigns.wizard.placeholders.senderEmail")} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -835,10 +836,10 @@ export function CampaignWizard({
                           <CardHeader className="pb-3">
                             <CardTitle className="text-base flex items-center gap-2">
                               <X className="h-4 w-4 text-orange-500" />
-                              {t("dashboard.campaigns.wizard.recipients.excludeByTags", "Exclude by Tags")}
+                              {t("dashboard.campaigns.wizard.recipients.excludeByTags")}
                             </CardTitle>
                             <CardDescription>
-                              {t("dashboard.campaigns.wizard.recipients.excludeByTagsDescription", "Contacts with any of the selected tags will be excluded from this campaign.")}
+                              {t("dashboard.campaigns.wizard.recipients.excludeByTagsDescription")}
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
@@ -876,7 +877,7 @@ export function CampaignWizard({
                               {excludedContacts.length > 0 && (
                                 <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md">
                                   <p className="text-sm text-orange-800 dark:text-orange-200 font-medium mb-2">
-                                    {t("dashboard.campaigns.wizard.recipients.excludedContactsPreview", `${excludedContacts.length} contact(s) will be excluded:`)}
+                                    {t("dashboard.campaigns.wizard.recipients.excludedContactsPreview", { count: excludedContacts.length })}
                                   </p>
                                   <div className="max-h-24 overflow-y-auto space-y-1">
                                     {excludedContacts.slice(0, 5).map((contact: any) => (
@@ -886,7 +887,7 @@ export function CampaignWizard({
                                     ))}
                                     {excludedContacts.length > 5 && (
                                       <div className="text-xs text-orange-600 dark:text-orange-400">
-                                        {t("dashboard.campaigns.wizard.recipients.andMore", `...and ${excludedContacts.length - 5} more`)}
+                                        {t("dashboard.campaigns.wizard.recipients.andMore", { count: excludedContacts.length - 5 })}
                                       </div>
                                     )}
                                   </div>
@@ -1049,7 +1050,7 @@ export function CampaignWizard({
                         {/* Date Picker */}
                         <div>
                           <p className="text-sm font-medium mb-2">
-                            {t("dashboard.campaigns.wizard.schedule.selectDate") || "Select Date"}
+                            {t("dashboard.campaigns.wizard.schedule.selectDate")}
                           </p>
                           <Popover>
                             <PopoverTrigger asChild>
@@ -1059,7 +1060,7 @@ export function CampaignWizard({
                                 className="w-full justify-start text-left font-normal"
                               >
                                 <CalendarIcon className="mr-2 h-4 w-4" />
-                                {selectedDate ? format(selectedDate, "PPP") : (t("dashboard.campaigns.wizard.schedule.pickDate") || "Pick a date")}
+                                {selectedDate ? format(selectedDate, "PPP") : t("dashboard.campaigns.wizard.schedule.pickDate")}
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
@@ -1078,13 +1079,13 @@ export function CampaignWizard({
                         {selectedDate && (
                           <div>
                             <p className="text-sm font-medium mb-2">
-                              {t("dashboard.campaigns.wizard.schedule.selectTime") || "Select Time"}
+                              {t("dashboard.campaigns.wizard.schedule.selectTime")}
                             </p>
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4 text-muted-foreground" />
                               <Select value={selectedHour} onValueChange={setSelectedHour}>
                                 <SelectTrigger className="w-[80px]">
-                                  <SelectValue placeholder="HH" />
+                                  <SelectValue placeholder={t("dashboard.campaigns.wizard.schedule.hourPlaceholder")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
@@ -1095,7 +1096,7 @@ export function CampaignWizard({
                               <span className="text-lg font-medium">:</span>
                               <Select value={selectedMinute} onValueChange={setSelectedMinute}>
                                 <SelectTrigger className="w-[80px]">
-                                  <SelectValue placeholder="MM" />
+                                  <SelectValue placeholder={t("dashboard.campaigns.wizard.schedule.minutePlaceholder")} />
                                 </SelectTrigger>
                                 <SelectContent>
                                   {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(minute => (
@@ -1111,7 +1112,7 @@ export function CampaignWizard({
                         {form.watch('scheduledFor') && (
                           <div className="p-3 bg-muted rounded-md">
                             <p className="text-sm font-medium mb-1">
-                              {t("dashboard.campaigns.wizard.schedule.scheduledToSend") || "Scheduled to send:"}
+                              {t("dashboard.campaigns.wizard.schedule.scheduledToSend")}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {new Date(form.watch('scheduledFor') || '').toLocaleString('en-US', {

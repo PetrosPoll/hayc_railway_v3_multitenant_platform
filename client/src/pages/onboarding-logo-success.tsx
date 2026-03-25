@@ -2,8 +2,10 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Loader2, CheckCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useTranslation } from "react-i18next";
 
 export default function OnboardingLogoSuccess() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(true);
@@ -15,7 +17,7 @@ export default function OnboardingLogoSuccess() {
     
     // Must have either session_id (from Checkout) or payment_intent (from saved card)
     if (!sessionId && !paymentIntent) {
-      setError("Invalid payment session");
+      setError(t("onboarding.logoSuccess.errors.invalidPaymentSession"));
       setProcessing(false);
       return;
     }
@@ -24,7 +26,7 @@ export default function OnboardingLogoSuccess() {
     const onboardingDataStr = sessionStorage.getItem("onboardingData");
     
     if (!onboardingDataStr) {
-      setError("Onboarding data not found");
+      setError(t("onboarding.logoSuccess.errors.onboardingDataNotFound"));
       setProcessing(false);
       return;
     }
@@ -76,22 +78,22 @@ export default function OnboardingLogoSuccess() {
         
       } catch (err) {
         console.error("Onboarding submission error:", err);
-        setError("Failed to complete onboarding. Please contact support.");
+        setError(t("onboarding.logoSuccess.errors.completeOnboardingFailed"));
         setProcessing(false);
       }
     };
 
     submitOnboarding();
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, t]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center">
-            {processing && "Processing Payment..."}
-            {error && "Payment Error"}
-            {!processing && !error && "Payment Successful!"}
+            {processing && t("onboarding.logoSuccess.processingTitle")}
+            {error && t("onboarding.logoSuccess.errorTitle")}
+            {!processing && !error && t("onboarding.logoSuccess.successTitle")}
           </CardTitle>
         </CardHeader>
         <CardContent className="text-center">
@@ -99,7 +101,7 @@ export default function OnboardingLogoSuccess() {
             <div className="space-y-4">
               <Loader2 className="h-12 w-12 animate-spin mx-auto text-blue-600" />
               <p className="text-gray-600">
-                Please wait while we complete your onboarding...
+                {t("onboarding.logoSuccess.processingDescription")}
               </p>
             </div>
           )}
@@ -112,7 +114,7 @@ export default function OnboardingLogoSuccess() {
             <div className="space-y-4">
               <CheckCircle className="h-12 w-12 mx-auto text-green-600" />
               <p className="text-gray-600">
-                Redirecting to your dashboard...
+                {t("onboarding.logoSuccess.redirectingDescription")}
               </p>
             </div>
           )}

@@ -20779,6 +20779,121 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
+  app.post("/api/hdp/products/:siteId/sync", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to modify this site" });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(
+        `${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/courses/published-preview`,
+        {
+          method: "GET",
+          headers: {
+            "x-internal-token": HDP_INTERNAL_TOKEN,
+          },
+        }
+      );
+
+      let products: unknown[];
+
+      if (internalRes.status === 204) {
+        products = [];
+      } else {
+        const contentType = internalRes.headers.get("content-type") || "";
+        if (!contentType.includes("application/json")) {
+          const text = await internalRes.text();
+          if (!internalRes.ok) {
+            return res.status(internalRes.status).json({
+              error: "HDP request failed",
+              details: text.slice(0, 2000),
+            });
+          }
+          return res.status(502).json({
+            error: "HDP published-preview returned non-JSON response",
+            details: text.slice(0, 2000),
+          });
+        }
+
+        let data: unknown;
+        try {
+          data = await internalRes.json();
+        } catch {
+          return res.status(internalRes.ok ? 502 : internalRes.status).json({
+            error: internalRes.ok ? "Invalid JSON from HDP" : "HDP request failed",
+          });
+        }
+
+        if (!internalRes.ok) {
+          return res
+            .status(internalRes.status)
+            .json(
+              typeof data === "object" && data !== null && !Array.isArray(data)
+                ? data
+                : { error: "HDP request failed", details: data }
+            );
+        }
+
+        if (!Array.isArray(data)) {
+          return res.status(502).json({
+            error: "HDP published-preview returned unexpected shape (expected array)",
+          });
+        }
+
+        products = data;
+      }
+
+      const lastSyncedAt = new Date().toISOString();
+      const config = await getConfig(siteId);
+      const updatedConfig = {
+        ...config,
+        digitalProductsConfig: {
+          enabled: true,
+          lastSyncedAt,
+          products,
+        },
+      };
+      await putConfig(siteId, updatedConfig, { skipHistory: true });
+
+      res.json({
+        lastSyncedAt,
+        productCount: products.length,
+      });
+    } catch (error: any) {
+      console.error("Error syncing HDP products to site config:", error);
+      res.status(500).json({
+        error: error?.message || "Failed to sync HDP products to site config",
+      });
+    }
+  });
+
   app.post("/api/hdp/products/:siteId/courses", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });

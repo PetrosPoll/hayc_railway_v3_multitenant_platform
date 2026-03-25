@@ -491,13 +491,13 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
                 }
 
                 // Format the value using the helper
-                const formattedValue = formatOnboardingValue(key, value);
+                const formattedValue = formatOnboardingValue(key, value, t);
                 if (!formattedValue) return null;
                 
                 return (
                   <div key={key} className="border-b pb-3">
                     <h4 className="font-medium text-sm text-muted-foreground mb-1">
-                      {getFieldLabel(key)}
+                      {getFieldLabel(key, t)}
                     </h4>
                     <p className="text-sm">
                       {formattedValue}

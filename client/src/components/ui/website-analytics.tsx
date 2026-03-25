@@ -98,12 +98,12 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <BarChart3 className="h-5 w-5" />
-            Website Analytics
+            {t("dashboard.analyticsData.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
-            <div className="text-muted-foreground">Loading analytics...</div>
+            <div className="text-muted-foreground">{t("dashboard.analyticsData.loading")}</div>
           </div>
         </CardContent>
       </Card>
@@ -119,13 +119,13 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
         <div>
           <h2 className="text-2xl font-semibold flex items-center gap-2">
             <BarChart3 className="h-6 w-6" />
-            Website Analytics
+            {t("dashboard.analyticsData.title")}
             <span className="ml-2 text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full font-normal">
-              New
+              {t("dashboard.analyticsData.badgeNew")}
             </span>
           </h2>
           <p className="text-muted-foreground text-sm mt-1">
-            Comprehensive insights for your website
+            {t("dashboard.analyticsData.subtitle")}
           </p>
         </div>
         <Select value={dateRange} onValueChange={setDateRange}>
@@ -133,9 +133,9 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
+            <SelectItem value="7">{t("dashboard.analyticsData.range.last7Days")}</SelectItem>
+            <SelectItem value="30">{t("dashboard.analyticsData.range.last30Days")}</SelectItem>
+            <SelectItem value="90">{t("dashboard.analyticsData.range.last90Days")}</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -147,9 +147,9 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               <div className="rounded-full bg-muted p-4 mb-4">
                 <BarChart3 className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No Analytics Data Yet</h3>
+              <h3 className="text-lg font-semibold mb-2">{t("dashboard.analyticsData.emptyTitle")}</h3>
               <p className="text-muted-foreground max-w-md">
-                Analytics tracking has not been set up for your website yet. Please contact us to get your tracking code installed and start viewing your website statistics.
+                {t("dashboard.analyticsData.emptyDescription")}
               </p>
             </div>
           </CardContent>
@@ -162,11 +162,11 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
                   <Eye className="h-4 w-4" />
-                  <span className="text-sm font-medium">Total Pageviews</span>
+                  <span className="text-sm font-medium">{t("dashboard.analyticsData.metrics.totalPageviews")}</span>
                 </div>
                 <p className="text-3xl font-bold">{data?.pageviews || 0}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Total pages viewed
+                  {t("dashboard.analyticsData.metrics.totalPageviewsHint")}
                 </p>
               </CardContent>
             </Card>
@@ -175,11 +175,11 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
                   <Users className="h-4 w-4" />
-                  <span className="text-sm font-medium">Unique Visitors</span>
+                  <span className="text-sm font-medium">{t("dashboard.analyticsData.metrics.uniqueVisitors")}</span>
                 </div>
                 <p className="text-3xl font-bold">{data?.uniqueVisitors || 0}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Different users
+                  {t("dashboard.analyticsData.metrics.uniqueVisitorsHint")}
                 </p>
               </CardContent>
             </Card>
@@ -188,11 +188,11 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
                   <TrendingUp className="h-4 w-4" />
-                  <span className="text-sm font-medium">Bounce Rate</span>
+                  <span className="text-sm font-medium">{t("dashboard.analyticsData.metrics.bounceRate")}</span>
                 </div>
                 <p className="text-3xl font-bold">{data?.bounceRate?.toFixed(1) || 0}%</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Single page sessions
+                  {t("dashboard.analyticsData.metrics.bounceRateHint")}
                 </p>
               </CardContent>
             </Card>
@@ -201,11 +201,11 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               <CardContent className="p-6">
                 <div className="flex items-center gap-2 text-muted-foreground mb-2">
                   <BarChart3 className="h-4 w-4" />
-                  <span className="text-sm font-medium">Avg. Session</span>
+                  <span className="text-sm font-medium">{t("dashboard.analyticsData.metrics.avgSession")}</span>
                 </div>
                 <p className="text-3xl font-bold">{data?.avgSessionDuration?.toFixed(0) || 0}s</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Time on site
+                  {t("dashboard.analyticsData.metrics.avgSessionHint")}
                 </p>
               </CardContent>
             </Card>
@@ -215,7 +215,7 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
           {data?.dailyStats && data.dailyStats.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Traffic Over Time</CardTitle>
+                <CardTitle>{t("dashboard.analyticsData.trafficOverTime")}</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -234,14 +234,14 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
                       dataKey="pageviews"
                       stroke={COLORS.primary}
                       strokeWidth={2}
-                      name="Pageviews"
+                      name={t("dashboard.analyticsData.chart.pageviews")}
                     />
                     <Line
                       type="monotone"
                       dataKey="visitors"
                       stroke={COLORS.secondary}
                       strokeWidth={2}
-                      name="Visitors"
+                      name={t("dashboard.analyticsData.chart.visitors")}
                     />
                   </LineChart>
                 </ResponsiveContainer>
@@ -257,7 +257,7 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <Monitor className="h-5 w-5" />
-                    Device Breakdown
+                    {t("dashboard.analyticsData.deviceBreakdown")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -303,7 +303,7 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <ExternalLink className="h-5 w-5" />
-                    Traffic Sources
+                    {t("dashboard.analyticsData.trafficSources")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -328,7 +328,7 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5" />
-                  Top Pages
+                  {t("dashboard.analyticsData.topPages")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -345,13 +345,13 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
                           </span>
                           <code className="text-sm truncate">{page.page}</code>
                         </div>
-                        <span className="text-sm font-semibold">{page.count} views</span>
+                        <span className="text-sm font-semibold">{page.count} {t("dashboard.analyticsData.views")}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg">
-                    No pageview data yet
+                    {t("dashboard.analyticsData.noPageviewData")}
                   </p>
                 )}
               </CardContent>
@@ -362,7 +362,7 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <ExternalLink className="h-5 w-5" />
-                  Top Referrers
+                  {t("dashboard.analyticsData.topReferrers")}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -378,16 +378,16 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
                             #{index + 1}
                           </span>
                           <span className="text-sm truncate">
-                            {referrer.referrer || "Direct / Unknown"}
+                            {referrer.referrer || t("dashboard.analyticsData.directUnknown")}
                           </span>
                         </div>
-                        <span className="text-sm font-semibold">{referrer.count} visits</span>
+                        <span className="text-sm font-semibold">{referrer.count} {t("dashboard.analyticsData.visits")}</span>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg">
-                    No referrer data yet
+                    {t("dashboard.analyticsData.noReferrerData")}
                   </p>
                 )}
               </CardContent>

@@ -19,7 +19,7 @@ export default function CampaignAnalytics() {
         `/api/newsletter/campaigns/${campaignId}/analytics?websiteProgressId=${websiteId}`,
         { credentials: "include" }
       );
-      if (!response.ok) throw new Error("Failed to fetch campaign analytics");
+      if (!response.ok) throw new Error(t("dashboard.campaigns.analytics.fetchFailed"));
       return response.json();
     },
     enabled: !!websiteId && !!campaignId,
@@ -49,7 +49,7 @@ export default function CampaignAnalytics() {
   if (!data) {
     return (
       <div className="container mx-auto py-8">
-        <p className="text-center text-gray-500">Campaign not found</p>
+        <p className="text-center text-gray-500">{t("dashboard.campaigns.analytics.notFound")}</p>
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function CampaignAnalytics() {
           data-testid="button-back-to-campaigns"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Campaigns
+          {t("dashboard.campaigns.analytics.backToCampaigns")}
         </Button>
 
         <div className="space-y-6">
@@ -84,7 +84,7 @@ export default function CampaignAnalytics() {
               data-testid="button-refresh-analytics"
             >
               <RefreshCw className={`w-6 h-6 ${isFetching ? 'animate-spin' : ''}`} />
-              Refresh
+              {t("dashboard.campaigns.analytics.refresh")}
             </Button>
           </div>
           {campaign.description && (
@@ -96,18 +96,18 @@ export default function CampaignAnalytics() {
             {campaign.status === 'sent' && campaign.sentAt && (
               <div className="flex items-center gap-1" data-testid="text-sent-date">
                 <Send className="w-4 h-4" />
-                Sent: {new Date(campaign.sentAt).toLocaleString()}
+                {t("dashboard.campaigns.analytics.sentAt")}: {new Date(campaign.sentAt).toLocaleString()}
               </div>
             )}
             {campaign.status === 'scheduled' && campaign.scheduledFor && (
               <div className="flex items-center gap-1" data-testid="text-scheduled-date">
                 <Calendar className="w-4 h-4" />
-                Scheduled: {new Date(campaign.scheduledFor).toLocaleString()}
+                {t("dashboard.campaigns.analytics.scheduledFor")}: {new Date(campaign.scheduledFor).toLocaleString()}
               </div>
             )}
             {campaign.status === 'draft' && (
               <div className="text-orange-600" data-testid="text-status-draft">
-                Draft - Not sent
+                {t("dashboard.campaigns.analytics.draftNotSent")}
               </div>
             )}
           </div>
@@ -116,12 +116,12 @@ export default function CampaignAnalytics() {
         <div className="space-y-4">
           {/* Sending Metrics */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Delivery Performance</h3>
+            <h3 className="text-lg font-semibold mb-3">{t("dashboard.campaigns.analytics.deliveryPerformance")}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <Card data-testid="card-sent">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                    Sent
+                    {t("dashboard.campaigns.analytics.metrics.sent")}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
@@ -145,7 +145,7 @@ export default function CampaignAnalytics() {
               <Card data-testid="card-delivered">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                    Delivered
+                    {t("dashboard.campaigns.analytics.metrics.delivered")}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
@@ -165,7 +165,7 @@ export default function CampaignAnalytics() {
                       </span>
                     </div>
                     <p className="text-sm text-green-600 font-medium" data-testid="text-delivery-rate">
-                      {metrics.deliveryRate || 0}% delivery rate
+                      {metrics.deliveryRate || 0}% {t("dashboard.campaigns.analytics.metrics.deliveryRate")}
                     </p>
                   </div>
                 </CardContent>
@@ -174,7 +174,7 @@ export default function CampaignAnalytics() {
               <Card data-testid="card-bounced">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                    Bounces
+                    {t("dashboard.campaigns.analytics.metrics.bounces")}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
@@ -194,7 +194,7 @@ export default function CampaignAnalytics() {
                       </span>
                     </div>
                     <p className="text-sm text-red-600 font-medium" data-testid="text-bounce-rate">
-                      {metrics.bounceRate || 0}% bounce rate
+                      {metrics.bounceRate || 0}% {t("dashboard.campaigns.analytics.metrics.bounceRate")}
                     </p>
                   </div>
                 </CardContent>
@@ -203,7 +203,7 @@ export default function CampaignAnalytics() {
               <Card data-testid="card-complaints">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                    Complaints
+                    {t("dashboard.campaigns.analytics.metrics.complaints")}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
@@ -223,7 +223,7 @@ export default function CampaignAnalytics() {
                       </span>
                     </div>
                     <p className="text-sm text-orange-600 font-medium" data-testid="text-complaint-rate">
-                      {metrics.complaintRate || 0}% complaint rate
+                      {metrics.complaintRate || 0}% {t("dashboard.campaigns.analytics.metrics.complaintRate")}
                     </p>
                   </div>
                 </CardContent>
@@ -233,12 +233,12 @@ export default function CampaignAnalytics() {
 
           {/* Engagement Metrics */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Engagement Metrics</h3>
+            <h3 className="text-lg font-semibold mb-3">{t("dashboard.campaigns.analytics.engagementMetrics")}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Card data-testid="card-opens">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                    Opens
+                    {t("dashboard.campaigns.analytics.metrics.opens")}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
@@ -258,7 +258,7 @@ export default function CampaignAnalytics() {
                       </span>
                     </div>
                     <p className="text-sm text-blue-600 font-medium" data-testid="text-open-rate">
-                      {metrics.openRate}% open rate
+                      {metrics.openRate}% {t("dashboard.campaigns.analytics.metrics.openRate")}
                     </p>
                   </div>
                 </CardContent>
@@ -267,7 +267,7 @@ export default function CampaignAnalytics() {
               <Card data-testid="card-clicks">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                    Clicks
+                    {t("dashboard.campaigns.analytics.metrics.clicks")}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
@@ -287,7 +287,7 @@ export default function CampaignAnalytics() {
                       </span>
                     </div>
                     <p className="text-sm text-green-600 font-medium" data-testid="text-click-rate">
-                      {metrics.clickRate}% click rate
+                      {metrics.clickRate}% {t("dashboard.campaigns.analytics.metrics.clickRate")}
                     </p>
                   </div>
                 </CardContent>
@@ -296,7 +296,7 @@ export default function CampaignAnalytics() {
               <Card data-testid="card-ctr">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                    Click-Through Rate
+                    {t("dashboard.campaigns.analytics.metrics.clickThroughRate")}
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-gray-400 cursor-help" />
@@ -315,7 +315,7 @@ export default function CampaignAnalytics() {
                         {metrics.clickThroughRate}%
                       </span>
                     </div>
-                    <p className="text-sm text-purple-600 font-medium">of opens clicked</p>
+                    <p className="text-sm text-purple-600 font-medium">{t("dashboard.campaigns.analytics.metrics.ofOpensClicked")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -325,17 +325,17 @@ export default function CampaignAnalytics() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Campaign Details</CardTitle>
-            <CardDescription>Information about this campaign</CardDescription>
+            <CardTitle>{t("dashboard.campaigns.analytics.campaignDetails")}</CardTitle>
+            <CardDescription>{t("dashboard.campaigns.analytics.campaignDetailsDescription")}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <p className="text-sm font-medium text-gray-600">Subject Line</p>
+                <p className="text-sm font-medium text-gray-600">{t("dashboard.campaigns.analytics.fields.subjectLine")}</p>
                 <p className="mt-1" data-testid="text-subject">{campaign.subject}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Recipient Tags</p>
+                <p className="text-sm font-medium text-gray-600">{t("dashboard.campaigns.analytics.fields.recipientTags")}</p>
                 <div className="mt-1 flex flex-wrap gap-1" data-testid="text-tags">
                   {campaign.tagIds && campaign.tagIds.length > 0 ? (
                     tags
@@ -352,32 +352,34 @@ export default function CampaignAnalytics() {
                       ))
                   ) : campaign.groupName ? (
                     <span className="text-sm text-muted-foreground">
-                      {campaign.groupName} (Legacy Group)
+                      {campaign.groupName} ({t("dashboard.campaigns.analytics.legacyGroup")})
                     </span>
                   ) : (
-                    <span className="text-sm text-muted-foreground">No tags</span>
+                    <span className="text-sm text-muted-foreground">{t("dashboard.campaigns.analytics.noTags")}</span>
                   )}
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Sender Name</p>
+                <p className="text-sm font-medium text-gray-600">{t("dashboard.campaigns.analytics.fields.senderName")}</p>
                 <p className="mt-1" data-testid="text-sender-name">{campaign.senderName}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Sender Email</p>
+                <p className="text-sm font-medium text-gray-600">{t("dashboard.campaigns.analytics.fields.senderEmail")}</p>
                 <p className="mt-1" data-testid="text-sender-email">{campaign.senderEmail}</p>
               </div>
               {campaign.excludedSubscriberIds && campaign.excludedSubscriberIds.length > 0 && (
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Excluded Subscribers</p>
+                  <p className="text-sm font-medium text-gray-600">{t("dashboard.campaigns.analytics.fields.excludedSubscribers")}</p>
                   <p className="mt-1" data-testid="text-excluded-count">
-                    {campaign.excludedSubscriberIds.length} subscribers excluded
+                    {t("dashboard.campaigns.analytics.subscribersExcluded", { count: campaign.excludedSubscriberIds.length })}
                   </p>
                 </div>
               )}
               <div>
-                <p className="text-sm font-medium text-gray-600">Status</p>
-                <p className="mt-1 capitalize" data-testid="text-status">{campaign.status}</p>
+                <p className="text-sm font-medium text-gray-600">{t("dashboard.campaigns.analytics.fields.status")}</p>
+                <p className="mt-1 capitalize" data-testid="text-status">
+                  {t(`dashboard.campaigns.status.${campaign.status}`) || campaign.status}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -386,21 +388,21 @@ export default function CampaignAnalytics() {
         {template && template.thumbnail && (
           <Card>
             <CardHeader>
-              <CardTitle>Email Design Preview</CardTitle>
-              <CardDescription>Preview of the email template used in this campaign</CardDescription>
+              <CardTitle>{t("dashboard.campaigns.analytics.emailDesignPreview")}</CardTitle>
+              <CardDescription>{t("dashboard.campaigns.analytics.emailDesignPreviewDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex justify-center bg-gray-50 p-4 rounded-lg">
                 <img 
                   src={template.thumbnail} 
-                  alt={template.name || "Email template preview"} 
+                  alt={template.name || t("dashboard.campaigns.analytics.emailTemplatePreviewAlt")} 
                   className="max-w-full h-auto rounded border border-gray-200 shadow-sm"
                   data-testid="img-template-preview"
                 />
               </div>
               {template.name && (
                 <p className="text-sm text-gray-600 mt-4 text-center" data-testid="text-template-name">
-                  Template: {template.name}
+                  {t("dashboard.campaigns.analytics.fields.template")}: {template.name}
                 </p>
               )}
             </CardContent>

@@ -1,150 +1,92 @@
-// Helper utility to format onboarding form values for display
-// Converts internal values (like "i_will_connect") to human-readable text
+type Translator = (key: string, options?: Record<string, unknown>) => string;
 
-export const onboardingValueLabels: Record<string, Record<string, string>> = {
-  // Domain connection preference
+const valueKeyMap: Record<string, Record<string, string>> = {
   domainConnectionPreference: {
-    i_will_connect: "I will connect it myself",
-    you_connect: "Please connect it for me",
+    i_will_connect: "onboarding.options.domainConnectionMyself",
+    you_connect: "onboarding.options.domainConnectionYou",
   },
-  // Domain purchase preference
   domainPurchasePreference: {
-    i_will_buy: "I will purchase the domain",
-    you_buy: "Please purchase it for me",
+    i_will_buy: "onboarding.options.domainPurchaseMyself",
+    you_buy: "onboarding.options.domainPurchaseYou",
   },
-  // Yes/No fields
   hasDomain: {
-    yes: "Yes",
-    no: "No",
+    yes: "onboarding.options.yes",
+    no: "onboarding.options.no",
   },
   hasEmails: {
-    yes: "Yes",
-    no: "No",
+    yes: "onboarding.options.yes",
+    no: "onboarding.options.no",
   },
   hasWebsite: {
-    yes: "Yes",
-    no: "No",
+    yes: "onboarding.options.yes",
+    no: "onboarding.options.no",
   },
   hasTextContent: {
-    yes: "Yes",
-    no: "No",
+    yes: "onboarding.options.yes",
+    no: "onboarding.options.no",
   },
   hasMediaContent: {
-    yes: "Yes",
-    no: "No",
+    yes: "onboarding.options.yes",
+    no: "onboarding.options.no",
   },
   hasSocialMedia: {
-    yes: "Yes",
-    no: "No",
+    yes: "onboarding.options.yes",
+    no: "onboarding.options.no",
   },
-  // Email redirect preference
   emailRedirect: {
-    "main-inbox": "Redirect all emails to one inbox",
-    separate: "Keep emails separate",
+    "main-inbox": "onboarding.options.emailRedirectOne",
+    separate: "onboarding.options.emailRedirectSeparate",
   },
-  // Logo design service
   logoDesignService: {
-    none: "No logo service needed",
-    basic: "Basic Logo Design (2 formats + editable file)",
-    premium: "Brand Identity Package (logos, colors, fonts, designs)",
+    none: "onboarding.options.logoServiceNone",
+    basic: "onboarding.options.logoServiceBasic",
+    premium: "onboarding.options.logoServicePremium",
   },
-  // Website language
   websiteLanguage: {
-    en: "English",
-    gr: "Greek",
+    en: "onboarding.english",
+    gr: "onboarding.greek",
   },
-  // Site style
   siteStyle: {
-    sharp: "Sharp corners (modern, professional)",
-    curved: "Curved corners (friendly, approachable)",
+    sharp: "onboarding.options.siteStyleStraight",
+    curved: "onboarding.options.siteStyleCurved",
   },
-  // Status
   status: {
-    draft: "Draft",
-    submitted: "Submitted",
-    completed: "Completed",
+    draft: "onboarding.options.statusDraft",
+    submitted: "onboarding.options.statusSubmitted",
+    completed: "onboarding.options.statusCompleted",
   },
-};
-
-// Field labels mapping (camelCase to readable text)
-export const onboardingFieldLabels: Record<string, string> = {
-  businessName: "Business Name",
-  contactName: "Contact Name",
-  contactPhone: "Contact Phone",
-  contactEmail: "Contact Email",
-  accountEmail: "Account Email",
-  businessDescription: "Business Description",
-  websiteLanguage: "Website Language",
-  hasDomain: "Has Domain",
-  existingDomain: "Existing Domain",
-  domainAccess: "Domain Access",
-  domainConnectionPreference: "Domain Connection Preference",
-  domainPurchasePreference: "Domain Purchase Preference",
-  preferredDomains: "Preferred Domain Names",
-  hasEmails: "Has Professional Emails",
-  emailProvider: "Email Provider",
-  emailAccess: "Email Access",
-  existingEmails: "Existing Emails",
-  emailCount: "Number of Emails Needed",
-  emailNames: "Email Names/Addresses",
-  emailRedirect: "Email Redirect Preference",
-  redirectInboxAddress: "Redirect Inbox Address",
-  hasWebsite: "Has Existing Website",
-  websiteLink: "Current Website Link",
-  websiteChanges: "Desired Website Changes",
-  wantedPages: "Wanted Pages",
-  notSurePages: "Not Sure About Pages",
-  hasTextContent: "Has Text Content Ready",
-  hasMediaContent: "Has Media Content Ready",
-  businessLogoUrl: "Business Logo",
-  businessLogoName: "Logo File Name",
-  businessLogoPublicId: "Logo ID",
-  createTextLogo: "Create Text Logo",
-  colorPalette: "Color Palette",
-  inspirationWebsites: "Inspiration Websites",
-  preferredFonts: "Preferred Fonts",
-  siteStyle: "Site Style",
-  selectedTemplateId: "Selected Template",
-  customTemplateRequest: "Custom Template Request",
-  hasSocialMedia: "Has Social Media",
-  facebookLink: "Facebook",
-  instagramLink: "Instagram",
-  linkedinLink: "LinkedIn",
-  tiktokLink: "TikTok",
-  youtubeLink: "YouTube",
-  otherSocialLinks: "Other Social Links",
-  logoDesignService: "Logo Design Service",
-  projectDeadline: "Project Deadline",
-  additionalNotes: "Additional Notes",
-  submissionId: "Submission ID",
-  status: "Status",
-  createdAt: "Submitted At",
 };
 
 // Format a single value based on field name
-export function formatOnboardingValue(fieldName: string, value: any): string {
+export function formatOnboardingValue(
+  fieldName: string,
+  value: any,
+  t?: Translator,
+): string {
+  const translator: Translator = t ?? ((key) => key);
+
   if (value === null || value === undefined || value === "") {
-    return "";
+    return translator("onboarding.options.notProvided");
   }
 
-  // Check if we have a label mapping for this field
-  const fieldLabels = onboardingValueLabels[fieldName];
-  if (fieldLabels && typeof value === "string" && fieldLabels[value]) {
-    return fieldLabels[value];
+  const fieldValueKeys = valueKeyMap[fieldName];
+  if (fieldValueKeys && typeof value === "string" && fieldValueKeys[value]) {
+    return translator(fieldValueKeys[value]);
   }
 
-  // Handle boolean values
   if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
+    return value
+      ? translator("onboarding.options.yes")
+      : translator("onboarding.options.no");
   }
 
-  // Handle arrays
   if (Array.isArray(value)) {
     const filtered = value.filter((v) => v && v.toString().trim());
-    return filtered.length > 0 ? filtered.join(", ") : "";
+    return filtered.length > 0
+      ? filtered.join(", ")
+      : translator("onboarding.options.notProvided");
   }
 
-  // Handle date strings
   if (fieldName === "createdAt" && value) {
     try {
       return new Date(value).toLocaleString();
@@ -153,16 +95,18 @@ export function formatOnboardingValue(fieldName: string, value: any): string {
     }
   }
 
-  // Return as-is for other values
   return String(value);
 }
 
 // Get a human-readable label for a field name
-export function getFieldLabel(fieldName: string): string {
-  if (onboardingFieldLabels[fieldName]) {
-    return onboardingFieldLabels[fieldName];
+export function getFieldLabel(fieldName: string, t?: Translator): string {
+  const translator: Translator = t ?? ((key) => key);
+  const translated = translator(`onboarding.fields.${fieldName}`);
+
+  if (translated !== `onboarding.fields.${fieldName}`) {
+    return translated;
   }
-  // Fallback: convert camelCase to Title Case with spaces
+
   return fieldName
     .replace(/([A-Z])/g, " $1")
     .replace(/^./, (str) => str.toUpperCase())

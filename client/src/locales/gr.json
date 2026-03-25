@@ -69,7 +69,15 @@
         "in-progress": "Σε εξέλιξη",
         "waiting": "Περιμένουμε πληροφορίες",
         "completed": "Ολοκληρώθηκε",
-        "cancelled": "Ακυρώθηκε"
+        "cancelled": "Ακυρώθηκε",
+        "connected": "Συνδεδεμένος",
+        "active": "Ενεργό",
+        "noSubscription": "Χωρίς συνδρομή",
+        "pastDue": "Ληξιπρόθεσμο",
+        "unpaid": "Ανεξόφλητο",
+        "incomplete": "Μη ολοκληρωμένο",
+        "trial": "Δοκιμαστικό",
+        "paused": "Σε παύση"
     },
     "actions": {
         "upgradeToYearlyDialog": {
@@ -120,7 +128,10 @@
         "viewProjects": "Προβολή Έργων",
         "getStarted": "Ξεκινήστε",
         "learnMore": "Μάθετε Περισσότερα",
-        "scrollDown": "Κύλιση προς τα κάτω"
+        "scrollDown": "Κύλιση προς τα κάτω",
+        "view": "Προβολή",
+        "deleting": "Διαγραφή...",
+        "disconnect": "Αποσύνδεση"
     },
     "labels": {
         "currentStage": "Τρέχον Στάδιο",
@@ -984,6 +995,8 @@
                 "5ChangesMonth48h": "Πέντε ενημερώσεις ή τροποποιήσεις περιεχομένου ανά μήνα, ολοκληρώνονται εντός 48 ωρών για ταχεία απόκριση",
                 "advancedAnalytics": "Ολοκληρωμένα analytics ιστοτόπου συμπεριλαμβανομένης λεπτομερούς συμπεριφοράς επισκεπτών, παρακολούθησης μετατροπών και μετρήσεων απόδοσης",
                 "advancedSEO": "Premium βελτιστοποίηση SEO συμπεριλαμβανομένης έρευνας λέξεων-κλειδιών, ανάλυσης ανταγωνισμού και συνεχών στρατηγικών βελτιστοποίησης",
+                "advancedFeatures": "Προηγμένα εργαλεία συμπεριλαμβανομένης βελτιστοποίησης SEO, ενσωμάτωσης προσαρμοσμένου domain, βελτιωμένων λειτουργιών ασφαλείας, δυνατοτήτων A/B testing, προηγμένων analytics και επιλογών επεξεργασίας προσαρμοσμένου CSS/HTML.",
+                "ecommerce": "Πλήρης λειτουργικότητα ηλεκτρονικού καταστήματος με διαχείριση καταλόγου προϊόντων, καλάθι αγορών, επεξεργασία πληρωμών, παρακολούθηση αποθέματος, διαχείριση παραγγελιών και λογαριασμούς πελατών.",
                 "newsletter10000EmailsMonth": "Επαγγελματικό email marketing για έως 10.000 συνδρομητές μηνιαίως για εκστρατείες πελατών μεγάλης κλίμακας",
                 "allAddOnsIncluded": "Λάβετε όλα τα premium πρόσθετα εντελώς δωρεάν με αυτό το πλάνο - Σύστημα Κρατήσεων, LMS, Πολυβηματικές Φόρμες, Γεννήτρια QR Code, Σύστημα Δωρεών, Online Πληρωμές, Πλατφόρμα Ακινήτων και Κρατήσεις Μεταφορών (αξίας άνω των €400/μήνα)"
             }
@@ -1012,6 +1025,10 @@
         "emailLimitReached": "Η μηνιαία περιορισμένη χρήση email έχει φτάσει.",
         "addonPurchaseSuccess": "Επιτυχής αγορά πρόσθετου",
         "loading": "Φόρτωση...",
+        "currentPlanBadge": "Τρέχον πλάνο",
+        "planSuffix": "Πλάνο {{tier}}",
+        "preLaunchChanges": "Αλλαγές Πριν το Λανσάρισμα",
+        "unlimitedChangesBeforeLaunch": "Έχετε απεριόριστες αλλαγές πριν το λανσάρισμα της ιστοσελίδας σας. Τα όρια θα ισχύσουν αφού ολοκληρωθεί το στάδιο Λανσαρίσματος.",
         "websiteNotLaunched": "Ο ιστότοπος σας δεν έχει ολοκληρωθεί ακόμη",
         "changesAvailableAfterLaunch": "Όσο η ιστοσελίδα σας δεν έχει ολοκληρωθεί, μπορείτε να κάνετε απεριόριστες αλλαγές.",
         "confirmPurchase": "Επιβεβαίωση Αγοράς",
@@ -1159,10 +1176,48 @@
         "newsletter": "Ενημερωτικό Δελτίο",
         "booking": "Κρατήσεις",
         "payments": "Πληρωμές",
+        "content": "Περιεχόμενο",
         "digitalProducts": "Ψηφιακά Προϊόντα",
         "bookingOpening": "Άνοιγμα συστήματος κρατήσεων...",
         "bookingError": "Δεν ήταν δυνατό το άνοιγμα του συστήματος κρατήσεων",
         "bookingErrorDescription": "Παρακαλώ δοκιμάστε ξανά.",
+        "websiteNotFound": "Η ιστοσελίδα δεν βρέθηκε",
+        "stripeConnectedSuccess": "Ο λογαριασμός Stripe συνδέθηκε με επιτυχία",
+        "stripeConnectFailed": "Κάτι πήγε λάθος κατά τη σύνδεση του λογαριασμού Stripe. Παρακαλώ δοκιμάστε ξανά.",
+        "logoutFailed": "Η αποσύνδεση απέτυχε. Παρακαλώ δοκιμάστε ξανά.",
+        "stripeDisconnected": "Ο λογαριασμός Stripe αποσυνδέθηκε",
+        "stripeDisconnectFailed": "Η αποσύνδεση απέτυχε",
+        "stripeReuseFailed": "Αποτυχία επαναχρησιμοποίησης λογαριασμού",
+        "paymentManagementOpenFailed": "Αποτυχία ανοίγματος διαχείρισης πληρωμών. Παρακαλώ δοκιμάστε ξανά.",
+        "mediaUploadedSuccess": "Το αρχείο ανέβηκε με επιτυχία",
+        "mediaUploadFailed": "Αποτυχία μεταφόρτωσης αρχείου",
+        "mediaDeletedSuccess": "Το αρχείο διαγράφηκε με επιτυχία",
+        "mediaDeleteFailed": "Αποτυχία διαγραφής αρχείου",
+        "stripeConnectStartFailed": "Αποτυχία σύνδεσης",
+        "stripeConnectTitle": "Stripe Connect",
+        "stripeConnectDescription": "Συνδέστε τον λογαριασμό Stripe για να δέχεστε πληρωμές μέσω των προσθέτων HAYC (π.χ. κρατήσεις, προϊόντα) σε αυτή την ιστοσελίδα. Οι πληρωμές καταλήγουν απευθείας σε εσάς, η HAYC δεν κρατά χρήματα.",
+        "connectWithStripe": "Σύνδεση με Stripe",
+        "stripeOnboardingIncomplete": "Η διαδικασία onboarding του Stripe δεν έχει ολοκληρωθεί. Παρακαλώ ολοκληρώστε τη σύνδεση του λογαριασμού σας.",
+        "notAvailable": "Μ/Δ",
+        "accountId": "ID λογαριασμού",
+        "connectedAt": "Συνδέθηκε στις",
+        "uploadWidgetNotReady": "Το widget μεταφόρτωσης δεν είναι έτοιμο. Ανανεώστε τη σελίδα και δοκιμάστε ξανά.",
+        "uploadInitFailed": "Αποτυχία αρχικοποίησης μεταφόρτωσης. Παρακαλώ δοκιμάστε ξανά.",
+        "uploadPrepareFailed": "Αποτυχία προετοιμασίας μεταφόρτωσης. Παρακαλώ δοκιμάστε ξανά.",
+        "uploadFailed": "Η μεταφόρτωση απέτυχε. Παρακαλώ δοκιμάστε ξανά.",
+        "uploadWidgetInitFailed": "Αποτυχία αρχικοποίησης widget μεταφόρτωσης. Ανανεώστε και δοκιμάστε ξανά.",
+        "deleteMediaFileTitle": "Διαγραφή αρχείου πολυμέσων;",
+        "deleteMediaFileDescription": "Αυτό θα διαγράψει οριστικά το αρχείο από τη βιβλιοθήκη πολυμέσων της ιστοσελίδας σας. Αυτή η ενέργεια δεν αναιρείται.",
+        "digitalProductsDisabled": "Τα Ψηφιακά Προϊόντα είναι απενεργοποιημένα για αυτή την ιστοσελίδα.",
+        "askAdminEnableDigitalProducts": "Ζητήστε από τον διαχειριστή να ενεργοποιήσει τα Ψηφιακά Προϊόντα για αυτό το έργο.",
+        "digitalProductsNotAvailableYet": "Τα Ψηφιακά Προϊόντα δεν είναι διαθέσιμα για αυτή την ιστοσελίδα ακόμη.",
+        "disconnectStripeTitle": "Αποσύνδεση λογαριασμού Stripe;",
+        "disconnectStripeDescription": "Αυτή η ιστοσελίδα δεν θα μπορεί να δέχεται πληρωμές μέσω προσθέτων HAYC μέχρι να συνδεθείτε ξανά.",
+        "existingStripeAccountTitle": "Έχετε ήδη συνδεδεμένο λογαριασμό Stripe",
+        "existingStripeAccountDescription": "Θέλετε να χρησιμοποιήσετε έναν υπάρχοντα λογαριασμό Stripe από άλλη ιστοσελίδα σας ή να συνδέσετε νέο;",
+        "useThisAccount": "Χρήση αυτού του λογαριασμού",
+        "connectNewAccount": "Σύνδεση νέου λογαριασμού",
+        "connectNewAccountDescription": "Παρακαλώ αποσυνδέστε πρώτα τον υπάρχοντα λογαριασμό στην άλλη ιστοσελίδα και συνδέστε ξανά εδώ.",
         "emailBuilder": "Δημιουργός Email",
         "emailBuilderDescription": "Σχεδιάστε και δημιουργήστε όμορφα πρότυπα email με τον οπτικό μας επεξεργαστή",
         "groups": "Ομάδες",
@@ -1274,6 +1329,43 @@
             "performanceMetricsDescription": "Παρακολουθήστε bounce rate και διάρκεια συνεδρίας",
             "requestUpgrade": "Αίτημα Αναβάθμισης"
         },
+        "analyticsData": {
+            "title": "Στατιστικά Ιστοσελίδας",
+            "loading": "Φόρτωση στατιστικών...",
+            "badgeNew": "Νέο",
+            "subtitle": "Ολοκληρωμένες πληροφορίες για την ιστοσελίδα σας",
+            "range": {
+                "last7Days": "Τελευταίες 7 ημέρες",
+                "last30Days": "Τελευταίες 30 ημέρες",
+                "last90Days": "Τελευταίες 90 ημέρες"
+            },
+            "emptyTitle": "Δεν υπάρχουν ακόμη δεδομένα στατιστικών",
+            "emptyDescription": "Η παρακολούθηση στατιστικών δεν έχει ρυθμιστεί ακόμη για την ιστοσελίδα σας. Επικοινωνήστε μαζί μας για να εγκαταστήσουμε τον κώδικα παρακολούθησης και να ξεκινήσετε να βλέπετε τα στατιστικά σας.",
+            "metrics": {
+                "totalPageviews": "Συνολικές Προβολές Σελίδων",
+                "totalPageviewsHint": "Συνολικές σελίδες που προβλήθηκαν",
+                "uniqueVisitors": "Μοναδικοί Επισκέπτες",
+                "uniqueVisitorsHint": "Διαφορετικοί χρήστες",
+                "bounceRate": "Ποσοστό Εγκατάλειψης",
+                "bounceRateHint": "Συνεδρίες μίας σελίδας",
+                "avgSession": "Μέση Συνεδρία",
+                "avgSessionHint": "Χρόνος στον ιστότοπο"
+            },
+            "trafficOverTime": "Κίνηση στο Χρόνο",
+            "chart": {
+                "pageviews": "Προβολές Σελίδων",
+                "visitors": "Επισκέπτες"
+            },
+            "deviceBreakdown": "Κατανομή Συσκευών",
+            "trafficSources": "Πηγές Κίνησης",
+            "topPages": "Κορυφαίες Σελίδες",
+            "views": "προβολές",
+            "noPageviewData": "Δεν υπάρχουν ακόμη δεδομένα προβολών",
+            "topReferrers": "Κορυφαίες Παραπομπές",
+            "directUnknown": "Άμεση / Άγνωστη",
+            "visits": "επισκέψεις",
+            "noReferrerData": "Δεν υπάρχουν ακόμη δεδομένα παραπομπών"
+        },
         "upgradeModal": {
             "successTitle": "Το αίτημα στάλθηκε!",
             "successDescription": "Το αίτημα αναβάθμισης στάλθηκε στην ομάδα μας. Θα επικοινωνήσουμε σύντομα μαζί σας για να ολοκληρώσουμε την αναβάθμιση της συνδρομής σας.",
@@ -1321,6 +1413,7 @@
             "description": "Δημιούργησε και διαχειρίσου τις καμπάνιες email σου",
             "createButton": "Δημιουργία Καμπάνιας",
             "searchPlaceholder": "Αναζήτηση καμπανιών...",
+            "sortPlaceholder": "Ταξινόμηση κατά...",
             "sort": {
                 "newestFirst": "Νεότερες Πρώτα",
                 "oldestFirst": "Παλαιότερες Πρώτα",
@@ -1339,7 +1432,31 @@
                 "createdTitle": "Η καμπάνια δημιουργήθηκε με επιτυχία",
                 "createdDescription": "Η καμπάνια σου δημιουργήθηκε.",
                 "updatedTitle": "Η καμπάνια ενημερώθηκε με επιτυχία",
-                "updatedDescription": "Η καμπάνια σου ενημερώθηκε."
+                "updatedDescription": "Η καμπάνια σου ενημερώθηκε.",
+                "sentTitle": "Η καμπάνια στάλθηκε με επιτυχία",
+                "sentDescription": "Η καμπάνια στάλθηκε σε όλους τους παραλήπτες.",
+                "sendFailedTitle": "Αποτυχία αποστολής καμπάνιας",
+                "sendFailedDescription": "Παρουσιάστηκε σφάλμα κατά την αποστολή της καμπάνιας.",
+                "duplicatedTitle": "Η καμπάνια αντιγράφηκε",
+                "duplicatedDescription": "Ένα αντίγραφο της καμπάνιας δημιουργήθηκε ως πρόχειρο.",
+                "duplicateFailedTitle": "Αποτυχία αντιγραφής καμπάνιας",
+                "duplicateFailedDescription": "Παρουσιάστηκε σφάλμα κατά την αντιγραφή της καμπάνιας.",
+                "deletedTitle": "Η καμπάνια διαγράφηκε",
+                "deletedDescription": "Η καμπάνια διαγράφηκε οριστικά.",
+                "deleteFailedTitle": "Αποτυχία διαγραφής καμπάνιας",
+                "deleteFailedDescription": "Παρουσιάστηκε σφάλμα κατά τη διαγραφή της καμπάνιας.",
+                "bulkDeletedTitle": "Οι καμπάνιες διαγράφηκαν",
+                "bulkDeletedDescription": "Διαγράφηκαν {{count}} καμπάνια(ες).",
+                "bulkDeleteFailedTitle": "Αποτυχία διαγραφής καμπανιών",
+                "bulkDeleteFailedDescription": "Παρουσιάστηκε σφάλμα κατά τη διαγραφή των καμπανιών.",
+                "scheduleCancelledTitle": "Ο προγραμματισμός ακυρώθηκε",
+                "scheduleCancelledDescription": "Η καμπάνια μεταφέρθηκε ξανά στα πρόχειρα",
+                "cancelScheduleFailedDescription": "Αποτυχία ακύρωσης προγραμματισμού",
+                "saveFailedDescription": "Αποτυχία αποθήκευσης καμπάνιας"
+            },
+            "cancelSchedule": {
+                "button": "Ακύρωση προγραμματισμού",
+                "confirm": "Είσαι σίγουρος ότι θέλεις να ακυρώσεις τον προγραμματισμό; Η καμπάνια θα αποθηκευτεί ως πρόχειρη."
             },
             "status": {
                 "draft": "Πρόχειρη",
@@ -1369,7 +1486,14 @@
                 "sending": "Αποστολή...",
                 "sendingTitle": "Αποστολή καμπάνιας",
                 "sendingDescription": "Μπορεί να χρειαστεί αρκετά λεπτά για μεγάλες λίστες. Παρακαλώ μην κλείσετε αυτή τη σελίδα.",
-                "sendingToRecipients": "Αποστολή σε {{count}} παραλήπτες..."
+                "sendingToRecipients": "Αποστολή σε {{count}} παραλήπτες...",
+                "sendingAriaLabel": "Αποστολή καμπάνιας"
+            },
+            "deleteDialog": {
+                "title": "Διαγραφή Καμπάνιας",
+                "description": "Είσαι σίγουρος ότι θέλεις να διαγράψεις αυτή την καμπάνια; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
+                "cancel": "Ακύρωση",
+                "confirm": "Διαγραφή"
             },
             "bulkDeleteDialog": {
                 "title": "Διαγραφή Καμπανιών",
@@ -1397,7 +1521,9 @@
                     "selectDate": "Επιλογή Ημερομηνίας",
                     "pickDate": "Επιλέξτε ημερομηνία",
                     "selectTime": "Επιλογή Ώρας",
-                    "scheduledToSend": "Προγραμματισμένη αποστολή:"
+                    "scheduledToSend": "Προγραμματισμένη αποστολή:",
+                    "hourPlaceholder": "ΩΩ",
+                    "minutePlaceholder": "ΛΛ"
                 },
                 "fields": {
                     "title": "Τίτλος Καμπάνιας *",
@@ -1412,7 +1538,20 @@
                     "title": "π.χ. Ενημερωτικό Δελτίο - Ιανουάριος 2024",
                     "subject": "Γράψε το θέμα του email",
                     "senderName": "Η Εταιρεία σου",
+                    "senderEmail": "hello@yourcompany.com",
                     "description": "Εσωτερικές σημειώσεις για αυτή την καμπάνια"
+                },
+                "validation": {
+                    "titleRequired": "Ο τίτλος είναι υποχρεωτικός",
+                    "subjectRequired": "Το θέμα είναι υποχρεωτικό",
+                    "senderNameRequired": "Το όνομα αποστολέα είναι υποχρεωτικό",
+                    "validEmailRequired": "Απαιτείται έγκυρο email",
+                    "senderEmailRequired": "Το email αποστολέα είναι υποχρεωτικό",
+                    "templateRequiredTitle": "Απαιτείται πρότυπο",
+                    "templateRequiredStepDescription": "Παρακαλώ επίλεξε ένα πρότυπο email πριν συνεχίσεις",
+                    "templateRequiredSubmitDescription": "Παρακαλώ επίλεξε ένα πρότυπο email πριν στείλεις την καμπάνια",
+                    "scheduleTimeRequiredTitle": "Απαιτείται ώρα προγραμματισμού",
+                    "scheduleTimeRequiredDescription": "Παρακαλώ επίλεξε ώρα για τον προγραμματισμό της καμπάνιας ή επίλεξε \"Ως πρόχειρη\""
                 },
                 "hints": {
                     "selectMultiple": "Επίλεξε μία ή περισσότερες",
@@ -1440,6 +1579,10 @@
                     "selectedStatuses": "Φίλτρο Κατάστασης",
                     "noTagsSelected": "Δεν επιλέχθηκαν ετικέτες",
                     "noStatusSelected": "Δεν επιλέχθηκε κατάσταση",
+                    "excludeByTags": "Εξαίρεση ανά ετικέτες",
+                    "excludeByTagsDescription": "Οι επαφές με οποιαδήποτε από τις επιλεγμένες ετικέτες θα εξαιρεθούν από αυτή την καμπάνια.",
+                    "excludedContactsPreview": "Θα εξαιρεθούν {{count}} επαφή(ές):",
+                    "andMore": "...και {{count}} ακόμη",
                     "count": "παραλήπτες",
                     "listTitle": "Παραλήπτες (που ταιριάζουν στις ετικέτες και τα φίλτρα κατάστασης):",
                     "noName": "Χωρίς όνομα",
@@ -1470,6 +1613,49 @@
                     "creating": "Δημιουργία...",
                     "updating": "Ενημέρωση..."
                 }
+            },
+            "analytics": {
+                "fetchFailed": "Αποτυχία ανάκτησης στατιστικών καμπάνιας",
+                "notFound": "Η καμπάνια δεν βρέθηκε",
+                "backToCampaigns": "Πίσω στις Καμπάνιες",
+                "refresh": "Ανανέωση",
+                "sentAt": "Στάλθηκε",
+                "scheduledFor": "Προγραμματίστηκε",
+                "draftNotSent": "Πρόχειρο - Δεν στάλθηκε",
+                "deliveryPerformance": "Απόδοση Παράδοσης",
+                "engagementMetrics": "Μετρήσεις Αλληλεπίδρασης",
+                "metrics": {
+                    "sent": "Στάλθηκαν",
+                    "delivered": "Παραδόθηκαν",
+                    "deliveryRate": "ποσοστό παράδοσης",
+                    "bounces": "Απορρίψεις",
+                    "bounceRate": "ποσοστό απορρίψεων",
+                    "complaints": "Παράπονα",
+                    "complaintRate": "ποσοστό παραπόνων",
+                    "opens": "Ανοίγματα",
+                    "openRate": "ποσοστό ανοίγματος",
+                    "clicks": "Κλικ",
+                    "clickRate": "ποσοστό κλικ",
+                    "clickThroughRate": "Ποσοστό Click-Through",
+                    "ofOpensClicked": "των ανοιγμάτων έκαναν κλικ"
+                },
+                "campaignDetails": "Στοιχεία Καμπάνιας",
+                "campaignDetailsDescription": "Πληροφορίες για αυτή την καμπάνια",
+                "fields": {
+                    "subjectLine": "Θέμα Email",
+                    "recipientTags": "Ετικέτες Παραληπτών",
+                    "senderName": "Όνομα Αποστολέα",
+                    "senderEmail": "Email Αποστολέα",
+                    "excludedSubscribers": "Εξαιρούμενοι Συνδρομητές",
+                    "status": "Κατάσταση",
+                    "template": "Πρότυπο"
+                },
+                "legacyGroup": "Παλιή Ομάδα",
+                "noTags": "Χωρίς ετικέτες",
+                "subscribersExcluded": "{{count}} συνδρομητές εξαιρέθηκαν",
+                "emailDesignPreview": "Προεπισκόπηση Σχεδίου Email",
+                "emailDesignPreviewDescription": "Προεπισκόπηση του προτύπου email που χρησιμοποιήθηκε σε αυτή την καμπάνια",
+                "emailTemplatePreviewAlt": "Προεπισκόπηση προτύπου email"
             }
         },
         "campaignsDescription": "Δημιουργήστε και διαχειριστείτε καμπάνιες email για τους συνδρομητές σας",
@@ -1483,7 +1669,12 @@
         "languagePreference": "Προτίμηση Γλώσσας",
         "languageDescription": "Επιλέξτε την προτιμώμενη γλώσσα για το ταμπλό και τις ειδοποιήσεις email",
         "updating": "Ενημέρωση...",
-        "languageUpdated": "Η προτίμηση γλώσσας ενημερώθηκε επιτυχώς"
+        "languageUpdated": "Η προτίμηση γλώσσας ενημερώθηκε επιτυχώς",
+        "failedToUpdateLanguagePreference": "Αποτυχία ενημέρωσης προτίμησης γλώσσας",
+        "languageOptions": {
+            "english": "🇬🇧 English",
+            "greek": "🇬🇷 Ελληνικά (Greek)"
+        }
     },
     "websiteProgress": {
         "title": "Πρόοδος Ανάπτυξης Ιστοσελίδας",
@@ -1628,7 +1819,15 @@
         "domain": "Τομέας",
         "changeRequestRecorded": "Το αίτημα αλλαγής καταγράφηκε",
         "changesAllowed": "Επιτρεπόμενες αλλαγές",
-        "remainingChanges": "Υπόλοιπες αλλαγές"
+        "remainingChanges": "Υπόλοιπες αλλαγές",
+        "limitReached": "Το όριο εξαντλήθηκε",
+        "nearlyFull": "Σχεδόν πλήρες",
+        "available": "Διαθέσιμο",
+        "changesForThisMonth": "Αλλαγές για αυτόν τον μήνα",
+        "moreChanges": "περισσότερες αλλαγές...",
+        "noChangesRecordedForDomain": "Δεν έχουν καταγραφεί ακόμη αλλαγές για το {{domain}}",
+        "noWebsiteChangesFound": "Δεν βρέθηκαν αλλαγές ιστοσελίδας",
+        "noWebsiteChangesForMonthYet": "Δεν έχουν καταγραφεί ακόμη αλλαγές ιστοσελίδας για αυτόν τον μήνα."
     },
     "newsletter": {
         "analyticsTooltips": {
@@ -1934,9 +2133,12 @@
         "quickLinks": "Γρήγοροι Σύνδεσμοι",
         "contactUs": "Επικοινωνήστε μαζί μας",
         "legal": "Νομικά",
+        "legalInfo": "Νομικές Πληροφορίες",
         "termsOfService": "Όροι Χρήσης",
         "privacyPolicy": "Πολιτική Απορρήτου",
         "cookiePolicy": "Πολιτική Cookies",
+        "billingPolicy": "Πολιτική Χρέωσης & Συνδρομής",
+        "aup": "Πολιτική Αποδεκτής Χρήσης",
         "allRightsReserved": "Όλα τα δικαιώματα διατηρούνται"
     },
     "about": {
@@ -2104,11 +2306,24 @@
         "errorOccurred": "Παρουσιάστηκε σφάλμα"
     },
     "onboarding": {
+        "logoSuccess": {
+            "processingTitle": "Επεξεργασία πληρωμής...",
+            "errorTitle": "Σφάλμα πληρωμής",
+            "successTitle": "Η πληρωμή ολοκληρώθηκε!",
+            "processingDescription": "Παρακαλώ περιμένετε όσο ολοκληρώνουμε τη φόρμα onboarding...",
+            "redirectingDescription": "Ανακατεύθυνση στο ταμπλό σας...",
+            "errors": {
+                "invalidPaymentSession": "Μη έγκυρη συνεδρία πληρωμής",
+                "onboardingDataNotFound": "Δεν βρέθηκαν δεδομένα onboarding",
+                "completeOnboardingFailed": "Αποτυχία ολοκλήρωσης onboarding. Παρακαλώ επικοινωνήστε με την υποστήριξη."
+            }
+        },
         "draftLoaded": "Προηγούμενη Πρόοδος Φορτώθηκε",
         "draftLoadedDesc": "Η προηγούμενη πρόοδός σας έχει επαναφερθεί.",
         "saving": "Αποθήκευση...",
         "continueLater": "Συνέχεια αργότερα",
         "websiteLanguage": "Γλώσσα Ιστοσελίδας",
+        "english": "Αγγλικά",
         "greek": "Ελληνικά",
         "welcomeTitle": "Καλώς ήρθατε στο HAYC!",
         "welcomeSubtitle": "Η πληρωμή σας ολοκληρώθηκε με επιτυχία και η συνδρομή σας είναι πλέον ενεργή.",
@@ -2225,10 +2440,13 @@
             "websiteLanguage": "Επιλέξτε τη γλώσσα για την ιστοσελίδα σας",
             "contactName": "Όνομα υπεύθυνου επικοινωνίας",
             "contactPhone": "Τηλέφωνο επικοινωνίας",
+            "accountEmail": "account@email.com",
             "contactEmail": "contact@business.com",
             "businessDescription": "Περιγράψτε σύντομα τι προσφέρει η επιχείρησή σας...",
             "existingDomain": "www.yourbusiness.gr",
             "preferredDomains": "επιλογή1.gr\nεπιλογή2.com\nεπιλογή3.gr",
+            "emailProvider": "Όνομα παρόχου (Gmail, Outlook, κλπ.), στοιχεία σύνδεσης...",
+            "existingEmails": "info@yourbusiness.com\nsales@yourbusiness.com\nsupport@yourbusiness.com",
             "emailNames": "info\nsales\nsupport",
             "redirectInboxAddress": "your.main@gmail.com",
             "websiteLink": "https://www.yourwebsite.gr",
@@ -2268,6 +2486,7 @@
         "options": {
             "yes": "Ναι",
             "no": "Όχι",
+            "notProvided": "Δεν παρέχεται",
             "domainConnectionMyself": "Θα το συνδέσω εγώ, γνωρίζω",
             "domainConnectionYou": "Παρακαλώ να μου κάνετε εσείς την σύνδεση, δεν γνωρίζω",
             "domainPurchaseMyself": "Θα το αγοράσω εγώ σε δική μου πλατφόρμα",
@@ -2285,7 +2504,10 @@
             "domainNotice": "⚠️ Σημείωση: Μόλις αγοραστεί ένα domain, δεν μπορεί να αλλάξει.",
             "siteStyleCurved": "Καμπύλες / Στρογγυλεμένες",
             "siteStyleStraightDesc": "Κοφτερές άκρες και ευθείες γραμμές",
-            "siteStyleCurvedDesc": "Απαλές άκρες και στρογγυλεμένες γωνίες"
+            "siteStyleCurvedDesc": "Απαλές άκρες και στρογγυλεμένες γωνίες",
+            "statusDraft": "Πρόχειρο",
+            "statusSubmitted": "Υποβλήθηκε",
+            "statusCompleted": "Ολοκληρώθηκε"
         },
         "uploadTexts": {
             "uploadTextFiles": "Ανεβάστε τα αρχεία κειμένου σας (Word docs, PDFs, κλπ.)",
@@ -2308,6 +2530,10 @@
             "onceDomainPurchasedCredentials": "Μόλις αγοράσεις το domain σου, θα χρειαστούμε τα στοιχεία σύνδεσης της πλατφόρμας που έχεις κάνει την αγορά.",
             "actionPurchaseAndConnectDomain": "🛒 Ενέργεια: Αγορά και σύνδεση domain",
             "weWillPurchaseAndConnectDomain": "Θα αγοράσουμε το domain που προτιμάς και θα αναλάβουμε όλες τις ρυθμίσεις DNS για εσένα.",
+            "primaryColor": "Κύριο Χρώμα",
+            "backgroundColor": "Χρώμα Φόντου",
+            "textColor": "Χρώμα Κειμένου",
+            "accentColor": "Χρώμα Έμφασης",
             "colorLabels": {
                 "color1": "Χρώμα 1",
                 "color2": "Χρώμα 2",
@@ -2427,6 +2653,7 @@
             "proceedToPayment": "Συνέχεια στην Πληρωμή"
         },
         "toasts": {
+            "initializeError": "Αποτυχία αρχικοποίησης της φόρμας onboarding. Παρακαλώ ανανεώστε τη σελίδα.",
             "initUploadError": "Αποτυχία προετοιμασίας ανεβάσματος. Παρακαλώ δοκιμάστε ξανά.",
             "prepareUploadError": "Αποτυχία προετοιμασίας ανεβάσματος. Παρακαλώ δοκιμάστε ξανά.",
             "uploadSuccessful": "Επιτυχές Ανέβασμα",
@@ -2722,6 +2949,16 @@
             "button": "Δημιουργία",
             "courseOption": "Μάθημα"
         },
+        "sync": {
+            "syncToWebsite": "Συγχρονισμός με την ιστοσελίδα",
+            "syncing": "Συγχρονισμός...",
+            "coursesWillSync": "{{count}} μαθήματα θα συγχρονιστούν",
+            "lastSynced": "Τελευταίος συγχρονισμός: {{date}}",
+            "upToDate": "Ενημερωμένο",
+            "changesDetected": "Εντοπίστηκαν αλλαγές",
+            "syncSuccess": "Τα προϊόντα συγχρονίστηκαν με την ιστοσελίδα σας",
+            "syncFailed": "Δεν ήταν δυνατός ο συγχρονισμός. Δοκιμάστε ξανά."
+        },
         "table": {
             "title": "Τίτλος",
             "price": "Τιμή",
@@ -2786,6 +3023,98 @@
                 "selectStatus": "Επιλέξτε κατάσταση"
             }
         },
+        "courseEditor": {
+            "defaultNewCourseTitle": "Νέο Μάθημα",
+            "defaultCourseTitle": "Μάθημα",
+            "tabs": {
+                "details": "Λεπτομέρειες",
+                "curriculum": "Πρόγραμμα",
+                "certificate": "Πιστοποιητικό"
+            },
+            "fields": {
+                "title": "Τίτλος",
+                "description": "Περιγραφή",
+                "thumbnailUrl": "URL μικρογραφίας",
+                "previewVideoUrl": "URL βίντεο προεπισκόπησης",
+                "language": "Γλώσσα",
+                "estimatedDurationMinutes": "Εκτιμώμενη διάρκεια (λεπτά)",
+                "priceEuro": "Τιμή (€)"
+            },
+            "certificate": {
+                "issueOnCompletion": "Έκδοση πιστοποιητικού με την ολοκλήρωση",
+                "description": "Όταν είναι ενεργό, οι μαθητές θα λαμβάνουν πιστοποιητικό μετά την ολοκλήρωση όλων των μαθημάτων."
+            },
+            "toasts": {
+                "failedToLoadCourse": "Αποτυχία φόρτωσης μαθήματος",
+                "failedToSaveCourse": "Αποτυχία αποθήκευσης μαθήματος"
+            },
+            "curriculum": {
+                "saveCourseFirst": "Αποθηκεύστε πρώτα τα στοιχεία του μαθήματος πριν προσθέσετε πρόγραμμα.",
+                "loadingCurriculum": "Φόρτωση προγράμματος...",
+                "actions": {
+                    "addChapter": "+ Προσθήκη ενότητας",
+                    "addLesson": "+ Προσθήκη μαθήματος"
+                },
+                "tabs": {
+                    "attachments": "Συνημμένα"
+                },
+                "fields": {
+                    "introVideoUrl": "URL εισαγωγικού βίντεο",
+                    "videoUrl": "URL βίντεο",
+                    "durationSeconds": "Διάρκεια (δευτερόλεπτα)",
+                    "freePreview": "Δωρεάν προεπισκόπηση"
+                },
+                "placeholders": {
+                    "lessonTitle": "Τίτλος μαθήματος",
+                    "chapterTitle": "Τίτλος ενότητας"
+                },
+                "validation": {
+                    "titleRequired": "Ο τίτλος είναι υποχρεωτικός"
+                },
+                "deleteDialog": {
+                    "title": "Επιβεβαίωση διαγραφής",
+                    "description": "Είστε σίγουροι ότι θέλετε να διαγράψετε το \"{{label}}\";",
+                    "deleting": "Διαγραφή..."
+                },
+                "attachments": {
+                    "defaultTitle": "συνημμένο",
+                    "uploadFile": "Μεταφόρτωση αρχείου",
+                    "uploading": "Μεταφόρτωση...",
+                    "loading": "Φόρτωση συνημμένων...",
+                    "empty": "Δεν υπάρχουν συνημμένα ακόμα.",
+                    "deleteAriaLabel": "Διαγραφή συνημμένου",
+                    "uploadedTitle": "Ανέβηκε",
+                    "uploadedDescription": "Το συνημμένο προστέθηκε σε αυτό το μάθημα.",
+                    "removedTitle": "Αφαιρέθηκε",
+                    "removedDescription": "Το συνημμένο διαγράφηκε.",
+                    "uploadErrorTitle": "Σφάλμα μεταφόρτωσης"
+                },
+                "errors": {
+                    "failedToLoadCurriculum": "Αποτυχία φόρτωσης προγράμματος.",
+                    "failedToLoadChapters": "Αποτυχία φόρτωσης ενοτήτων",
+                    "failedToLoadLessons": "Αποτυχία φόρτωσης μαθημάτων.",
+                    "failedToReorderChapters": "Αποτυχία αναδιάταξης ενοτήτων.",
+                    "failedToReorderLessons": "Αποτυχία αναδιάταξης μαθημάτων.",
+                    "failedToUpdateChapter": "Αποτυχία ενημέρωσης ενότητας.",
+                    "failedToCreateChapter": "Αποτυχία δημιουργίας ενότητας.",
+                    "failedToUpdateLesson": "Αποτυχία ενημέρωσης μαθήματος.",
+                    "failedToCreateLesson": "Αποτυχία δημιουργίας μαθήματος.",
+                    "failedToDeleteChapter": "Αποτυχία διαγραφής ενότητας",
+                    "failedToDeleteLesson": "Αποτυχία διαγραφής μαθήματος",
+                    "failedToDeleteItem": "Αποτυχία διαγραφής στοιχείου.",
+                    "failedToLoadAttachments": "Αποτυχία φόρτωσης συνημμένων.",
+                    "failedToDeleteAttachment": "Αποτυχία διαγραφής συνημμένου.",
+                    "uploadWidgetNotReady": "Το εργαλείο μεταφόρτωσης δεν είναι έτοιμο. Ανανεώστε τη σελίδα και δοκιμάστε ξανά.",
+                    "failedToGetConfiguration": "Αποτυχία λήψης ρυθμίσεων",
+                    "failedToInitializeUpload": "Αποτυχία αρχικοποίησης μεταφόρτωσης. Δοκιμάστε ξανά.",
+                    "failedToSaveAttachment": "Αποτυχία αποθήκευσης συνημμένου",
+                    "failedToGetUploadSignature": "Αποτυχία λήψης υπογραφής μεταφόρτωσης",
+                    "failedToPrepareUpload": "Αποτυχία προετοιμασίας μεταφόρτωσης. Δοκιμάστε ξανά.",
+                    "failedToUploadFile": "Αποτυχία μεταφόρτωσης αρχείου. Δοκιμάστε ξανά.",
+                    "uploadSucceededButSaveFailed": "Η μεταφόρτωση ολοκληρώθηκε, αλλά απέτυχε η αποθήκευση του συνημμένου."
+                }
+            }
+        },
         "brandModal": {
             "title": "Ρύθμιση Εμφάνισης",
             "subtitle": "Προσαρμόστε πώς φαίνεται το HDP store σας στους πελάτες σας. Αυτές οι ρυθμίσεις εφαρμόζονται στην πύλη ψηφιακών προϊόντων και όχι στην κύρια ιστοσελίδα σας.",
@@ -2836,7 +3165,8 @@
         "successMessage": "Εκτιμούμε που αφιερώσατε χρόνο να μοιραστείτε τις σκέψεις σας. Αυτό μας βοηθά να βελτιώσουμε την υπηρεσία μας.",
         "backToDashboard": "Επιστροφή στον Πίνακα Ελέγχου",
         "selectReason": "Παρακαλώ επιλέξτε έναν λόγο",
-        "feedbackSent": "Τα σχόλια υποβλήθηκαν με επιτυχία"
+        "feedbackSent": "Τα σχόλια υποβλήθηκαν με επιτυχία",
+        "submitFailed": "Αποτυχία υποβολής σχολίων"
     },
     "forgotPassword": {
         "title": "Ξεχάσατε τον Κωδικό σας;",

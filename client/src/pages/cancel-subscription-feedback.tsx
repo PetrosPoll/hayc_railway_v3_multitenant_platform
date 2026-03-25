@@ -29,7 +29,7 @@ export default function CancelSubscriptionFeedback() {
     onError: (error) => {
       toast({
         title: t("dashboard.error"),
-        description: error instanceof Error ? error.message : "Failed to submit feedback",
+        description: error instanceof Error ? error.message : t("cancellationFeedback.submitFailed"),
         variant: "destructive",
       });
     },
@@ -38,7 +38,7 @@ export default function CancelSubscriptionFeedback() {
   const handleSubmit = () => {
     if (!selectedReason) {
       toast({
-        title: "Error",
+        title: t("dashboard.error"),
         description: t("cancellationFeedback.selectReason"),
         variant: "destructive",
       });

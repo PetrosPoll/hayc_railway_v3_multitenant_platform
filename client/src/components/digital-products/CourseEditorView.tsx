@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -95,20 +96,21 @@ interface Props {
 
 export function CourseEditorView({ siteId, mode, courseId, products, onBack, onCreated, onUpdated }: Props) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const isEditMode = mode === "edit";
 
   const [form, setForm] = useState<CourseFormState>(DEFAULT_FORM);
   const [originalPayload, setOriginalPayload] = useState<Record<string, unknown>>(toPayload(DEFAULT_FORM));
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
-  const [resolvedTitle, setResolvedTitle] = useState("New Course");
+  const [resolvedTitle, setResolvedTitle] = useState(t("digitalProductsManagement.courseEditor.defaultNewCourseTitle"));
 
   useEffect(() => {
     if (!isEditMode) {
       const createPayload = toPayload(DEFAULT_FORM);
       setForm(DEFAULT_FORM);
       setOriginalPayload(createPayload);
-      setResolvedTitle("New Course");
+      setResolvedTitle(t("digitalProductsManagement.courseEditor.defaultNewCourseTitle"));
       setIsLoading(false);
       return;
     }
@@ -130,7 +132,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
           if (!cancelled) {
             setForm(mapped);
             setOriginalPayload(toPayload(mapped));
-            setResolvedTitle(mapped.title || "Course");
+            setResolvedTitle(mapped.title || t("digitalProductsManagement.courseEditor.defaultCourseTitle"));
           }
           return;
         }
@@ -157,13 +159,13 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
           const mapped = toForm(found);
           setForm(mapped);
           setOriginalPayload(toPayload(mapped));
-          setResolvedTitle(mapped.title || "Course");
+          setResolvedTitle(mapped.title || t("digitalProductsManagement.courseEditor.defaultCourseTitle"));
         }
       } catch (_error) {
         if (!cancelled) {
           toast({
-            title: "Error",
-            description: "Failed to load course",
+            title: t("digitalProductsManagement.toasts.errorTitle"),
+            description: t("digitalProductsManagement.courseEditor.toasts.failedToLoadCourse"),
             variant: "destructive",
           });
         }
@@ -177,7 +179,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
     return () => {
       cancelled = true;
     };
-  }, [isEditMode, courseId, siteId, products, toast]);
+  }, [isEditMode, courseId, siteId, products, toast, t]);
 
   const currentPayload = useMemo(() => toPayload(form), [form]);
   const changedFields = useMemo(() => {
@@ -211,7 +213,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
         body: JSON.stringify(body),
       });
       if (!response.ok) {
-        throw new Error("Failed to save course");
+        throw new Error(t("digitalProductsManagement.courseEditor.toasts.failedToSaveCourse"));
       }
 
       if (!isEditMode) {
@@ -219,17 +221,25 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
         const newId = created?.id ? String(created.id) : undefined;
         const mapped = toPayload(form);
         setOriginalPayload(mapped);
-        toast({ title: "Success", description: "Course created successfully" });
+        toast({
+          title: t("digitalProductsManagement.toasts.successTitle"),
+          description: t("digitalProductsManagement.toasts.courseCreated"),
+        });
         onCreated(newId, created ?? undefined);
       } else {
         setOriginalPayload(currentPayload);
-        toast({ title: "Success", description: "Course updated successfully" });
+        toast({
+          title: t("digitalProductsManagement.toasts.successTitle"),
+          description: t("digitalProductsManagement.toasts.courseUpdated"),
+        });
         onUpdated();
       }
     } catch (_error) {
       toast({
-        title: "Error",
-        description: isEditMode ? "Failed to update course" : "Failed to create course",
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: isEditMode
+          ? t("digitalProductsManagement.toasts.failedToUpdateCourse")
+          : t("digitalProductsManagement.toasts.failedToCreateCourse"),
         variant: "destructive",
       });
     } finally {
@@ -246,25 +256,27 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
             className="text-sm text-muted-foreground hover:underline"
             onClick={onBack}
           >
-            ← Digital Products
+            ← {t("digitalProductsManagement.title")}
           </button>
-          <h1 className="text-2xl font-semibold">{isEditMode ? resolvedTitle : "New Course"}</h1>
+          <h1 className="text-2xl font-semibold">
+            {isEditMode ? resolvedTitle : t("digitalProductsManagement.courseEditor.defaultNewCourseTitle")}
+          </h1>
         </div>
         <Button type="button" onClick={onSave} disabled={!canSave}>
-          {isSaving ? "Saving..." : "Save"}
+          {isSaving ? t("digitalProductsManagement.common.saving") : t("digitalProductsManagement.common.save")}
         </Button>
       </div>
 
       <Tabs defaultValue="details">
         <TabsList>
-          <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="curriculum">Curriculum</TabsTrigger>
-          <TabsTrigger value="certificate">Certificate</TabsTrigger>
+          <TabsTrigger value="details">{t("digitalProductsManagement.courseEditor.tabs.details")}</TabsTrigger>
+          <TabsTrigger value="curriculum">{t("digitalProductsManagement.courseEditor.tabs.curriculum")}</TabsTrigger>
+          <TabsTrigger value="certificate">{t("digitalProductsManagement.courseEditor.tabs.certificate")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="space-y-5 pt-4">
           <div className="space-y-2">
-            <Label htmlFor="course-title">Title</Label>
+            <Label htmlFor="course-title">{t("digitalProductsManagement.courseEditor.fields.title")}</Label>
             <Input
               id="course-title"
               value={form.title}
@@ -273,7 +285,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="course-description">Description</Label>
+            <Label htmlFor="course-description">{t("digitalProductsManagement.courseEditor.fields.description")}</Label>
             <Textarea
               id="course-description"
               rows={4}
@@ -283,7 +295,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="course-thumbnail">Thumbnail URL</Label>
+            <Label htmlFor="course-thumbnail">{t("digitalProductsManagement.courseEditor.fields.thumbnailUrl")}</Label>
             <Input
               id="course-thumbnail"
               value={form.thumbnail}
@@ -292,7 +304,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="course-preview-video-url">Preview Video URL</Label>
+            <Label htmlFor="course-preview-video-url">{t("digitalProductsManagement.courseEditor.fields.previewVideoUrl")}</Label>
             <Input
               id="course-preview-video-url"
               value={form.previewVideoUrl}
@@ -301,7 +313,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="course-language">Language</Label>
+            <Label htmlFor="course-language">{t("digitalProductsManagement.courseEditor.fields.language")}</Label>
             <Select
               value={form.language}
               onValueChange={(value) => setForm((prev) => ({ ...prev, language: value as CourseLanguage }))}
@@ -310,14 +322,14 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="el">Greek</SelectItem>
-                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="el">{t("onboarding.greek")}</SelectItem>
+                <SelectItem value="en">{t("onboarding.english")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="course-duration">Estimated Duration (minutes)</Label>
+            <Label htmlFor="course-duration">{t("digitalProductsManagement.courseEditor.fields.estimatedDurationMinutes")}</Label>
             <Input
               id="course-duration"
               type="number"
@@ -331,7 +343,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="course-price">Price (€)</Label>
+            <Label htmlFor="course-price">{t("digitalProductsManagement.courseEditor.fields.priceEuro")}</Label>
             <Input
               id="course-price"
               type="number"
@@ -343,7 +355,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="course-status">Status</Label>
+            <Label htmlFor="course-status">{t("digitalProductsManagement.table.status")}</Label>
             <Select
               value={form.status}
               onValueChange={(value) => setForm((prev) => ({ ...prev, status: value as ProductStatus }))}
@@ -352,8 +364,8 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="draft">{t("digitalProductsManagement.status.draft")}</SelectItem>
+                <SelectItem value="published">{t("digitalProductsManagement.status.published")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -372,10 +384,12 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
                 setForm((prev) => ({ ...prev, certificateEnabled: checked === true }))
               }
             />
-            <Label htmlFor="course-certificate-enabled">Issue certificate on completion</Label>
+            <Label htmlFor="course-certificate-enabled">
+              {t("digitalProductsManagement.courseEditor.certificate.issueOnCompletion")}
+            </Label>
           </div>
           <p className="text-sm text-muted-foreground">
-            When enabled, students will receive a certificate after completing all lessons.
+            {t("digitalProductsManagement.courseEditor.certificate.description")}
           </p>
         </TabsContent>
       </Tabs>

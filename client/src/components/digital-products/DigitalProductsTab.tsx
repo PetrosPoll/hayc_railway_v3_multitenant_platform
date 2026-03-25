@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,18 +48,38 @@ export function DigitalProductsTab({ siteId }: Props) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [brandModalOpen, setBrandModalOpen] = useState(false);
   const [previewCourse, setPreviewCourse] = useState<Product | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/hdp/products/${encodeURIComponent(siteId)}`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
+      const [productsRes, configRes] = await Promise.all([
+        fetch(`/api/hdp/products/${encodeURIComponent(siteId)}`, {
+          credentials: "include",
+        }),
+        fetch(`/api/sites/${encodeURIComponent(siteId)}/config`, {
+          credentials: "include",
+        }),
+      ]);
+
+      if (configRes.ok) {
+        try {
+          const cfg = (await configRes.json()) as Record<string, unknown>;
+          const dpc = cfg.digitalProductsConfig as { lastSyncedAt?: unknown } | undefined;
+          setLastSyncedAt(typeof dpc?.lastSyncedAt === "string" ? dpc.lastSyncedAt : null);
+        } catch {
+          setLastSyncedAt(null);
+        }
+      } else {
+        setLastSyncedAt(null);
+      }
+
+      if (!productsRes.ok) {
         throw new Error("Failed to load products");
       }
-      const data = await res.json();
+      const data = await productsRes.json();
       if (Array.isArray(data)) {
         setProducts(data as Product[]);
       } else if (Array.isArray((data as { products?: Product[] }).products)) {
@@ -189,6 +209,86 @@ export function DigitalProductsTab({ siteId }: Props) {
     }
   };
 
+  const publishedCourseCount = useMemo(() => {
+    return products.filter((p) => p.type === "course" && p.status === "published").length;
+  }, [products]);
+
+  const hasChangesSinceLastSync = useMemo(() => {
+    if (!lastSyncedAt) return true;
+
+    const lastSyncedDate = new Date(lastSyncedAt);
+    const lastSyncedMs = lastSyncedDate.getTime();
+    if (Number.isNaN(lastSyncedMs)) return true;
+
+    return products.some((product) => {
+      if (product.type !== "course" || product.status !== "published") return false;
+      if (!product.updatedAt) return false;
+      const updatedAtMs = new Date(product.updatedAt).getTime();
+      if (Number.isNaN(updatedAtMs)) return false;
+      return updatedAtMs > lastSyncedMs;
+    });
+  }, [lastSyncedAt, products]);
+
+  const isSyncButtonDisabled = isSyncing || isLoading || !hasChangesSinceLastSync;
+
+  const lastSyncedLabel = useMemo(() => {
+    if (!lastSyncedAt) return null;
+    const d = new Date(lastSyncedAt);
+    if (Number.isNaN(d.getTime())) return lastSyncedAt;
+    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }, [lastSyncedAt]);
+
+  const handleSyncToWebsite = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch(`/api/hdp/products/${encodeURIComponent(siteId)}/sync`, {
+        method: "POST",
+        credentials: "include",
+      });
+      let body: Record<string, unknown> = {};
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        try {
+          body = (await res.json()) as Record<string, unknown>;
+        } catch {
+          body = {};
+        }
+      }
+      if (!res.ok) {
+        const msg =
+          typeof body.error === "string"
+            ? body.error
+            : typeof body.details === "string"
+              ? body.details
+              : t("digitalProductsManagement.sync.syncFailed");
+        toast({
+          title: t("digitalProductsManagement.toasts.errorTitle"),
+          description: msg,
+          variant: "destructive",
+        });
+        return;
+      }
+      const synced = body.lastSyncedAt;
+      if (typeof synced === "string") {
+        setLastSyncedAt(synced);
+      } else {
+        setLastSyncedAt(new Date().toISOString());
+      }
+      toast({
+        title: t("digitalProductsManagement.toasts.successTitle"),
+        description: t("digitalProductsManagement.sync.syncSuccess"),
+      });
+    } catch {
+      toast({
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.sync.syncFailed"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   if (view === "course-new" || view === "course-edit") {
     return (
       <div>
@@ -237,6 +337,54 @@ export function DigitalProductsTab({ siteId }: Props) {
           <CreateProductButton onSelect={handleCreateSelect} />
         </div>
       </div>
+
+      <Card className="mb-6">
+        <CardContent className="pt-6 space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={handleSyncToWebsite}
+              disabled={isSyncButtonDisabled}
+              data-testid="button-sync-digital-products-to-website"
+            >
+              {isSyncing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("digitalProductsManagement.sync.syncing")}
+                </>
+              ) : (
+                t("digitalProductsManagement.sync.syncToWebsite")
+              )}
+            </Button>
+            <span
+              className={`inline-flex items-center gap-1 text-xs sm:text-sm ${
+                hasChangesSinceLastSync ? "text-amber-600" : "text-green-600"
+              }`}
+            >
+              {hasChangesSinceLastSync ? (
+                <>
+                  <span className="h-2 w-2 rounded-full bg-amber-500" />
+                  {t("digitalProductsManagement.sync.changesDetected")}
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  {t("digitalProductsManagement.sync.upToDate")}
+                </>
+              )}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t("digitalProductsManagement.sync.coursesWillSync", { count: publishedCourseCount })}
+          </p>
+          {lastSyncedLabel ? (
+            <p className="text-sm text-muted-foreground">
+              {t("digitalProductsManagement.sync.lastSynced", { date: lastSyncedLabel })}
+            </p>
+          ) : null}
+        </CardContent>
+      </Card>
 
       {isLoading ? (
         <Card>

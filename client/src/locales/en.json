@@ -69,7 +69,15 @@
         "in-progress": "In Progress",
         "waiting": "We are waiting for information",
         "completed": "Completed",
-        "cancelled": "Cancelled"
+        "cancelled": "Cancelled",
+        "connected": "Connected",
+        "active": "Active",
+        "noSubscription": "No Subscription",
+        "pastDue": "Past Due",
+        "unpaid": "Unpaid",
+        "incomplete": "Incomplete",
+        "trial": "Trial",
+        "paused": "Paused"
     },
     "actions": {
         "selectUser": "Select a user",
@@ -88,6 +96,9 @@
         "getStarted": "Get Started",
         "learnMore": "Learn More",
         "scrollDown": "Scroll Down",
+        "view": "View",
+        "deleting": "Deleting...",
+        "disconnect": "Disconnect",
         "upgradeToYearlyDialog": {
             "title": "Upgrade to Yearly & Save",
             "description": "Switch to yearly billing and unlock significant savings",
@@ -1014,6 +1025,10 @@
         "emailLimitReached": "Monthly email limit reached.",
         "addonPurchaseSuccess": "Add-on purchased successfully!",
         "loading": "Loading...",
+        "currentPlanBadge": "Current Plan",
+        "planSuffix": "{{tier}} Plan",
+        "websiteNotLaunched": "Your website has not been completed yet",
+        "changesAvailableAfterLaunch": "While your website is not yet complete, you can make unlimited changes.",
         "confirmPurchase": "Confirm Purchase",
         "reviewPurchaseDetails": "Review the details of your purchase below",
         "title": "Dashboard",
@@ -1159,10 +1174,48 @@
         "newsletter": "Newsletter",
         "booking": "Booking",
         "payments": "Payments",
+        "content": "Content",
         "digitalProducts": "Digital Products",
         "bookingOpening": "Opening Booking...",
         "bookingError": "Could not open Booking",
         "bookingErrorDescription": "Please try again.",
+        "websiteNotFound": "Website not found",
+        "stripeConnectedSuccess": "Stripe account connected successfully",
+        "stripeConnectFailed": "Something went wrong connecting your Stripe account. Please try again.",
+        "logoutFailed": "Failed to logout. Please try again.",
+        "stripeDisconnected": "Stripe account disconnected",
+        "stripeDisconnectFailed": "Failed to disconnect",
+        "stripeReuseFailed": "Failed to reuse account",
+        "paymentManagementOpenFailed": "Failed to open payment management. Please try again.",
+        "mediaUploadedSuccess": "Media uploaded successfully",
+        "mediaUploadFailed": "Failed to upload media",
+        "mediaDeletedSuccess": "Media deleted successfully",
+        "mediaDeleteFailed": "Failed to delete media",
+        "stripeConnectStartFailed": "Failed to connect",
+        "stripeConnectTitle": "Stripe Connect",
+        "stripeConnectDescription": "Connect your Stripe account to accept payments through HAYC addons (e.g. bookings, products) on this site. You get paid directly; HAYC does not hold funds.",
+        "connectWithStripe": "Connect with Stripe",
+        "stripeOnboardingIncomplete": "Stripe onboarding is incomplete. Please finish connecting your account.",
+        "notAvailable": "N/A",
+        "accountId": "Account ID",
+        "connectedAt": "Connected at",
+        "uploadWidgetNotReady": "Upload widget not ready. Please refresh the page and try again.",
+        "uploadInitFailed": "Failed to initialize upload. Please try again.",
+        "uploadPrepareFailed": "Failed to prepare upload. Please try again.",
+        "uploadFailed": "Upload failed. Please try again.",
+        "uploadWidgetInitFailed": "Failed to initialize upload widget. Please refresh and try again.",
+        "deleteMediaFileTitle": "Delete Media File?",
+        "deleteMediaFileDescription": "This will permanently delete the file from your website media library. This action cannot be undone.",
+        "digitalProductsDisabled": "Digital Products are disabled for this website.",
+        "askAdminEnableDigitalProducts": "Ask your admin to enable Digital Products for this project.",
+        "digitalProductsNotAvailableYet": "Digital Products are not available for this website yet.",
+        "disconnectStripeTitle": "Disconnect Stripe account?",
+        "disconnectStripeDescription": "This site will no longer be able to accept payments through HAYC addons until you connect again.",
+        "existingStripeAccountTitle": "You already have a connected Stripe account",
+        "existingStripeAccountDescription": "Would you like to use an existing Stripe account from one of your other websites, or connect a new one?",
+        "useThisAccount": "Use this account",
+        "connectNewAccount": "Connect a new account",
+        "connectNewAccountDescription": "Please disconnect the existing account on the other site first and reconnect here.",
         "emailBuilder": "Email Builder",
         "emailBuilderDescription": "Design and create beautiful email templates with our visual editor",
         "groups": "Groups",
@@ -1276,6 +1329,43 @@
             "performanceMetricsDescription": "Monitor bounce rate and session duration",
             "requestUpgrade": "Request Upgrade"
         },
+        "analyticsData": {
+            "title": "Website Analytics",
+            "loading": "Loading analytics...",
+            "badgeNew": "New",
+            "subtitle": "Comprehensive insights for your website",
+            "range": {
+                "last7Days": "Last 7 days",
+                "last30Days": "Last 30 days",
+                "last90Days": "Last 90 days"
+            },
+            "emptyTitle": "No Analytics Data Yet",
+            "emptyDescription": "Analytics tracking has not been set up for your website yet. Please contact us to get your tracking code installed and start viewing your website statistics.",
+            "metrics": {
+                "totalPageviews": "Total Pageviews",
+                "totalPageviewsHint": "Total pages viewed",
+                "uniqueVisitors": "Unique Visitors",
+                "uniqueVisitorsHint": "Different users",
+                "bounceRate": "Bounce Rate",
+                "bounceRateHint": "Single page sessions",
+                "avgSession": "Avg. Session",
+                "avgSessionHint": "Time on site"
+            },
+            "trafficOverTime": "Traffic Over Time",
+            "chart": {
+                "pageviews": "Pageviews",
+                "visitors": "Visitors"
+            },
+            "deviceBreakdown": "Device Breakdown",
+            "trafficSources": "Traffic Sources",
+            "topPages": "Top Pages",
+            "views": "views",
+            "noPageviewData": "No pageview data yet",
+            "topReferrers": "Top Referrers",
+            "directUnknown": "Direct / Unknown",
+            "visits": "visits",
+            "noReferrerData": "No referrer data yet"
+        },
         "upgradeModal": {
             "successTitle": "Request Submitted!",
             "successDescription": "Your upgrade request has been sent to our team. We'll contact you shortly to process your subscription upgrade.",
@@ -1323,6 +1413,7 @@
             "description": "Create and manage your email campaigns",
             "createButton": "Create Campaign",
             "searchPlaceholder": "Search campaigns...",
+            "sortPlaceholder": "Sort by...",
             "sort": {
                 "newestFirst": "Newest First",
                 "oldestFirst": "Oldest First",
@@ -1341,7 +1432,31 @@
                 "createdTitle": "Campaign created successfully",
                 "createdDescription": "Your campaign has been created.",
                 "updatedTitle": "Campaign updated successfully",
-                "updatedDescription": "Your campaign has been updated."
+                "updatedDescription": "Your campaign has been updated.",
+                "sentTitle": "Campaign sent successfully",
+                "sentDescription": "Your campaign has been sent to all recipients.",
+                "sendFailedTitle": "Failed to send campaign",
+                "sendFailedDescription": "An error occurred while sending the campaign.",
+                "duplicatedTitle": "Campaign duplicated",
+                "duplicatedDescription": "A copy of the campaign has been created as a draft.",
+                "duplicateFailedTitle": "Failed to duplicate campaign",
+                "duplicateFailedDescription": "An error occurred while duplicating the campaign.",
+                "deletedTitle": "Campaign deleted",
+                "deletedDescription": "The campaign has been permanently deleted.",
+                "deleteFailedTitle": "Failed to delete campaign",
+                "deleteFailedDescription": "An error occurred while deleting the campaign.",
+                "bulkDeletedTitle": "Campaigns deleted",
+                "bulkDeletedDescription": "{{count}} campaign(s) have been deleted.",
+                "bulkDeleteFailedTitle": "Failed to delete campaigns",
+                "bulkDeleteFailedDescription": "An error occurred while deleting the campaigns.",
+                "scheduleCancelledTitle": "Schedule cancelled",
+                "scheduleCancelledDescription": "Campaign has been moved back to drafts",
+                "cancelScheduleFailedDescription": "Failed to cancel schedule",
+                "saveFailedDescription": "Failed to save campaign"
+            },
+            "cancelSchedule": {
+                "button": "Cancel Schedule",
+                "confirm": "Are you sure you want to cancel the schedule? The campaign will be saved as a draft."
             },
             "status": {
                 "draft": "Draft",
@@ -1371,7 +1486,14 @@
                 "sending": "Sending...",
                 "sendingTitle": "Sending your campaign",
                 "sendingDescription": "This may take several minutes for large contact lists. Please don't close this page.",
-                "sendingToRecipients": "Sending to {{count}} recipients..."
+                "sendingToRecipients": "Sending to {{count}} recipients...",
+                "sendingAriaLabel": "Sending campaign"
+            },
+            "deleteDialog": {
+                "title": "Delete Campaign",
+                "description": "Are you sure you want to delete this campaign? This action cannot be undone.",
+                "cancel": "Cancel",
+                "confirm": "Delete"
             },
             "bulkDeleteDialog": {
                 "title": "Delete Campaigns",
@@ -1399,7 +1521,9 @@
                     "selectDate": "Select Date",
                     "pickDate": "Pick a date",
                     "selectTime": "Select Time",
-                    "scheduledToSend": "Scheduled to send:"
+                    "scheduledToSend": "Scheduled to send:",
+                    "hourPlaceholder": "HH",
+                    "minutePlaceholder": "MM"
                 },
                 "fields": {
                     "title": "Campaign Title *",
@@ -1414,7 +1538,20 @@
                     "title": "e.g., Monthly Newsletter - January 2024",
                     "subject": "Enter the email subject line",
                     "senderName": "Your Company",
+                    "senderEmail": "hello@yourcompany.com",
                     "description": "Internal notes about this campaign"
+                },
+                "validation": {
+                    "titleRequired": "Title is required",
+                    "subjectRequired": "Subject is required",
+                    "senderNameRequired": "Sender name is required",
+                    "validEmailRequired": "Valid email is required",
+                    "senderEmailRequired": "Sender email is required",
+                    "templateRequiredTitle": "Template required",
+                    "templateRequiredStepDescription": "Please select an email template before continuing",
+                    "templateRequiredSubmitDescription": "Please select an email template before sending the campaign",
+                    "scheduleTimeRequiredTitle": "Schedule time required",
+                    "scheduleTimeRequiredDescription": "Please select a time to schedule the campaign or choose \"Send Now\""
                 },
                 "hints": {
                     "selectMultiple": "Select one or more",
@@ -1442,6 +1579,10 @@
                     "selectedStatuses": "Status Filter",
                     "noTagsSelected": "No tags selected",
                     "noStatusSelected": "No status selected",
+                    "excludeByTags": "Exclude by Tags",
+                    "excludeByTagsDescription": "Contacts with any of the selected tags will be excluded from this campaign.",
+                    "excludedContactsPreview": "{{count}} contact(s) will be excluded:",
+                    "andMore": "...and {{count}} more",
                     "count": "recipients",
                     "listTitle": "Recipients (matching tags and status filters):",
                     "noName": "No name",
@@ -1472,6 +1613,49 @@
                     "creating": "Creating...",
                     "updating": "Updating..."
                 }
+            },
+            "analytics": {
+                "fetchFailed": "Failed to fetch campaign analytics",
+                "notFound": "Campaign not found",
+                "backToCampaigns": "Back to Campaigns",
+                "refresh": "Refresh",
+                "sentAt": "Sent",
+                "scheduledFor": "Scheduled",
+                "draftNotSent": "Draft - Not sent",
+                "deliveryPerformance": "Delivery Performance",
+                "engagementMetrics": "Engagement Metrics",
+                "metrics": {
+                    "sent": "Sent",
+                    "delivered": "Delivered",
+                    "deliveryRate": "delivery rate",
+                    "bounces": "Bounces",
+                    "bounceRate": "bounce rate",
+                    "complaints": "Complaints",
+                    "complaintRate": "complaint rate",
+                    "opens": "Opens",
+                    "openRate": "open rate",
+                    "clicks": "Clicks",
+                    "clickRate": "click rate",
+                    "clickThroughRate": "Click-Through Rate",
+                    "ofOpensClicked": "of opens clicked"
+                },
+                "campaignDetails": "Campaign Details",
+                "campaignDetailsDescription": "Information about this campaign",
+                "fields": {
+                    "subjectLine": "Subject Line",
+                    "recipientTags": "Recipient Tags",
+                    "senderName": "Sender Name",
+                    "senderEmail": "Sender Email",
+                    "excludedSubscribers": "Excluded Subscribers",
+                    "status": "Status",
+                    "template": "Template"
+                },
+                "legacyGroup": "Legacy Group",
+                "noTags": "No tags",
+                "subscribersExcluded": "{{count}} subscribers excluded",
+                "emailDesignPreview": "Email Design Preview",
+                "emailDesignPreviewDescription": "Preview of the email template used in this campaign",
+                "emailTemplatePreviewAlt": "Email template preview"
             }
         },
         "campaignsDescription": "Create and manage email campaigns for your subscribers",
@@ -1485,7 +1669,12 @@
         "languagePreference": "Language Preference",
         "languageDescription": "Choose your preferred language for dashboard and email notifications",
         "updating": "Updating...",
-        "languageUpdated": "Language preference updated successfully"
+        "languageUpdated": "Language preference updated successfully",
+        "failedToUpdateLanguagePreference": "Failed to update language preference",
+        "languageOptions": {
+            "english": "🇬🇧 English",
+            "greek": "🇬🇷 Ελληνικά (Greek)"
+        }
     },
     "newsletter": {
         "analyticsTooltips": {
@@ -1986,7 +2175,15 @@
         "noChangesDescription": "No changes have been requested yet",
         "recentChanges": "Recent Changes",
         "recordedBy": "Recorded by",
-        "unlimited": "Unlimited"
+        "unlimited": "Unlimited",
+        "limitReached": "Limit Reached",
+        "nearlyFull": "Nearly Full",
+        "available": "Available",
+        "changesForThisMonth": "Changes for this month",
+        "moreChanges": "more changes...",
+        "noChangesRecordedForDomain": "No changes recorded yet for {{domain}}",
+        "noWebsiteChangesFound": "No website changes found",
+        "noWebsiteChangesForMonthYet": "No website changes have been recorded for this month yet."
     },
     "reviewsProgram": {
         "title": "Get Your Next Month FREE!",
@@ -2116,12 +2313,25 @@
         "errorOccurred": "An error occurred"
     },
     "onboarding": {
+        "logoSuccess": {
+            "processingTitle": "Processing Payment...",
+            "errorTitle": "Payment Error",
+            "successTitle": "Payment Successful!",
+            "processingDescription": "Please wait while we complete your onboarding...",
+            "redirectingDescription": "Redirecting to your dashboard...",
+            "errors": {
+                "invalidPaymentSession": "Invalid payment session",
+                "onboardingDataNotFound": "Onboarding data not found",
+                "completeOnboardingFailed": "Failed to complete onboarding. Please contact support."
+            }
+        },
         "draftLoaded": "Draft Loaded",
         "draftLoadedDesc": "Your previous progress has been restored.",
         "saving": "Saving...",
         "continueLater": "Continue Later",
         "websiteLanguage": "Website Language",
         "english": "English",
+        "greek": "Greek",
         "welcomeTitle": "Welcome to HAYC!",
         "welcomeSubtitle": "Your payment has been processed successfully and your subscription is now active.",
         "welcomeMessage": "IMPORTANT",
@@ -2293,10 +2503,13 @@
             "websiteLanguage": "Select the language for your website",
             "contactName": "Contact person's name",
             "contactPhone": "Contact phone number",
+            "accountEmail": "account@email.com",
             "contactEmail": "contact@business.com",
             "businessDescription": "Briefly describe what your business offers...",
             "existingDomain": "www.yourbusiness.com",
             "preferredDomains": "option1.com\noption2.gr\noption3.com",
+            "emailProvider": "Provider name (Gmail, Outlook, etc.), login credentials...",
+            "existingEmails": "info@yourbusiness.com\nsales@yourbusiness.com\nsupport@yourbusiness.com",
             "emailNames": "info\nsales\nsupport",
             "redirectInboxAddress": "your.main@gmail.com",
             "websiteLink": "https://www.yourwebsite.com",
@@ -2324,6 +2537,10 @@
             "uploadTextContentNote": "You can also upload more text content from your dashboard after form submission.",
             "uploadMediaContentNote": "You can also upload more files from your dashboard after form submission.",
             "colorPaletteNote": "Note: The following colors help us find the best combinations that will suit your website.",
+            "primaryColor": "The main color of your brand, used for buttons and highlights.",
+            "backgroundColor": "The background color of your website, usually white or light.",
+            "textColor": "The color of the main text across your website.",
+            "accentColor": "An optional color used for accents or secondary highlights.",
             "primaryColorDesc": "The main color of your brand, used for buttons and highlights.",
             "backgroundColorDesc": "The background color of your website, usually white or light.",
             "textColorDesc": "The color of the main text across your website.",
@@ -2332,6 +2549,7 @@
         "options": {
             "yes": "Yes",
             "no": "No",
+            "notProvided": "Not provided",
             "domainConnectionMyself": "I will connect it myself, I know how",
             "domainConnectionYou": "Please connect it for me, I don’t know how",
             "domainPurchaseMyself": "I will purchase the domain myself on my own platform",
@@ -2349,7 +2567,10 @@
             "domainNotice": "⚠️ Note: Once a domain is purchased, it cannot be changed.",
             "siteStyleCurved": "Curved / Rounded",
             "siteStyleStraightDesc": "Sharp edges and straight lines",
-            "siteStyleCurvedDesc": "Soft edges and rounded corners"
+            "siteStyleCurvedDesc": "Soft edges and rounded corners",
+            "statusDraft": "Draft",
+            "statusSubmitted": "Submitted",
+            "statusCompleted": "Completed"
         },
         "uploadTexts": {
             "uploadTextFiles": "Upload your text content files (Word docs, PDFs, etc.)",
@@ -2401,6 +2622,7 @@
             "customTemplateLabel": "Describe Your Ideal Website Layout"
         },
         "templates": {
+            "title": "Website Templates",
             "subtitle": "Choose a design that fits your business style",
             "allCategories": "All Categories",
             "preview": "Preview",
@@ -2494,6 +2716,7 @@
             "proceedToPayment": "Proceed to Payment"
         },
         "toasts": {
+            "initializeError": "Failed to initialize onboarding. Please refresh the page.",
             "initUploadError": "Failed to initialize upload. Please try again.",
             "prepareUploadError": "Failed to prepare upload. Please try again.",
             "uploadSuccessful": "Upload Successful",
@@ -2727,6 +2950,16 @@
             "button": "Create",
             "courseOption": "Course"
         },
+        "sync": {
+            "syncToWebsite": "Sync to website",
+            "syncing": "Syncing...",
+            "coursesWillSync": "{{count}} courses will be synced",
+            "lastSynced": "Last synced: {{date}}",
+            "upToDate": "Up to date",
+            "changesDetected": "Changes detected",
+            "syncSuccess": "Products synced to your website",
+            "syncFailed": "Could not sync to website. Please try again."
+        },
         "table": {
             "title": "Title",
             "price": "Price",
@@ -2791,6 +3024,98 @@
                 "selectStatus": "Select status"
             }
         },
+        "courseEditor": {
+            "defaultNewCourseTitle": "New Course",
+            "defaultCourseTitle": "Course",
+            "tabs": {
+                "details": "Details",
+                "curriculum": "Curriculum",
+                "certificate": "Certificate"
+            },
+            "fields": {
+                "title": "Title",
+                "description": "Description",
+                "thumbnailUrl": "Thumbnail URL",
+                "previewVideoUrl": "Preview Video URL",
+                "language": "Language",
+                "estimatedDurationMinutes": "Estimated Duration (minutes)",
+                "priceEuro": "Price (€)"
+            },
+            "certificate": {
+                "issueOnCompletion": "Issue certificate on completion",
+                "description": "When enabled, students will receive a certificate after completing all lessons."
+            },
+            "toasts": {
+                "failedToLoadCourse": "Failed to load course",
+                "failedToSaveCourse": "Failed to save course"
+            },
+            "curriculum": {
+                "saveCourseFirst": "Save the course details first before adding curriculum.",
+                "loadingCurriculum": "Loading curriculum...",
+                "actions": {
+                    "addChapter": "+ Add Chapter",
+                    "addLesson": "+ Add Lesson"
+                },
+                "tabs": {
+                    "attachments": "Attachments"
+                },
+                "fields": {
+                    "introVideoUrl": "Intro Video URL",
+                    "videoUrl": "Video URL",
+                    "durationSeconds": "Duration (seconds)",
+                    "freePreview": "Free Preview"
+                },
+                "placeholders": {
+                    "lessonTitle": "Lesson title",
+                    "chapterTitle": "Chapter title"
+                },
+                "validation": {
+                    "titleRequired": "Title is required"
+                },
+                "deleteDialog": {
+                    "title": "Confirm delete",
+                    "description": "Are you sure you want to delete \"{{label}}\"?",
+                    "deleting": "Deleting..."
+                },
+                "attachments": {
+                    "defaultTitle": "attachment",
+                    "uploadFile": "Upload File",
+                    "uploading": "Uploading...",
+                    "loading": "Loading attachments...",
+                    "empty": "No attachments yet.",
+                    "deleteAriaLabel": "Delete attachment",
+                    "uploadedTitle": "Uploaded",
+                    "uploadedDescription": "Attachment added to this lesson.",
+                    "removedTitle": "Removed",
+                    "removedDescription": "Attachment deleted.",
+                    "uploadErrorTitle": "Upload Error"
+                },
+                "errors": {
+                    "failedToLoadCurriculum": "Failed to load curriculum.",
+                    "failedToLoadChapters": "Failed to load chapters",
+                    "failedToLoadLessons": "Failed to load lessons.",
+                    "failedToReorderChapters": "Failed to reorder chapters.",
+                    "failedToReorderLessons": "Failed to reorder lessons.",
+                    "failedToUpdateChapter": "Failed to update chapter.",
+                    "failedToCreateChapter": "Failed to create chapter.",
+                    "failedToUpdateLesson": "Failed to update lesson.",
+                    "failedToCreateLesson": "Failed to create lesson.",
+                    "failedToDeleteChapter": "Failed to delete chapter",
+                    "failedToDeleteLesson": "Failed to delete lesson",
+                    "failedToDeleteItem": "Failed to delete item.",
+                    "failedToLoadAttachments": "Failed to load attachments.",
+                    "failedToDeleteAttachment": "Failed to delete attachment.",
+                    "uploadWidgetNotReady": "Upload widget not ready. Please refresh the page and try again.",
+                    "failedToGetConfiguration": "Failed to get configuration",
+                    "failedToInitializeUpload": "Failed to initialize upload. Please try again.",
+                    "failedToSaveAttachment": "Failed to save attachment",
+                    "failedToGetUploadSignature": "Failed to get upload signature",
+                    "failedToPrepareUpload": "Failed to prepare upload. Please try again.",
+                    "failedToUploadFile": "Failed to upload file. Please try again.",
+                    "uploadSucceededButSaveFailed": "Upload succeeded but saving the attachment failed."
+                }
+            }
+        },
         "brandModal": {
             "title": "Configure Look & Feel",
             "subtitle": "Customize how your HDP store looks to your customers. These settings apply to your digital products portal, not your main website.",
@@ -2841,7 +3166,8 @@
         "successMessage": "We appreciate you taking the time to share your thoughts. This helps us improve our service.",
         "backToDashboard": "Back to Dashboard",
         "selectReason": "Please select a reason",
-        "feedbackSent": "Feedback submitted successfully"
+        "feedbackSent": "Feedback submitted successfully",
+        "submitFailed": "Failed to submit feedback"
     },
     "forgotPassword": {
         "title": "Forgot Password?",
