@@ -52,7 +52,6 @@ import {
   Eye,
   Monitor,
   Activity,
-  Lock,
   Upload,
   Image as ImageIcon,
   Trash2,
@@ -2634,7 +2633,6 @@ export default function WebsiteDashboard() {
   const renderAnalytics = () => {
     // Check if this is a basic tier subscription
     const isBasicTier = planSubscription?.tier === "basic";
-    const disabled = planSubscription?.status !== "active";
 
     // Basic Tier: Show upsell page
     if (isBasicTier) {
@@ -2728,50 +2726,6 @@ export default function WebsiteDashboard() {
     return (
       <div className="space-y-6">
         <WebsiteAnalytics websiteId={parseInt(websiteId!)} />
-
-        {/* Essential tier: Show locked advanced analytics placeholder */}
-        {planSubscription?.tier === "essential" && (
-          <Card className="border-2 border-dashed border-muted-foreground/30">
-            <CardContent className="py-8">
-              <div className="flex flex-col items-center justify-center px-4 text-center">
-                <div className="rounded-full bg-muted p-3 mb-4">
-                  <Lock className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Advanced Analytics</h3>
-                <p className="text-muted-foreground max-w-md mb-4">
-                  Unlock advanced analytics features with our Pro plan. Get deeper insights, custom reports, and more.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setUpgradeRequestFeature("Advanced Analytics");
-                    setUpgradeRequestDialogOpen(true);
-                  }}
-                  data-testid="button-upgrade-pro-analytics"
-                >
-                  Request Upgrade to Pro
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Pro tier: Show coming soon for advanced features */}
-        {planSubscription?.tier === "pro" && (
-          <Card className={`border-2 border-dashed border-blue-300 bg-blue-50/30 ${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}`}>
-            <CardContent className="py-8">
-              <div className="flex flex-col items-center justify-center px-4 text-center">
-                <div className="rounded-full bg-blue-100 p-3 mb-4">
-                  <Sparkles className="h-8 w-8 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Advanced Analytics</h3>
-                <p className="text-muted-foreground max-w-md">
-                  Advanced analytics features are coming soon! We're working on bringing you even more powerful insights and reporting tools.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     );
   };

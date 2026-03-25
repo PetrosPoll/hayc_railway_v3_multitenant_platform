@@ -60,7 +60,7 @@ const COLORS = {
 
 export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalyticsProps) {
   const { t } = useTranslation();
-  const [dateRange, setDateRange] = useState<string>("30");
+  const [dateRange, setDateRange] = useState<string>("90");
 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - parseInt(dateRange));
