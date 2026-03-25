@@ -17,6 +17,7 @@ interface Props {
   onEdit: (product: Product) => void;
   onDelete: (id: string) => void;
   onStatusToggle: (id: string, currentStatus: ProductStatus) => void;
+  onPreviewCourse: (product: Product) => void;
   deletingId: string | null;
 }
 
@@ -29,7 +30,14 @@ function formatPrice(priceInCents: number, currency: string): string {
   }).format(priceInCents / 100);
 }
 
-export function ProductsTable({ products, onEdit, onDelete, onStatusToggle, deletingId }: Props) {
+export function ProductsTable({
+  products,
+  onEdit,
+  onDelete,
+  onStatusToggle,
+  onPreviewCourse,
+  deletingId,
+}: Props) {
   const { t } = useTranslation();
 
   return (
@@ -64,6 +72,16 @@ export function ProductsTable({ products, onEdit, onDelete, onStatusToggle, dele
               </TableCell>
               <TableCell className="text-right">
                 <div className="inline-flex items-center gap-2">
+                  {product.type === "course" ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      type="button"
+                      onClick={() => onPreviewCourse(product)}
+                    >
+                      {t("digitalProductsManagement.actions.preview", { defaultValue: "Preview" })}
+                    </Button>
+                  ) : null}
                   <Button
                     variant="outline"
                     size="sm"
