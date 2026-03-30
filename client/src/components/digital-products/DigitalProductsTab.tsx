@@ -222,7 +222,7 @@ export function DigitalProductsTab({ siteId, listMode = "courses" }: Props) {
 
   const previewIframeSrc = useMemo(() => {
     if (!previewCourse || previewCourse.type !== "course") return null;
-    return `${HDP_WIDGET_BASE}/widget?siteId=${encodeURIComponent(siteId)}&courseId=${encodeURIComponent(previewCourse.id)}`;
+    return `${HDP_WIDGET_BASE}/widget?siteId=${encodeURIComponent(siteId)}&courseId=${encodeURIComponent(previewCourse.id)}&preview=true`;
   }, [previewCourse, siteId]);
 
   const handleStatusToggle = async (id: string, currentStatus: ProductStatus) => {
