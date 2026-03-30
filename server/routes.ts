@@ -7167,6 +7167,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Preview subscriptions that are cancelled but missing cancelledAt
+  app.get("/api/admin/subscriptions/cancelled-missing-cancelled-at", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const records = await db
+        .select({
+          id: subscriptionsTable.id,
+          userId: subscriptionsTable.userId,
+          stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
+          status: subscriptionsTable.status,
+          createdAt: subscriptionsTable.createdAt,
+          accessUntil: subscriptionsTable.accessUntil,
+          cancellationReason: subscriptionsTable.cancellationReason,
+          cancelledAt: subscriptionsTable.cancelledAt,
+        })
+        .from(subscriptionsTable)
+        .where(
+          and(
+            isNull(subscriptionsTable.cancelledAt),
+            sql`LOWER(${subscriptionsTable.status}) IN ('cancelled', 'canceled')`,
+          ),
+        )
+        .orderBy(desc(subscriptionsTable.createdAt));
+
+      return res.json({
+        total: records.length,
+        records,
+      });
+    } catch (err) {
+      console.error("Error fetching cancelled subscriptions missing cancelledAt:", err);
+      return res.status(500).json({ error: "Failed to fetch preview list" });
+    }
+  });
+
+  // Backfill cancelledAt from Stripe canceled_at (dry-run by default)
+  app.post("/api/admin/subscriptions/backfill-cancelled-at", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canManageSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const isLive = req.body?.live === true;
+
+      const targets = await db
+        .select({
+          id: subscriptionsTable.id,
+          stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
+          status: subscriptionsTable.status,
+        })
+        .from(subscriptionsTable)
+        .where(
+          and(
+            isNull(subscriptionsTable.cancelledAt),
+            sql`LOWER(${subscriptionsTable.status}) IN ('cancelled', 'canceled')`,
+          ),
+        )
+        .orderBy(desc(subscriptionsTable.createdAt));
+
+      let updated = 0;
+      let skipped = 0;
+      let errored = 0;
+      const logs: string[] = [];
+
+      for (const target of targets) {
+        const stripeId = target.stripeSubscriptionId;
+
+        if (!stripeId) {
+          skipped++;
+          logs.push(`SKIP sub=${target.id} stripeId=null reason=missing_stripe_subscription_id`);
+          continue;
+        }
+
+        try {
+          const stripeSub = await stripe.subscriptions.retrieve(stripeId);
+          const canceledAtUnix = stripeSub.canceled_at;
+
+          if (!canceledAtUnix) {
+            skipped++;
+            logs.push(`SKIP sub=${target.id} stripeId=${stripeId} reason=stripe_canceled_at_missing`);
+            continue;
+          }
+
+          const cancelledAtDate = new Date(canceledAtUnix * 1000);
+
+          if (isLive) {
+            await db
+              .update(subscriptionsTable)
+              .set({ cancelledAt: cancelledAtDate })
+              .where(eq(subscriptionsTable.id, target.id));
+            updated++;
+            logs.push(
+              `UPDATED sub=${target.id} stripeId=${stripeId} cancelledAt=${cancelledAtDate.toISOString()}`,
+            );
+          } else {
+            logs.push(
+              `DRY-RUN sub=${target.id} stripeId=${stripeId} wouldSet=${cancelledAtDate.toISOString()}`,
+            );
+          }
+        } catch (error: any) {
+          errored++;
+          logs.push(
+            `ERROR sub=${target.id} stripeId=${stripeId} message=${error?.message || "unknown_error"}`,
+          );
+        }
+      }
+
+      return res.json({
+        mode: isLive ? "live" : "dry-run",
+        summary: {
+          matched: targets.length,
+          updated,
+          skipped,
+          errored,
+        },
+        logs,
+      });
+    } catch (err) {
+      console.error("Error backfilling cancelledAt:", err);
+      return res.status(500).json({ error: "Failed to backfill cancelledAt" });
+    }
+  });
+
   // Get payment history for calendar (includes both past and future payments)
   app.get("/api/admin/payment-history", async (req, res) => {
     if (!req.isAuthenticated()) {

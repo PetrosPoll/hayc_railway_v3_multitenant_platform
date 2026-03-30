@@ -191,6 +191,7 @@ export const subscriptions = pgTable("subscriptions", {
   billingPeriod: text("billing_period").default("monthly"),
   cancellationReason: text("cancellation_reason"),
   accessUntil: timestamp("access_until"),
+  cancelledAt: timestamp("cancelled_at"),
   emailsSentThisMonth: integer("emails_sent_this_month").default(0).notNull(),
   emailLimitResetDate: timestamp("email_limit_reset_date").defaultNow().notNull(),
   isLegacy: boolean("is_legacy").default(false).notNull(),

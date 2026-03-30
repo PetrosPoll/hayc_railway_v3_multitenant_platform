@@ -141,6 +141,33 @@ interface ChurnStats {
   }>;
 }
 
+interface MissingCancelledAtRecord {
+  id: number;
+  userId: number;
+  stripeSubscriptionId: string | null;
+  status: string;
+  createdAt: string | null;
+  accessUntil: string | null;
+  cancellationReason: string | null;
+  cancelledAt: string | null;
+}
+
+interface MissingCancelledAtResponse {
+  total: number;
+  records: MissingCancelledAtRecord[];
+}
+
+interface BackfillCancelledAtResponse {
+  mode: "dry-run" | "live";
+  summary: {
+    matched: number;
+    updated: number;
+    skipped: number;
+    errored: number;
+  };
+  logs: string[];
+}
+
 declare global {
   interface Window {
     cloudinary: any;
@@ -349,6 +376,7 @@ export default function AdminDashboard() {
     hasActiveSubscription: boolean;
     couponName?: string;
   } | null>(null);
+  const [backfillLogs, setBackfillLogs] = useState<string[]>([]);
 
   // Verify review mutation
   const verifyReviewMutation = useMutation({
@@ -514,6 +542,48 @@ export default function AdminDashboard() {
   const { data: churnStatsData, isLoading: churnStatsLoading } = useQuery<ChurnStats>({
     queryKey: ["/api/admin/churn-stats"],
     enabled: userPermissions?.canViewSubscriptions || false,
+  });
+
+  // Preview cancelled subscriptions with missing cancelledAt
+  const { data: missingCancelledAtData, isLoading: missingCancelledAtLoading } =
+    useQuery<MissingCancelledAtResponse>({
+      queryKey: ["/api/admin/subscriptions/cancelled-missing-cancelled-at"],
+      enabled: userPermissions?.canViewSubscriptions || false,
+    });
+
+  // Backfill cancelledAt from Stripe canceled_at
+  const backfillCancelledAt = useMutation({
+    mutationFn: async (live: boolean) => {
+      const response = await fetch("/api/admin/subscriptions/backfill-cancelled-at", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ live }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to backfill cancelled_at");
+      }
+      return (await response.json()) as BackfillCancelledAtResponse;
+    },
+    onSuccess: (data) => {
+      setBackfillLogs(data.logs || []);
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/subscriptions/cancelled-missing-cancelled-at"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/churn-stats"],
+      });
+      toast({
+        title: data.mode === "live" ? "Live backfill complete" : "Dry-run complete",
+        description: `Matched: ${data.summary.matched}, Updated: ${data.summary.updated}, Skipped: ${data.summary.skipped}, Errored: ${data.summary.errored}`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Backfill failed",
+        variant: "destructive",
+      });
+    },
   });
 
   // Fetch all websites
@@ -2099,6 +2169,58 @@ export default function AdminDashboard() {
                           ))}
                         </TableBody>
                       </Table>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle>Backfill `cancelled_at` from Stripe</CardTitle>
+                    <CardDescription>
+                      Finds cancelled subscriptions with missing `cancelled_at`, then reads Stripe `canceled_at`.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap items-center gap-3 mb-4">
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          queryClient.invalidateQueries({
+                            queryKey: ["/api/admin/subscriptions/cancelled-missing-cancelled-at"],
+                          })
+                        }
+                        disabled={missingCancelledAtLoading}
+                      >
+                        Refresh Preview
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={() => backfillCancelledAt.mutate(false)}
+                        disabled={backfillCancelledAt.isPending}
+                      >
+                        {backfillCancelledAt.isPending ? "Running..." : "Run Dry-Run"}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => backfillCancelledAt.mutate(true)}
+                        disabled={backfillCancelledAt.isPending}
+                      >
+                        {backfillCancelledAt.isPending ? "Running..." : "Run Live (--live)"}
+                      </Button>
+                    </div>
+
+                    <div className="text-sm mb-4">
+                      <span className="font-medium">Missing cancelled_at records: </span>
+                      {missingCancelledAtData?.total ?? 0}
+                    </div>
+
+                    {backfillLogs.length > 0 && (
+                      <div className="rounded-md border p-3 bg-muted/40">
+                        <p className="text-sm font-medium mb-2">Run logs</p>
+                        <pre className="text-xs whitespace-pre-wrap break-words max-h-80 overflow-auto">
+                          {backfillLogs.join("\n")}
+                        </pre>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
