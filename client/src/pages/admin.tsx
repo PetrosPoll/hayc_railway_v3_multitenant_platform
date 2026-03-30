@@ -128,11 +128,30 @@ interface Subscription {
   transactions?: Transaction[];
 }
 
+interface ChurnStats {
+  firstCustomerDate: string | null;
+  totalCustomersEver: number;
+  totalChurnedCustomers: number;
+  totalChurnRate: number;
+  monthly: Array<{
+    month: string;
+    customersAtStart: number;
+    churnedCustomers: number;
+    churnRate: number | null;
+  }>;
+}
+
 declare global {
   interface Window {
     cloudinary: any;
   }
 }
+
+const formatMonth = (month: string) => {
+  const [year, monthNumber] = month.split("-");
+  const date = new Date(Number(year), Number(monthNumber) - 1, 1);
+  return date.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+};
 
 // User Details View Component
 function UserDetailsView({ userId }: { userId: number }) {
@@ -489,6 +508,12 @@ export default function AdminDashboard() {
   const { data: rolesData } = useQuery<any[]>({
     queryKey: ["/api/admin/roles"],
     enabled: userData?.user.role === UserRole.ADMINISTRATOR,
+  });
+
+  // Fetch churn statistics
+  const { data: churnStatsData, isLoading: churnStatsLoading } = useQuery<ChurnStats>({
+    queryKey: ["/api/admin/churn-stats"],
+    enabled: userPermissions?.canViewSubscriptions || false,
   });
 
   // Fetch all websites
@@ -1015,7 +1040,8 @@ export default function AdminDashboard() {
     userLoading ||
     usersLoading ||
     subscriptionsLoading ||
-    allSubscriptionsLoading
+    allSubscriptionsLoading ||
+    churnStatsLoading
   ) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1064,6 +1090,9 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                     <TabsTrigger value="payment-failures" className="w-full justify-start rounded-md px-3 py-2.5">
                       Cancelled (Payment Failed)
+                    </TabsTrigger>
+                    <TabsTrigger value="statistics" className="w-full justify-start rounded-md px-3 py-2.5">
+                      Statistics
                     </TabsTrigger>
                   </>
                 )}
@@ -1993,6 +2022,87 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="payment-failures" className="mt-0">
               <CancelledDueToPaymentFailureList />
+            </TabsContent>
+            <TabsContent value="statistics" className="mt-0">
+              <section>
+                <h2 className="text-xl font-semibold mb-4">Churn Statistics</h2>
+
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>First Customer</CardDescription>
+                      <CardTitle className="text-base">
+                        {churnStatsData?.firstCustomerDate
+                          ? new Date(churnStatsData.firstCustomerDate).toLocaleDateString("en-GB")
+                          : "N/A"}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Total Customers Ever</CardDescription>
+                      <CardTitle className="text-2xl">
+                        {churnStatsData?.totalCustomersEver ?? 0}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Total Churned Customers</CardDescription>
+                      <CardTitle className="text-2xl">
+                        {churnStatsData?.totalChurnedCustomers ?? 0}
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardDescription>Total Churn Rate</CardDescription>
+                      <CardTitle className="text-2xl">
+                        {(churnStatsData?.totalChurnRate ?? 0).toFixed(2)}%
+                      </CardTitle>
+                    </CardHeader>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Monthly Churn</CardTitle>
+                    <CardDescription>
+                      Churned customers divided by customers active at the start of each month.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {!churnStatsData?.monthly?.length ? (
+                      <div className="text-sm text-muted-foreground">
+                        No churn data available.
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Month</TableHead>
+                            <TableHead>Customers at Start</TableHead>
+                            <TableHead>Churned Customers</TableHead>
+                            <TableHead>Churn Rate</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {churnStatsData.monthly.map((item) => (
+                            <TableRow key={item.month}>
+                              <TableCell>{formatMonth(item.month)}</TableCell>
+                              <TableCell>{item.customersAtStart}</TableCell>
+                              <TableCell>{item.churnedCustomers}</TableCell>
+                              <TableCell>
+                                {item.churnRate === null ? "N/A" : `${item.churnRate.toFixed(2)}%`}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </section>
             </TabsContent>
             <TabsContent value="website-progress" className="mt-0">
               <section>

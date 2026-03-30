@@ -7013,6 +7013,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get churn statistics (overall + monthly) using customer lifecycle from subscriptions
+  app.get("/api/admin/churn-stats", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const now = new Date();
+      const customerUsers = await db
+        .select({
+          createdAt: users.createdAt,
+        })
+        .from(users)
+        .where(eq(users.accountKind, AccountKind.CUSTOMER));
+
+      const subscriptionRows = await db
+        .select({
+          userId: subscriptionsTable.userId,
+          createdAt: subscriptionsTable.createdAt,
+          status: subscriptionsTable.status,
+          accessUntil: subscriptionsTable.accessUntil,
+          accountKind: users.accountKind,
+        })
+        .from(subscriptionsTable)
+        .leftJoin(users, eq(subscriptionsTable.userId, users.id))
+        .where(eq(users.accountKind, AccountKind.CUSTOMER));
+
+      type Lifecycle = {
+        startDate: Date;
+        endDate: Date | null;
+        hasActiveSubscription: boolean;
+      };
+
+      const byUser = new Map<number, Lifecycle>();
+      const activeStatuses = new Set(["active", "trialing", "past_due", "incomplete"]);
+
+      for (const row of subscriptionRows) {
+        if (!row.createdAt) continue;
+
+        const lifecycle = byUser.get(row.userId);
+        const createdAt = new Date(row.createdAt);
+        const isActive = activeStatuses.has((row.status || "").toLowerCase());
+        const hasEndedAccess = !!row.accessUntil && new Date(row.accessUntil) <= now;
+
+        if (!lifecycle) {
+          byUser.set(row.userId, {
+            startDate: createdAt,
+            endDate: hasEndedAccess ? new Date(row.accessUntil as Date) : null,
+            hasActiveSubscription: isActive,
+          });
+          continue;
+        }
+
+        if (createdAt < lifecycle.startDate) {
+          lifecycle.startDate = createdAt;
+        }
+
+        lifecycle.hasActiveSubscription = lifecycle.hasActiveSubscription || isActive;
+
+        if (hasEndedAccess) {
+          const endDate = new Date(row.accessUntil as Date);
+          if (!lifecycle.endDate || endDate > lifecycle.endDate) {
+            lifecycle.endDate = endDate;
+          }
+        }
+      }
+
+      const customers = Array.from(byUser.values());
+      const totalCustomersEver = customers.length;
+      const churnedCustomers = customers.filter(
+        (c) => !c.hasActiveSubscription && !!c.endDate,
+      );
+      const totalChurnedCustomers = churnedCustomers.length;
+      const totalChurnRate =
+        totalCustomersEver > 0
+          ? Number(((totalChurnedCustomers / totalCustomersEver) * 100).toFixed(2))
+          : 0;
+
+      const customerCreatedAtTimestamps = customerUsers
+        .filter((u) => !!u.createdAt)
+        .map((u) => new Date(u.createdAt as Date).getTime());
+
+      const firstCustomerDate =
+        customerCreatedAtTimestamps.length > 0
+          ? new Date(Math.min(...customerCreatedAtTimestamps))
+          : null;
+
+      const monthly: Array<{
+        month: string;
+        customersAtStart: number;
+        churnedCustomers: number;
+        churnRate: number | null;
+      }> = [];
+
+      if (firstCustomerDate) {
+        const cursor = new Date(
+          Date.UTC(firstCustomerDate.getUTCFullYear(), firstCustomerDate.getUTCMonth(), 1),
+        );
+        const lastMonth = new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
+        );
+
+        while (cursor <= lastMonth) {
+          const monthStart = new Date(cursor);
+          const monthEnd = new Date(
+            Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1),
+          );
+
+          const customersAtStart = customers.filter((c) => {
+            const startedBeforeMonth = c.startDate < monthStart;
+            const notEndedBeforeMonth = !c.endDate || c.endDate >= monthStart;
+            return startedBeforeMonth && notEndedBeforeMonth;
+          }).length;
+
+          const churnedInMonth = customers.filter(
+            (c) =>
+              !!c.endDate &&
+              c.endDate >= monthStart &&
+              c.endDate < monthEnd &&
+              !c.hasActiveSubscription,
+          ).length;
+
+          monthly.push({
+            month: `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, "0")}`,
+            customersAtStart,
+            churnedCustomers: churnedInMonth,
+            churnRate:
+              customersAtStart > 0
+                ? Number(((churnedInMonth / customersAtStart) * 100).toFixed(2))
+                : null,
+          });
+
+          cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+        }
+      }
+
+      return res.json({
+        firstCustomerDate: firstCustomerDate?.toISOString() ?? null,
+        totalCustomersEver,
+        totalChurnedCustomers,
+        totalChurnRate,
+        monthly,
+      });
+    } catch (err) {
+      console.error("Error fetching churn stats:", err);
+      return res.status(500).json({ error: "Failed to fetch churn stats" });
+    }
+  });
+
   // Get payment history for calendar (includes both past and future payments)
   app.get("/api/admin/payment-history", async (req, res) => {
     if (!req.isAuthenticated()) {
