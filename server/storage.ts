@@ -7,6 +7,7 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserById(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByEmailCaseInsensitive(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User>;
   getUserSubscriptions(userId: number): Promise<Subscription[]>;
@@ -165,6 +166,17 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmail(email: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     return user;
+  }
+
+  async getUserByEmailCaseInsensitive(email: string): Promise<User | undefined> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return undefined;
+    const [row] = await db
+      .select()
+      .from(users)
+      .where(sql`lower(${users.email}) = ${normalized}`)
+      .limit(1);
+    return row;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

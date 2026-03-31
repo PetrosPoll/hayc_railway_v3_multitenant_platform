@@ -248,14 +248,17 @@ function PreCheckoutPage({
   const onSubmit = async (formData: FormData) => {
     setLoading(true);
     try {
-      // If user is NOT logged in, check if email already exists
-      if (!user) {
+      // Block guest checkout only when the email already belongs to an account.
+      // Skip for resume/reactivate flows — those users always already exist; webhook attaches to the same user by email.
+      const skipEmailExistsCheck = isResume || isResumeFlow;
+      if (!user && !skipEmailExistsCheck) {
         try {
           const emailCheck = await checkEmailExists(formData.email);
           if (emailCheck.success && emailCheck.exists) {
             toast({
-              title: "Login Required",
-              description: "Please log in to continue with your purchase.",
+              title: "Account already exists",
+              description:
+                "This email is registered. Sign in to continue, or use another email for a new account.",
               variant: "destructive",
             });
             setLoading(false);

@@ -527,7 +527,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate input
       const emailSchema = z.object({
-        email: z.string().email("Please enter a valid email address"),
+        email: z
+          .string()
+          .trim()
+          .email("Please enter a valid email address"),
       });
 
       const validationResult = emailSchema.safeParse({ email });
@@ -539,8 +542,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if user exists with this email
-      const existingUser = await storage.getUserByEmail(validationResult.data.email);
+      // Case-insensitive: Stripe and browsers often normalize email casing
+      const existingUser = await storage.getUserByEmailCaseInsensitive(
+        validationResult.data.email,
+      );
       
       res.json({ 
         success: true,
@@ -2154,11 +2159,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             planId: body.planId,
             billingPeriod: body.billingPeriod,
             password: body.password,
-            vatNumber: body.vatNumber || "",
-            city: body.city || "",
-            street: body.street || "",
-            number: body.number || "",
-            postalCode: body.postalCode || "",
+            vatNumber: (body.vatNumber ?? "").trim(),
+            city: (body.city ?? "").trim(),
+            street: (body.street ?? "").trim(),
+            number: (body.number ?? "").trim(),
+            postalCode: (body.postalCode ?? "").trim(),
             invoiceType: body.invoiceType || "invoice", // Default to invoice if not specified
             addOns: body.addOns ? JSON.stringify(body.addOns) : "",
             language: body.language || "en", //default language is en
@@ -3012,14 +3017,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 
                 // Update existing subscription with billing info from checkout session
                 // This ensures VAT number and other billing details are saved even for existing subscriptions
+                const vatFromSession =
+                  session.metadata.vatNumber?.trim() ||
+                  createdSubscription.vatNumber ||
+                  null;
                 const updateResult = await db
                   .update(subscriptionsTable)
                   .set({
-                    vatNumber: session.metadata.vatNumber || createdSubscription.vatNumber || null,
-                    city: session.metadata.city || createdSubscription.city || null,
-                    street: session.metadata.street || createdSubscription.street || null,
-                    number: session.metadata.number || createdSubscription.number || null,
-                    postalCode: session.metadata.postalCode || createdSubscription.postalCode || null,
+                    vatNumber: vatFromSession,
+                    city: session.metadata.city?.trim() || createdSubscription.city || null,
+                    street: session.metadata.street?.trim() || createdSubscription.street || null,
+                    number: session.metadata.number?.trim() || createdSubscription.number || null,
+                    postalCode: session.metadata.postalCode?.trim() || createdSubscription.postalCode || null,
                     invoiceType: session.metadata.invoiceType || createdSubscription.invoiceType || "invoice",
                   })
                   .where(eq(subscriptionsTable.id, createdSubscription.id))
@@ -3047,11 +3056,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     tier: productType === 'plan' ? productId : null,
                     status: stripeSubscription.status,
                     price: subscriptionPrice,
-                    vatNumber: session.metadata.vatNumber || null,
-                    city: session.metadata.city || null,
-                    street: session.metadata.street || null,
-                    number: session.metadata.number || null,
-                    postalCode: session.metadata.postalCode || null,
+                    vatNumber: session.metadata.vatNumber?.trim() || null,
+                    city: session.metadata.city?.trim() || null,
+                    street: session.metadata.street?.trim() || null,
+                    number: session.metadata.number?.trim() || null,
+                    postalCode: session.metadata.postalCode?.trim() || null,
                     invoiceType: session.metadata.invoiceType || "invoice",
                     billingPeriod: stripeSubscription.items.data[0].plan.interval === 'year' ? 'yearly' : 'monthly',
                     createdAt: new Date(session.created * 1000),
@@ -3078,6 +3087,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
 
+            }
+
+            // Copy invoice VAT from Stripe session metadata to users.vat_number (subscription row also stores it).
+            try {
+              const invoiceTypeMeta =
+                session.metadata?.invoiceType ?? "invoice";
+              const vatTrimmed = session.metadata?.vatNumber?.trim();
+              if (invoiceTypeMeta !== "receipt" && vatTrimmed) {
+                await storage.updateUser(user.id, {
+                  vatNumber: vatTrimmed,
+                });
+              }
+            } catch (syncVatErr) {
+              console.error(
+                "[checkout.session.completed] Failed to sync VAT to user:",
+                syncVatErr,
+              );
             }
 
             const userSubscriptions = await storage.getUserSubscriptions(
