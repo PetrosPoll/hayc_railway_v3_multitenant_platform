@@ -342,6 +342,24 @@ function UserDetailsView({ userId }: { userId: number }) {
                         <span className="font-medium">{subscription.websiteProgressId}</span>
                       </div>
                     )}
+                    <div>
+                      <span className="text-muted-foreground">Document type (checkout):</span>{" "}
+                      <span className="font-medium">
+                        {(subscription.invoiceType ?? "invoice") === "receipt"
+                          ? "Receipt"
+                          : "Invoice"}
+                      </span>
+                    </div>
+                    {(subscription.invoiceType ?? "invoice") !== "receipt" && (
+                      <div>
+                        <span className="text-muted-foreground">VAT number:</span>{" "}
+                        <span className="font-medium">
+                          {subscription.vatNumber?.trim()
+                            ? subscription.vatNumber
+                            : "—"}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -395,6 +413,24 @@ function UserDetailsView({ userId }: { userId: number }) {
                         {subscription.status}
                       </span>
                     </span>
+                    <span>
+                      <span className="text-muted-foreground">Document</span>{" "}
+                      <span className="font-medium">
+                        {(subscription.invoiceType ?? "invoice") === "receipt"
+                          ? "Receipt"
+                          : "Invoice"}
+                      </span>
+                    </span>
+                    {(subscription.invoiceType ?? "invoice") !== "receipt" && (
+                      <span>
+                        <span className="text-muted-foreground">VAT</span>{" "}
+                        <span className="font-medium">
+                          {subscription.vatNumber?.trim()
+                            ? subscription.vatNumber
+                            : "—"}
+                        </span>
+                      </span>
+                    )}
                   </div>
                   <span className="text-muted-foreground">
                     {subscription.createdAt
