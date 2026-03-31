@@ -211,6 +211,13 @@ function UserDetailsView({ userId }: { userId: number }) {
     );
   }
 
+  const planSubscriptions = (data.subscriptions as any[]).filter(
+    (s) => s.productType !== "addon",
+  );
+  const addonSubscriptions = (data.subscriptions as any[]).filter(
+    (s) => s.productType === "addon",
+  );
+
   return (
     <div className="space-y-6">
       {/* User Info Card */}
@@ -240,19 +247,22 @@ function UserDetailsView({ userId }: { userId: number }) {
         </CardContent>
       </Card>
 
-      {/* Newsletter Email Usage Card */}
+      {/* Plan subscriptions: newsletter quota is per website (one plan row per site). */}
       <Card>
         <CardHeader>
-          <CardTitle>Newsletter Email Usage</CardTitle>
+          <CardTitle>Plans & newsletter usage</CardTitle>
+          <CardDescription>
+            Website hosting plans only. Add-ons are listed separately — they extend limits but do not carry send counts.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {data.subscriptions.length === 0 ? (
+          {planSubscriptions.length === 0 ? (
             <div className="text-center text-muted-foreground py-4">
-              No subscriptions found for this user
+              No plan subscriptions found for this user
             </div>
           ) : (
             <div className="space-y-4">
-              {data.subscriptions.map((subscription: any) => (
+              {planSubscriptions.map((subscription: any) => (
                 <div
                   key={subscription.id}
                   className="border rounded-lg p-4"
@@ -260,7 +270,10 @@ function UserDetailsView({ userId }: { userId: number }) {
                 >
                   <div className="flex items-center justify-between mb-3">
                     <div>
-                      <h3 className="font-semibold text-lg capitalize">{subscription.tier} Plan</h3>
+                      <h3 className="font-semibold text-lg capitalize">
+                        {subscription.tier || "—"}{" "}
+                        {(subscription.productType ?? "plan") === "plan" ? "Plan" : subscription.productType}
+                      </h3>
                       <p className="text-sm text-muted-foreground">
                         Status: <span className={subscription.status === 'active' ? 'text-green-600' : 'text-muted-foreground'}>{subscription.status}</span>
                       </p>
@@ -271,44 +284,49 @@ function UserDetailsView({ userId }: { userId: number }) {
                     </div>
                   </div>
 
-                  {/* Email Usage Progress Bar */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Email Usage</span>
-                      <span className="font-medium">
-                        {subscription.emailUsage.used.toLocaleString()} / {subscription.emailUsage.limit.toLocaleString()} emails
-                      </span>
+                  {subscription.emailUsage ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Newsletter emails (this website)</span>
+                        <span className="font-medium">
+                          {subscription.emailUsage.used.toLocaleString()} / {subscription.emailUsage.limit.toLocaleString()} emails
+                        </span>
+                      </div>
+                      <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all ${subscription.emailUsage.limit === 0
+                            ? "bg-muted-foreground"
+                            : subscription.emailUsage.used / subscription.emailUsage.limit >= 0.9
+                              ? "bg-destructive"
+                              : subscription.emailUsage.used / subscription.emailUsage.limit >= 0.75
+                                ? "bg-orange-500"
+                                : "bg-primary"
+                            }`}
+                          style={{
+                            width: subscription.emailUsage.limit === 0
+                              ? "0%"
+                              : `${Math.min(100, (subscription.emailUsage.used / subscription.emailUsage.limit) * 100)}%`,
+                          }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>
+                          {subscription.emailUsage.remaining.toLocaleString()} remaining
+                        </span>
+                        <span>
+                          Resets: {(() => {
+                            const now = new Date();
+                            const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+                            return nextMonth.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+                          })()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="relative w-full h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className={`h-full transition-all ${subscription.emailUsage.limit === 0
-                          ? "bg-muted-foreground"
-                          : subscription.emailUsage.used / subscription.emailUsage.limit >= 0.9
-                            ? "bg-destructive"
-                            : subscription.emailUsage.used / subscription.emailUsage.limit >= 0.75
-                              ? "bg-orange-500"
-                              : "bg-primary"
-                          }`}
-                        style={{
-                          width: subscription.emailUsage.limit === 0
-                            ? "0%"
-                            : `${Math.min(100, (subscription.emailUsage.used / subscription.emailUsage.limit) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>
-                        {subscription.emailUsage.remaining.toLocaleString()} remaining
-                      </span>
-                      <span>
-                        Resets: {(() => {
-                          const now = new Date();
-                          const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-                          return nextMonth.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-                        })()}
-                      </span>
-                    </div>
-                  </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No website linked — newsletter send counts are stored on the plan row for each website project.
+                    </p>
+                  )}
 
                   {/* Additional subscription info */}
                   <div className="mt-3 pt-3 border-t grid grid-cols-2 gap-2 text-sm">
@@ -331,6 +349,64 @@ function UserDetailsView({ userId }: { userId: number }) {
           )}
         </CardContent>
       </Card>
+
+      {addonSubscriptions.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Add-on subscriptions</CardTitle>
+            <CardDescription>
+              Extra products (e.g. newsletter volume packs). Quota and usage appear on the plan for the same website above.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {addonSubscriptions.map((subscription: any) => (
+                <div
+                  key={subscription.id}
+                  className="border rounded-lg p-3 flex flex-wrap items-center justify-between gap-2 text-sm"
+                  data-testid={`addon-subscription-${subscription.id}`}
+                >
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <span>
+                      <span className="text-muted-foreground">ID</span>{" "}
+                      <span className="font-medium">{subscription.id}</span>
+                    </span>
+                    {subscription.productId && (
+                      <span>
+                        <span className="text-muted-foreground">Product</span>{" "}
+                        <span className="font-medium">{subscription.productId}</span>
+                      </span>
+                    )}
+                    {subscription.websiteProgressId != null && (
+                      <span>
+                        <span className="text-muted-foreground">Website ID</span>{" "}
+                        <span className="font-medium">{subscription.websiteProgressId}</span>
+                      </span>
+                    )}
+                    <span>
+                      <span className="text-muted-foreground">Status</span>{" "}
+                      <span
+                        className={
+                          subscription.status === "active"
+                            ? "text-green-600 font-medium"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {subscription.status}
+                      </span>
+                    </span>
+                  </div>
+                  <span className="text-muted-foreground">
+                    {subscription.createdAt
+                      ? new Date(subscription.createdAt).toLocaleDateString()
+                      : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

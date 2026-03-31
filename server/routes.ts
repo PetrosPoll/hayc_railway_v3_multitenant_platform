@@ -7780,22 +7780,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(subscriptionsTable.userId, userId))
         .orderBy(desc(subscriptionsTable.createdAt));
 
-      // Add email usage data to each subscription
+      // Newsletter email quota is per website project and stored on the plan subscription row only.
+      // Never attach this meter to add-on rows (explicit productType === 'addon').
       const subscriptionsWithUsage = await Promise.all(
         userSubscriptions.map(async (sub) => {
+          const isPlanRow =
+            sub.productType !== "addon" &&
+            (sub.productType === "plan" || sub.productType == null) &&
+            sub.websiteProgressId != null;
+
+          if (!isPlanRow) {
+            return {
+              ...sub,
+              emailUsage: null as null,
+            };
+          }
+
           const emailLimit = await getEmailLimitWithAddOns(sub.tier, sub.websiteProgressId);
           const emailUsage = {
             limit: emailLimit,
             used: sub.emailsSentThisMonth || 0,
             remaining: Math.max(0, emailLimit - (sub.emailsSentThisMonth || 0)),
-            resetDate: sub.emailLimitResetDate
+            resetDate: sub.emailLimitResetDate,
           };
-          
+
           return {
             ...sub,
-            emailUsage
+            emailUsage,
           };
-        })
+        }),
       );
 
       res.json({
