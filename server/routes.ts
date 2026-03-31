@@ -7013,7 +7013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get churn statistics (overall + monthly) using customer lifecycle from subscriptions
+  // Get churn statistics (overall + monthly) using subscription lifecycle
   app.get("/api/admin/churn-stats", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -7026,18 +7026,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const now = new Date();
-      const customerUsers = await db
-        .select({
-          createdAt: users.createdAt,
-        })
-        .from(users)
-        .where(eq(users.accountKind, AccountKind.CUSTOMER));
-
       const subscriptionRows = await db
         .select({
-          userId: subscriptionsTable.userId,
+          id: subscriptionsTable.id,
           createdAt: subscriptionsTable.createdAt,
           status: subscriptionsTable.status,
+          cancelledAt: subscriptionsTable.cancelledAt,
           accessUntil: subscriptionsTable.accessUntil,
           accountKind: users.accountKind,
         })
@@ -7045,76 +7039,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .leftJoin(users, eq(subscriptionsTable.userId, users.id))
         .where(eq(users.accountKind, AccountKind.CUSTOMER));
 
-      type Lifecycle = {
+      type SubscriptionLifecycle = {
         startDate: Date;
         endDate: Date | null;
-        hasActiveSubscription: boolean;
       };
 
-      const byUser = new Map<number, Lifecycle>();
-      const activeStatuses = new Set(["active", "trialing", "past_due", "incomplete"]);
+      const lifecycles: SubscriptionLifecycle[] = [];
 
       for (const row of subscriptionRows) {
         if (!row.createdAt) continue;
 
-        const lifecycle = byUser.get(row.userId);
         const createdAt = new Date(row.createdAt);
-        const isActive = activeStatuses.has((row.status || "").toLowerCase());
-        const hasEndedAccess = !!row.accessUntil && new Date(row.accessUntil) <= now;
+        const status = (row.status || "").toLowerCase();
+        const isCancelledStatus = status === "cancelled" || status === "canceled";
+        const cancelledAt = row.cancelledAt ? new Date(row.cancelledAt) : null;
+        const accessUntil = row.accessUntil ? new Date(row.accessUntil) : null;
+        const endDate = cancelledAt || (isCancelledStatus ? accessUntil : null);
 
-        if (!lifecycle) {
-          byUser.set(row.userId, {
-            startDate: createdAt,
-            endDate: hasEndedAccess ? new Date(row.accessUntil as Date) : null,
-            hasActiveSubscription: isActive,
-          });
-          continue;
-        }
-
-        if (createdAt < lifecycle.startDate) {
-          lifecycle.startDate = createdAt;
-        }
-
-        lifecycle.hasActiveSubscription = lifecycle.hasActiveSubscription || isActive;
-
-        if (hasEndedAccess) {
-          const endDate = new Date(row.accessUntil as Date);
-          if (!lifecycle.endDate || endDate > lifecycle.endDate) {
-            lifecycle.endDate = endDate;
-          }
-        }
+        lifecycles.push({
+          startDate: createdAt,
+          endDate,
+        });
       }
 
-      const customers = Array.from(byUser.values());
-      const totalCustomersEver = customers.length;
-      const churnedCustomers = customers.filter(
-        (c) => !c.hasActiveSubscription && !!c.endDate,
-      );
-      const totalChurnedCustomers = churnedCustomers.length;
+      const totalSubscriptionsEver = lifecycles.length;
+      const churnedSubscriptions = lifecycles.filter((s) => !!s.endDate);
+      const totalChurnedSubscriptions = churnedSubscriptions.length;
       const totalChurnRate =
-        totalCustomersEver > 0
-          ? Number(((totalChurnedCustomers / totalCustomersEver) * 100).toFixed(2))
+        totalSubscriptionsEver > 0
+          ? Number(((totalChurnedSubscriptions / totalSubscriptionsEver) * 100).toFixed(2))
           : 0;
 
-      const customerCreatedAtTimestamps = customerUsers
-        .filter((u) => !!u.createdAt)
-        .map((u) => new Date(u.createdAt as Date).getTime());
-
-      const firstCustomerDate =
-        customerCreatedAtTimestamps.length > 0
-          ? new Date(Math.min(...customerCreatedAtTimestamps))
+      const subscriptionCreatedAtTimestamps = lifecycles.map((s) => s.startDate.getTime());
+      const firstSubscriptionDate =
+        subscriptionCreatedAtTimestamps.length > 0
+          ? new Date(Math.min(...subscriptionCreatedAtTimestamps))
           : null;
 
       const monthly: Array<{
         month: string;
-        customersAtStart: number;
-        churnedCustomers: number;
+        subscriptionsAtStart: number;
+        churnedSubscriptions: number;
         churnRate: number | null;
       }> = [];
 
-      if (firstCustomerDate) {
+      if (firstSubscriptionDate) {
         const cursor = new Date(
-          Date.UTC(firstCustomerDate.getUTCFullYear(), firstCustomerDate.getUTCMonth(), 1),
+          Date.UTC(firstSubscriptionDate.getUTCFullYear(), firstSubscriptionDate.getUTCMonth(), 1),
         );
         const lastMonth = new Date(
           Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
@@ -7126,27 +7097,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
             Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1),
           );
 
-          const customersAtStart = customers.filter((c) => {
-            const startedBeforeMonth = c.startDate < monthStart;
-            const notEndedBeforeMonth = !c.endDate || c.endDate >= monthStart;
+          const subscriptionsAtStart = lifecycles.filter((s) => {
+            const startedBeforeMonth = s.startDate < monthStart;
+            const notEndedBeforeMonth = !s.endDate || s.endDate >= monthStart;
             return startedBeforeMonth && notEndedBeforeMonth;
           }).length;
 
-          const churnedInMonth = customers.filter(
-            (c) =>
-              !!c.endDate &&
-              c.endDate >= monthStart &&
-              c.endDate < monthEnd &&
-              !c.hasActiveSubscription,
+          const churnedInMonth = lifecycles.filter(
+            (s) =>
+              !!s.endDate &&
+              s.endDate >= monthStart &&
+              s.endDate < monthEnd,
           ).length;
 
           monthly.push({
             month: `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, "0")}`,
-            customersAtStart,
-            churnedCustomers: churnedInMonth,
+            subscriptionsAtStart,
+            churnedSubscriptions: churnedInMonth,
             churnRate:
-              customersAtStart > 0
-                ? Number(((churnedInMonth / customersAtStart) * 100).toFixed(2))
+              subscriptionsAtStart > 0
+                ? Number(((churnedInMonth / subscriptionsAtStart) * 100).toFixed(2))
                 : null,
           });
 
@@ -7155,9 +7125,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       return res.json({
-        firstCustomerDate: firstCustomerDate?.toISOString() ?? null,
-        totalCustomersEver,
-        totalChurnedCustomers,
+        firstSubscriptionDate: firstSubscriptionDate?.toISOString() ?? null,
+        totalSubscriptionsEver,
+        totalChurnedSubscriptions,
         totalChurnRate,
         monthly,
       });

@@ -129,14 +129,14 @@ interface Subscription {
 }
 
 interface ChurnStats {
-  firstCustomerDate: string | null;
-  totalCustomersEver: number;
-  totalChurnedCustomers: number;
+  firstSubscriptionDate: string | null;
+  totalSubscriptionsEver: number;
+  totalChurnedSubscriptions: number;
   totalChurnRate: number;
   monthly: Array<{
     month: string;
-    customersAtStart: number;
-    churnedCustomers: number;
+    subscriptionsAtStart: number;
+    churnedSubscriptions: number;
     churnRate: number | null;
   }>;
 }
@@ -2100,27 +2100,27 @@ export default function AdminDashboard() {
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardDescription>First Customer</CardDescription>
+                      <CardDescription>First Subscription</CardDescription>
                       <CardTitle className="text-base">
-                        {churnStatsData?.firstCustomerDate
-                          ? new Date(churnStatsData.firstCustomerDate).toLocaleDateString("en-GB")
+                        {churnStatsData?.firstSubscriptionDate
+                          ? new Date(churnStatsData.firstSubscriptionDate).toLocaleDateString("en-GB")
                           : "N/A"}
                       </CardTitle>
                     </CardHeader>
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardDescription>Total Customers Ever</CardDescription>
+                      <CardDescription>Total Subscriptions Ever</CardDescription>
                       <CardTitle className="text-2xl">
-                        {churnStatsData?.totalCustomersEver ?? 0}
+                        {churnStatsData?.totalSubscriptionsEver ?? 0}
                       </CardTitle>
                     </CardHeader>
                   </Card>
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardDescription>Total Churned Customers</CardDescription>
+                      <CardDescription>Total Churned Subscriptions</CardDescription>
                       <CardTitle className="text-2xl">
-                        {churnStatsData?.totalChurnedCustomers ?? 0}
+                        {churnStatsData?.totalChurnedSubscriptions ?? 0}
                       </CardTitle>
                     </CardHeader>
                   </Card>
@@ -2138,7 +2138,7 @@ export default function AdminDashboard() {
                   <CardHeader>
                     <CardTitle>Monthly Churn</CardTitle>
                     <CardDescription>
-                      Churned customers divided by customers active at the start of each month.
+                      Churned subscriptions divided by subscriptions active at the start of each month.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -2151,8 +2151,8 @@ export default function AdminDashboard() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Month</TableHead>
-                            <TableHead>Customers at Start</TableHead>
-                            <TableHead>Churned Customers</TableHead>
+                            <TableHead>Subscriptions at Start</TableHead>
+                            <TableHead>Churned Subscriptions</TableHead>
                             <TableHead>Churn Rate</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -2160,8 +2160,8 @@ export default function AdminDashboard() {
                           {churnStatsData.monthly.map((item) => (
                             <TableRow key={item.month}>
                               <TableCell>{formatMonth(item.month)}</TableCell>
-                              <TableCell>{item.customersAtStart}</TableCell>
-                              <TableCell>{item.churnedCustomers}</TableCell>
+                              <TableCell>{item.subscriptionsAtStart}</TableCell>
+                              <TableCell>{item.churnedSubscriptions}</TableCell>
                               <TableCell>
                                 {item.churnRate === null ? "N/A" : `${item.churnRate.toFixed(2)}%`}
                               </TableCell>
