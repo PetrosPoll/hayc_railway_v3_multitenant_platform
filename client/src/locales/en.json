@@ -1426,7 +1426,8 @@
                 "all": "All",
                 "draft": "Draft",
                 "scheduled": "Scheduled",
-                "sent": "Sent"
+                "sent": "Sent",
+                "failed": "Failed"
             },
             "toast": {
                 "createdTitle": "Campaign created successfully",
@@ -1452,7 +1453,10 @@
                 "scheduleCancelledTitle": "Schedule cancelled",
                 "scheduleCancelledDescription": "Campaign has been moved back to drafts",
                 "cancelScheduleFailedDescription": "Failed to cancel schedule",
-                "saveFailedDescription": "Failed to save campaign"
+                "saveFailedDescription": "Failed to save campaign",
+                "retryFailedTitle": "Campaign moved to drafts",
+                "retryFailedDescription": "You can edit the campaign and schedule it again.",
+                "retryFailedErrorDescription": "Could not reset the campaign."
             },
             "cancelSchedule": {
                 "button": "Cancel Schedule",
@@ -1462,7 +1466,8 @@
                 "draft": "Draft",
                 "sending": "Sending...",
                 "scheduled": "Scheduled",
-                "sent": "Sent"
+                "sent": "Sent",
+                "failed": "Failed"
             },
             "card": {
                 "recipients": "Recipients",
@@ -1473,7 +1478,8 @@
                 "viewAnalytics": "View Analytics",
                 "send": "Send",
                 "duplicate": "Duplicate",
-                "edit": "Edit"
+                "edit": "Edit",
+                "retry": "Retry"
             },
             "selectAll": "Select all",
             "selected": "selected",
@@ -1502,6 +1508,13 @@
                 "confirm": "Delete",
                 "deleting": "Deleting..."
             },
+            "empty": {
+                "all": "No campaigns yet. Create a campaign to get started.",
+                "draft": "No draft campaigns.",
+                "scheduled": "No scheduled campaigns.",
+                "sent": "No sent campaigns yet.",
+                "failed": "No failed campaigns."
+            },
             "wizard": {
                 "createTitle": "Create New Campaign",
                 "editTitle": "Edit Campaign",
@@ -1523,7 +1536,8 @@
                     "selectTime": "Select Time",
                     "scheduledToSend": "Scheduled to send:",
                     "hourPlaceholder": "HH",
-                    "minutePlaceholder": "MM"
+                    "minutePlaceholder": "MM",
+                    "noTimesLeftToday": "No remaining times today for this hour. Choose tomorrow or a later date."
                 },
                 "fields": {
                     "title": "Campaign Title *",
@@ -1551,7 +1565,10 @@
                     "templateRequiredStepDescription": "Please select an email template before continuing",
                     "templateRequiredSubmitDescription": "Please select an email template before sending the campaign",
                     "scheduleTimeRequiredTitle": "Schedule time required",
-                    "scheduleTimeRequiredDescription": "Please select a time to schedule the campaign or choose \"Send Now\""
+                    "scheduleTimeRequiredDescription": "Please select a time to schedule the campaign or choose \"Send Now\"",
+                    "scheduleTimeMustBeFutureTitle": "Invalid schedule time",
+                    "scheduleTimeMustBeFutureDescription": "Choose a time in the future. For today, pick a time after the current time.",
+                    "scheduleTimeInvalidDescription": "Pick a valid date and time, or choose another day if no times are left today."
                 },
                 "hints": {
                     "selectMultiple": "Select one or more",

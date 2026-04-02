@@ -1,0 +1,1 @@
+ALTER TABLE "newsletter_campaigns" ADD COLUMN "failure_reason" text;

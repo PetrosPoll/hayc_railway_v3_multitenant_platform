@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Plus, Loader2, TrendingUp, Users, Calendar, BarChart3, Copy, Edit, X, Search, ArrowUpDown, Trash2 } from "lucide-react";
+import { Mail, Plus, Loader2, TrendingUp, Users, Calendar, BarChart3, Copy, Edit, X, Search, ArrowUpDown, Trash2, RotateCcw } from "lucide-react";
 import { CampaignWizard } from "@/components/CampaignWizard";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -23,6 +23,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CampaignsListProps {
   websiteProgressId: number;
@@ -264,6 +270,28 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
     }
   };
 
+  const handleRetryFailedCampaign = async (campaignId: number) => {
+    try {
+      await apiRequest("PUT", `/api/newsletter/campaigns/${campaignId}`, {
+        status: "draft",
+        scheduledFor: null,
+        failureReason: null,
+        websiteProgressId,
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/newsletter/campaigns", websiteProgressId] });
+      toast({
+        title: t("dashboard.campaigns.toast.retryFailedTitle"),
+        description: t("dashboard.campaigns.toast.retryFailedDescription"),
+      });
+    } catch (e: any) {
+      toast({
+        title: t("dashboard.error"),
+        description: e?.message || t("dashboard.campaigns.toast.retryFailedErrorDescription"),
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCancelSchedule = async (campaignId: number) => {
     if (!window.confirm(t("dashboard.campaigns.cancelSchedule.confirm"))) {
       return;
@@ -313,6 +341,8 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
         return 'secondary';
       case 'scheduled':
         return 'secondary';
+      case 'failed':
+        return 'destructive';
       case 'draft':
         return 'outline';
       default:
@@ -346,9 +376,40 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
                 <h3 className="text-lg font-semibold" data-testid={`campaign-title-${campaign.id}`}>
                   {campaign.title}
                 </h3>
-                <Badge variant={getCampaignStatusColor(campaign.status)} data-testid={`campaign-status-${campaign.id}`}>
-                  {t(`dashboard.campaigns.status.${campaign.status}`)}
-                </Badge>
+                {campaign.status === "failed" && campaign.failureReason ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-default" tabIndex={0}>
+                        <Badge
+                          variant={getCampaignStatusColor(campaign.status)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          data-testid={`campaign-status-${campaign.id}`}
+                        >
+                          {t("dashboard.campaigns.status.failed")}
+                        </Badge>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-sm text-left">
+                      <p className="text-sm">{campaign.failureReason}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Badge
+                    variant={
+                      campaign.status === "failed"
+                        ? "destructive"
+                        : getCampaignStatusColor(campaign.status)
+                    }
+                    className={
+                      campaign.status === "failed"
+                        ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        : undefined
+                    }
+                    data-testid={`campaign-status-${campaign.id}`}
+                  >
+                    {t(`dashboard.campaigns.status.${campaign.status}`)}
+                  </Badge>
+                )}
               </div>
               {campaign.description && (
                 <p className="text-sm text-muted-foreground mb-3" data-testid={`campaign-description-${campaign.id}`}>
@@ -572,6 +633,40 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
             <span className="text-sm">{t("dashboard.campaigns.sendDialog.sending")}</span>
           </div>
         )}
+
+        {campaign.status === "failed" && (
+          <div className="flex gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => handleRetryFailedCampaign(campaign.id)}
+              className="flex-1"
+              data-testid={`button-retry-failed-${campaign.id}`}
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              {t("dashboard.campaigns.card.retry")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleEditCampaign(campaign)}
+              className="flex-1"
+              data-testid={`button-edit-failed-${campaign.id}`}
+            >
+              <Edit className="h-4 w-4 mr-2" />
+              {t("dashboard.campaigns.card.edit")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleDeleteCampaign(campaign.id)}
+              disabled={deleteCampaignMutation.isPending}
+              data-testid={`button-delete-failed-${campaign.id}`}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -582,7 +677,8 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
       all: t("dashboard.campaigns.empty.all"),
       draft: t("dashboard.campaigns.empty.draft"),
       scheduled: t("dashboard.campaigns.empty.scheduled"),
-      sent: t("dashboard.campaigns.empty.sent")
+      sent: t("dashboard.campaigns.empty.sent"),
+      failed: t("dashboard.campaigns.empty.failed"),
     };
 
     return (
@@ -604,6 +700,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   }
 
   return (
+    <TooltipProvider delayDuration={300}>
     <div className={`space-y-6 ${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}`} data-testid="campaigns-list">
       <div className="flex items-center justify-between">
         <div>
@@ -621,7 +718,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
       </div>
 
       <Tabs value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setSelectedCampaigns(new Set()); }} data-testid="campaigns-tabs">
-        <TabsList className="grid w-full grid-cols-4" data-testid="campaigns-tabs-list">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-1 h-auto" data-testid="campaigns-tabs-list">
           <TabsTrigger value="all" data-testid="tab-all">
             {t("dashboard.campaigns.tabs.all")} ({campaigns?.length || 0})
           </TabsTrigger>
@@ -633,6 +730,9 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
           </TabsTrigger>
           <TabsTrigger value="sent" data-testid="tab-sent">
             {t("dashboard.campaigns.tabs.sent")} ({campaigns?.filter(c => c.status === "sent").length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="failed" data-testid="tab-failed">
+            {t("dashboard.campaigns.tabs.failed")} ({campaigns?.filter(c => c.status === "failed").length || 0})
           </TabsTrigger>
         </TabsList>
 
@@ -840,5 +940,6 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </TooltipProvider>
   );
 }

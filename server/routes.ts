@@ -8643,7 +8643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const campaignId = parseInt(req.params.id);
-      const { title, description, purpose, tagIds, excludedTagIds, statusFilters, senderName, senderEmail, subject, message, status, scheduledFor, templateId, websiteProgressId } = req.body;
+      const { title, description, purpose, tagIds, excludedTagIds, statusFilters, senderName, senderEmail, subject, message, status, scheduledFor, failureReason, templateId, websiteProgressId } = req.body;
 
       console.log('[UPDATE CAMPAIGN] Received request body:', { title, tagIds, excludedTagIds, statusFilters, senderName, senderEmail });
 
@@ -8721,6 +8721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message,
         status,
         scheduledFor: scheduledFor ? new Date(scheduledFor) : null,
+        ...(failureReason !== undefined ? { failureReason } : {}),
         templateId: templateId !== undefined ? templateId : existingCampaign.templateId,
         recipientCount,
       });

@@ -36,10 +36,6 @@ export function NavMenu() {
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
 
-  const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-  };
-
   const handleLogout = async () => {
     try {
       await logout();
@@ -262,43 +258,45 @@ export function NavMenu() {
           </Link>
         )}
 
-        <div className="flex gap-2 mt-4 md:mt-0">
-          <button
-            onClick={() => {
-              i18n.changeLanguage("en");
-              localStorage.setItem("language", "en");
-            }}
-            className={`px-2 py-1 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center justify-center ${i18n.language === "en" ? "border-primary" : ""}`}
-            aria-label="English"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
-              <clipPath id="uk1"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
-              <clipPath id="uk2"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
-              <g clipPath="url(#uk1)">
-                <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
-                <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
-                <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#uk2)" stroke="#C8102E" strokeWidth="4"/>
-                <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
-                <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
-              </g>
-            </svg>
-          </button>
-          <button
-            onClick={() => {
-              i18n.changeLanguage("gr");
-              localStorage.setItem("language", "gr");
-            }}
-            className={`px-2 py-1 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center justify-center ${i18n.language === "gr" ? "border-primary" : ""}`}
-            aria-label="Greek"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
-              <rect fill="#0D5EAF" width="27" height="18"/>
-              <path fill="#FFF" d="M0,2h27v2H0zM0,6h27v2H0zM0,10h27v2H0zM0,14h27v2H0z"/>
-              <rect fill="#0D5EAF" width="10" height="10"/>
-              <path fill="#FFF" d="M0,4h10v2H0zM4,0h2v10H4z"/>
-            </svg>
-          </button>
-        </div>
+        {!user && (
+          <div className="flex gap-2 mt-4 md:mt-0">
+            <button
+              onClick={() => {
+                i18n.changeLanguage("en");
+                localStorage.setItem("language", "en");
+              }}
+              className={`px-2 py-1 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center justify-center ${i18n.language === "en" ? "border-primary" : ""}`}
+              aria-label="English"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
+                <clipPath id="uk1"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
+                <clipPath id="uk2"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
+                <g clipPath="url(#uk1)">
+                  <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
+                  <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
+                  <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#uk2)" stroke="#C8102E" strokeWidth="4"/>
+                  <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
+                  <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+                </g>
+              </svg>
+            </button>
+            <button
+              onClick={() => {
+                i18n.changeLanguage("gr");
+                localStorage.setItem("language", "gr");
+              }}
+              className={`px-2 py-1 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center justify-center ${i18n.language === "gr" ? "border-primary" : ""}`}
+              aria-label="Greek"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
+                <rect fill="#0D5EAF" width="27" height="18"/>
+                <path fill="#FFF" d="M0,2h27v2H0zM0,6h27v2H0zM0,10h27v2H0zM0,14h27v2H0z"/>
+                <rect fill="#0D5EAF" width="10" height="10"/>
+                <path fill="#FFF" d="M0,4h10v2H0zM4,0h2v10H4z"/>
+              </svg>
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
@@ -602,51 +600,52 @@ export function NavMenu() {
                   </Link>
                 )}
 
-                {/* Language Switcher */}
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-sm text-gray-600 mb-2">{t("nav.languages")}</p>
-                  <div className="flex flex-col gap-2">
-                    <button
-                      onClick={() => {
-                        i18n.changeLanguage("en");
-                        localStorage.setItem("language", "en");
-                        setIsOpen(false);
-                      }}
-                      className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "en" ? "border-primary bg-accent" : ""}`}
-                      aria-label="English"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
-                        <clipPath id="uk-mobile1"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
-                        <clipPath id="uk-mobile2"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
-                        <g clipPath="url(#uk-mobile1)">
-                          <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
-                          <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
-                          <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#uk-mobile2)" stroke="#C8102E" strokeWidth="4"/>
-                          <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
-                          <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
-                        </g>
-                      </svg>
-                      English
-                    </button>
-                    <button
-                      onClick={() => {
-                        i18n.changeLanguage("gr");
-                        localStorage.setItem("language", "gr");
-                        setIsOpen(false);
-                      }}
-                      className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "gr" ? "border-primary bg-accent" : ""}`}
-                      aria-label="Greek"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
-                        <rect fill="#0D5EAF" width="27" height="18"/>
-                        <path fill="#FFF" d="M0,2h27v2H0zM0,6h27v2H0zM0,10h27v2H0zM0,14h27v2H0z"/>
-                        <rect fill="#0D5EAF" width="10" height="10"/>
-                        <path fill="#FFF" d="M0,4h10v2H0zM4,0h2v10H4z"/>
-                      </svg>
-                      Ελληνικά
-                    </button>
+                {!user && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <p className="text-sm text-gray-600 mb-2">{t("nav.languages")}</p>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => {
+                          i18n.changeLanguage("en");
+                          localStorage.setItem("language", "en");
+                          setIsOpen(false);
+                        }}
+                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "en" ? "border-primary bg-accent" : ""}`}
+                        aria-label="English"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
+                          <clipPath id="uk-mobile1"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
+                          <clipPath id="uk-mobile2"><path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/></clipPath>
+                          <g clipPath="url(#uk-mobile1)">
+                            <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
+                            <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
+                            <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#uk-mobile2)" stroke="#C8102E" strokeWidth="4"/>
+                            <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
+                            <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
+                          </g>
+                        </svg>
+                        English
+                      </button>
+                      <button
+                        onClick={() => {
+                          i18n.changeLanguage("gr");
+                          localStorage.setItem("language", "gr");
+                          setIsOpen(false);
+                        }}
+                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "gr" ? "border-primary bg-accent" : ""}`}
+                        aria-label="Greek"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
+                          <rect fill="#0D5EAF" width="27" height="18"/>
+                          <path fill="#FFF" d="M0,2h27v2H0zM0,6h27v2H0zM0,10h27v2H0zM0,14h27v2H0z"/>
+                          <rect fill="#0D5EAF" width="10" height="10"/>
+                          <path fill="#FFF" d="M0,4h10v2H0zM4,0h2v10H4z"/>
+                        </svg>
+                        Ελληνικά
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </SheetContent>
           </Sheet>

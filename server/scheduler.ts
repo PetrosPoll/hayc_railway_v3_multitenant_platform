@@ -1,10 +1,28 @@
 import { db } from "./db";
 import { newsletterCampaigns, websiteProgress, subscriptions as subscriptionsTable, emailTemplates, campaignMessages } from "@shared/schema";
-import { eq, and, lte, ne, or, sql } from "drizzle-orm";
+import { eq, and, lte } from "drizzle-orm";
 import { EmailService } from "./email-service";
 import type { IStorage } from "./storage";
 import { generateUnsubscribeUrl, generateUnsubscribeFooter } from "./unsubscribe-utils";
 import { getEmailLimitWithAddOns } from "./email-limits";
+
+async function markScheduledCampaignFailed(
+  campaignId: number,
+  websiteProgressId: number,
+  reason: string,
+): Promise<void> {
+  await db
+    .update(newsletterCampaigns)
+    .set({ status: "failed", failureReason: reason, updatedAt: new Date() })
+    .where(
+      and(
+        eq(newsletterCampaigns.id, campaignId),
+        eq(newsletterCampaigns.websiteProgressId, websiteProgressId),
+        eq(newsletterCampaigns.status, "scheduled"),
+      ),
+    );
+  console.log(`[SCHEDULER] Campaign #${campaignId} failed: ${reason}`);
+}
 
 let schedulerInterval: NodeJS.Timeout | null = null;
 
@@ -104,7 +122,11 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
 
     // Check if campaign has either a template selected OR email content saved directly
     if (!campaign.templateId && !campaign.emailHtml) {
-      console.error(`[SCHEDULER] Campaign ${campaign.id} has no email content, skipping`);
+      await markScheduledCampaignFailed(
+        campaign.id,
+        campaign.websiteProgressId,
+        "Campaign has no email template or HTML content.",
+      );
       return;
     }
 
@@ -116,7 +138,11 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
       .limit(1);
 
     if (!website) {
-      console.error(`[SCHEDULER] Website not found for campaign ${campaign.id}`);
+      await markScheduledCampaignFailed(
+        campaign.id,
+        campaign.websiteProgressId,
+        "Website not found for this campaign.",
+      );
       return;
     }
 
@@ -136,7 +162,11 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
       .limit(1);
 
     if (!currentSubscription) {
-      console.error(`[SCHEDULER] No active subscription found for campaign ${campaign.id}`);
+      await markScheduledCampaignFailed(
+        campaign.id,
+        campaign.websiteProgressId,
+        "No active subscription found for this website.",
+      );
       return;
     }
 
@@ -145,7 +175,11 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
     const emailLimit = await getEmailLimitWithAddOns(tier, currentSubscription.websiteProgressId);
     
     if (tier === "basic") {
-      console.error(`[SCHEDULER] Campaign ${campaign.id} requires Essential or Pro tier`);
+      await markScheduledCampaignFailed(
+        campaign.id,
+        campaign.websiteProgressId,
+        "Newsletter sending requires Essential or Pro plan tier.",
+      );
       return;
     }
 
@@ -163,37 +197,62 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
       }
     }
 
-    // Get contacts for the campaign's tags
+    // Get contacts for the campaign (by tags if specified, legacy group, or all contacts — matches /send route)
     let recipients: any[] = [];
-    
-    // Support both legacy groupName and new tagIds
+
     if (campaign.tagIds && campaign.tagIds.length > 0) {
-      // New tags-based system
       const allContacts = await storage.getContactsByTags(campaign.websiteProgressId, campaign.tagIds);
-      // Accept contacts with status 'active', 'confirmed', or 'pending'
-      recipients = allContacts.filter(c => c.status === 'active' || c.status === 'confirmed' || c.status === 'pending');
+      recipients = allContacts.filter(
+        (c) => c.status === "active" || c.status === "confirmed" || c.status === "pending",
+      );
     } else if (campaign.groupName) {
-      // Legacy group-based system (fallback)
-      const subscribers = await storage.getNewsletterSubscribersByGroup(campaign.groupName, campaign.websiteProgressId);
-      recipients = subscribers.filter(s => s.status === 'active' || s.status === 'confirmed' || s.status === 'pending');
+      const subscribers = await storage.getNewsletterSubscribersByGroup(
+        campaign.groupName,
+        campaign.websiteProgressId,
+      );
+      recipients = subscribers.filter(
+        (s) => s.status === "active" || s.status === "confirmed" || s.status === "pending",
+      );
     } else {
-      console.error(`[SCHEDULER] Campaign ${campaign.id} has no tags or group specified`);
-      return;
+      const allContacts = await storage.getContacts(campaign.websiteProgressId);
+      recipients = allContacts.filter(
+        (c) => c.status === "active" || c.status === "confirmed" || c.status === "pending",
+      );
     }
-    
-    // Filter out excluded subscribers/contacts
+
+    const excludedTagIds = campaign.excludedTagIds || [];
+    const excludedTagIdsNormalized = excludedTagIds
+      .map((id: any) => (typeof id === "number" ? id : parseInt(id)))
+      .filter((id: number) => !isNaN(id));
+    if (excludedTagIdsNormalized.length > 0) {
+      const contactsWithExcludedTags = await storage.getContactsByTags(
+        campaign.websiteProgressId,
+        excludedTagIdsNormalized,
+      );
+      const excludedContactIdsByTag = new Set(contactsWithExcludedTags.map((c) => c.id));
+      recipients = recipients.filter((c) => !excludedContactIdsByTag.has(c.id));
+    }
+
     const excludedIds = campaign.excludedSubscriberIds || [];
-    const finalRecipients = recipients.filter(r => !excludedIds.includes(r.id.toString()));
+    const finalRecipients = recipients.filter((r) => !excludedIds.includes(r.id.toString()));
 
     if (finalRecipients.length === 0) {
-      console.error(`[SCHEDULER] Campaign ${campaign.id} has no active recipients after exclusions`);
+      await markScheduledCampaignFailed(
+        campaign.id,
+        campaign.websiteProgressId,
+        "No recipients to send to after applying exclusions.",
+      );
       return;
     }
 
     // Check if sending this campaign would exceed the email limit
     const remainingQuota = emailLimit - currentUsage;
     if (finalRecipients.length > remainingQuota) {
-      console.error(`[SCHEDULER] Campaign ${campaign.id} would exceed email limit (${finalRecipients.length} emails needed, ${remainingQuota} remaining)`);
+      await markScheduledCampaignFailed(
+        campaign.id,
+        campaign.websiteProgressId,
+        `Monthly email quota would be exceeded (${finalRecipients.length} recipients needed, ${remainingQuota} remaining).`,
+      );
       return;
     }
 

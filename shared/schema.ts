@@ -929,6 +929,7 @@ export const newsletterCampaigns = pgTable("newsletter_campaigns", {
   emailDesign: text("email_design"), // Campaign's custom design JSON
   status: text("status").notNull().default("draft"),
   scheduledFor: timestamp("scheduled_for"),
+  failureReason: text("failure_reason"),
   sentAt: timestamp("sent_at"),
   sentCount: integer("sent_count").notNull().default(0),
   deliveredCount: integer("delivered_count").notNull().default(0),

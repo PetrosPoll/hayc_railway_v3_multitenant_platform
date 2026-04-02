@@ -85,6 +85,13 @@
       "when": 1774885928188,
       "tag": "0011_freezing_loners",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1775149065107,
+      "tag": "0012_sparkling_elektra",
+      "breakpoints": true
     }
   ]
 }

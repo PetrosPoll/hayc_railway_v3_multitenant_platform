@@ -19,7 +19,46 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
+
+const HOURS_00_23 = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, "0"));
+const MINUTES_00_59 = Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, "0"));
+
+function getAllowedHoursForDate(selectedDate: Date): string[] {
+  const now = new Date();
+  if (!isSameDay(selectedDate, now)) return HOURS_00_23;
+  const startH = now.getHours();
+  return Array.from({ length: 24 - startH }, (_, i) => (startH + i).toString().padStart(2, "0"));
+}
+
+function getAllowedMinutesForDateAndHour(selectedDate: Date, hourStr: string): string[] {
+  const now = new Date();
+  if (!isSameDay(selectedDate, now)) return MINUTES_00_59;
+  const h = parseInt(hourStr, 10);
+  const curH = now.getHours();
+  const curM = now.getMinutes();
+  if (h > curH) return MINUTES_00_59;
+  if (h < curH) return [];
+  return Array.from({ length: 59 - curM }, (_, i) => (curM + 1 + i).toString().padStart(2, "0"));
+}
+
+/** Local date+time; returns null if inputs are invalid (avoids Invalid Date / toISOString throw). */
+function buildScheduledDateFromParts(
+  date: Date,
+  hourStr: string,
+  minuteStr: string,
+): Date | null {
+  if (!date || Number.isNaN(date.getTime())) return null;
+  const h = parseInt(hourStr, 10);
+  const m = parseInt(minuteStr, 10);
+  if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 23 || m < 0 || m > 59) {
+    return null;
+  }
+  const d = new Date(date.getTime());
+  d.setHours(h, m, 0, 0);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
 
 const CONTACT_STATUSES = [
   { value: 'confirmed' },
@@ -296,11 +335,29 @@ export function CampaignWizard({
     form.setValue('templateId', template.id);
   };
 
+  // Clamp hour/minute when date is today so selections stay in the future (local time)
+  useEffect(() => {
+    if (scheduleType !== "later" || !selectedDate) return;
+    const rawH = getAllowedHoursForDate(selectedDate);
+    const allowedH = rawH.length > 0 ? rawH : HOURS_00_23;
+    if (!allowedH.includes(selectedHour)) {
+      setSelectedHour(allowedH[0]);
+      return;
+    }
+    const allowedM = getAllowedMinutesForDateAndHour(selectedDate, selectedHour);
+    if (allowedM.length > 0 && !allowedM.includes(selectedMinute)) {
+      setSelectedMinute(allowedM[0]);
+    }
+  }, [scheduleType, selectedDate, selectedHour, selectedMinute]);
+
   // Update form value when date or time changes
   useEffect(() => {
     if (scheduleType === 'later' && selectedDate) {
-      const scheduledTime = new Date(selectedDate);
-      scheduledTime.setHours(parseInt(selectedHour), parseInt(selectedMinute), 0, 0);
+      const scheduledTime = buildScheduledDateFromParts(selectedDate, selectedHour, selectedMinute);
+      if (!scheduledTime) {
+        form.setValue("scheduledFor", "");
+        return;
+      }
       const isoTime = scheduledTime.toISOString();
       console.log('[CampaignWizard] Setting scheduledFor:', { isoTime, selectedDate, selectedHour, selectedMinute });
       form.setValue('scheduledFor', isoTime);
@@ -338,6 +395,20 @@ export function CampaignWizard({
         variant: 'destructive',
       });
       return;
+    }
+
+    if (scheduleType === "later" && selectedDate) {
+      const scheduledLocal = buildScheduledDateFromParts(selectedDate, selectedHour, selectedMinute);
+      if (!scheduledLocal || scheduledLocal.getTime() <= Date.now()) {
+        toast({
+          title: t("dashboard.campaigns.wizard.validation.scheduleTimeMustBeFutureTitle"),
+          description: scheduledLocal
+            ? t("dashboard.campaigns.wizard.validation.scheduleTimeMustBeFutureDescription")
+            : t("dashboard.campaigns.wizard.validation.scheduleTimeInvalidDescription"),
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -1076,52 +1147,80 @@ export function CampaignWizard({
                         </div>
 
                         {/* Time Picker */}
-                        {selectedDate && (
+                        {selectedDate && (() => {
+                          const rawHours = getAllowedHoursForDate(selectedDate);
+                          const allowedHours = rawHours.length > 0 ? rawHours : HOURS_00_23;
+                          const allowedMinutes = getAllowedMinutesForDateAndHour(selectedDate, selectedHour);
+                          const isToday = isSameDay(selectedDate, new Date());
+                          const safeHour = allowedHours.includes(selectedHour) ? selectedHour : allowedHours[0];
+                          const safeMinute =
+                            allowedMinutes.length === 0
+                              ? selectedMinute
+                              : allowedMinutes.includes(selectedMinute)
+                                ? selectedMinute
+                                : allowedMinutes[0];
+                          return (
                           <div>
                             <p className="text-sm font-medium mb-2">
                               {t("dashboard.campaigns.wizard.schedule.selectTime")}
                             </p>
                             <div className="flex items-center gap-2">
                               <Clock className="h-4 w-4 text-muted-foreground" />
-                              <Select value={selectedHour} onValueChange={setSelectedHour}>
+                              <Select value={safeHour} onValueChange={setSelectedHour}>
                                 <SelectTrigger className="w-[80px]">
                                   <SelectValue placeholder={t("dashboard.campaigns.wizard.schedule.hourPlaceholder")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0')).map(hour => (
+                                  {allowedHours.map((hour) => (
                                     <SelectItem key={hour} value={hour}>{hour}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                               <span className="text-lg font-medium">:</span>
-                              <Select value={selectedMinute} onValueChange={setSelectedMinute}>
+                              <Select
+                                value={safeMinute}
+                                onValueChange={setSelectedMinute}
+                                disabled={allowedMinutes.length === 0}
+                              >
                                 <SelectTrigger className="w-[80px]">
                                   <SelectValue placeholder={t("dashboard.campaigns.wizard.schedule.minutePlaceholder")} />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {Array.from({ length: 60 }, (_, i) => i.toString().padStart(2, '0')).map(minute => (
+                                  {allowedMinutes.map((minute) => (
                                     <SelectItem key={minute} value={minute}>{minute}</SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </div>
+                            {isToday && allowedMinutes.length === 0 && (
+                              <p className="text-sm text-destructive mt-2">
+                                {t("dashboard.campaigns.wizard.schedule.noTimesLeftToday")}
+                              </p>
+                            )}
                           </div>
-                        )}
+                          );
+                        })()}
 
                         {/* Preview Scheduled Time */}
-                        {form.watch('scheduledFor') && (
+                        {(() => {
+                          const raw = form.watch("scheduledFor");
+                          if (!raw) return null;
+                          const preview = new Date(raw);
+                          if (Number.isNaN(preview.getTime())) return null;
+                          return (
                           <div className="p-3 bg-muted rounded-md">
                             <p className="text-sm font-medium mb-1">
                               {t("dashboard.campaigns.wizard.schedule.scheduledToSend")}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {new Date(form.watch('scheduledFor') || '').toLocaleString('en-US', {
-                                dateStyle: 'full',
-                                timeStyle: 'short'
+                              {preview.toLocaleString("en-US", {
+                                dateStyle: "full",
+                                timeStyle: "short",
                               })}
                             </p>
                           </div>
-                        )}
+                          );
+                        })()}
                       </div>
                     )}
                   </CardContent>
