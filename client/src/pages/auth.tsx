@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { useAuth } from "@/components/ui/authContext";
 import { Eye, EyeOff } from "lucide-react";
 
@@ -56,6 +57,11 @@ export default function Auth() {
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/user"], data);
+      const userLanguage = data?.user?.language;
+      if (userLanguage && i18n.language !== userLanguage) {
+        i18n.changeLanguage(userLanguage);
+        localStorage.setItem("language", userLanguage);
+      }
       toast({
         title: isRegistering ? t("auth.registrationSuccessful") : t("auth.loginSuccessful"),
         description: t("auth.welcome")
