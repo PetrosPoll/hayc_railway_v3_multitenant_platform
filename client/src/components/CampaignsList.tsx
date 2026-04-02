@@ -737,7 +737,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
         </TabsList>
 
         <TabsContent value={statusFilter} className="space-y-4 mt-4" data-testid={`tab-content-${statusFilter}`}>
-          {filteredCampaigns.length > 0 && (
+          {(campaigns?.length ?? 0) > 0 && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-muted/50 rounded-lg" data-testid="campaigns-filters">
               <div className="flex items-center gap-3">
                 <Checkbox
