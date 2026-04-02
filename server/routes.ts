@@ -66,6 +66,42 @@ import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
 import { getConfig, putConfig, getConfigHistory, getConfigSnapshot, restoreConfig } from "./s3-config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+type CloudinaryResourceType = "image" | "video" | "raw";
+
+/** Used when deleting from Cloudinary; prefers stored resourceType, else name/URL extension heuristics. */
+function inferCloudinaryResourceTypeForDelete(item: {
+  resourceType?: string;
+  name?: string;
+  url?: string;
+}): CloudinaryResourceType {
+  const rt = item.resourceType?.toLowerCase();
+  if (rt === "image" || rt === "video" || rt === "raw") return rt;
+
+  const name = item.name || "";
+  const ext = name.includes(".") ? (name.split(".").pop() || "").toLowerCase() : "";
+  const imageExt = new Set([
+    "jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "heic", "heif",
+  ]);
+  const videoExt = new Set(["mp4", "mov", "avi", "webm", "mkv", "m4v", "flv"]);
+  if (imageExt.has(ext)) return "image";
+  if (videoExt.has(ext)) return "video";
+
+  if (item.url) {
+    try {
+      const urlPath = new URL(item.url).pathname;
+      const pathExt = urlPath.includes(".")
+        ? (urlPath.split(".").pop() || "").toLowerCase()
+        : "";
+      if (imageExt.has(pathExt)) return "image";
+      if (videoExt.has(pathExt)) return "video";
+    } catch {
+      /* ignore invalid URL */
+    }
+  }
+
+  return "raw";
+}
+
 let publicContactDailyCount = { count: 0, date: new Date().toDateString() };
 
 /**
@@ -14339,49 +14375,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate Cloudinary signature for signed uploads
-  app.post("/api/cloudinary/signature", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Not authenticated" });
-    }
-
-    try {
-      const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
-      const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
-      
-      if (!cloudinaryApiSecret || !cloudinaryApiKey) {
-        console.error("Cloudinary credentials missing");
-        return res.status(500).json({ error: "Server configuration error" });
-      }
-
-      // Extract parameters to sign from request body
-      const paramsToSign = req.body.paramsToSign || {};
-      
-      console.log("[Cloudinary Signature] Params received:", paramsToSign);
-      
-      // Sort parameters alphabetically and create signature string
-      const sortedParams = Object.keys(paramsToSign)
-        .sort()
-        .map(key => `${key}=${paramsToSign[key]}`)
-        .join('&');
-      
-      console.log("[Cloudinary Signature] String to sign:", sortedParams);
-      
-      const signatureString = `${sortedParams}${cloudinaryApiSecret}`;
-      const signature = createHash("sha1").update(signatureString).digest("hex");
-
-      console.log("[Cloudinary Signature] Generated signature:", signature);
-
-      res.json({ 
-        signature,
-        api_key: cloudinaryApiKey
-      });
-    } catch (err) {
-      console.error("Error generating Cloudinary signature:", err);
-      res.status(500).json({ error: "Failed to generate signature" });
-    }
-  });
-
   // Get all media files from Cloudinary folder for a website
   app.get("/api/websites/:id/media", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -14534,12 +14527,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         url: z.string().url(),
         publicId: z.string(),
         name: z.string(),
+        resourceType: z.enum(["image", "video", "raw"]).optional(),
       });
 
       const mediaItem = schema.parse(req.body);
       
       // Get current media array
-      const currentMedia = (website.media as Array<{url: string, publicId: string, name: string}>) || [];
+      const currentMedia =
+        (website.media as Array<{
+          url: string;
+          publicId: string;
+          name: string;
+          resourceType?: "image" | "video" | "raw";
+        }>) || [];
       
       // Add new media item
       const updatedMedia = [...currentMedia, mediaItem];
@@ -14646,13 +14646,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get current media array
-      const currentMedia = (website.media as Array<{url: string, publicId: string, name: string}>) || [];
-      
-      // Check if media item exists
-      const mediaExists = currentMedia.some(item => item.publicId === publicId);
-      if (!mediaExists) {
+      const currentMedia =
+        (website.media as Array<{
+          url: string;
+          publicId: string;
+          name: string;
+          resourceType?: "image" | "video" | "raw";
+        }>) || [];
+
+      const storedItem = currentMedia.find((item) => item.publicId === publicId);
+      if (!storedItem) {
         return res.status(404).json({ error: "Media not found" });
       }
+
+      const resourceTypeForApi = inferCloudinaryResourceTypeForDelete(storedItem);
 
       // Validate Cloudinary configuration before making any changes
       const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
@@ -14671,7 +14678,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const authString = Buffer.from(`${cloudinaryApiKey}:${cloudinaryApiSecret}`).toString('base64');
 
         const deleteResponse = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/resources/image/upload?public_ids[]=${encodeURIComponent(publicId)}`,
+          `https://api.cloudinary.com/v1_1/${cloudinaryCloudName}/resources/${resourceTypeForApi}/upload?public_ids[]=${encodeURIComponent(publicId)}`,
           {
             method: "DELETE",
             headers: {

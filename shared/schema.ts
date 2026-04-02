@@ -136,7 +136,7 @@ export const websiteProgress = pgTable("website_progress", {
   projectName: text("project_name"),
   websiteLanguage: text("website_language").default("en"),
   currentStage: integer("current_stage").notNull().default(1),
-  media: jsonb("media").$type<Array<{url: string, publicId: string, name: string}>>().default([]),
+  media: jsonb("media").$type<Array<{url: string, publicId: string, name: string, resourceType?: "image" | "video" | "raw"}>>().default([]),
   bonusEmails: integer("bonus_emails").default(0).notNull(),
   bonusEmailsExpiry: timestamp("bonus_emails_expiry"),
   bookingEnabled: boolean("booking_enabled").default(false).notNull(),

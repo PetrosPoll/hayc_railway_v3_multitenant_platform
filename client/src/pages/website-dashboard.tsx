@@ -135,7 +135,7 @@ type Website = {
   domain: string;
   currentStage: number;
   userEmail: string;
-  media?: Array<{ url: string, publicId: string, name: string }>;
+  media?: Array<{ url: string, publicId: string, name: string, resourceType?: "image" | "video" | "raw" }>;
   bookingEnabled?: boolean;
    paymentsEnabled?: boolean;
   digitalProductsEnabled?: boolean;
@@ -744,7 +744,12 @@ export default function WebsiteDashboard() {
   });
 
   // Fetch media files from Cloudinary folder
-  const { data: mediaData, isLoading: mediaLoading } = useQuery<{ media: Array<{ url: string, publicId: string, name: string, previewUrl?: string, format?: string | null }> }>({
+  const {
+    data: mediaData,
+    isLoading: mediaLoading,
+    isError: isMediaFetchError,
+    refetch: refetchMedia,
+  } = useQuery<{ media: Array<{ url: string, publicId: string, name: string, previewUrl?: string, format?: string | null }> }>({
     queryKey: ["/api/websites", websiteId, "media"],
     queryFn: async () => {
       const response = await fetch(`/api/websites/${websiteId}/media`, {
@@ -1080,7 +1085,12 @@ export default function WebsiteDashboard() {
 
   // Media mutations at component level
   const addMediaMutation = useMutation({
-    mutationFn: async (mediaData: { url: string; publicId: string; name: string }) => {
+    mutationFn: async (mediaData: {
+      url: string;
+      publicId: string;
+      name: string;
+      resourceType?: "image" | "video" | "raw";
+    }) => {
       const response = await fetch(`/api/websites/${websiteId}/media`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -3366,6 +3376,9 @@ export default function WebsiteDashboard() {
   const renderMediaSection = () => {
     const mediaFiles = mediaData?.media || [];
 
+    const mediaFolderDomain = (website?.domain ?? "").replace(/\.pending-onboarding$/i, "");
+    const mediaFolderPath = `Website Media/${userData?.user?.email}/${mediaFolderDomain}`;
+
     const handleUploadClick = async () => {
       if (!window.cloudinary) {
         toast({
@@ -3383,7 +3396,7 @@ export default function WebsiteDashboard() {
         const configResponse = await fetch("/api/cloudinary/signature", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ paramsToSign: { folder: `Website Media/${userData?.user?.email}/${website?.domain}` } }),
+          body: JSON.stringify({ paramsToSign: { folder: mediaFolderPath } }),
           credentials: "include",
         });
 
@@ -3432,7 +3445,7 @@ export default function WebsiteDashboard() {
               });
             }
           },
-          folder: `Website Media/${userData?.user?.email}/${website?.domain}`,
+          folder: mediaFolderPath,
           sources: ["local", "url", "camera"],
           multiple: true,
           maxFileSize: 52428800, // 50MB
@@ -3468,10 +3481,14 @@ export default function WebsiteDashboard() {
           }
 
           if (result.event === "success") {
+            const rt = result.info?.resource_type as string | undefined;
+            const resourceType =
+              rt === "image" || rt === "video" || rt === "raw" ? rt : undefined;
             addMediaMutation.mutate({
               url: result.info.secure_url,
               publicId: result.info.public_id,
               name: result.info.original_filename || "Untitled",
+              ...(resourceType ? { resourceType } : {}),
             });
           }
         }
@@ -3509,7 +3526,22 @@ export default function WebsiteDashboard() {
           </Button>
         </div>
 
-        {mediaLoading ? (
+        {isMediaFetchError ? (
+          <Card data-testid="media-fetch-error">
+            <CardContent className="flex flex-col items-center justify-center py-12 gap-4">
+              <p className="text-muted-foreground text-center">
+                {t("dashboard.mediaFetchFailed")}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => refetchMedia()}
+                data-testid="button-retry-media-fetch"
+              >
+                {t("dashboard.mediaRetry")}
+              </Button>
+            </CardContent>
+          </Card>
+        ) : mediaLoading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin" data-testid="loader-media" />
           </div>

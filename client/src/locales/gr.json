@@ -1193,6 +1193,8 @@
         "mediaUploadFailed": "Αποτυχία μεταφόρτωσης αρχείου",
         "mediaDeletedSuccess": "Το αρχείο διαγράφηκε με επιτυχία",
         "mediaDeleteFailed": "Αποτυχία διαγραφής αρχείου",
+        "mediaFetchFailed": "Δεν ήταν δυνατή η φόρτωση των αρχείων πολυμέσων. Παρακαλώ δοκιμάστε ξανά.",
+        "mediaRetry": "Επανάληψη",
         "stripeConnectStartFailed": "Αποτυχία σύνδεσης",
         "stripeConnectTitle": "Stripe Connect",
         "stripeConnectDescription": "Συνδέστε τον λογαριασμό Stripe για να δέχεστε πληρωμές μέσω των προσθέτων HAYC (π.χ. κρατήσεις, προϊόντα) σε αυτή την ιστοσελίδα. Οι πληρωμές καταλήγουν απευθείας σε εσάς, η HAYC δεν κρατά χρήματα.",

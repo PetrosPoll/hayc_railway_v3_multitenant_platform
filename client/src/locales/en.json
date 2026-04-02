@@ -1191,6 +1191,8 @@
         "mediaUploadFailed": "Failed to upload media",
         "mediaDeletedSuccess": "Media deleted successfully",
         "mediaDeleteFailed": "Failed to delete media",
+        "mediaFetchFailed": "We couldn't load your media. Please try again.",
+        "mediaRetry": "Retry",
         "stripeConnectStartFailed": "Failed to connect",
         "stripeConnectTitle": "Stripe Connect",
         "stripeConnectDescription": "Connect your Stripe account to accept payments through HAYC addons (e.g. bookings, products) on this site. You get paid directly; HAYC does not hold funds.",

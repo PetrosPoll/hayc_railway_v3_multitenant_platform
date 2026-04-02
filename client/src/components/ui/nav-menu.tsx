@@ -135,7 +135,9 @@ export function NavMenu() {
             </svg>
           </Link>
         </div>
-        {pathname !== "/dashboard" && pathname !== "/reviews-program" && (
+        {!user &&
+          pathname !== "/dashboard" &&
+          pathname !== "/reviews-program" && (
           <>
             <Link to="/">
               <Button
@@ -477,7 +479,9 @@ export function NavMenu() {
 
               {/* Mobile Navigation Links */}
               <div className="flex flex-col gap-4">
-                {pathname !== "/dashboard" && (
+                {!user &&
+                  pathname !== "/dashboard" &&
+                  pathname !== "/reviews-program" && (
                   <>
                     <Link to="/" onClick={() => setIsOpen(false)}>
                       <Button
