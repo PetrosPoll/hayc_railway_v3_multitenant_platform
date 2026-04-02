@@ -4008,14 +4008,29 @@ export default function WebsiteDashboard() {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {AVAILABLE_ADDONS.map((addon) => {
-            const isPurchased = subscriptions?.some(
-              (sub) =>
-                sub.productType === "addon" &&
-                sub.productId === addon.id &&
-                sub.status === "active" &&
-                sub.websiteProgressId === parseInt(websiteId || "0"),
-            );
+          {AVAILABLE_ADDONS.filter((addon) => {
+            const activeForSite =
+              subscriptions?.some(
+                (sub) =>
+                  sub.productType === "addon" &&
+                  sub.productId === addon.id &&
+                  sub.status === "active" &&
+                  sub.websiteProgressId === parseInt(websiteId || "0"),
+              ) ?? false;
+            if (addon.purchasable === false) {
+              return activeForSite;
+            }
+            return true;
+          }).map((addon) => {
+            const isPurchased =
+              subscriptions?.some(
+                (sub) =>
+                  sub.productType === "addon" &&
+                  sub.productId === addon.id &&
+                  sub.status === "active" &&
+                  sub.websiteProgressId === parseInt(websiteId || "0"),
+              ) ?? false;
+            const legacyNoNewSales = addon.purchasable === false;
 
             return (
               <Card key={addon.id} data-testid={`addon-card-${addon.id}`} className="flex flex-col">
@@ -4042,27 +4057,35 @@ export default function WebsiteDashboard() {
                     {addon.description}
                   </p>
                   <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                    <div className="flex items-baseline">
-                      <span className="text-2xl font-bold">{addon.price}€</span>
-                      <span className="text-muted-foreground text-sm">/month</span>
-                    </div>
-                    <Button
-                      onClick={() => {
-                        if (!isPurchased) {
-                          setSelectedAddOn(addon);
-                          setConfirmDialogOpen(true);
-                        }
-                      }}
-                      disabled={isPurchased}
-                      variant={isPurchased ? "secondary" : "default"}
-                      data-testid={`button-purchase-${addon.id}`}
-                    >
-                      {isPurchased ? (
-                        t("dashboard.alreadyPurchased") || "Already Purchased"
-                      ) : (
-                        t("dashboard.purchase") || "Purchase"
-                      )}
-                    </Button>
+                    {legacyNoNewSales ? (
+                      <Badge variant="secondary" className="ml-auto text-sm">
+                        {t("dashboard.alreadyPurchased") || "Already Purchased"}
+                      </Badge>
+                    ) : (
+                      <>
+                        <div className="flex items-baseline">
+                          <span className="text-2xl font-bold">{addon.price}€</span>
+                          <span className="text-muted-foreground text-sm">/month</span>
+                        </div>
+                        <Button
+                          onClick={() => {
+                            if (!isPurchased) {
+                              setSelectedAddOn(addon);
+                              setConfirmDialogOpen(true);
+                            }
+                          }}
+                          disabled={isPurchased}
+                          variant={isPurchased ? "secondary" : "default"}
+                          data-testid={`button-purchase-${addon.id}`}
+                        >
+                          {isPurchased ? (
+                            t("dashboard.alreadyPurchased") || "Already Purchased"
+                          ) : (
+                            t("dashboard.purchase") || "Purchase"
+                          )}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </CardContent>
               </Card>

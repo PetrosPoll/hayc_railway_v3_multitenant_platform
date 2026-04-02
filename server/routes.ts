@@ -272,39 +272,23 @@ function getAvailableAddOnsWithPriceIds() {
       priceId: process.env.STRIPE_LMS_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[2], // multistep
-      priceId: process.env.STRIPE_SMART_FORMS_ADDON_PRICE_ID || "",
-    },
-    {
-      ...availableAddOns[3], // qrcode
-      priceId: process.env.STRIPE_QRCODE_ADDON_PRICE_ID || "",
-    },
-    {
-      ...availableAddOns[4], // donation
-      priceId: process.env.STRIPE_DONATION_ADDON_PRICE_ID || "",
-    },
-    {
-      ...availableAddOns[5], // payments
+      ...availableAddOns[2], // payments
       priceId: process.env.STRIPE_PAYMENTS_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[6], // realestate
+      ...availableAddOns[3], // realestate
       priceId: process.env.STRIPE_REALESTATE_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[7], // transport
+      ...availableAddOns[4], // transport
       priceId: process.env.STRIPE_TRANSPORT_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[8], // newsletter 15k
+      ...availableAddOns[5], // newsletter 15k
       priceId: process.env.STRIPE_NEWSLETTER_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[9], // traffic builder
-      priceId: process.env.STRIPE_TRAFFIC_BUILDER_ADDON_PRICE_ID || "",
-    },
-    {
-      ...availableAddOns[10], // newsletter 100k
+      ...availableAddOns[6], // newsletter 100k
       priceId: process.env.STRIPE_NEWSLETTER_EMAILS_100K_ADDON_MONTHLY_PRICE_ID || "",
     },
   ];
@@ -329,7 +313,6 @@ const ADDON_YEARLY_ENV_KEYS: Record<string, string> = {
   'transport': 'STRIPE_TRANSPORT_ADDON_YEARLY_PRICE_ID',
   'newsletter': 'STRIPE_NEWSLETTER_ADDON_YEARLY_PRICE_ID',
   'newsletter_100': 'STRIPE_NEWSLETTER_100K_ADDON_YEARLY_PRICE_ID',
-  'traffic-builder': 'STRIPE_TRAFFIC_BUILDER_ADDON_YEARLY_PRICE_ID',
 };
 
 // Helper to get yearly price config for an add-on (reads from env dynamically)

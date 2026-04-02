@@ -587,30 +587,6 @@ export const availableAddOns = [
     image: "/images/lms-add-on-icon.svg",
   },
   {
-    id: "multistep",
-    name: "Multistep Forms",
-    description: "Advanced multi-step form builder with conditional logic",
-    price: 10,
-    yearlyPrice: 120,
-    image: "/images/multistep-form-add-on-icon.svg",
-  },
-  {
-    id: "qrcode",
-    name: "QR Code Generator",
-    description: "Dynamic QR code generation and management system",
-    price: 10,
-    // yearlyPrice: 120,
-    image: "/images/qr-code-add-on-icon.svg",
-  },
-  {
-    id: "donation",
-    name: "Donation System",
-    description: "Complete donation platform with payment processing",
-    price: 10,
-    // yearlyPrice: 120,
-    image: "/images/donation-system-add-on-icon.svg",
-  },
-  {
     id: "payments",
     name: "Online Payments",
     description: "Secure online payment processing and e-commerce features",
@@ -625,6 +601,7 @@ export const availableAddOns = [
     price: 10,
     yearlyPrice: 120,
     image: "/images/real-estate-add-on-icon.svg",
+    purchasable: false,
   },
   {
     id: "transport",
@@ -633,6 +610,7 @@ export const availableAddOns = [
     price: 10,
     yearlyPrice: 120,
     image: "/images/transport-booking-add-on-icon.svg",
+    purchasable: false,
   },
   {
     id: "newsletter",
@@ -649,14 +627,6 @@ export const availableAddOns = [
     price: 35, // or whatever price
     yearlyPrice: 120,
     image: "/images/Newsletter-icon.png",
-  },
-  {
-    id: "trafficbuilder",
-    name: "Traffic Builder (2 Posts/Month)",
-    description: "our team creates two professionally written, SEO-optimized posts tailored to your business and audience",
-    price: 10, // or whatever price
-    //yearlyPrice: 120,
-    image: "/images/traffic-builder-blog.png",
   },
 ];
 

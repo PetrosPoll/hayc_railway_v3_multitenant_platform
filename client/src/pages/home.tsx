@@ -1,11 +1,12 @@
 import { useNavigate, Link } from "react-router-dom";
 import { SubscriptionCard } from "@/components/ui/subscription-card";
-import { subscriptionPlans, type User } from "@shared/schema";
+import { subscriptionPlans, type User, type Subscription } from "@shared/schema";
 import { createCheckoutSession } from "@/lib/api";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import AutoScroll from "embla-carousel-auto-scroll";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -101,6 +102,22 @@ export default function Home() {
     retry: false,
     refetchOnWindowFocus: false,
   });
+
+  const { data: subscriptionList } = useQuery<Subscription[]>({
+    queryKey: ["/api/subscriptions"],
+    enabled: !!data?.user,
+  });
+
+  const hasActiveAddon = useMemo(() => {
+    const list = Array.isArray(subscriptionList) ? subscriptionList : [];
+    return (addonId: string) =>
+      list.some(
+        (sub) =>
+          sub.productType === "addon" &&
+          sub.productId === addonId &&
+          sub.status === "active",
+      );
+  }, [subscriptionList]);
 
   // Fetch dynamic pricing from Stripe
   const { data: prices, isLoading: pricesLoading } = usePricing();
@@ -285,10 +302,10 @@ export default function Home() {
       <section className="py-24">
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-8">{t("home.addons.title")}</h2>
-          <div className="grid lg:grid-cols-4 gap-8">
+          <div className="grid lg:grid-cols-4 gap-8 lg:items-stretch">
             {/* Left Column - Integration Cards */}
-            <div className="lg:col-span-3">
-              <div className="grid md:grid-cols-3 gap-4 items-start">
+            <div className="lg:col-span-3 flex flex-col min-h-0 lg:h-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 min-h-0 lg:h-full lg:[grid-auto-rows:1fr]">
                 {/* Prototype */}
                 {/* <div className="flex items-start space-x-4 p-4 bg-card rounded-lg border hover:shadow-md transition-shadow">
                   <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -314,8 +331,8 @@ export default function Home() {
                 </div> */}
 
                 {/* Booking */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="p-2 cursor-pointer relative" onClick={() => toggleAddOnExpansion('booking')}>
+                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
+                  <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('booking')}>
                     <div className="flex items-start space-x-4">
                       <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <img
@@ -357,8 +374,8 @@ export default function Home() {
                 </div>
 
                 {/* LMS */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="p-2 cursor-pointer relative" onClick={() => toggleAddOnExpansion('lms')}>
+                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
+                  <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('lms')}>
                     <div className="flex items-start space-x-4">
                       <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
                         <img
@@ -395,137 +412,14 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Multistep Form */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="p-2 cursor-pointer relative" onClick={() => toggleAddOnExpansion('multistep')}>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-gray-900 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <img
-                          src="/images/multistep-form-add-on-icon.svg"
-                          alt={t("home.addons.multistepFormAddon.alt")}
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 ">
-                        <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>
-                          {t("home.addons.multistepFormAddon.title")}
-                        </h3>
-                        <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.multistepFormAddon.description")}
-                        </p>
-                      </div>
-                      <div className="absolute top-2 right-4">
-                        {expandedAddOns['multistep'] ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {expandedAddOns['multistep'] && (
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.multistepFormAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                          <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                            ✓ {tag}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* QR Code Addon */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="p-2 cursor-pointer relative" onClick={() => toggleAddOnExpansion('qrcode')}>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <img
-                          src="/images/qr-code-add-on-icon.svg"
-                          alt={t("home.addons.qrCodeAddon.alt")}
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 ">
-                        <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>
-                          {t("home.addons.qrCodeAddon.title")}
-                        </h3>
-                        <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.qrCodeAddon.description")}
-                        </p>
-                      </div>
-                      <div className="absolute top-2 right-4">
-                        {expandedAddOns['qrcode'] ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {expandedAddOns['qrcode'] && (
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.qrCodeAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                          <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                            ✓ {tag}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Donation add-on */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="p-2 cursor-pointer relative" onClick={() => toggleAddOnExpansion('donation')}>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <img
-                          src="/images/donation-system-add-on-icon.svg"
-                          alt={t("home.addons.donationaddon.alt")}
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 ">
-                        <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>
-                          {t("home.addons.donationaddon.title")}
-                        </h3>
-                        <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.donationaddon.description")}
-                        </p>
-                      </div>
-                      <div className="absolute top-2 right-4">
-                        {expandedAddOns['donation'] ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {expandedAddOns['donation'] && (
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.donationaddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                          <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                            ✓ {tag}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
                 {/* Online payments add-on */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="p-2 cursor-pointer relative" onClick={() => toggleAddOnExpansion('payments')}>
+                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
+                  <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('payments')}>
                     <div className="flex items-start space-x-4">
                       <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
                         <img
                           src="/images/online-payment-add-on-icon.svg"
-                          alt={t("home.addons.realEstateAddon.alt")}
+                          alt={t("home.addons.onlinepayments.alt")}
                           className="w-full h-auto"
                         />
                       </div>
@@ -559,27 +453,27 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Real Estate Addon */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="p-2 cursor-pointer relative" onClick={() => toggleAddOnExpansion('realestate')}>
+                {/* Newsletter sending limits (15k & 100k add-ons) */}
+                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
+                  <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('newsletter_limits')}>
                     <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <img
-                          src="/images/real-estate-add-on-icon.svg"
-                          alt={t("home.addons.realEstateAddon.alt")}
-                          className="w-full h-auto"
+                          src="/images/Newsletter-icon.png"
+                          alt={t("home.addons.newsletterLimitsAddon.alt")}
+                          className="w-8 h-8 object-contain"
                         />
                       </div>
                       <div className="flex-1 min-w-0 ">
                         <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>
-                          {t("home.addons.realEstateAddon.title")}
+                          {t("home.addons.newsletterLimitsAddon.title")}
                         </h3>
                         <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.realEstateAddon.description")}
+                          {t("home.addons.newsletterLimitsAddon.description")}
                         </p>
                       </div>
                       <div className="absolute top-2 right-4">
-                        {expandedAddOns['realestate'] ? (
+                        {expandedAddOns['newsletter_limits'] ? (
                           <ChevronUp className="h-5 w-5 text-gray-400" />
                         ) : (
                           <ChevronDown className="h-5 w-5 text-gray-400" />
@@ -587,10 +481,10 @@ export default function Home() {
                       </div>
                     </div>
                   </div>
-                  {expandedAddOns['realestate'] && (
+                  {expandedAddOns['newsletter_limits'] && (
                     <div className="px-4 pb-4">
                       <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.realEstateAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
+                        {(t("home.addons.newsletterLimitsAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
                           <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
                             ✓ {tag}
                           </div>
@@ -600,52 +494,105 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Transport Booking Addon */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="p-2 cursor-pointer relative" onClick={() => toggleAddOnExpansion('transport')}>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <img
-                          src="/images/transport-booking-add-on-icon.svg"
-                          alt={t("home.addons.transportBookingAddon.alt")}
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 ">
-                        <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>
-                          {t("home.addons.transportBookingAddon.title")}
-                        </h3>
-                        <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.transportBookingAddon.description")}
-                        </p>
-                      </div>
-                      <div className="absolute top-2 right-4">
-                        {expandedAddOns['transport'] ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {expandedAddOns['transport'] && (
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.transportBookingAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                          <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                            ✓ {tag}
+                {hasActiveAddon("realestate") && (
+                  <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
+                    <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('realestate')}>
+                      <div className="flex items-start space-x-4">
+                        <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <img
+                            src="/images/real-estate-add-on-icon.svg"
+                            alt={t("home.addons.realEstateAddon.alt")}
+                            className="w-full h-auto"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 ">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h3 className="font-semibold" style={{ fontSize: '12px' }}>
+                              {t("home.addons.realEstateAddon.title")}
+                            </h3>
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
+                              {t("status.active")}
+                            </Badge>
                           </div>
-                        ))}
+                          <p className="text-gray-600" style={{ fontSize: '11px' }}>
+                            {t("home.addons.realEstateAddon.description")}
+                          </p>
+                        </div>
+                        <div className="absolute top-2 right-4">
+                          {expandedAddOns['realestate'] ? (
+                            <ChevronUp className="h-5 w-5 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-400" />
+                          )}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
+                    {expandedAddOns['realestate'] && (
+                      <div className="px-4 pb-4">
+                        <div className="flex flex-wrap gap-2 border-t pt-3">
+                          {(t("home.addons.realEstateAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
+                            <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
+                              ✓ {tag}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {hasActiveAddon("transport") && (
+                  <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
+                    <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('transport')}>
+                      <div className="flex items-start space-x-4">
+                        <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <img
+                            src="/images/transport-booking-add-on-icon.svg"
+                            alt={t("home.addons.transportBookingAddon.alt")}
+                            className="w-full h-auto"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0 ">
+                          <div className="flex items-center gap-2 flex-wrap mb-1">
+                            <h3 className="font-semibold" style={{ fontSize: '12px' }}>
+                              {t("home.addons.transportBookingAddon.title")}
+                            </h3>
+                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
+                              {t("status.active")}
+                            </Badge>
+                          </div>
+                          <p className="text-gray-600" style={{ fontSize: '11px' }}>
+                            {t("home.addons.transportBookingAddon.description")}
+                          </p>
+                        </div>
+                        <div className="absolute top-2 right-4">
+                          {expandedAddOns['transport'] ? (
+                            <ChevronUp className="h-5 w-5 text-gray-400" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-400" />
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    {expandedAddOns['transport'] && (
+                      <div className="px-4 pb-4">
+                        <div className="flex flex-wrap gap-2 border-t pt-3">
+                          {(t("home.addons.transportBookingAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
+                            <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
+                              ✓ {tag}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Right Column - Call to Action */}
-            <div className="lg:col-span-1">
-              <div className="bg-gradient-to-br from-red-400 to-red-500 rounded-lg p-6 text-white h-full flex flex-col justify-between">
+            <div className="lg:col-span-1 flex flex-col min-h-0 lg:h-full">
+              <div className="bg-gradient-to-br from-red-400 to-red-500 rounded-lg p-6 text-white flex-1 min-h-[280px] flex flex-col justify-between">
                 <h3 className="text-xl font-bold mb-4">
                   {t("home.addons.cta.title")}
                 </h3>

@@ -712,6 +712,17 @@
                 ],
                 "alt": "Online Payments"
             },
+            "newsletterLimitsAddon": {
+                "title": "Increase newsletter limits",
+                "description": "Optional add-ons raise how many emails you can send per month: up to 15,000 or up to 100,000 — pick the tier that fits your list and sending frequency.",
+                "tags": [
+                    "15,000 emails / month",
+                    "100,000 emails / month",
+                    "Campaigns & broadcasts",
+                    "Subscriber management"
+                ],
+                "alt": "Newsletter sending limits"
+            },
             "cta": {
                 "title": "Find the best integrations",
                 "description": "Add any of these to your subscription and unlock new ways to grow faster, attract more customers, and boost revenue!",
