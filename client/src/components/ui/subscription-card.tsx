@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface SubscriptionCardProps {
   plan: (typeof subscriptionPlans)[keyof typeof subscriptionPlans];
-  onSubscribe: () => void;
+  /** If omitted, navigates to `/pre-checkout/:planId` (same flow as home). */
+  onSubscribe?: () => void;
   loading?: boolean;
   isCurrentPlan?: boolean;
   isYearly: boolean;
@@ -211,9 +212,13 @@ export function SubscriptionCard({
           </ul>
           <Button
             className="mt-6 w-full"
-            onClick={() =>
-              navigate(`/pre-checkout/${plan.id}?isYearly=${isYearly}`)
-            }
+            onClick={() => {
+              if (onSubscribe) {
+                onSubscribe();
+                return;
+              }
+              navigate(`/pre-checkout/${plan.id}?isYearly=${isYearly}`);
+            }}
             disabled={loading}
           >
             {loading

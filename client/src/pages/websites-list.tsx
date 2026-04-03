@@ -11,6 +11,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { SubscriptionPlansSection } from "@/components/SubscriptionPlansSection";
 import { Loader2, Plus, ExternalLink, Gift, Star, CreditCard, BarChart3, Mail, AlertCircle, CalendarDays } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -84,6 +92,7 @@ export default function WebsitesList() {
   const [sortBy, setSortBy] = useState<
     "lastUpdated" | "firstCreated" | "lastCreated"
   >("lastUpdated");
+  const [plansModalOpen, setPlansModalOpen] = useState(false);
 
   const { data: websites, isLoading, refetch } = useQuery<Website[]>({
     queryKey: ["/api/admin/websites"],
@@ -293,6 +302,16 @@ export default function WebsitesList() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] pt-20 pb-12">
+      <Dialog open={plansModalOpen} onOpenChange={setPlansModalOpen}>
+        <DialogContent className="max-h-[90vh] w-[95vw] max-w-6xl overflow-y-auto gap-0 p-4 sm:p-6">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("home.plans.title")}</DialogTitle>
+            <DialogDescription>{t("home.plans.subtitle")}</DialogDescription>
+          </DialogHeader>
+          <SubscriptionPlansSection asMain={false} showGuarantees={false} />
+        </DialogContent>
+      </Dialog>
+
       <div className="container mx-auto px-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
@@ -305,7 +324,7 @@ export default function WebsitesList() {
               </p>
             </div>
             <Button
-              onClick={() => navigate("/#plans")}
+              onClick={() => setPlansModalOpen(true)}
               className="flex items-center gap-2"
               data-testid="button-create-website"
             >

@@ -1,16 +1,11 @@
 import { useNavigate, Link } from "react-router-dom";
-import { SubscriptionCard } from "@/components/ui/subscription-card";
-import { subscriptionPlans, type User, type Subscription } from "@shared/schema";
-import { createCheckoutSession } from "@/lib/api";
+import { SubscriptionPlansSection } from "@/components/SubscriptionPlansSection";
+import { type User, type Subscription } from "@shared/schema";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import AutoScroll from "embla-carousel-auto-scroll";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
@@ -20,11 +15,8 @@ import {
   ChevronRight,
   ChevronDown,
   ChevronUp,
-  Server,
-  Wrench,
 } from "lucide-react";
 import { usePrevNextButtons } from "@/components/ui/emblaCarouselArrowButtons";
-import { usePricing } from "@/hooks/use-pricing";
 import "../i18n";
 
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
@@ -61,25 +53,12 @@ const TESTIMONIALS = [
   },
 ];
 
-const schema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  vatNumber: z.string().optional(),
-});
-type FormData = z.infer<typeof schema>;
-
 export default function Home() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const [selectedPlan, setSelectedPlan] = useState<
-    keyof typeof subscriptionPlans | null
-  >(null);
-  const [isYearly, setIsYearly] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [expandedAddOns, setExpandedAddOns] = useState<{ [key: string]: boolean }>({});
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const { toast } = useToast();
 
   // Basic testimonial and templates carousels (without autoScroll).
   const [testimonialsRef] = useEmblaCarousel({ loop: true });
@@ -119,85 +98,12 @@ export default function Home() {
       );
   }, [subscriptionList]);
 
-  // Fetch dynamic pricing from Stripe
-  const { data: prices, isLoading: pricesLoading } = usePricing();
-
-  // Subscription form
-  const form = useForm<FormData>({
-    resolver: zodResolver(schema),
-  });
-
   // Filter templates to display only selected ones
   const selectedTemplates = useMemo(() => {
     return ENVATO_TEMPLATES.filter(template => 
       SELECTED_TEMPLATE_IDS.includes(template.id)
     );
   }, []);
-
-  const handleSubscription = async (
-    planId: keyof typeof subscriptionPlans,
-    formData?: FormData,
-    selectedAddOns: string[] = [],
-  ) => {
-    setLoading(true);
-    try {
-      const checkoutData = data?.user
-        ? {
-            email: data.user.email,
-            username: data.user.username,
-            planId,
-            billingPeriod: (isYearly ? "yearly" : "monthly") as "yearly" | "monthly", // Add billing period
-            addOns: selectedAddOns,
-            language: i18n.language,
-          }
-        : {
-            ...formData!,
-            planId,
-            billingPeriod: (isYearly ? "yearly" : "monthly") as "yearly" | "monthly", // Add billing period
-            addOns: selectedAddOns,
-            language: i18n.language,
-          };
-
-      const response = await createCheckoutSession(checkoutData);
-
-      if (response.url) {
-        window.location.href = response.url;
-      } else {
-        throw new Error("No checkout URL received");
-      }
-    } catch (error) {
-      console.error("Checkout error:", error);
-      toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to create checkout session. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-      setSelectedPlan(null);
-    }
-  };
-
-  const onSubscribe = (planId: keyof typeof subscriptionPlans) => {
-    setSelectedPlan(planId);
-  };
-
-  const onSubmit = async (formData: FormData) => {
-    if (!selectedPlan) return;
-  };
-
-  const handleAddOnsSubmit = (selectedAddOns: string[]) => {
-    if (!selectedPlan) return;
-    if (data?.user) {
-      handleSubscription(selectedPlan, undefined, selectedAddOns);
-    } else {
-      const formData = form.getValues();
-      handleSubscription(selectedPlan, formData, selectedAddOns);
-    }
-  };
 
   const toggleAddOnExpansion = (addonId: string) => {
     setExpandedAddOns(prev => ({
@@ -612,121 +518,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Subscription Plans Section */}
-      <main className="container mx-auto px-4 py-24">
-        <div className="text-center mb-16">
-          <h2 className="text-4xl font-bold tracking-tight">
-            {t("home.plans.title")}
-          </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            {t("home.plans.subtitle")}
-          </p>
-          
-
-
-          {/* Billing Period Toggle */}
-          <div className="mt-8 inline-flex items-center rounded-full border p-1 bg-muted">
-            <button
-              onClick={() => setIsYearly(false)}
-              className={`px-4 py-2 rounded-full text-sm ${
-                !isYearly ? "bg-background shadow-sm" : ""
-              }`}
-            >
-              {t("home.plans.monthly")}
-            </button>
-            <button
-              onClick={() => setIsYearly(true)}
-              className={`px-4 py-2 rounded-full text-sm ${
-                isYearly ? "bg-background shadow-sm" : ""
-              }`}
-            >
-              {t("home.plans.yearly")}{" "}
-              <span className="text-green-500 text-xs ml-1">{t("home.plans.saveLabel")}</span>
-            </button>
-          </div>
-        </div>
-        
-        {/* All plans notice */}
-        <div className="mt-3 p-4 bg-blue-50 border mb-8 border-blue-200 rounded-lg">
-          <p className="text-blue-800 font-medium text-center flex items-center justify-center flex-wrap gap-x-6 gap-y-2">
-            {t("pricing.allPlansInclude")}
-
-            <span className="flex items-center gap-2">
-              {t("pricing.zeroTransactionFee")}
-            </span>
-
-            <span className="flex items-center gap-2">
-              <Server className="h-5 w-5" />
-              {t("pricing.hosting")}
-            </span>
-
-            <span className="flex items-center gap-2">
-              <Wrench className="h-5 w-5" />
-              {t("pricing.maintenance")}
-            </span>
-          </p>
-        </div>
-
-        
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {Object.entries(subscriptionPlans).map(([id, plan]) => (
-            <SubscriptionCard
-              key={id}
-              plan={plan}
-              loading={loading && selectedPlan === id}
-              onSubscribe={() =>
-                onSubscribe(id as keyof typeof subscriptionPlans)
-              }
-              isYearly={isYearly}
-              dynamicPrices={prices}
-              pricesLoading={pricesLoading}
-            />
-          ))}
-        </div>
-
-        {/* Guarantee Section */}
-        <div className="mt-16 text-center">
-          <h3 className="text-2xl font-bold mb-8">{t("home.guarantees.title")}</h3>
-          <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <div className="flex items-center justify-center w-12 h-12 bg-green-500 rounded-full mx-auto mb-4">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h4 className="font-semibold text-green-800 mb-2">{t("home.guarantees.performance.title")}</h4>
-              <p className="text-green-700">
-                {t("home.guarantees.performance.description")}
-              </p>
-            </div>
-            
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
-              <div className="flex items-center justify-center w-12 h-12 bg-orange-500 rounded-full mx-auto mb-4">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                </svg>
-              </div>
-              <h4 className="font-semibold text-orange-800 mb-2">{t("home.guarantees.moneyBack.title")}</h4>
-              <p className="text-orange-700">
-                {t("home.guarantees.moneyBack.description")}
-              </p>
-            </div>
-            
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
-              <div className="flex items-center justify-center w-12 h-12 bg-blue-500 rounded-full mx-auto mb-4">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h4 className="font-semibold text-blue-800 mb-2">{t("home.guarantees.uptime.title")}</h4>
-              <p className="text-blue-700">
-                {t("home.guarantees.uptime.description")}
-              </p>
-            </div>
-          </div>
-        </div>
-
-      </main>
+      <SubscriptionPlansSection />
 
       {/* Website Templates Section */}
       <section className="py-24 bg-secondary/10">
