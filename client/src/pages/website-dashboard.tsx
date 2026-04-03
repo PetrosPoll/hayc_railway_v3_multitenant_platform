@@ -2060,13 +2060,22 @@ export default function WebsiteDashboard() {
                 </Button>
               ) : (
                 selectedSubscription.status === "cancelled" && (
-                  <Button
-                    variant="default"
-                    className="w-full"
-                    data-testid="button-resume-subscription"
-                  >
-                    {t("dashboard.resume") || "Resume Subscription"}
-                  </Button>
+                  // TODO: Implement self-serve resume flow (Option B - Stripe portal or
+                  // Option A - stripe.subscriptions.create with saved payment method).
+                  // Currently disabled — customer must repurchase through normal flow.
+                  <div className="w-full space-y-1">
+                    <Button
+                      variant="default"
+                      className="w-full"
+                      data-testid="button-resume-subscription"
+                      disabled={true}
+                    >
+                      {t("dashboard.resume") || "Resume Subscription"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      To resubscribe, please contact support or purchase a new plan.
+                    </p>
+                  </div>
                 )
               )}
             </div>
