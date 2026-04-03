@@ -1314,6 +1314,7 @@
         "message": "Message",
         "messagePlaceholder": "Detailed description of what you'd like to change",
         "changesLimitReached": "You've reached your monthly change limit. Please upgrade your plan for more changes.",
+        "changesLockedInactivePlan": "Your website plan subscription is not active. Open Billing to reactivate or subscribe before requesting new changes.",
         "submitting": "Submitting...",
         "submitRequest": "Submit Request",
         "changeHistory": "Change History",

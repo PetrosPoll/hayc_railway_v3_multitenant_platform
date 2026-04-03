@@ -2241,13 +2241,10 @@ export default function WebsiteDashboard() {
               </>
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground">
                   {t("dashboard.noActiveSubscription") ||
                     "No active subscription found"}
                 </p>
-                <Button onClick={() => navigate("/")} variant="outline">
-                  {t("dashboard.subscribe") || "Subscribe Now"}
-                </Button>
               </div>
             )}
           </CardContent>
@@ -3243,6 +3240,7 @@ export default function WebsiteDashboard() {
                     navigate(`/websites/${websiteId}/email-builder`)
                   }
                   size="lg"
+                  className={`${disabled ? "pointer-events-none opacity-50 grayscale" : ""}`}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   {t("dashboard.createTemplate") || "Create Template"}
@@ -3757,6 +3755,10 @@ export default function WebsiteDashboard() {
       ? true // Unlimited changes before launch
       : (isUnlimited || changesUsed < changesAllowed); // Apply limit after launch
 
+    const changesContentDisabled = planSubscription?.status !== "active";
+    const canSubmitChanges =
+      !changesContentDisabled && canSubmit;
+
     return (
       <div data-testid="changes-section">
         <h2 className="text-2xl font-bold mb-6">
@@ -3767,6 +3769,28 @@ export default function WebsiteDashboard() {
             "Request changes to your website and track their status."}
         </p>
 
+        {changesContentDisabled && (
+          <Card className="mb-6 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
+            <CardContent className="py-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-700 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-900 dark:text-amber-100">
+                  {t("dashboard.changesLockedInactivePlan") ||
+                    "Your website plan subscription is not active. Open Billing to reactivate or subscribe before requesting new changes."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div
+          className={
+            changesContentDisabled
+              ? "pointer-events-none opacity-50 grayscale"
+              : ""
+          }
+          data-testid="changes-section-locked-body"
+        >
         {!isWebsiteLaunchCompleted && (
           <Card className="mb-6">
             <CardContent className="py-6">
@@ -3856,7 +3880,7 @@ export default function WebsiteDashboard() {
                   }
                   value={changeSubject}
                   onChange={(e) => setChangeSubject(e.target.value)}
-                  disabled={!canSubmit || submitChangeRequestMutation.isPending}
+                  disabled={!canSubmitChanges || submitChangeRequestMutation.isPending}
                   data-testid="input-change-subject"
                 />
               </div>
@@ -3872,7 +3896,7 @@ export default function WebsiteDashboard() {
                   }
                   value={changeMessage}
                   onChange={(e) => setChangeMessage(e.target.value)}
-                  disabled={!canSubmit || submitChangeRequestMutation.isPending}
+                  disabled={!canSubmitChanges || submitChangeRequestMutation.isPending}
                   rows={5}
                   data-testid="textarea-change-message"
                 />
@@ -3886,7 +3910,7 @@ export default function WebsiteDashboard() {
                     type="button"
                     variant="outline"
                     onClick={handleChangeFileUpload}
-                    disabled={!canSubmit || submitChangeRequestMutation.isPending}
+                    disabled={!canSubmitChanges || submitChangeRequestMutation.isPending}
                     className="w-full"
                     data-testid="button-upload-files"
                   >
@@ -3920,7 +3944,7 @@ export default function WebsiteDashboard() {
                 </div>
               </div>
 
-              {isWebsiteLaunchCompleted && !canSubmit && !isUnlimited && (
+              {isWebsiteLaunchCompleted && !canSubmitChanges && !isUnlimited && !changesContentDisabled && (
                 <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                   <AlertCircle className="h-4 w-4 text-yellow-700" />
                   <p className="text-sm text-yellow-700">
@@ -3932,7 +3956,7 @@ export default function WebsiteDashboard() {
               <Button
                 onClick={() => submitChangeRequestMutation.mutate()}
                 disabled={
-                  !canSubmit ||
+                  !canSubmitChanges ||
                   !changeSubject ||
                   !changeMessage ||
                   submitChangeRequestMutation.isPending
@@ -3955,6 +3979,7 @@ export default function WebsiteDashboard() {
             </div>
           </CardContent>
         </Card>
+        </div>
 
         {/* Change History */}
         {changeLogs.length > 0 && (
