@@ -95,7 +95,11 @@ export default function Onboarding() {
       businessName: z.string().min(2, t("onboarding.requiredField")),
       contactName: z.string().min(2, t("onboarding.requiredField")),
       contactPhone: z.string().min(5, t("onboarding.requiredField")),
-      accountEmail: z.string().email().optional(), // Pre-filled from user account
+      accountEmail: z.preprocess(
+        (val) =>
+          val === "" || val === null || val === undefined ? undefined : val,
+        z.string().email().optional(),
+      ), // Synced from session; disabled input does not write to RHF
       websiteLanguage: z.enum(["en", "gr"], {
         required_error: t("onboarding.requiredField"),
       }),
@@ -154,23 +158,36 @@ export default function Onboarding() {
       hasDomain: z.enum(["yes", "no"], {
         required_error: t("onboarding.requiredField"),
       }),
-      existingDomain: z.string().optional(),
-      domainConnectionPreference: z
-      .string()
-      .optional()
-      .superRefine((val, ctx) => {
-        const parent = ctx.parent as any;
-        if (!parent) return;
+      existingDomain: z.preprocess(
+        (val) => (val === null ? undefined : val),
+        z.string().optional(),
+      ),
+      domainConnectionPreference: z.preprocess(
+        (val) => (val === null || val === undefined ? undefined : val),
+        z
+          .string()
+          .optional()
+          .superRefine((val, ctx) => {
+            const parent = (ctx as { parent?: { domainPurchasePreference?: string } })
+              .parent;
+            if (!parent) return;
 
-        if (parent.domainPurchasePreference === "i_will_buy" && !val) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: t("onboarding.requiredField"),
-          });
-        }
-      }),
-      domainPurchasePreference: z.enum(["i_will_buy", "you_buy"]).optional(),
-      preferredDomains: z.string().optional(),
+            if (parent.domainPurchasePreference === "i_will_buy" && !val) {
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: t("onboarding.requiredField"),
+              });
+            }
+          }),
+      ),
+      domainPurchasePreference: z.preprocess(
+        (val) => (val === null || val === undefined ? undefined : val),
+        z.enum(["i_will_buy", "you_buy"]).optional(),
+      ),
+      preferredDomains: z.preprocess(
+        (val) => (val === null ? undefined : val),
+        z.string().optional(),
+      ),
 
       // Step 3: Professional Emails
       hasEmails: z.enum(["yes", "no"], {
@@ -661,6 +678,12 @@ export default function Onboarding() {
     },
     mode: "onSubmit",
   });
+
+  useEffect(() => {
+    if (user?.email) {
+      form.setValue("accountEmail", user.email);
+    }
+  }, [user?.email, form]);
 
   // Get selected template details from ENVATO_TEMPLATES
   const selectedTemplateId = form.watch("selectedTemplateId");
@@ -3888,7 +3911,7 @@ export default function Onboarding() {
             <CardContent>
               <Form {...form}>
                 <form
-                  onSubmit={form.handleSubmit(onSubmit)}
+                  onSubmit={form.handleSubmit(onSubmit, handleValidationError)}
                   className="space-y-6"
                 >
                   {renderStepContent()}

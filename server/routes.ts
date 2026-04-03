@@ -410,6 +410,21 @@ async function verifyPriceCurrencies(
   return { price, setupFee, currency: price.currency };
 }
 
+/** If preferred username is taken, append a random suffix so webhook user creation does not fail on unique constraint. */
+async function allocateUniqueUsernameForCheckout(preferred: string): Promise<string> {
+  const base = preferred.trim().slice(0, 48);
+  if (!base) {
+    throw new Error("Invalid username from checkout metadata");
+  }
+  let candidate = base;
+  for (let attempt = 0; attempt < 32; attempt++) {
+    const existing = await storage.getUserByUsername(candidate);
+    if (!existing) return candidate;
+    candidate = `${base}_${randomBytes(3).toString("hex")}`.slice(0, 63);
+  }
+  throw new Error("Could not allocate unique username after retries");
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupAuth(app);
@@ -575,6 +590,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: "Failed to check email" 
+      });
+    }
+  });
+
+  // Check if username is already taken (new-account checkout / registration)
+  app.post("/api/check-username", async (req, res) => {
+    try {
+      const usernameSchema = z.object({
+        username: z.string().min(3).max(50).trim(),
+      });
+      const validationResult = usernameSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid username",
+          details: validationResult.error.errors,
+        });
+      }
+      const taken = await storage.getUserByUsername(validationResult.data.username);
+      res.json({
+        success: true,
+        available: !taken,
+      });
+    } catch (err) {
+      console.error("Username check error:", err);
+      res.status(500).json({
+        success: false,
+        error: "Failed to check username",
       });
     }
   });
@@ -2130,6 +2173,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingUser = await storage.getUserByEmail(body.email);
         let stripeCustomerId = existingUser?.stripeCustomerId;
 
+        // New email = new account path: username must be globally unique (webhook uses it for insert)
+        if (!existingUser) {
+          const usernameTaken = await storage.getUserByUsername(body.username.trim());
+          if (usernameTaken) {
+            return res.status(400).json({
+              error: "Username already taken",
+              code: "USERNAME_TAKEN",
+            });
+          }
+        }
+
         // Create line items array with base subscription and conditionally setup fee
         const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
@@ -2867,7 +2921,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .json({ error: "Missing username" });
             }
 
-            console.log('✅ Username exists, continuing plan purchase...');
+            console.log(
+              "✅ Plan purchase: username present in session metadata, continuing...",
+            );
             const planId = session.metadata.planId as SubscriptionTier;
 
             // Get customer details from Stripe
@@ -2896,8 +2952,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             } else {
               try {
+                const resolvedUsername = await allocateUniqueUsernameForCheckout(
+                  session.metadata.username,
+                );
+                if (resolvedUsername !== session.metadata.username.trim()) {
+                  console.log(
+                    `ℹ️ Username "${session.metadata.username}" was taken; registered as "${resolvedUsername}"`,
+                  );
+                }
                 user = await storage.createUser({
-                  username: session.metadata.username,
+                  username: resolvedUsername,
                   email: customerEmail,
                   phone: session.metadata.phone || null,
                   stripeCustomerId: session.customer as string,
@@ -2916,7 +2980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 type: 'subscription',
                 emailType: 'registered',
                 data: {
-                  username: session.metadata.username,
+                  username: user.username,
                   email: customerEmail,
                   plan: planId,
                   registrationDate: new Date().toLocaleDateString(),

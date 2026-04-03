@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { subscriptionPlans, availableAddOns } from "@shared/schema";
-import { createCheckoutSession, checkEmailExists } from "@/lib/api";
+import { createCheckoutSession, checkEmailExists, checkUsernameAvailable } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check } from "lucide-react";
 
@@ -270,6 +270,24 @@ function PreCheckoutPage({
         } catch (error) {
           console.error("Email check error:", error);
           // Continue with checkout if email check fails - don't block the user
+        }
+
+        try {
+          const usernameCheck = await checkUsernameAvailable(
+            formData.username.trim(),
+          );
+          if (usernameCheck.success && usernameCheck.available === false) {
+            toast({
+              title: "Username already taken",
+              description:
+                "That username is already in use. Please choose another.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.warn("Username check error:", error);
         }
       }
 

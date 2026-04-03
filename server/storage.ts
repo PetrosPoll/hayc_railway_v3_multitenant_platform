@@ -8,6 +8,7 @@ export interface IStorage {
   getUserById(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByEmailCaseInsensitive(email: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: number, updates: Partial<User>): Promise<User>;
   getUserSubscriptions(userId: number): Promise<Subscription[]>;
@@ -175,6 +176,17 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(users)
       .where(sql`lower(${users.email}) = ${normalized}`)
+      .limit(1);
+    return row;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const u = username.trim();
+    if (!u) return undefined;
+    const [row] = await db
+      .select()
+      .from(users)
+      .where(eq(users.username, u))
       .limit(1);
     return row;
   }

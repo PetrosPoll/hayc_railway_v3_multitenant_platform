@@ -73,3 +73,12 @@ export async function checkEmailExists(email: string) {
   const res = await apiRequest("POST", "/api/check-email", { email });
   return res.json();
 }
+
+export async function checkUsernameAvailable(username: string) {
+  const res = await apiRequest("POST", "/api/check-username", { username });
+  return res.json() as Promise<{
+    success: boolean;
+    available?: boolean;
+    error?: string;
+  }>;
+}
