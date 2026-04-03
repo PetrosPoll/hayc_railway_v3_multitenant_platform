@@ -993,14 +993,22 @@ export const emailTemplates = pgTable("email_templates", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const insertEmailTemplateSchema = createInsertSchema(emailTemplates).pick({
-  websiteProgressId: true,
-  name: true,
-  html: true,
-  design: true,
-  thumbnail: true,
-  category: true,
-});
+export const insertEmailTemplateSchema = createInsertSchema(emailTemplates)
+  .pick({
+    websiteProgressId: true,
+    name: true,
+    html: true,
+    design: true,
+    thumbnail: true,
+    category: true,
+  })
+  .extend({
+    // Allow explicit null (and "") so PATCH can clear category; drizzle-zod optional string omits null.
+    category: z.preprocess(
+      (val) => (val === "" ? null : val),
+      z.string().nullable().optional(),
+    ),
+  });
 
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
