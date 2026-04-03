@@ -15775,18 +15775,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let currency = "EUR";
 
       // Use Stripe's preview invoice for both plans and add-ons with yearly pricing
-      const upcomingInvoice = await stripe.invoices.retrieveUpcoming({
-        customer: currentUser.stripeCustomerId,
-        subscription: stripeSubscription.id,
-        subscription_items: [
-          {
-            id: stripeSubscription.items.data[0].id,
-            price: yearlyPriceId!,
-          },
-        ],
-        subscription_proration_behavior: "create_prorations",
-        subscription_proration_date: Math.floor(Date.now() / 1000),
-      });
+      let upcomingInvoice: Stripe.UpcomingInvoice;
+      try {
+        upcomingInvoice = await stripe.invoices.retrieveUpcoming({
+          customer: currentUser.stripeCustomerId,
+          subscription: stripeSubscription.id,
+          subscription_items: [
+            {
+              id: stripeSubscription.items.data[0].id,
+              price: yearlyPriceId!,
+            },
+          ],
+          subscription_proration_behavior: "create_prorations",
+          subscription_proration_date: Math.floor(Date.now() / 1000),
+        });
+      } catch (upcomingErr: any) {
+        if (
+          upcomingErr?.type === "StripeInvalidRequestError" &&
+          upcomingErr?.code === "invoice_upcoming_none"
+        ) {
+          return res.status(400).json({
+            error: "subscription_not_active",
+            message:
+              "This subscription is no longer active and cannot be upgraded.",
+          });
+        }
+        throw upcomingErr;
+      }
 
       // Find the proration line items
       for (const line of upcomingInvoice.lines.data) {

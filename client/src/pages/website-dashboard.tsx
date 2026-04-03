@@ -4502,6 +4502,7 @@ export default function WebsiteDashboard() {
             currentPeriodEnd={subscriptionToUpgrade.currentPeriodEnd ? new Date(subscriptionToUpgrade.currentPeriodEnd) : undefined}
             vatNumber={subscriptionToUpgrade.vatNumber}
             invoiceType={subscriptionToUpgrade.invoiceType}
+            onPreviewFatalError={() => setSubscriptionToUpgrade(null)}
           />
         )
       )}

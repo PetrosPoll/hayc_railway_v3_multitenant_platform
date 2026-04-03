@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -48,6 +48,8 @@ interface UpgradeToYearlyDialogProps {
   currentPeriodEnd?: Date;
   vatNumber?: string;
   invoiceType?: "invoice" | "receipt";
+  /** Clears parent upgrade state when preview fails (e.g. subscription no longer active). */
+  onPreviewFatalError?: () => void;
 }
 
 export function UpgradeToYearlyDialog({
@@ -58,6 +60,7 @@ export function UpgradeToYearlyDialog({
   currentPeriodEnd,
   vatNumber,
   invoiceType,
+  onPreviewFatalError,
 }: UpgradeToYearlyDialogProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -89,11 +92,71 @@ export function UpgradeToYearlyDialog({
     },
   });
 
-  const { data: previewData, isLoading: previewLoading } = useQuery<{ success: boolean; preview: UpgradePreview }>({
+  const previewErrorHandledRef = useRef(false);
+
+  const {
+    data: previewData,
+    isLoading: previewLoading,
+    isError: previewIsError,
+    error: previewError,
+  } = useQuery<{ success: boolean; preview: UpgradePreview }>({
     queryKey: [`/api/subscriptions/${subscriptionId}/upgrade-preview`],
     enabled: open,
     staleTime: 60000,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/subscriptions/${subscriptionId}/upgrade-preview`,
+        { credentials: "include" },
+      );
+      if (!res.ok) {
+        let msg = "Unable to preview upgrade. Please contact support.";
+        try {
+          const data = await res.json();
+          if (typeof data?.message === "string" && data.message.trim()) {
+            msg = data.message;
+          } else if (typeof data?.error === "string" && data.error.trim()) {
+            msg = data.error;
+          } else if (typeof data?.details === "string" && data.details.trim()) {
+            msg = data.details;
+          }
+        } catch {
+          /* use fallback */
+        }
+        throw new Error(msg);
+      }
+      return res.json();
+    },
   });
+
+  useEffect(() => {
+    if (!open) {
+      previewErrorHandledRef.current = false;
+      return;
+    }
+    if (!previewIsError || !previewError || previewErrorHandledRef.current) {
+      return;
+    }
+    previewErrorHandledRef.current = true;
+    const description =
+      previewError instanceof Error
+        ? previewError.message
+        : "Unable to preview upgrade. Please contact support.";
+    toast({
+      variant: "destructive",
+      title: t("dashboard.error") || "Error",
+      description,
+    });
+    onOpenChange(false);
+    onPreviewFatalError?.();
+  }, [
+    open,
+    previewIsError,
+    previewError,
+    onOpenChange,
+    onPreviewFatalError,
+    toast,
+    t,
+  ]);
 
   const validateCouponMutation = useMutation({
     mutationFn: async (code: string) => {
@@ -379,7 +442,7 @@ export function UpgradeToYearlyDialog({
                 <Skeleton className="h-5 w-full" />
                 <Skeleton className="h-7 w-full" />
               </div>
-            ) : previewData?.preview ? (
+            ) : previewIsError ? null : previewData?.preview ? (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-purple-800 dark:text-purple-200">
@@ -428,7 +491,7 @@ export function UpgradeToYearlyDialog({
             )}
           </div>
 
-          {/* What Happens with Remaining Days */}
+          {!previewIsError && (
           <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
             <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
               <Calendar className="h-5 w-5" />
@@ -440,6 +503,7 @@ export function UpgradeToYearlyDialog({
               <p>✓ {t("actions.upgradeConfirmation.nextBillingDate")}: <strong>{new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString()}</strong></p>
             </div>
           </div>
+          )}
 
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
@@ -454,7 +518,12 @@ export function UpgradeToYearlyDialog({
             <Button
               type="button"
               className="bg-green-600 hover:bg-green-700"
-              disabled={upgradeMutation.isPending}
+              disabled={
+                upgradeMutation.isPending ||
+                previewIsError ||
+                previewLoading ||
+                !previewData?.preview
+              }
               onClick={() => upgradeMutation.mutate()}
               data-testid="button-confirm-upgrade"
             >
