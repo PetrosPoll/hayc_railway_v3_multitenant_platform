@@ -2,9 +2,17 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Loader2, Plus, ExternalLink, Gift, Star, CreditCard, BarChart3, Mail, AlertCircle, CalendarDays } from "lucide-react";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
 import { BOOKING_APP_BASE_URL } from "@/lib/utils";
@@ -21,6 +29,8 @@ type Website = {
   selectedTemplateId: number | null;
   onboardingStatus: string | null;
   bookingEnabled?: boolean;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   stages: Array<{
     id: number;
     websiteProgressId: number;
@@ -38,11 +48,42 @@ type UserResponse = {
   permissions: any;
 };
 
+/** Completed onboarding: explicit status or legacy site (real domain, not pending placeholder). */
+function isCompletedFilter(website: Website): boolean {
+  return (
+    website.onboardingStatus === "completed" ||
+    (website.onboardingStatus === null &&
+      !website.domain.endsWith(".pending-onboarding"))
+  );
+}
+
+/** Draft / in-progress onboarding: saved draft or not yet submitted (pending domain). */
+function isDraftFilter(website: Website): boolean {
+  return (
+    website.onboardingStatus === "draft" ||
+    website.domain.endsWith(".pending-onboarding")
+  );
+}
+
+function timestampMs(iso: string | null | undefined): number {
+  if (!iso) return 0;
+  const n = new Date(iso).getTime();
+  return Number.isNaN(n) ? 0 : n;
+}
+
 export default function WebsitesList() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  const [onboardingFilter, setOnboardingFilter] = useState<"completed" | "draft">(
+    "completed",
+  );
+  const [projectSearch, setProjectSearch] = useState("");
+  const [sortBy, setSortBy] = useState<
+    "lastUpdated" | "firstCreated" | "lastCreated"
+  >("lastUpdated");
 
   const { data: websites, isLoading, refetch } = useQuery<Website[]>({
     queryKey: ["/api/admin/websites"],
@@ -73,7 +114,7 @@ export default function WebsitesList() {
     queryKey: ["/api/user"],
   });
 
-  const sortedWebsites = React.useMemo(() => {
+  const sortedWebsites = useMemo(() => {
     // Add extra defensive checks
     if (!websites || !Array.isArray(websites)) return [];
 
@@ -106,16 +147,69 @@ export default function WebsitesList() {
       return false;
     });
 
-    // Only active ones first, keep the rest as is
-    return [...filteredWebsites].sort((a, b) => {
+    const tiebreaker = (a: Website, b: Website): number => {
       const aActive = a.subscriptionStatus?.toLowerCase() === "active";
       const bActive = b.subscriptionStatus?.toLowerCase() === "active";
-
       if (aActive && !bActive) return -1;
       if (!aActive && bActive) return 1;
       return 0;
+    };
+
+    return [...filteredWebsites].sort((a, b) => {
+      let cmp = 0;
+      switch (sortBy) {
+        case "lastUpdated":
+          cmp = timestampMs(b.updatedAt) - timestampMs(a.updatedAt);
+          break;
+        case "firstCreated":
+          cmp = timestampMs(a.createdAt) - timestampMs(b.createdAt);
+          break;
+        case "lastCreated":
+          cmp = timestampMs(b.createdAt) - timestampMs(a.createdAt);
+          break;
+        default:
+          cmp = 0;
+      }
+      if (cmp !== 0) return cmp;
+      return tiebreaker(a, b);
     });
-  }, [websites]);
+  }, [websites, sortBy]);
+
+  const hasCompletedSites = useMemo(
+    () => sortedWebsites.some(isCompletedFilter),
+    [sortedWebsites],
+  );
+  const hasDraftSites = useMemo(
+    () => sortedWebsites.some(isDraftFilter),
+    [sortedWebsites],
+  );
+
+  const completedCount = useMemo(
+    () => sortedWebsites.filter(isCompletedFilter).length,
+    [sortedWebsites],
+  );
+  const draftCount = useMemo(
+    () => sortedWebsites.filter(isDraftFilter).length,
+    [sortedWebsites],
+  );
+
+  const filteredWebsites = useMemo(() => {
+    const q = projectSearch.trim().toLowerCase();
+    const byTab =
+      onboardingFilter === "completed"
+        ? sortedWebsites.filter(isCompletedFilter)
+        : sortedWebsites.filter(isDraftFilter);
+    if (!q) return byTab;
+    return byTab.filter((w) =>
+      (w.projectName ?? "").toLowerCase().includes(q),
+    );
+  }, [sortedWebsites, onboardingFilter, projectSearch]);
+
+  const hasItemsInCurrentTab = useMemo(() => {
+    return onboardingFilter === "completed"
+      ? sortedWebsites.some(isCompletedFilter)
+      : sortedWebsites.some(isDraftFilter);
+  }, [sortedWebsites, onboardingFilter]);
 
   if (isLoading || isLoadingUser) {
     return (
@@ -262,9 +356,79 @@ export default function WebsitesList() {
             </Card>
           ) : (
             <div className="grid grid-cols-12 gap-6">
-              {/* Left Column - Website Projects (9 columns) */}
               <div className="col-span-12 lg:col-span-9 space-y-4">
-                {sortedWebsites.map((website) => {
+                <div
+                  className="flex flex-row flex-nowrap items-center gap-2 w-full min-w-0 overflow-x-auto py-1.5 -my-1.5 px-0.5 -mx-0.5"
+                  data-testid="websites-list-toolbar"
+                >
+                  <Input
+                    type="search"
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                    placeholder={t("dashboard.websitesSearchPlaceholder")}
+                    className="h-9 flex-1 min-w-[7rem] max-w-none"
+                    data-testid="websites-search-project"
+                  />
+                  <Button
+                    type="button"
+                    variant={onboardingFilter === "completed" ? "default" : "outline"}
+                    size="sm"
+                    className="shrink-0"
+                    disabled={!hasCompletedSites}
+                    onClick={() => setOnboardingFilter("completed")}
+                    data-testid="filter-completed"
+                  >
+                    {t("dashboard.filterCompletedWithCount", { count: completedCount })}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={onboardingFilter === "draft" ? "default" : "outline"}
+                    size="sm"
+                    className="shrink-0"
+                    disabled={!hasDraftSites}
+                    onClick={() => setOnboardingFilter("draft")}
+                    data-testid="filter-draft"
+                  >
+                    {t("dashboard.filterDraftWithCount", { count: draftCount })}
+                  </Button>
+                  <Select
+                    value={sortBy}
+                    onValueChange={(v) =>
+                      setSortBy(v as "lastUpdated" | "firstCreated" | "lastCreated")
+                    }
+                  >
+                    <SelectTrigger
+                      className="h-9 w-[min(13rem,40vw)] shrink-0"
+                      data-testid="websites-sort"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="lastUpdated">
+                        {t("dashboard.websitesSortLastUpdated")}
+                      </SelectItem>
+                      <SelectItem value="firstCreated">
+                        {t("dashboard.websitesSortFirstCreated")}
+                      </SelectItem>
+                      <SelectItem value="lastCreated">
+                        {t("dashboard.websitesSortLastCreated")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {filteredWebsites.length === 0 ? (
+                  <Card className="p-12" data-testid="card-filter-empty">
+                    <div className="text-center text-muted-foreground">
+                      {projectSearch.trim() && hasItemsInCurrentTab
+                        ? t("dashboard.websitesNoSearchMatches")
+                        : onboardingFilter === "completed"
+                          ? t("dashboard.noCompletedWebsites")
+                          : t("dashboard.noDraftWebsites")}
+                    </div>
+                  </Card>
+                ) : (
+                  filteredWebsites.map((website) => {
                   const isPendingOnboarding = website.currentStage === 0 || website.domain.endsWith('.pending-onboarding');
                   // Only show draft if onboardingStatus is explicitly 'draft'
                   // Websites without onboardingStatus (null/undefined) will show normal view
@@ -284,6 +448,14 @@ export default function WebsitesList() {
                       data-testid={`card-website-${website.id}`}
                     >
                       <CardContent className="p-6">
+                        {import.meta.env.MODE === "development" && (
+                          <div
+                            className="mb-3 text-xs font-mono text-muted-foreground"
+                            data-testid={`dev-website-id-${website.id}`}
+                          >
+                            ID: {website.id}
+                          </div>
+                        )}
                         {isPendingOnboarding ? (
                           // Pending Onboarding View
                           <div className="flex flex-col items-center justify-center text-center py-8 space-y-4">
@@ -539,7 +711,8 @@ export default function WebsitesList() {
                       </CardContent>
                     </Card>
                   );
-                })}
+                })
+                )}
               </div>
 
               {/* Right Column - Vertical Promo Banner (3 columns) */}

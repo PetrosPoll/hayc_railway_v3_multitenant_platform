@@ -12863,6 +12863,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
           customDomain: websiteProgress.customDomain,
+          createdAt: websiteProgress.createdAt,
+          updatedAt: websiteProgress.updatedAt,
         })
         .from(websiteProgress)
         .leftJoin(users, eq(websiteProgress.userId, users.id));

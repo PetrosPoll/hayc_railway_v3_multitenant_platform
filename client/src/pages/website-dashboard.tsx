@@ -72,6 +72,11 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Subscription } from "@shared/schema";
 import { AVAILABLE_ADDONS } from "@/lib/addons";
+
+type PaymentMethodInfo = {
+  hasPaymentMethod?: boolean;
+  card?: { brand: string; last4: string };
+};
 import { BOOKING_APP_BASE_URL } from "@/lib/utils";
 import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
@@ -645,9 +650,11 @@ export default function WebsiteDashboard() {
   const [selectedAddOn, setSelectedAddOn] = useState<{ id: string, name: string, description: string, price: number } | null>(null);
 
   // Fetch payment method details - MUST be after confirmDialogOpen is declared
-  const { data: paymentMethod, isLoading: paymentMethodLoading } = useQuery({
+  const { data: paymentMethod, isLoading: paymentMethodLoading } = useQuery<PaymentMethodInfo>({
     queryKey: ["/api/payment-method"],
-    enabled: confirmDialogOpen,
+    enabled:
+      confirmDialogOpen ||
+      (activeSection === "billing" && billingView === "payment-info"),
   });
 
   const cancelMutation = useMutation({
@@ -1824,20 +1831,6 @@ export default function WebsiteDashboard() {
                             Renews on {formatDate(subscription.nextBillingDate)}{" "}
                             for{" "}
                             {(() => {
-                              // Debug logging for scheduled subscriptions
-                              if (subscription.stripeSubscriptionId?.startsWith('sub_sched_')) {
-                                console.log('🎨 [FRONTEND] Scheduled subscription pricing data:', {
-                                  subscriptionId: subscription.id,
-                                  stripeSubscriptionId: subscription.stripeSubscriptionId,
-                                  productType: subscription.productType,
-                                  price: subscription.price,
-                                  nextBillingAmount: subscription.nextBillingAmount,
-                                  discountedPrice: subscription.discountedPrice,
-                                  tier: subscription.tier,
-                                  billingPeriod: subscription.billingPeriod
-                                });
-                              }
-
                               const actualPrice = subscription.nextBillingAmount || subscription.price;
                               const standardPrice = getStandardPrice(
                                 subscription.tier,
@@ -1846,16 +1839,6 @@ export default function WebsiteDashboard() {
                                 subscription.price
                               );
                               const isDiscounted = actualPrice < standardPrice;
-
-                              // More debug logging
-                              if (subscription.stripeSubscriptionId?.startsWith('sub_sched_')) {
-                                console.log('🎨 [FRONTEND] Price comparison:', {
-                                  actualPrice,
-                                  standardPrice,
-                                  isDiscounted,
-                                  willShowDiscount: isDiscounted
-                                });
-                              }
 
                               if (isDiscounted) {
                                 return (
@@ -2209,6 +2192,18 @@ export default function WebsiteDashboard() {
                     {t("dashboard.managedByStripe") || "Managed by Stripe"}
                   </span>
                 </div>
+                {paymentMethodLoading ? (
+                  <div className="flex items-center gap-2 py-3 border-b text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{t("dashboard.loading") || "Loading..."}</span>
+                  </div>
+                ) : paymentMethod?.hasPaymentMethod && paymentMethod.card ? (
+                  <p className="text-sm py-3 border-b">
+                    <span className="capitalize">{paymentMethod.card.brand}</span>
+                    {" "}
+                    ending in {paymentMethod.card.last4}
+                  </p>
+                ) : null}
                 <div className="pt-4">
                   <Button
                     onClick={() => updatePaymentMutation.mutate()}
@@ -2544,8 +2539,19 @@ export default function WebsiteDashboard() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="2026">2026</SelectItem>
-                        <SelectItem value="2025">2025</SelectItem>
+                        {Array.from(
+                          {
+                            length: Math.max(
+                              0,
+                              new Date().getFullYear() - 2024 + 1,
+                            ),
+                          },
+                          (_, i) => new Date().getFullYear() - i,
+                        ).map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Select
