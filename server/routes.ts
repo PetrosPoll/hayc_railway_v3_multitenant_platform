@@ -19446,7 +19446,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Contact configuration missing" });
       }
 
-      const fromAddress = process.env.EMAIL_FROM ?? "noreply@hayc.gr";
+      const [onboardingIdentity] = await db
+        .select({ businessName: onboardingFormResponses.businessName })
+        .from(onboardingFormResponses)
+        .where(eq(onboardingFormResponses.websiteProgressId, website.id))
+        .orderBy(desc(onboardingFormResponses.createdAt))
+        .limit(1);
+
+      const fromAddress = "notifications@hayc.gr";
+      const senderName = (website.projectName || onboardingIdentity?.businessName || website.domain || "Client").trim();
       const siteLabel = website.projectName ?? website.domain;
 
       // Email 1 — Notification to business owner
@@ -19480,7 +19488,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subject: ownerSubject,
           message: ownerSubject,
           fromEmail: fromAddress,
-          fromName: "Hayc",
+          fromName: senderName,
           html: ownerHtml,
           replyToAddresses: [email],
         }),
@@ -19489,7 +19497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subject: visitorSubject,
           message: visitorSubject,
           fromEmail: fromAddress,
-          fromName: "Hayc",
+          fromName: senderName,
           html: visitorHtml,
           replyToAddresses: [ownerEmail],
         }),
