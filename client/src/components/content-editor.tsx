@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -14,12 +14,18 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, X, Monitor, Smartphone, History, RotateCcw, Loader2 } from "lucide-react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, X, Monitor, Smartphone, History, RotateCcw, Loader2, Check } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
+  DialogPortal,
+  DialogOverlay,
+  DialogHeader,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
 function formatLabel(key: string): string {
@@ -60,6 +66,195 @@ function createEmptyFromTemplate(template: unknown): unknown {
   return "";
 }
 
+type MediaItem = {
+  url: string;
+  publicId: string;
+  name: string;
+  previewUrl?: string | null;
+  format?: string | null;
+  resourceType?: "image" | "video" | "raw";
+};
+
+const IMAGE_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "svg",
+  "bmp",
+  "heic",
+  "heif",
+]);
+
+function extFromPathOrUrl(s: string): string {
+  const base = (s.split("?")[0] ?? "").split("/").pop() ?? "";
+  const m = /\.([a-z0-9]+)$/i.exec(base);
+  return m ? m[1].toLowerCase() : "";
+}
+
+function isImageMediaItem(m: MediaItem): boolean {
+  if (m.resourceType === "image") return true;
+  if (m.resourceType === "video" || m.resourceType === "raw") return false;
+  const ex = extFromPathOrUrl(m.name) || extFromPathOrUrl(m.url);
+  return IMAGE_EXTENSIONS.has(ex);
+}
+
+function getValueAtPath(obj: Record<string, unknown>, path: string): unknown {
+  const keys = path.split(".");
+  let cur: unknown = obj;
+  for (const k of keys) {
+    if (cur === null || cur === undefined) return undefined;
+    const idx = /^\d+$/.test(k) ? Number(k) : k;
+    cur =
+      typeof idx === "number"
+        ? (cur as unknown[])[idx]
+        : (cur as Record<string, unknown>)[k as string];
+  }
+  return cur;
+}
+
+interface PickImageFromMediaDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  websiteId: number;
+  currentFieldUrl: string;
+  onConfirm: (url: string) => void;
+}
+
+function PickImageFromMediaDialog({
+  open,
+  onOpenChange,
+  websiteId,
+  currentFieldUrl,
+  onConfirm,
+}: PickImageFromMediaDialogProps) {
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery<{ media: MediaItem[] }>({
+    queryKey: ["/api/websites", websiteId, "media"],
+    queryFn: async () => {
+      const res = await fetch(`/api/websites/${websiteId}/media`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch media");
+      return res.json();
+    },
+    enabled: open && !!websiteId,
+    staleTime: 0,
+    gcTime: 0,
+  });
+
+  const imageItems = useMemo(
+    () => (data?.media ?? []).filter(isImageMediaItem),
+    [data?.media]
+  );
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedUrl(null);
+      return;
+    }
+    if (currentFieldUrl && imageItems.some((m) => m.url === currentFieldUrl)) {
+      setSelectedUrl(currentFieldUrl);
+    } else {
+      setSelectedUrl(null);
+    }
+  }, [open, currentFieldUrl, imageItems]);
+
+  const handleSelect = () => {
+    if (selectedUrl) {
+      onConfirm(selectedUrl);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogPortal
+        container={typeof document !== "undefined" ? document.body : undefined}
+      >
+        <DialogOverlay className="z-[100]" />
+        <DialogPrimitive.Content
+          className={cn(
+            "fixed left-[50%] top-[50%] z-[100] flex max-h-[85vh] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col gap-0 border bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+            "w-[min(100vw-2rem,56rem)] max-w-3xl overflow-hidden"
+          )}
+        >
+          <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
+            <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
+              Pick an Image
+            </DialogPrimitive.Title>
+            <DialogPrimitive.Close asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Close">
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogPrimitive.Close>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 [scrollbar-gutter:stable]">
+            {isLoading ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <Skeleton key={i} className="aspect-square w-full rounded-md" />
+                ))}
+              </div>
+            ) : imageItems.length === 0 ? (
+              <p className="text-center text-sm text-muted-foreground py-8">
+                No images found. Upload images in the Media tab first.
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {imageItems.map((item) => {
+                  const isSelected = selectedUrl === item.url;
+                  return (
+                    <button
+                      key={item.publicId}
+                      type="button"
+                      onClick={() => setSelectedUrl(item.url)}
+                      className={cn(
+                        "group relative flex flex-col overflow-hidden rounded-md border-2 bg-muted/30 text-left transition-colors hover:bg-muted/50",
+                        isSelected
+                          ? "border-primary ring-2 ring-primary ring-offset-2"
+                          : "border-transparent"
+                      )}
+                    >
+                      {isSelected && (
+                        <span className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                          <Check className="h-3.5 w-3.5" />
+                        </span>
+                      )}
+                      <div className="aspect-square w-full overflow-hidden bg-muted">
+                        <img
+                          src={item.previewUrl || item.url}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                      <span className="truncate px-2 py-1.5 text-xs text-muted-foreground">
+                        {item.name}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="border-t px-6 py-4 sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSelect} disabled={!selectedUrl}>
+              Select
+            </Button>
+          </DialogFooter>
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    </Dialog>
+  );
+}
+
 interface ConfigFieldProps {
   path: string;
   fieldKey: string;
@@ -69,6 +264,24 @@ interface ConfigFieldProps {
   highlightedPath?: string | null;
   readOnlyFields?: string[];
   websiteLanguage?: string;
+  onRequestPickImage?: (path: string) => void;
+}
+
+const IMAGE_FIELD_KEYWORDS = [
+  "image",
+  "img",
+  "photo",
+  "logo",
+  "banner",
+  "thumbnail",
+  "avatar",
+  "cover",
+  "picture",
+];
+
+function isImageFieldKey(fieldKey: string): boolean {
+  const key = fieldKey.toLowerCase();
+  return IMAGE_FIELD_KEYWORDS.some((keyword) => key.includes(keyword));
 }
 
 function AutoResizeTextarea({ 
@@ -98,7 +311,7 @@ function AutoResizeTextarea({
   );
 }
 
-function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlightedPath, readOnlyFields, websiteLanguage }: ConfigFieldProps) {
+function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlightedPath, readOnlyFields, websiteLanguage, onRequestPickImage }: ConfigFieldProps) {
   const highlightClass = highlightedPath === path ? "hayc-field-highlighted" : "";
   const isReadOnly = readOnlyFields?.includes(fieldKey) ?? false;
   if (isLocaleString(value)) {
@@ -133,17 +346,34 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
   }
 
   if (typeof value === "string") {
-    const showImage = /image|photo|logo|background/i.test(fieldKey) && value !== "";
+    const isImageField = isImageFieldKey(fieldKey);
+
     return (
       <div data-field-path={path} className={highlightClass}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
-        {isReadOnly ? (
+        {isImageField ? (
+          <div className="flex items-center gap-2">
+            <Input
+              data-path={path}
+              value={value}
+              readOnly
+              placeholder="No image selected"
+              className="w-full bg-muted/50"
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => onRequestPickImage?.(path)}
+              disabled={isReadOnly}
+            >
+              Pick Image
+            </Button>
+          </div>
+        ) : isReadOnly ? (
           <Input data-path={path} value={value} readOnly className="bg-muted/50" />
         ) : (
           <AutoResizeTextarea data-path={path} value={value} onChange={(e) => onChange(path, e.target.value)} />
-        )}
-        {showImage && (
-          <img src={value} className="mt-1 max-h-20 rounded object-cover" alt="" />
         )}
       </div>
     );
@@ -193,6 +423,7 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
             focusedPath={focusedPath}
             highlightedPath={highlightedPath}
             websiteLanguage={websiteLanguage}
+            onRequestPickImage={onRequestPickImage}
           />
         ))}
       </div>
@@ -218,6 +449,7 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
               focusedPath={focusedPath}
               highlightedPath={highlightedPath}
               websiteLanguage={websiteLanguage}
+              onRequestPickImage={onRequestPickImage}
             />
           </div>
         ))}
@@ -238,6 +470,7 @@ interface ArrayItemCollapsibleProps {
   focusedPath?: string | null;
   highlightedPath?: string | null;
   websiteLanguage?: string;
+  onRequestPickImage?: (path: string) => void;
 }
 
 function ArrayItemCollapsible({
@@ -250,6 +483,7 @@ function ArrayItemCollapsible({
   focusedPath,
   highlightedPath,
   websiteLanguage,
+  onRequestPickImage,
 }: ArrayItemCollapsibleProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -282,6 +516,7 @@ function ArrayItemCollapsible({
                   highlightedPath={highlightedPath}
                   readOnlyFields={["path"]}
                   websiteLanguage={websiteLanguage}
+                  onRequestPickImage={onRequestPickImage}
                 />
               ))
             ) : (
@@ -293,6 +528,7 @@ function ArrayItemCollapsible({
                 focusedPath={focusedPath}
                 highlightedPath={highlightedPath}
                 websiteLanguage={websiteLanguage}
+                onRequestPickImage={onRequestPickImage}
               />
             )}
           </CardContent>
@@ -310,6 +546,7 @@ interface ConfigSectionProps {
   focusedPath?: string | null;
   highlightedPath?: string | null;
   websiteLanguage?: string;
+  onRequestPickImage?: (path: string) => void;
 }
 
 const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config"];
@@ -338,7 +575,7 @@ function shouldHideField(key: string, value: unknown): boolean {
   return isEmptyValue(value);
 }
 
-function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, highlightedPath, websiteLanguage }: ConfigSectionProps) {
+function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, highlightedPath, websiteLanguage, onRequestPickImage }: ConfigSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -357,6 +594,7 @@ function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, hi
             focusedPath={focusedPath}
             highlightedPath={highlightedPath}
             websiteLanguage={websiteLanguage}
+            onRequestPickImage={onRequestPickImage}
           />
         </CardContent>
       </Card>
@@ -390,6 +628,7 @@ function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, hi
                   focusedPath={focusedPath}
                   highlightedPath={highlightedPath}
                   websiteLanguage={websiteLanguage}
+                  onRequestPickImage={onRequestPickImage}
                 />
               ))}
           </CardContent>
@@ -806,6 +1045,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [pickImagePath, setPickImagePath] = useState<string | null>(null);
 
   const { data: websiteData } = useQuery<{ websiteLanguage?: string }>({
     queryKey: ["/api/admin/websites", websiteId],
@@ -935,6 +1175,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-none w-screen h-screen p-0 rounded-none border-0 gap-0 [&>button]:hidden">
         <VisuallyHidden.Root>
@@ -1077,6 +1318,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                     focusedPath={focusedPath}
                     highlightedPath={highlightedPath}
                     websiteLanguage={websiteLanguage}
+                    onRequestPickImage={(path) => setPickImagePath(path)}
                   />
                 ))}
             </div>
@@ -1086,5 +1328,24 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
         </div>
       </DialogContent>
     </Dialog>
+    <PickImageFromMediaDialog
+      open={pickImagePath !== null}
+      onOpenChange={(next) => {
+        if (!next) setPickImagePath(null);
+      }}
+      websiteId={websiteId}
+      currentFieldUrl={
+        pickImagePath && localConfig
+          ? String(getValueAtPath(localConfig, pickImagePath) ?? "")
+          : ""
+      }
+      onConfirm={(url) => {
+        if (pickImagePath) {
+          handleFieldChange(pickImagePath, url);
+        }
+        setPickImagePath(null);
+      }}
+    />
+    </>
   );
 }
