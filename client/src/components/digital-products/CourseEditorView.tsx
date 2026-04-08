@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Product, ProductStatus } from "@/types/digital-products";
 import { CourseCurriculumTab } from "@/components/digital-products/CourseCurriculumTab";
+import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
 
 type CourseLanguage = "el" | "en";
 
@@ -84,8 +85,9 @@ function toPayload(form: CourseFormState) {
   };
 }
 
-interface Props {
+export interface CourseEditorViewProps {
   siteId: string;
+  websiteId: string | number;
   mode: "new" | "edit";
   courseId?: string;
   products: Product[];
@@ -94,7 +96,16 @@ interface Props {
   onUpdated: () => void;
 }
 
-export function CourseEditorView({ siteId, mode, courseId, products, onBack, onCreated, onUpdated }: Props) {
+export function CourseEditorView({
+  siteId,
+  websiteId,
+  mode,
+  courseId,
+  products,
+  onBack,
+  onCreated,
+  onUpdated,
+}: CourseEditorViewProps) {
   const { toast } = useToast();
   const { t } = useTranslation();
   const isEditMode = mode === "edit";
@@ -103,6 +114,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
   const [originalPayload, setOriginalPayload] = useState<Record<string, unknown>>(toPayload(DEFAULT_FORM));
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPickingImage, setIsPickingImage] = useState(false);
   const [resolvedTitle, setResolvedTitle] = useState(t("digitalProductsManagement.courseEditor.defaultNewCourseTitle"));
 
   useEffect(() => {
@@ -282,6 +294,7 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
   };
 
   return (
+    <>
     <div className="w-full space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-2">
@@ -330,11 +343,18 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
 
           <div className="space-y-2">
             <Label htmlFor="course-thumbnail">{t("digitalProductsManagement.courseEditor.fields.thumbnailUrl")}</Label>
-            <Input
-              id="course-thumbnail"
-              value={form.thumbnail}
-              onChange={(e) => setForm((prev) => ({ ...prev, thumbnail: e.target.value }))}
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="course-thumbnail"
+                value={form.thumbnail}
+                readOnly
+                placeholder="No image selected"
+                className="w-full bg-muted/50"
+              />
+              <Button type="button" variant="secondary" size="sm" onClick={() => setIsPickingImage(true)}>
+                Pick Image
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -433,5 +453,16 @@ export function CourseEditorView({ siteId, mode, courseId, products, onBack, onC
         </TabsContent>
       </Tabs>
     </div>
+    <PickImageFromMediaDialog
+      open={isPickingImage}
+      onClose={() => setIsPickingImage(false)}
+      onSelect={(url) => {
+        setForm((f) => ({ ...f, thumbnail: url }));
+        setIsPickingImage(false);
+      }}
+      websiteId={websiteId}
+      currentFieldUrl={form.thumbnail}
+    />
+    </>
   );
 }

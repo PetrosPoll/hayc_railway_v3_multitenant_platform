@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +16,7 @@ interface HdpBrandModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   siteId: string;
+  websiteId: string | number;
   previewUrl?: string;
 }
 
@@ -125,11 +127,12 @@ function pickBrandRoot(brandJson: any) {
   );
 }
 
-export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBrandModalProps) {
+export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUrl }: HdpBrandModalProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPickingImage, setIsPickingImage] = useState(false);
   const [form, setForm] = useState<HdpBrandFormState>(DEFAULT_FORM);
 
   const canSave = useMemo(() => open && !isLoading && !isSaving && !!siteId, [open, isLoading, isSaving, siteId]);
@@ -280,6 +283,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
@@ -310,13 +314,25 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
               <Label htmlFor="hdp-brand-logo-url">
                 {t("digitalProductsManagement.brandModal.fields.logoUrl")}
               </Label>
-              <Input
-                id="hdp-brand-logo-url"
-                value={form.logoUrl}
-                onChange={(e) => setForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
-                placeholder={t("digitalProductsManagement.brandModal.placeholders.logoUrl")}
-                disabled={isSaving}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  id="hdp-brand-logo-url"
+                  value={form.logoUrl}
+                  readOnly
+                  placeholder="No image selected"
+                  className="w-full bg-muted/50"
+                  disabled={isSaving}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={isSaving}
+                  onClick={() => setIsPickingImage(true)}
+                >
+                  Pick Image
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -433,6 +449,17 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <PickImageFromMediaDialog
+      open={isPickingImage}
+      onClose={() => setIsPickingImage(false)}
+      onSelect={(url) => {
+        setForm((f) => ({ ...f, logoUrl: url }));
+        setIsPickingImage(false);
+      }}
+      websiteId={websiteId}
+      currentFieldUrl={form.logoUrl}
+    />
+    </>
   );
 }
 

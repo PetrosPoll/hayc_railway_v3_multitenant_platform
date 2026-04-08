@@ -4173,6 +4173,7 @@ export default function WebsiteDashboard() {
     return (
       <DigitalProductsTab
         siteId={website.siteId}
+        websiteId={Number(websiteId)}
         listMode={digitalProductsSubView}
       />
     );
@@ -4365,6 +4366,7 @@ export default function WebsiteDashboard() {
           open={hdpBrandModalOpen}
           onOpenChange={setHdpBrandModalOpen}
           siteId={website.siteId}
+          websiteId={Number(websiteId)}
           previewUrl={HDP_URL ? `${HDP_URL}?siteId=${encodeURIComponent(website.siteId)}` : ""}
         />
       ) : null}

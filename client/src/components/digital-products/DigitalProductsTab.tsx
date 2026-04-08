@@ -29,6 +29,8 @@ import { CoursePreviewModal } from "@/components/digital-products/CoursePreviewM
 
 interface Props {
   siteId: string;
+  /** Website progress id — for media library API */
+  websiteId: number;
   /** Courses list vs buyers — controlled by website dashboard sidebar */
   listMode?: "courses" | "buyers";
 }
@@ -41,7 +43,7 @@ function typeLabel(type: ProductType): string {
 const HDP_WIDGET_BASE =
   (import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined)?.trim().replace(/\/$/, "") || "https://hdp.hayc.gr";
 
-export function DigitalProductsTab({ siteId, listMode = "courses" }: Props) {
+export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: Props) {
   const { t } = useTranslation();
   const HDP_URL = import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined;
   const { toast } = useToast();
@@ -349,6 +351,7 @@ export function DigitalProductsTab({ siteId, listMode = "courses" }: Props) {
       <div>
         <CourseEditorView
           siteId={siteId}
+          websiteId={websiteId}
           mode={view === "course-new" ? "new" : "edit"}
           courseId={selectedCourseId ?? undefined}
           products={products}
@@ -548,6 +551,7 @@ export function DigitalProductsTab({ siteId, listMode = "courses" }: Props) {
         open={brandModalOpen}
         onOpenChange={setBrandModalOpen}
         siteId={siteId}
+        websiteId={websiteId}
         previewUrl={HDP_URL ? `${HDP_URL}?siteId=${encodeURIComponent(siteId)}` : undefined}
       />
 
