@@ -672,7 +672,7 @@ function BonusEmailsSection({ websiteId, bonusEmails, bonusEmailsExpiry }: {
 
 function ContactFormConfigSection({ website }: { website: Website }) {
   const queryClient = useQueryClient();
-  const [apiUrl, setApiUrl] = useState("https://api.hayc.gr");
+  const [apiUrl, setApiUrl] = useState("https://hayc.gr");
   const { data } = useQuery({
     queryKey: ["/api/websites", website.id, "site-config"],
     queryFn: async () => {
@@ -721,7 +721,7 @@ function ContactFormConfigSection({ website }: { website: Website }) {
           type="url"
           value={apiUrl}
           onChange={(e) => setApiUrl(e.target.value)}
-          placeholder="https://api.hayc.gr"
+          placeholder="https://hayc.gr"
           className="flex-1 min-w-[200px] h-8"
         />
         <Button

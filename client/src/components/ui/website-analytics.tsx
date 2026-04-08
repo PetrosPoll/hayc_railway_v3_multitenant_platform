@@ -65,7 +65,7 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - parseInt(dateRange));
 
-  const { data, isLoading } = useQuery<AnalyticsData>({
+  const { data, isLoading, refetch } = useQuery<AnalyticsData>({
     queryKey: ["/api/analytics", websiteId, dateRange],
     queryFn: async () => {
       const response = await fetch(
@@ -90,6 +90,8 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
       return response.json();
     },
     enabled: !!websiteId,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   if (isLoading) {
@@ -128,7 +130,16 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
             {t("dashboard.analyticsData.subtitle")}
           </p>
         </div>
-        <Select value={dateRange} onValueChange={setDateRange}>
+        <Select
+          value={dateRange}
+          onValueChange={(value) => {
+            if (value === dateRange) {
+              void refetch({ throwOnError: false });
+              return;
+            }
+            setDateRange(value);
+          }}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue />
           </SelectTrigger>
