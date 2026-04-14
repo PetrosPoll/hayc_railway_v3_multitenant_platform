@@ -32,6 +32,7 @@ export function NavMenu() {
     queryKey: ["/api/user"],
   });
   const user = authUser ?? userData?.user;
+  const isLoggedOut = !user;
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
@@ -159,7 +160,7 @@ export function NavMenu() {
                 className={
                   pathname === "/"
                     ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
-                    : isTransparent
+                    : isLoggedOut
                       ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
                       : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
                 }
@@ -174,7 +175,7 @@ export function NavMenu() {
                 className={
                   pathname === "/templates"
                     ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
-                    : isTransparent
+                    : isLoggedOut
                       ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
                       : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
                 }
@@ -189,7 +190,7 @@ export function NavMenu() {
                 className={
                   pathname === "/about"
                     ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
-                    : isTransparent
+                    : isLoggedOut
                       ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
                       : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
                 }
@@ -204,7 +205,7 @@ export function NavMenu() {
                 className={
                   pathname === "/contact"
                     ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
-                    : isTransparent
+                    : isLoggedOut
                       ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
                       : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
                 }
@@ -338,7 +339,7 @@ export function NavMenu() {
 
   return (
     <nav
-      className={`fixed w-full z-50 font-['Montserrat'] ${isTransparent ? "bg-transparent" : "bg-white border-b border-border"}`}
+      className={`fixed w-full z-50 font-['Montserrat'] ${isLoggedOut ? (isTransparent ? "bg-transparent" : "bg-black") : "bg-white border-b border-border"}`}
     >
       <div className="container mx-auto px-16 py-6 flex justify-between items-center w-full">
         {/* Mobile Menu */}

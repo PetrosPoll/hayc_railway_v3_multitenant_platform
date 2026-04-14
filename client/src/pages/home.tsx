@@ -16,6 +16,9 @@ import "../i18n";
 
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
 import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
+import { TestimonialsSection } from "@/components/sections/testimonials-section";
+import { FaqSection } from "@/components/sections/faq-section";
+import { FinalCtaSection } from "@/components/sections/final-cta-section";
 import type { Template } from "@shared/schema";
 
 // Selected templates to display on home page carousel
@@ -28,71 +31,7 @@ export default function Home() {
   const [expandedAddOns, setExpandedAddOns] = useState<{ [key: string]: boolean }>({});
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [testimonialIndex, setTestimonialIndex] = useState(0);
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [openAddon, setOpenAddon] = useState<number>(0);
-
-  const testimonials = [
-    {
-      name: "Name Surname",
-      title: "Business title",
-      rating: 4.4,
-      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit.",
-      avatar: null,
-      projectUrl: "#",
-    },
-    {
-      name: "Name Surname",
-      title: "Business title",
-      rating: 4.4,
-      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit.",
-      avatar: null,
-      projectUrl: "#",
-    },
-    {
-      name: "Name Surname",
-      title: "Business title",
-      rating: 4.4,
-      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit.",
-      avatar: null,
-      projectUrl: "#",
-    },
-    {
-      name: "Name Surname",
-      title: "Business title",
-      rating: 4.4,
-      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit.",
-      avatar: null,
-      projectUrl: "#",
-    },
-  ];
-
-  const faqs = [
-    {
-      question: "What is HAYC and how does it work?",
-      answer: "HAYC is your website partner. You choose a design, tell us what you need, and we build it for you, start to finish. Later on, you can manage your website, track its progress, and expand its capabilities through your dashboard.",
-    },
-    {
-      question: "Can I build an e-shop or online store with HAYC?",
-      answer: "",
-    },
-    {
-      question: "What if I already have a domain name?",
-      answer: "",
-    },
-    {
-      question: "Can I cancel my subscription anytime?",
-      answer: "",
-    },
-    {
-      question: "What do I need to do on my end for you to build the website?",
-      answer: "",
-    },
-    {
-      question: "Can I change my subscription plan later?",
-      answer: "",
-    },
-  ];
 
   const addonCategories = [
     {
@@ -121,18 +60,6 @@ export default function Home() {
       addons: ["Custom Integration"],
     },
   ];
-
-  const StarRating = ({ rating }: { rating: number }) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      if (i <= Math.floor(rating)) {
-        stars.push(<img key={i} src="/images/testimonials_full_star.svg" alt="star" className="w-4 h-4" />);
-      } else if (i === Math.ceil(rating) && rating % 1 >= 0.4) {
-        stars.push(<img key={i} src="/images/testimonials_half_star.svg" alt="half star" className="w-4 h-4" />);
-      }
-    }
-    return <div className="flex items-center gap-1.5">{stars}</div>;
-  };
 
   // Example query for user data
   const { data } = useQuery<{ user: User | null }>({
@@ -616,183 +543,9 @@ export default function Home() {
         <div className="w-[793px] h-[799px] flex-shrink-0 relative z-10 rounded-tl-[20px] rounded-bl-[20px] bg-white/10 border border-zinc-700" />
       </section>
 
-      {/* Testimonials Section */}
-      <section className="w-full px-16 py-24 bg-black flex justify-between items-center">
-        {/* Left side */}
-        <div className="flex flex-col justify-center items-start gap-6">
-          <div className="flex flex-col justify-start items-start gap-3">
-            <h2 className="text-5xl font-semibold font-['Montserrat'] leading-[70px]">
-              <span className="text-[#ED4C14]">Words</span>
-              <span className="text-white"> from thriving clients</span>
-            </h2>
-            <p className="text-white text-base font-normal font-['Montserrat'] leading-6 max-w-xs">
-              Real stories from people who turned their ideas into live, growing websites.
-            </p>
-          </div>
-
-          {/* Rating cards */}
-          <div className="w-96 flex flex-col gap-3">
-            {/* Facebook */}
-            <div className="p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <img src="/images/testimonials_facebook.svg" alt="Facebook" className="w-4 h-4" />
-                  <span className="text-blue-400 text-lg font-medium font-['Montserrat']">Facebook</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-white text-lg font-medium font-['Montserrat']">5.0</span>
-                  <StarRating rating={5} />
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-white text-lg font-medium font-['Montserrat']">Based on</span>
-                  <span className="text-white text-lg font-medium font-['Montserrat']">5</span>
-                  <span className="text-white text-lg font-medium font-['Montserrat']">reviews</span>
-                </div>
-              </div>
-              <img src="/images/testimonials_export.svg" alt="External link" className="w-6 h-6 opacity-80" />
-            </div>
-
-            {/* Trustpilot */}
-            <div className="p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <img src="/images/testimonials_trustpilot.svg" alt="Trustpilot" className="w-4 h-4" />
-                  <span className="text-green-400 text-lg font-medium font-['Montserrat']">Trustpilot</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-white text-lg font-medium font-['Montserrat']">4.4</span>
-                  <StarRating rating={4.4} />
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-white text-lg font-medium font-['Montserrat']">Based on</span>
-                  <span className="text-white text-lg font-medium font-['Montserrat']">5</span>
-                  <span className="text-white text-lg font-medium font-['Montserrat']">reviews</span>
-                </div>
-              </div>
-              <img src="/images/testimonials_export.svg" alt="External link" className="w-6 h-6 opacity-80" />
-            </div>
-          </div>
-        </div>
-
-        {/* Right side — review card + navigation */}
-        <div className="w-[656px] flex flex-col items-end gap-6">
-          {/* Card */}
-          <div className="w-[572px] h-96 p-6 bg-zinc-950 rounded-[20px] outline outline-1 outline-zinc-800 flex flex-col justify-between items-start">
-            <div className="flex flex-col gap-6">
-              <div className="flex items-center gap-6">
-                {testimonials[testimonialIndex].avatar ? (
-                  <img src={testimonials[testimonialIndex].avatar!} alt="avatar" className="w-24 h-24 rounded-full object-cover" />
-                ) : (
-                  <div className="w-24 h-24 bg-zinc-300 rounded-full" />
-                )}
-                <div className="w-44 flex flex-col justify-center items-start gap-3">
-                  <div className="flex flex-col">
-                    <span className="text-[#ED4C14] text-2xl font-medium font-['Montserrat']">{testimonials[testimonialIndex].name}</span>
-                    <span className="text-slate-50 text-lg font-medium font-['Montserrat']">{testimonials[testimonialIndex].title}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-50 text-lg font-medium font-['Montserrat']">{testimonials[testimonialIndex].rating}</span>
-                    <StarRating rating={testimonials[testimonialIndex].rating} />
-                  </div>
-                </div>
-              </div>
-              <p className="text-slate-50 text-base font-normal font-['Montserrat'] leading-6">
-                {testimonials[testimonialIndex].text}
-              </p>
-            </div>
-            <button
-              className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex items-center gap-4 hover:opacity-80 transition-opacity"
-              onClick={() => window.location.href = testimonials[testimonialIndex].projectUrl}
-            >
-              <span className="text-[#EFF6FF] text-base font-semibold font-['Montserrat'] leading-5">See Project</span>
-              <img src="/images/testimonials_white_arrow.svg" alt="arrow" className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Navigation arrows */}
-          <div className="flex items-center gap-12">
-            <button
-              type="button"
-              className="hover:opacity-70 transition-opacity"
-              onClick={() => setTestimonialIndex(i => (i - 1 + testimonials.length) % testimonials.length)}
-            >
-              <img src="/images/testimonials_orange_arrow.svg" alt="Previous" className="w-11 h-9 rotate-180" />
-            </button>
-            <button
-              type="button"
-              className="hover:opacity-70 transition-opacity"
-              onClick={() => setTestimonialIndex(i => (i + 1) % testimonials.length)}
-            >
-              <img src="/images/testimonials_orange_arrow.svg" alt="Next" className="w-11 h-9" />
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {/* FAQ Section */}
-      <section className="w-full px-16 py-24 bg-black flex flex-col justify-start items-start gap-12">
-        {/* Header */}
-        <div className="w-[580px] flex flex-col justify-start items-start gap-2">
-          <h2 className="text-5xl font-semibold font-['Montserrat'] leading-[70px]">
-            <span className="text-white">Imagine Wix, </span>
-            <span className="text-[#ED4C14]">without<br />the DIY</span>
-            <span className="text-white">.</span>
-          </h2>
-          <p className="text-white text-base font-normal font-['Montserrat'] leading-6">
-            That's what HAYC is. We build it. You use it. No stress, no setup, just results.
-          </p>
-        </div>
-
-        {/* Accordion */}
-        <div className="w-full flex flex-col">
-          {faqs.map((faq, i) => (
-            <div
-              key={i}
-              className="w-full p-6 border-t border-b border-zinc-800 flex flex-col justify-start items-start gap-6"
-            >
-              <button
-                type="button"
-                className="w-full flex justify-between items-center text-left"
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-              >
-                <span className="text-white text-xl font-medium font-['Montserrat'] leading-7 pr-4">
-                  {faq.question}
-                </span>
-                {openFaq === i ? (
-                  <img src="/images/CLOSE.svg" alt="Open" className="w-6 h-6 flex-shrink-0" />
-                ) : (
-                  <img src="/images/OPEN.svg" alt="Close" className="w-6 h-6 flex-shrink-0" />
-                )}
-              </button>
-              {openFaq === i && faq.answer && (
-                <p className="text-white text-base font-normal font-['Montserrat'] leading-5">
-                  {faq.answer}
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Final CTA Section */}
-      <section
-        className="w-full px-36 py-48 bg-black bg-cover bg-center bg-no-repeat flex flex-col justify-start items-center gap-24"
-        style={{ backgroundImage: "url('/images/Final CTA.png')" }}
-      >
-        <h2 className="text-6xl font-semibold font-['Montserrat'] text-center" style={{ maxWidth: '863px' }}>
-          <span className="text-[#ED4C14]">Bring your website</span>
-          <span className="text-white"> to life with HAYC.</span>
-        </h2>
-        <button
-          className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
-          onClick={() => window.location.href = '/auth'}
-        >
-          <span className="text-center text-[#EFF6FF] text-base font-semibold font-['Montserrat'] leading-5">
-            Start Today
-          </span>
-          <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
-        </button>
-      </section>
+      <TestimonialsSection />
+      <FaqSection />
+      <FinalCtaSection />
 
       {/* Template Preview Modal */}
       <TemplatePreviewModal

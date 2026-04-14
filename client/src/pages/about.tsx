@@ -1,132 +1,170 @@
 
-import React from "react";
-import { Code, PiggyBank, Shield } from "lucide-react";
+import React, { useState } from "react";
+import { ArrowRight, Code, PiggyBank, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
+import { TestimonialsSection } from "@/components/sections/testimonials-section";
+import { FaqSection } from "@/components/sections/faq-section";
+import { FinalCtaSection } from "@/components/sections/final-cta-section";
 
 export default function AboutPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [openProcess, setOpenProcess] = useState<number>(0);
+
+  const processSteps = [
+    { num: "01", title: "Pick a Template", description: "Subscribe in seconds and get started." },
+    { num: "02", title: "Share your needs", description: "Tell us about your business and what you need." },
+    { num: "03", title: "We launch fast", description: "We build and launch your website in days." },
+    { num: "04", title: "Stay in control", description: "Manage your site and grow through your dashboard." },
+  ];
 
   return (
     <div className="min-h-screen bg-background mt-[65px]">
-      {/* Hero Section - Blue Background with Main Goal */}
-      <section className="bg-[#3b5698] text-white py-24">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <p className="text-lg mb-4 uppercase tracking-wide opacity-90">
-              {t("about.hero.subtitle")}
-            </p>
-            <h1 className="text-4xl font-bold mb-8">
-              {t("about.hero.mainTitle")}
+      {/* About Page Header */}
+      <section className="w-full px-16 pt-12 pb-24 bg-black flex flex-col justify-center items-center gap-6">
+        {/* 3D Asterisk image */}
+        <img
+          src="/images/about_header.png"
+          alt="HAYC asterisk"
+          className="w-72 h-72 object-contain"
+        />
+
+        {/* Content */}
+        <div className="w-[736px] flex flex-col justify-center items-center gap-12">
+          <div className="flex flex-col justify-start items-end gap-3">
+            <h1 className="text-center text-6xl font-semibold font-['Montserrat']">
+              <span className="text-[#ED4C14]">Helping businesses</span>
+              <span className="text-white"> get successfully online.</span>
             </h1>
-            <p className="text-xl md:text-2xl mb-2">
-              {t("about.hero.description1")}
-            </p>
-            <p className="text-xl md:text-2xl mb-2">
-              {t("about.hero.description2")}
-            </p>
-            <p className="text-2xl md:text-3xl font-bold">
-              {t("about.hero.description3")}
+            <p className="text-center text-white text-lg font-medium font-['Montserrat']">
+              HAYC isn't a DIY website builder. It's a website creation service. Choose a template, and we take care of build, hosting, and ongoing updates.
             </p>
           </div>
-        </div>
-      </section>
 
-      {/* How hayc Works Section */}
-      <section className="py-16 bg-background">
-        <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl font-bold text-center mb-8 text-[#182B53]">
-              {t("about.howItWorks.title")}
-            </h2>
-            <div className="text-center text-lg text-[#182B53] leading-relaxed">
-              <p className="mb-6">
-                {t("about.howItWorks.description")}
-                <span className="text-green-600 font-semibold">
-                  {t("about.howItWorks.guarantee")}
-                </span>
-                {t("about.howItWorks.continuedDescription")}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* What Makes Us Different Section */}
-      {/* <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-16 text-[#182B53]">
-            {t("about.differences.title")}
-          </h2>
-          
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-
-            <div className="text-center">
-              <div className="mb-6">
-                <Code className="w-12 h-12 text-[#3b5698] mx-auto" />
-              </div>
-              <h3 className="text-xl font-bold mb-4 text-[#182B53]">
-                {t("about.differences.customCoded.title")}
-              </h3>
-              <p className="text-[#182B53] leading-relaxed">
-                {t("about.differences.customCoded.description")}
-                <span className="font-semibold">
-                  {t("about.differences.customCoded.highlight")}
-                </span>
-                {t("about.differences.customCoded.continuedDescription")}
-              </p>
-            </div>
-
-
-            <div className="text-center">
-              <div className="mb-6">
-                <PiggyBank className="w-12 h-12 text-[#3b5698] mx-auto" />
-              </div>
-              <h3 className="text-xl font-bold mb-4 text-[#182B53]">
-                {t("about.differences.zeroRisk.title")}
-              </h3>
-              <p className="text-[#182B53] leading-relaxed">
-                {t("about.differences.zeroRisk.description")}
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="mb-6">
-                <Shield className="w-12 h-12 text-[#3b5698] mx-auto" />
-              </div>
-              <h3 className="text-xl font-bold mb-4 text-[#182B53]">
-                {t("about.differences.fullPayment.title")}
-              </h3>
-              <p className="text-[#182B53] leading-relaxed">
-                {t("about.differences.fullPayment.description")}
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>  */}
-
-      {/* Call to Action Section */}
-      <section className="py-20 bg-gray-100">
-        <div className="container mx-auto px-4">
-          <div className="max-w-2xl mx-auto text-center">
-            <h2 className="text-3xl font-bold mb-4 text-[#182B53]">
-              {t("about.cta.title")}
-            </h2>
-            <p className="text-xl mb-8 text-[#182B53]">
-              {t("about.cta.subtitle")}
-            </p>
-            <Button 
-              size="lg"
-              className="bg-[#3b5698] hover:bg-[#2d4578] text-white px-8 py-4 text-lg"
-              onClick={() => navigate("/contact")}
+          {/* Buttons */}
+          <div className="flex justify-start items-start gap-3">
+            <button
+              className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+              onClick={() => window.location.href = '/templates'}
             >
-              {t("about.cta.button")}
-            </Button>
+              <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
+                Explore Templates
+              </span>
+              <ArrowRight className="h-4 w-4 text-[#0C275F]" />
+            </button>
+            <button
+              className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+              onClick={() => window.location.href = '/contact'}
+            >
+              <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
+                Contact us
+              </span>
+              <ArrowRight className="h-4 w-4 text-[#0C275F]" />
+            </button>
           </div>
         </div>
       </section>
+
+      {/* Mission Section */}
+      <section className="w-full px-16 py-24 bg-black flex justify-start items-start gap-20">
+        <div className="w-32 text-right text-[#ED4C14] text-lg font-medium font-['Montserrat'] flex-shrink-0">
+          OUR MISSION
+        </div>
+        <div className="flex-1 text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+          <span className="text-white">To launch professional websites in days, then keep them evolving </span>
+          <span className="text-white/30">with ongoing support and new features.</span>
+        </div>
+      </section>
+
+      {/* Vision Section */}
+      <section className="w-full px-16 py-24 bg-black flex justify-start items-start gap-20">
+        <div className="w-32 text-right text-[#ED4C14] text-lg font-medium font-['Montserrat'] flex-shrink-0">
+          OUR VISION
+        </div>
+        <div className="flex-1 text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+          <span className="text-white">A world where every small business can have a modern, reliable </span>
+          <span className="text-white/30">website without needing a team, tools, or tech stress.</span>
+        </div>
+      </section>
+
+      {/* Full Width Image */}
+      <div className="w-full" style={{ height: '800px' }}>
+        <img
+          src="/images/Rectangle 117.png"
+          alt="HAYC"
+          className="w-full h-full object-cover"
+        />
+      </div>
+
+      {/* Stats Section */}
+      <section className="w-full px-16 py-24 bg-black flex justify-center items-center gap-48">
+        <div className="flex-1 flex flex-col justify-center items-center">
+          <span className="text-center text-white text-6xl font-semibold font-['Montserrat']">99%</span>
+          <span className="text-center text-white text-lg font-medium font-['Montserrat']">uptime guarantee</span>
+        </div>
+        <div className="flex-1 flex flex-col justify-center items-center">
+          <span className="text-center text-white text-6xl font-semibold font-['Montserrat']">Save 20%</span>
+          <span className="text-center text-white text-lg font-medium font-['Montserrat']">on annual plans</span>
+        </div>
+        <div className="flex-1 flex flex-col justify-center items-center">
+          <span className="text-center text-white text-6xl font-semibold font-['Montserrat']">30-day</span>
+          <span className="text-center text-white text-lg font-medium font-['Montserrat']">money-back guarantee</span>
+        </div>
+      </section>
+
+      {/* Process Section */}
+      <section className="w-full px-16 py-24 bg-black flex flex-col justify-start items-start gap-2.5">
+        {/* Header */}
+        <div className="w-full py-12 flex justify-start items-start gap-20">
+          <div className="w-36 text-right text-[#ED4C14] text-lg font-medium font-['Montserrat'] flex-shrink-0">
+            OUR PROCESS
+          </div>
+          <div className="flex-1 text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+            <span className="text-white">We created our process to feel effortle</span>
+            <span className="text-white/30">ss and help every business get the website it deserves with ease.</span>
+          </div>
+        </div>
+
+        {/* Cards */}
+        <div className="w-full flex justify-start items-center gap-3">
+          {processSteps.map((step, i) => {
+            const isOpen = openProcess === i;
+            return (
+              <div
+                key={i}
+                onClick={() => setOpenProcess(i)}
+                className={`h-96 px-6 pt-6 pb-12 rounded-[10px] flex flex-col justify-start items-start gap-2 cursor-pointer transition-all duration-300 ${
+                  isOpen
+                    ? 'flex-1 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 outline outline-1 outline-offset-[-1px] outline-white/80'
+                    : 'w-56 bg-gradient-to-br from-neutral-700/0 to-neutral-700/10 outline outline-1 outline-offset-[-1px] outline-white/50'
+                }`}
+                style={{ flexShrink: isOpen ? 1 : 0 }}
+              >
+                <span className={`text-2xl font-medium font-['Montserrat'] ${isOpen ? 'text-white' : 'text-white/30'}`}>
+                  {step.num}
+                </span>
+                <div className="flex-1 flex flex-col justify-start items-start">
+                  <span className={`text-4xl font-semibold font-['Montserrat'] ${isOpen ? 'text-white' : 'text-white/30'}`}>
+                    {step.title}
+                  </span>
+                  {isOpen && (
+                    <span className="text-white text-2xl font-medium font-['Montserrat'] mt-auto">
+                      {step.description}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <TestimonialsSection />
+      <FaqSection />
+      <FinalCtaSection />
+
     </div>
   );
 }
