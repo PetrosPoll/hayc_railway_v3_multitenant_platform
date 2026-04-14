@@ -7,7 +7,7 @@ import { logout } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/ui/authContext";
 
 interface UserResponse {
@@ -35,6 +35,20 @@ export function NavMenu() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
+
+  const isHomePage = pathname === "/";
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      setScrolled(window.scrollY >= 72);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [pathname]);
+
+  const isTransparent = isHomePage && !scrolled && !user;
 
   const handleLogout = async () => {
     try {
@@ -142,10 +156,13 @@ export function NavMenu() {
             <Link to="/">
               <Button
                 variant={pathname === "/" ? "default" : "ghost"}
-                className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/"
-                    ? "bg-[#182B53] text-white"
-                    : "text-[#182B53] hover:bg-accent"
-                  }`}
+                className={
+                  pathname === "/"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
+                    : isTransparent
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
               >
                 {t("nav.home")}
               </Button>
@@ -154,10 +171,13 @@ export function NavMenu() {
             <Link to="/templates">
               <Button
                 variant={pathname === "/templates" ? "default" : "ghost"}
-                className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/templates"
-                    ? "bg-[#182B53] text-white"
-                    : "text-[#182B53] hover:bg-accent"
-                  }`}
+                className={
+                  pathname === "/templates"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
+                    : isTransparent
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
               >
                 {t("nav.templates")}
               </Button>
@@ -166,10 +186,13 @@ export function NavMenu() {
             <Link to="/about">
               <Button
                 variant={pathname === "/about" ? "default" : "ghost"}
-                className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/about"
-                    ? "bg-[#182B53] text-white"
-                    : "text-[#182B53] hover:bg-accent"
-                  }`}
+                className={
+                  pathname === "/about"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
+                    : isTransparent
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
               >
                 {t("nav.about")}
               </Button>
@@ -178,10 +201,13 @@ export function NavMenu() {
             <Link to="/contact">
               <Button
                 variant={pathname === "/contact" ? "default" : "ghost"}
-                className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/contact"
-                    ? "bg-[#182B53] text-white"
-                    : "text-[#182B53] hover:bg-accent"
-                  }`}
+                className={
+                  pathname === "/contact"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
+                    : isTransparent
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
               >
                 {t("nav.contact")}
               </Button>
@@ -213,10 +239,11 @@ export function NavMenu() {
                 <Link to="/dashboard">
                   <Button
                     variant={pathname === "/dashboard" ? "default" : "ghost"}
-                    className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/dashboard"
-                        ? "bg-[#182B53] text-white"
-                        : "text-[#182B53] hover:bg-accent"
-                      }`}
+                    className={
+                      pathname === "/dashboard"
+                        ? "h-10 px-3.5 py-2.5 bg-[#182B53] text-white rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 cursor-pointer hover:!opacity-100 hover:bg-[#182B53] hover:text-white"
+                        : "h-10 px-3.5 py-2.5 bg-transparent text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 hover:text-[#172554] hover:opacity-100"
+                    }
                   >
                     <User className="h-4 w-4 mr-2" />
                     {t("nav.dashboard")}
@@ -225,10 +252,11 @@ export function NavMenu() {
                 <Link to="/profile">
                   <Button
                     variant={pathname === "/profile" ? "default" : "ghost"}
-                    className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/profile"
-                      ? "bg-[#182B53] text-white"
-                      : "text-[#182B53] hover:bg-accent"
-                      }`}
+                    className={
+                      pathname === "/profile"
+                        ? "h-10 px-3.5 py-2.5 bg-[#182B53] text-white rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 cursor-pointer hover:!opacity-100 hover:bg-[#182B53] hover:text-white"
+                        : "h-10 px-3.5 py-2.5 bg-transparent text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 hover:text-[#172554] hover:opacity-100"
+                    }
                   >
                     <User className="h-4 w-4 mr-2" />
                     {t("nav.myAccount") || "My Account"}
@@ -239,7 +267,7 @@ export function NavMenu() {
             <Button
               variant="ghost"
               onClick={handleLogout}
-              className="w-full md:w-auto justify-start md:justify-center border-0 text-[#182B53] hover:bg-accent"
+              className="h-10 px-3.5 py-2.5 bg-transparent text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 hover:text-[#172554] hover:opacity-100"
             >
               <LogOut className="h-4 w-4 mr-2" />
               {t("actions.logout")}
@@ -249,10 +277,7 @@ export function NavMenu() {
           <Link to="/auth">
             <Button
               variant={pathname === "/auth" ? "default" : "ghost"}
-              className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/auth"
-                  ? "bg-[#182B53] text-white"
-                  : "text-[#182B53] hover:bg-accent"
-                }`}
+              className="bg-[#182B53] text-white rounded-[10px] h-10 px-3.5 py-2.5 text-base font-medium font-['Montserrat'] leading-5 border-0 hover:opacity-80"
             >
               <User className="h-4 w-4 mr-2" />
               {t("actions.login")}
@@ -267,7 +292,11 @@ export function NavMenu() {
                 i18n.changeLanguage("en");
                 localStorage.setItem("language", "en");
               }}
-              className={`px-2 py-1 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center justify-center ${i18n.language === "en" ? "border-primary" : ""}`}
+              className={
+                i18n.language === "en"
+                  ? "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-neutral-700 flex items-center justify-center bg-transparent hover:opacity-80"
+                  : "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-zinc-300 flex items-center justify-center bg-transparent hover:opacity-80"
+              }
               aria-label="English"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
@@ -287,7 +316,11 @@ export function NavMenu() {
                 i18n.changeLanguage("gr");
                 localStorage.setItem("language", "gr");
               }}
-              className={`px-2 py-1 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center justify-center ${i18n.language === "gr" ? "border-primary" : ""}`}
+              className={
+                i18n.language === "gr"
+                  ? "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-neutral-700 flex items-center justify-center bg-transparent hover:opacity-80"
+                  : "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-zinc-300 flex items-center justify-center bg-transparent hover:opacity-80"
+              }
               aria-label="Greek"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
@@ -304,8 +337,10 @@ export function NavMenu() {
   );
 
   return (
-    <nav className="border-b fixed w-full bg-background z-50">
-      <div className="container px-4 h-16 flex items-center mx-auto justify-end">
+    <nav
+      className={`fixed w-full z-50 font-['Montserrat'] ${isTransparent ? "bg-transparent" : "bg-white border-b border-border"}`}
+    >
+      <div className="container mx-auto px-16 py-6 flex justify-between items-center w-full">
         {/* Mobile Menu */}
         <div className="md:hidden flex justify-between w-full gap-3">
           {/* Logo - only show when menu is closed */}
@@ -313,7 +348,7 @@ export function NavMenu() {
             <Link to="/" className="flex items-center">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                xmlns:xlink="http://www.w3.org/1999/xlink"
+                xmlnsXlink="http://www.w3.org/1999/xlink"
                 width="5em"
                 height="2.5em"
                 viewBox="0 0 148 49.81"
@@ -404,7 +439,7 @@ export function NavMenu() {
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    xmlns:xlink="http://www.w3.org/1999/xlink"
+                    xmlnsXlink="http://www.w3.org/1999/xlink"
                     width="6em"
                     height="3em"
                     viewBox="0 0 148 49.81"

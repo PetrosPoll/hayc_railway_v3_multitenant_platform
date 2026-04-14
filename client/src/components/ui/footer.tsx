@@ -13,106 +13,89 @@ export function Footer() {
   const { t } = useTranslation();
   
   return (
-    <footer className="bg-card mt-auto">
-      <div className="container mx-auto px-4 py-12">
-        <div className="grid gap-8 md:grid-cols-4">
-          {/* Company Info */}
-          <div>
-            <h3 className="font-semibold text-lg mb-4 text-[#182B53]">
-              {t("footer.aboutUs")}
-            </h3>
-            <p className="text-[#182B53]">
-              {t("footer.aboutUsDescription")}
+    <footer className="w-full bg-black px-16 py-12 flex flex-col items-center gap-12">
+      {/* Main footer grid */}
+      <div className="w-full py-12 border-b border-zinc-800 flex justify-center items-start gap-24">
+        {/* Col 1 — Logo + description + socials */}
+        <div className="flex-1 flex flex-col justify-start items-start gap-3">
+          <div className="flex flex-col justify-start items-start">
+            {/* Logo — reuse existing SVG from nav-menu.tsx */}
+            <Link to="/">
+              <svg xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" width="6em" height="3em" viewBox="0 0 148 49.81">
+                <defs>
+                  <clipPath id="clip-path-footer">
+                    <rect width="148" height="49.81" fill="none" />
+                  </clipPath>
+                </defs>
+                <g transform="translate(0 0)">
+                  <path d="M9.327,0l.059,7.248L2.852,3.327,0,8.2l6.476,3.563L0,15.267,2.852,20.14l6.534-3.92-.059,7.248h5.584l-.119-7.189,6.536,3.861,2.91-4.873-6.474-3.5L24.238,8.2l-2.91-4.873L14.792,7.248,14.911,0Z" fill="#ed4c14" />
+                  <g clipPath="url(#clip-path-footer)">
+                    <path d="M61.828,22.27V38.076H53.823V23.5c0-4.465-2.052-6.518-5.594-6.518-3.849,0-6.619,2.362-6.619,7.441V38.076H33.6V0H41.61V13.34a12.138,12.138,0,0,1,8.775-3.285c6.517,0,11.444,3.8,11.444,12.215" transform="translate(-6.611 0)" fill="#ffffff" />
+                    <path d="M102.242,12.917v27.61H94.6v-3.18c-2,2.41-4.927,3.591-8.622,3.591-7.8,0-13.8-5.542-13.8-14.214s6-14.216,13.8-14.216a10.606,10.606,0,0,1,8.263,3.338V12.917ZM94.39,26.723c0-4.774-3.079-7.648-7.03-7.648-4,0-7.082,2.874-7.082,7.648s3.079,7.646,7.082,7.646c3.951,0,7.03-2.873,7.03-7.646" transform="translate(-14.197 -2.46)" fill="#ffffff" />
+                    <path d="M140.745,13.019V37.388c0,10.264-5.388,14.983-15.037,14.983-5.08,0-10.006-1.282-13.187-3.8l3.182-5.747a15.335,15.335,0,0,0,9.339,3.079c5.388,0,7.7-2.514,7.7-7.494V37.49a11.314,11.314,0,0,1-8.159,3.183c-6.928,0-11.8-3.849-11.8-12.42V13.019h8.006V27.072c0,4.67,2.053,6.723,5.594,6.723,3.7,0,6.364-2.362,6.364-7.44V13.019Z" transform="translate(-22.135 -2.561)" fill="#ffffff" />
+                    <path d="M149.683,26.724c0-8.315,6.414-14.214,15.395-14.214,5.8,0,10.366,2.513,12.367,7.03l-6.209,3.335a6.881,6.881,0,0,0-6.209-3.8c-4.054,0-7.236,2.821-7.236,7.646s3.182,7.646,7.236,7.646a6.794,6.794,0,0,0,6.209-3.8l6.209,3.386c-2,4.414-6.569,6.979-12.367,6.979-8.981,0-15.395-5.9-15.395-14.214" transform="translate(-29.445 -2.461)" fill="#ffffff" />
+                  </g>
+                </g>
+              </svg>
+            </Link>
+            <p className="text-white text-base font-normal font-['Montserrat'] leading-6 mt-2">
+              We provide cutting-edge subscription<br />management solutions for modern businesses.
             </p>
-            <div className="flex space-x-4 mt-4">
-              <a 
-                href="https://www.facebook.com/haycWebsites" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#182B53] hover:text-primary"
-              >
-                <Facebook className="h-5 w-5" />
-              </a>
-              <a 
-                href="https://www.instagram.com/hayc_websites/" 
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[#182B53] hover:text-primary"
-              >
-                <Instagram className="h-5 w-5" />
-              </a>
-            </div>
           </div>
-
-          {/* Quick Links */}
-          <div>
-            <h3 className="font-semibold text-lg mb-4 text-[#182B53]">
-              {t("footer.quickLinks")}
-            </h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/about" className="text-[#182B53] hover:text-primary">
-                  {t("nav.about")}
-                </Link>
-              </li>
-              <li>
-                <Link to="/templates" className="text-[#182B53] hover:text-primary">
-                  {t("nav.templates")}
-                </Link>
-              </li>
-              <li>
-                <Link to="/contact" className="text-[#182B53] hover:text-primary">
-                  {t("nav.contact")}
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Contact Info */}
-          <div>
-            <h3 className="font-semibold text-lg mb-4 text-[#182B53]">
-              {t("footer.contactUs")}
-            </h3>
-            <ul className="space-y-2">
-              <li className="flex items-center">
-                <a
-                  href="mailto:info@hayc.gr"
-                  className="flex items-center text-[#182B53]"
-                >
-                  <Mail className="h-5 w-5 mr-2" />
-                  info@hayc.gr
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Legal Links */}
-          <div>
-            <h3 className="font-semibold text-lg mb-4 text-[#182B53]">{t("footer.legal")}</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/legal" className="text-[#182B53] hover:text-primary">
-                  {t("footer.legalInfo")}
-                </Link>
-              </li>
-              <li>
-                <Link to="/terms-of-service" className="text-[#182B53] hover:text-primary">
-                  {t("footer.termsOfService")}
-                </Link>
-              </li>
-              <li>
-                <Link to="/privacy-policy" className="text-[#182B53] hover:text-primary">
-                  {t("footer.privacyPolicy")}
-                </Link>
-              </li>
-            </ul>
+          {/* Social icons */}
+          <div className="flex items-center gap-3">
+            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+              <img src="/images/facebook_icon.svg" alt="Facebook" className="w-5 h-5" />
+            </a>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.67">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                <circle cx="12" cy="12" r="4" />
+                <circle cx="17.5" cy="6.5" r="0.01" fill="white" strokeWidth="2" />
+              </svg>
+            </a>
           </div>
         </div>
 
-        <div className="border-t border-border mt-8 pt-8 text-center text-[#182B53]">
-          <p>&copy; {new Date().getFullYear()} hayc. {t("footer.allRightsReserved")}.</p>
+        {/* Col 2 — Quick Links */}
+        <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
+          <p className="text-white text-base font-bold font-['Inter'] leading-7">Quick Links</p>
+          <div className="flex flex-col justify-start items-start gap-3">
+            <Link to="/about" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">About</Link>
+            <Link to="/templates" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Templates</Link>
+            <Link to="/contact" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Contact</Link>
+          </div>
+        </div>
+
+        {/* Col 3 — Legal */}
+        <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
+          <p className="text-white text-base font-bold font-['Inter'] leading-7">Legal</p>
+          <div className="flex flex-col justify-start items-start gap-3">
+            <Link to="/terms-of-service" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Terms of Service</Link>
+            <Link to="/privacy-policy" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Privacy Policy</Link>
+            <Link to="/cookie-policy" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Cookie Policy</Link>
+          </div>
+        </div>
+
+        {/* Col 4 — Contact Us */}
+        <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
+          <p className="text-white text-lg font-bold font-['Inter'] leading-7">Contact Us</p>
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.67">
+              <rect x="2" y="4" width="20" height="16" rx="2" />
+              <polyline points="2,4 12,13 22,4" />
+            </svg>
+            <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">
+              info@hayc.gr
+            </a>
+          </div>
         </div>
       </div>
+
+      {/* Copyright */}
+      <p className="text-white text-base font-normal font-['Inter'] leading-6 text-center">
+        © 2026 Hayc. All rights reserved.
+      </p>
     </footer>
   );
 }

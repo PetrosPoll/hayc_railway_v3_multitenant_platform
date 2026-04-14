@@ -1,5 +1,4 @@
-import { useNavigate, Link } from "react-router-dom";
-import { SubscriptionPlansSection } from "@/components/SubscriptionPlansSection";
+import { useNavigate } from "react-router-dom";
 import { type User, type Subscription } from "@shared/schema";
 import React, { useCallback, useEffect, useState, useMemo } from "react";
 import useEmblaCarousel from "embla-carousel-react";
@@ -10,18 +9,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
-  ExternalLink,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { usePrevNextButtons } from "@/components/ui/emblaCarouselArrowButtons";
 import "../i18n";
 
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
-import { PROJECTS } from "@/data/projects";
-import { FacebookReviewWidget, TrustpilotReviewWidget, G2ReviewWidget } from "@/components/ui/review-widget";
 import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
 import type { Template } from "@shared/schema";
 
@@ -29,51 +22,117 @@ import type { Template } from "@shared/schema";
 // You can change these IDs to display different templates
 const SELECTED_TEMPLATE_IDS = [1, 5, 10, 15, 20, 25, 30, 35];
 
-const TESTIMONIALS = [
-  {
-    name: "Sarah Johnson",
-    role: "CEO, TechStart",
-    content:
-      "Είμαι πολύ ικανοποιημένη από τις υπηρεσίες της hayc και το προτείνω ανεπιφύλακτα σε όποιον θέλει υπηρεσίες website για την επιχείρησή του με ποιότητα, συνέπεια, άριστη εξυπηρέτηση και εξυπηρέτηση πελατών.",
-    rating: 5,
-  },
-  {
-    name: "Michael Chen",
-    role: "Founder, GrowthLabs",
-    content:
-      "Έμεινα πάρα πολύ ευχαριστημένος με τις υπηρεσίες της hayc. Μου δημιούργησαν ένα site πάνω στις ανάγκες μου , άμεσα και χωρίς προβλήματα !!! Τον συνιστώ για οποιονδήποτε θέλει μια ιστοσελίδα !",
-    rating: 5,
-  },
-  {
-    name: "Emma Davis",
-    role: "CTO, InnovateCo",
-    content:
-      "Η Hayc είναι πλήρως επαγγελματίες που με βοήθησαν δημιουργώντας έναν ιστότοπο για την επιχείρησή μου. Η Hayc ήταν εξαιρετικά γρήγοροι και ανταποκρινόμενοι στην παράδοση του ιστότοπου σε ένα πολύ σφιχτό χρονοδιάγραμμα και σύμφωνα με τις προδιαγραφές. Άρχισαν να εργάζονται για το έργο από την ημέρα μηδέν και ολοκλήρωσαν τη δουλειά με επιτυχία σε λιγότερο από 9 ημέρες. Τους συνιστώ ανεπιφύλακτα για συνεργασία και να τους εμπιστευτείτε για την ποιότητα της δουλειάς τους.",
-    rating: 5,
-  },
-];
-
 export default function Home() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [expandedAddOns, setExpandedAddOns] = useState<{ [key: string]: boolean }>({});
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [testimonialIndex, setTestimonialIndex] = useState(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [openAddon, setOpenAddon] = useState<number>(0);
 
-  // Basic testimonial and templates carousels (without autoScroll).
-  const [testimonialsRef] = useEmblaCarousel({ loop: true });
-  const [templatesRef, templatesApi] = useEmblaCarousel({
-    loop: true,
-    dragFree: true,
-  });
+  const testimonials = [
+    {
+      name: "Name Surname",
+      title: "Business title",
+      rating: 4.4,
+      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit.",
+      avatar: null,
+      projectUrl: "#",
+    },
+    {
+      name: "Name Surname",
+      title: "Business title",
+      rating: 4.4,
+      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit.",
+      avatar: null,
+      projectUrl: "#",
+    },
+    {
+      name: "Name Surname",
+      title: "Business title",
+      rating: 4.4,
+      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit.",
+      avatar: null,
+      projectUrl: "#",
+    },
+    {
+      name: "Name Surname",
+      title: "Business title",
+      rating: 4.4,
+      text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit.",
+      avatar: null,
+      projectUrl: "#",
+    },
+  ];
 
-  // Arrow buttons for projects slider
-  const {
-    prevBtnDisabled: projectsPrevDisabled,
-    nextBtnDisabled: projectsNextDisabled,
-    onPrevButtonClick: onProjectsPrevClick,
-    onNextButtonClick: onProjectsNextClick,
-  } = usePrevNextButtons(templatesApi, undefined);
+  const faqs = [
+    {
+      question: "What is HAYC and how does it work?",
+      answer: "HAYC is your website partner. You choose a design, tell us what you need, and we build it for you, start to finish. Later on, you can manage your website, track its progress, and expand its capabilities through your dashboard.",
+    },
+    {
+      question: "Can I build an e-shop or online store with HAYC?",
+      answer: "",
+    },
+    {
+      question: "What if I already have a domain name?",
+      answer: "",
+    },
+    {
+      question: "Can I cancel my subscription anytime?",
+      answer: "",
+    },
+    {
+      question: "What do I need to do on my end for you to build the website?",
+      answer: "",
+    },
+    {
+      question: "Can I change my subscription plan later?",
+      answer: "",
+    },
+  ];
+
+  const addonCategories = [
+    {
+      title: "Business Tools",
+      description: "Operational tools that help you run your business or organization",
+      addons: ["Booking System", "Transport Booking", "Donation System"],
+    },
+    {
+      title: "Digital Payments & Monetization",
+      description: "Accept payments and monetize your services online.",
+      addons: ["Online Payments"],
+    },
+    {
+      title: "Engagement & Data",
+      description: "Understand your audience and keep them engaged.",
+      addons: ["Analytics Dashboard"],
+    },
+    {
+      title: "Education & Content",
+      description: "Deliver and monetize digital courses or learning content.",
+      addons: ["Learning Management System (LMS)"],
+    },
+    {
+      title: "Specialized Solutions",
+      description: "Custom tools built for specific industries and needs.",
+      addons: ["Custom Integration"],
+    },
+  ];
+
+  const StarRating = ({ rating }: { rating: number }) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      if (i <= Math.floor(rating)) {
+        stars.push(<img key={i} src="/images/testimonials_full_star.svg" alt="star" className="w-4 h-4" />);
+      } else if (i === Math.ceil(rating) && rating % 1 >= 0.4) {
+        stars.push(<img key={i} src="/images/testimonials_half_star.svg" alt="half star" className="w-4 h-4" />);
+      }
+    }
+    return <div className="flex items-center gap-1.5">{stars}</div>;
+  };
 
   // Example query for user data
   const { data } = useQuery<{ user: User | null }>({
@@ -163,583 +222,576 @@ export default function Home() {
     (autoScrollApi as any)?.play();
   }, [emblaApi]);
 
+  const slides = [
+    "/images/hero_bg_image_hayc1.png",
+    "/images/hero_bg_image_hayc2.png",
+    "/images/hero_bg_image_hayc3.png",
+  ];
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [slides.length]);
+
   return (
     <div className="min-h-screen bg-background  mt-md-[65px]">
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center bg-gradient-to-r from-[#ffffff] to-[#488ced] overflow-hidden">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col-reverse lg:flex-row gap-12 items-center">
-            {/* Left Column - Content */}
-            <div className="text-center lg:text-left w-full lg:w-1/4 flex-shrink-0">
-              <h1 className="text-3xl lg:text-5xl font-bold tracking-tight mb-6">
-                {t("home.title")}
-              </h1>
-              <p className="text-xl text-muted-foreground mb-8">
-                {t("home.hero.subtitle")}
-              </p>
-              <Button
-                size="lg"
-                className="group bg-gradient-main hover:bg-[#182b53]/90"
-                onClick={() => {
-                  const pricingSection = document.querySelector('main');
-                  pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }}
-              >
-                {t("home.hero.cta")}
-                <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </div>
+      <section className="relative overflow-hidden" style={{ height: '115vh' }}>
 
-            {/* Right Column - Image */}
-            <div className="lg:flex justify-center lg:justify-end lg:w-3/4">
-              <div className="relative max-w-[1100px]">
-                <img
-                  src="/images/HAYC_HERO.png"
-                  alt="HAYC Hero Image"
-                  className="w-full h-auto"
-                />
-              </div>
-            </div>
-          </div>
+        {/* Background slideshow */}
+        <div
+          className="absolute inset-0 flex transition-transform duration-700 ease-in-out"
+          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+        >
+          {slides.map((src, i) => (
+            <div
+              key={i}
+              className="relative min-w-full h-full bg-cover bg-center flex-shrink-0"
+              style={{ backgroundImage: `url(${src})` }}
+            />
+          ))}
         </div>
-      </section>
 
-      {/* Popular Integrations Section */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold mb-8">{t("home.addons.title")}</h2>
-          <div className="grid lg:grid-cols-4 gap-8 lg:items-stretch">
-            {/* Left Column - Integration Cards */}
-            <div className="lg:col-span-3 flex flex-col min-h-0 lg:h-full">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 flex-1 min-h-0 lg:h-full lg:[grid-auto-rows:1fr]">
-                {/* Prototype */}
-                {/* <div className="flex items-start space-x-4 p-4 bg-card rounded-lg border hover:shadow-md transition-shadow">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#4285F4">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-1">Google Analytics & SEO</h3>
-                    <div className="flex items-center mb-2">
-                      <span className="text-sm text-gray-600">4.8 ★ (15,420) • Free to install</span>
-                    </div>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Track website performance, understand your visitors, and optimize for search engines
-                    </p>
-                    <div className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block">
-                      ✓ Built for Performance
-                    </div>
-                  </div>
-                </div> */}
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/50 z-10" />
 
-                {/* Booking */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
-                  <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('booking')}>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <img
-                          src="/images/booking-add-on-icon.svg"
-                          alt={t("home.addons.bookingAddon.alt")}
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="row justify-content-between">
-                        <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>
-                          {t("home.addons.bookingAddon.title")}
-                        </h3>
-                        </div>
-                        <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.bookingAddon.description")}
-                        </p>
-                      </div>
-                      <div className="absolute top-2 right-4">
-                        {expandedAddOns['booking'] ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {expandedAddOns['booking'] && (
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.bookingAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                          <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                            ✓ {tag}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+        {/* Main content */}
+        <div className="relative z-20 h-full flex flex-col items-center text-center px-4" style={{ paddingTop: '12vh' }}>
 
-                {/* LMS */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
-                  <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('lms')}>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <img
-                          src="/images/lms-add-on-icon.svg"
-                          alt={t("home.addons.lmsAddon.alt")}
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 ">
-                        <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>{t("home.addons.lmsAddon.title")}</h3>
-                        <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.lmsAddon.description")}
-                        </p>
-                      </div>
-                      <div className="absolute top-2 right-4">
-                        {expandedAddOns['lms'] ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {expandedAddOns['lms'] && (
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.lmsAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                          <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                            ✓ {tag}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+          {/* Headline */}
+          <h1 className="text-6xl font-semibold font-['Montserrat'] text-white max-w-4xl mb-4 leading-tight">
+            A <span className="text-[#ED4C14]">website</span> that works<br />as hard as your business.
+          </h1>
 
-                {/* Online payments add-on */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
-                  <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('payments')}>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <img
-                          src="/images/online-payment-add-on-icon.svg"
-                          alt={t("home.addons.onlinepayments.alt")}
-                          className="w-full h-auto"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 ">
-                        <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>
-                          {t("home.addons.onlinepayments.title")}
-                        </h3>
-                        <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.onlinepayments.description")}
-                        </p>
-                      </div>
-                      <div className="absolute top-2 right-4">
-                        {expandedAddOns['payments'] ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {expandedAddOns['payments'] && (
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.onlinepayments.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                          <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                            ✓ {tag}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+          {/* Subtitle */}
+          <p className="text-2xl font-medium font-['Montserrat'] text-white mb-6">
+            {t("home.hero.subtitle")}
+          </p>
 
-                {/* Newsletter sending limits (15k & 100k add-ons) */}
-                <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
-                  <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('newsletter_limits')}>
-                    <div className="flex items-start space-x-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <img
-                          src="/images/Newsletter-icon.png"
-                          alt={t("home.addons.newsletterLimitsAddon.alt")}
-                          className="w-8 h-8 object-contain"
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0 ">
-                        <h3 className="font-semibold mb-1" style={{ fontSize: '12px' }}>
-                          {t("home.addons.newsletterLimitsAddon.title")}
-                        </h3>
-                        <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                          {t("home.addons.newsletterLimitsAddon.description")}
-                        </p>
-                      </div>
-                      <div className="absolute top-2 right-4">
-                        {expandedAddOns['newsletter_limits'] ? (
-                          <ChevronUp className="h-5 w-5 text-gray-400" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-400" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {expandedAddOns['newsletter_limits'] && (
-                    <div className="px-4 pb-4">
-                      <div className="flex flex-wrap gap-2 border-t pt-3">
-                        {(t("home.addons.newsletterLimitsAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                          <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                            ✓ {tag}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {hasActiveAddon("realestate") && (
-                  <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
-                    <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('realestate')}>
-                      <div className="flex items-start space-x-4">
-                        <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <img
-                            src="/images/real-estate-add-on-icon.svg"
-                            alt={t("home.addons.realEstateAddon.alt")}
-                            className="w-full h-auto"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0 ">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h3 className="font-semibold" style={{ fontSize: '12px' }}>
-                              {t("home.addons.realEstateAddon.title")}
-                            </h3>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
-                              {t("status.active")}
-                            </Badge>
-                          </div>
-                          <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                            {t("home.addons.realEstateAddon.description")}
-                          </p>
-                        </div>
-                        <div className="absolute top-2 right-4">
-                          {expandedAddOns['realestate'] ? (
-                            <ChevronUp className="h-5 w-5 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {expandedAddOns['realestate'] && (
-                      <div className="px-4 pb-4">
-                        <div className="flex flex-wrap gap-2 border-t pt-3">
-                          {(t("home.addons.realEstateAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                            <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                              ✓ {tag}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {hasActiveAddon("transport") && (
-                  <div className="bg-card rounded-lg border hover:shadow-md transition-shadow h-full min-h-0 flex flex-col">
-                    <div className="p-2 cursor-pointer relative flex-1 min-h-0" onClick={() => toggleAddOnExpansion('transport')}>
-                      <div className="flex items-start space-x-4">
-                        <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <img
-                            src="/images/transport-booking-add-on-icon.svg"
-                            alt={t("home.addons.transportBookingAddon.alt")}
-                            className="w-full h-auto"
-                          />
-                        </div>
-                        <div className="flex-1 min-w-0 ">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h3 className="font-semibold" style={{ fontSize: '12px' }}>
-                              {t("home.addons.transportBookingAddon.title")}
-                            </h3>
-                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 shrink-0">
-                              {t("status.active")}
-                            </Badge>
-                          </div>
-                          <p className="text-gray-600" style={{ fontSize: '11px' }}>
-                            {t("home.addons.transportBookingAddon.description")}
-                          </p>
-                        </div>
-                        <div className="absolute top-2 right-4">
-                          {expandedAddOns['transport'] ? (
-                            <ChevronUp className="h-5 w-5 text-gray-400" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5 text-gray-400" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    {expandedAddOns['transport'] && (
-                      <div className="px-4 pb-4">
-                        <div className="flex flex-wrap gap-2 border-t pt-3">
-                          {(t("home.addons.transportBookingAddon.tags", { returnObjects: true }) as string[]).map((tag: string, index: number) => (
-                            <div key={index} className="text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block" style={{ fontSize: '11px' }}>
-                              ✓ {tag}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Right Column - Call to Action */}
-            <div className="lg:col-span-1 flex flex-col min-h-0 lg:h-full">
-              <div className="bg-gradient-to-br from-red-400 to-red-500 rounded-lg p-6 text-white flex-1 min-h-[280px] flex flex-col justify-between">
-                <h3 className="text-xl font-bold mb-4">
-                  {t("home.addons.cta.title")}
-                </h3>
-                <p className="mb-6 text-red-50">
-                  {t("home.addons.cta.description")}
-                </p>
-                <Button
-                  variant="secondary"
-                  className="w-full bg-white text-red-500 hover:bg-gray-100"
-                  onClick={() => navigate("/fast-and-affordable-websites-book-a-call")}
-                >
-                  {t("home.addons.cta.button")}
-                </Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <SubscriptionPlansSection />
-
-      {/* Website Templates Section */}
-      <section className="py-24 bg-secondary/10">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold tracking-tight mb-4">
-              {t("home.templates.title")}
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              {t("home.templates.subtitle")}
-            </p>
+          {/* Avatar circles */}
+          <div className="flex mb-3">
+            <div className="w-8 h-8 rounded-full bg-[#ED4C14] border-2 border-white flex items-center justify-center text-white text-xs font-bold -mr-2 z-10">O</div>
+            <div className="w-8 h-8 rounded-full bg-[#182B53] border-2 border-white flex items-center justify-center text-white text-xs font-bold">N</div>
           </div>
 
-          {/* IMPORTANT: Added onMouseEnter / onMouseLeave for pause on hover */}
-          <div
-            className="embla overflow-hidden"
-            ref={emblaRef}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
+          {/* CTA Button */}
+          <Button
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] text-base font-semibold font-['Montserrat'] leading-5 border-0 group mb-2"
+            onClick={() => {
+              const pricingSection = document.querySelector('main');
+              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
           >
-            <div className="embla__container flex">
-              {selectedTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="embla__slide flex-[0_0_100%] min-w-0 pl-4 md:flex-[0_0_50%] lg:flex-[0_0_33.33%]"
-                >
-                  <div className="bg-card rounded-lg overflow-hidden h-full transition-transform hover:scale-[1.02]">
-                    <div className="aspect-video overflow-hidden">
-                      <img
-                        src={template.preview}
-                        alt={template.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-semibold mb-4">
-                        {template.name}
-                      </h3>
-                      <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => handleTemplateClick(template)}
-                        data-testid={`button-preview-${template.id}`}
-                      >
-                        {t("home.templates.livePreview")}
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* End embla */}
-        </div>
-      </section>
+            {t("home.hero.cta")}
+            <ArrowRight className="ml-4 h-4 w-4" />
+          </Button>
 
-      {/* Projects Showcase Section */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold tracking-tight mb-4">
-              {t("home.projects.title")}
-            </h2>
-            <p className="text-lg text-muted-foreground">
-              {t("home.projects.subtitle")}
-            </p>
+          {/* Social proof */}
+          <div className="flex flex-col items-center gap-1.5">
+            <p className="text-sm font-normal font-['Inter'] text-slate-100">Simple process. Strong results.</p>
+            <p className="text-sm font-normal font-['Inter'] text-slate-100">30-day money-back guarantee</p>
           </div>
 
-          <div className="relative">
-            <div className="embla overflow-hidden" ref={templatesRef}>
-              <div className="embla__container flex">
-                {PROJECTS.map((project) => (
-                  <div
-                    key={`${project.id}-${project.translationKey}`}
-                    className="embla__slide flex-[0_0_100%] min-w-0 pl-4 md:flex-[0_0_50%] lg:flex-[0_0_33.33%]"
-                  >
-                    <Link
-                      to={project.url}
-                      className="group relative overflow-hidden rounded-lg bg-card h-full block"
-                    >
-                      <div className="aspect-video overflow-hidden">
-                        <img
-                          src={project.image}
-                          alt={t(`home.projects.items.${project.translationKey}.title`)}
-                          className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      </div>
-                      <div className="p-6">
-                        <h3 className="text-xl font-semibold mb-2">
-                          {t(`home.projects.items.${project.translationKey}.title`)}
-                        </h3>
-                        <p className="text-muted-foreground mb-4">
-                          {t(`home.projects.items.${project.translationKey}.description`)}
-                        </p>
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {project.tech.map((tech) => (
-                            <span
-                              key={tech}
-                              className="px-2 py-1 text-sm bg-[#2777E9] text-[#ffffff] rounded-full"
-                            >
-                              {tech}
-                            </span>
-                          ))}
-                        </div>
-                        <span className="inline-flex items-center text-[#182B53] hover:underline">
-                          {t("home.projects.view")}{" "}
-                          <ExternalLink className="ml-2 h-4 w-4" />
-                        </span>
-                      </div>
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Navigation Arrows */}
-            <Button
-              onClick={onProjectsPrevClick}
-              disabled={projectsPrevDisabled}
-              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg border-0 h-12 w-12 rounded-full disabled:opacity-50"
-              variant="outline"
-              size="icon"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </Button>
-
-            <Button
-              onClick={onProjectsNextClick}
-              disabled={projectsNextDisabled}
-              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 bg-white/90 hover:bg-white shadow-lg border-0 h-12 w-12 rounded-full disabled:opacity-50"
-              variant="outline"
-              size="icon"
-            >
-              <ChevronRight className="h-6 w-6" />
-            </Button>
+          {/* Slide indicators */}
+          <div className="flex gap-2 mt-6">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setCurrentSlide(i)}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  i === currentSlide ? "bg-white w-6" : "bg-white/40 w-2"
+                }`}
+              />
+            ))}
           </div>
         </div>
+
+        {/* Bottom template previews */}
+        <div className="absolute bottom-0 left-0 w-full z-20 overflow-hidden h-[42vh]">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/20 to-black z-10 pointer-events-none" />
+
+          <div className="absolute inset-x-0 bottom-0 h-full z-20">
+            {/* Left image touches viewport edge */}
+            <div className="absolute left-0 bottom-0 w-[32%] md:w-[30%] lg:w-[28%] z-20">
+              <img
+                src="/images/Rectangle 104.png"
+                alt="Template preview left"
+                className="block w-full h-auto"
+              />
+            </div>
+
+            {/* Right image touches viewport edge */}
+            <div className="absolute right-0 bottom-0 w-[32%] md:w-[30%] lg:w-[28%] z-20">
+              <img
+                src="/images/Rectangle 114.png"
+                alt="Template preview right"
+                className="block w-full h-auto"
+              />
+            </div>
+
+            {/* Middle image is slightly higher */}
+            <div className="absolute left-1/2 -translate-x-1/2 bottom-[7%] w-[43%] md:w-[39%] lg:w-[36%] z-30">
+              <img
+                src="/images/Rectangle 113.png"
+                alt="Template preview center"
+                className="block w-full h-auto"
+              />
+            </div>
+          </div>
+        </div>
+
       </section>
 
-      {/* Testimonials Section - Hidden since we now have Facebook and Trustpilot widgets */}
-      {/* <section className="py-24 bg-secondary/10">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">
-            {t("home.testimonials.title")}
+      {/* Why Us - Section 1 */}
+      <section className="w-full bg-black px-16 flex justify-start items-center" style={{ minHeight: '891px' }}>
+        {/* Left content */}
+        <div className="flex flex-col justify-start items-start gap-12" style={{ width: '452px', flexShrink: 0 }}>
+          <h2 className="text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+            <span className="text-white">Built for </span>
+            <span className="text-[#ED4C14]">founders </span>
+            <span className="text-white">who want it done right, without doing it all.</span>
           </h2>
-          <div className="overflow-hidden" ref={testimonialsRef}>
-            <div className="flex">
-              {TESTIMONIALS.map((testimonial, index) => (
-                <div
-                  key={index}
-                  className="flex-[0_0_100%] min-w-0 pl-4 md:flex-[0_0_50%] lg:flex-[0_0_33.33%]"
-                >
-                  <div className="bg-card rounded-lg p-6 shadow-sm h-full">
-                    <div className="flex mb-4">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <StarIcon
-                          key={i}
-                          className="h-5 w-5 fill-primary text-primary"
-                        />
-                      ))}
-                    </div>
-                    <blockquote className="text-lg mb-4">
-                      {testimonial.content}
-                    </blockquote>
-                    <footer>
-                      <div className="font-semibold">{testimonial.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {testimonial.role}
-                      </div>
-                    </footer>
-                  </div>
-                </div>
+          <button
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+            onClick={() => {
+              const pricingSection = document.querySelector('main');
+              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            <span className="text-center text-[#EFF6FF] text-base font-semibold font-['Montserrat'] leading-5">
+              {t("home.hero.cta")}
+            </span>
+            <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
+          </button>
+        </div>
+
+        {/* Right image */}
+        <div className="flex-1 flex justify-end items-center">
+          <img
+            src="/images/why_us_1.png"
+            alt="Why us illustration"
+            className="h-full object-contain"
+            style={{ maxHeight: '891px' }}
+          />
+        </div>
+      </section>
+
+      {/* Why Us - Section 2 */}
+      <section className="w-full bg-black px-16 flex justify-start items-center gap-12" style={{ minHeight: '891px' }}>
+        {/* Left content */}
+        <div className="flex flex-col justify-start items-start gap-12" style={{ width: '384px', flexShrink: 0 }}>
+          <div className="flex flex-col justify-start items-start gap-3">
+            <h2 className="text-4xl font-semibold font-['Inter']" style={{ width: '288px' }}>
+              <span className="text-[#ED4C14]">Done-for-you</span>
+              <span className="text-slate-100">, from day one</span>
+            </h2>
+            <p className="text-slate-100 text-base font-normal font-['Inter']" style={{ width: '320px' }}>
+              Forget builders, plugins, and guesswork. We handle everything, so you save time, avoid mistakes, and launch with a website that looks and feels right immediately.
+            </p>
+          </div>
+          <button
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+            onClick={() => {
+              const pricingSection = document.querySelector('main');
+              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            <span className="text-center text-white text-base font-semibold font-['Montserrat'] leading-5">
+              {t("home.hero.cta")}
+            </span>
+            <ArrowRight className="h-4 w-4 text-white" />
+          </button>
+        </div>
+
+        {/* Right image */}
+        <div className="flex-1 self-stretch flex items-center justify-center">
+          <img
+            src="/images/why_us_2.png"
+            alt="Done for you illustration"
+            className="h-full object-contain"
+            style={{ maxHeight: '891px' }}
+          />
+        </div>
+      </section>
+
+      {/* Why Us - Section 3 */}
+      <section className="w-full bg-black px-16 flex justify-start items-center gap-12" style={{ minHeight: '891px' }}>
+        {/* Left content */}
+        <div className="flex flex-col justify-start items-start gap-12" style={{ width: '384px', flexShrink: 0 }}>
+          <div className="flex flex-col justify-start items-start gap-3">
+            <h2 className="text-4xl font-semibold font-['Inter']" style={{ width: '288px' }}>
+              <span className="text-[#ED4C14]">Built to perform</span>
+              <span className="text-[#EFF6FF]">, not just exist</span>
+            </h2>
+            <p className="text-[#EFF6FF] text-base font-normal font-['Inter']" style={{ width: '320px' }}>
+              Your site is fast, mobile-ready, and optimized to bring results, not just clicks. It does what it should: help you grow.
+            </p>
+          </div>
+          <button
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+            onClick={() => {
+              const pricingSection = document.querySelector('main');
+              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            <span className="text-center text-white text-base font-semibold font-['Montserrat'] leading-5">
+              {t("home.hero.cta")}
+            </span>
+            <ArrowRight className="h-4 w-4 text-white" />
+          </button>
+        </div>
+
+        {/* Right image */}
+        <div className="flex-1 self-stretch flex items-center justify-center">
+          <img
+            src="/images/why_us_3.png"
+            alt="Built to perform illustration"
+            className="h-full object-contain"
+            style={{ maxHeight: '891px' }}
+          />
+        </div>
+      </section>
+
+      {/* Why Us - Section 4 */}
+      <section className="w-full bg-black px-16 flex justify-start items-center gap-12" style={{ minHeight: '891px' }}>
+        {/* Left content */}
+        <div className="flex flex-col justify-start items-start gap-12" style={{ width: '452px', flexShrink: 0 }}>
+          <div className="flex flex-col justify-start items-start gap-3">
+            <h2 className="text-4xl font-semibold font-['Inter']" style={{ width: '320px' }}>
+              <span className="text-[#ED4C14]">Support</span>
+              <span className="text-[#EFF6FF]"> that's actually there</span>
+            </h2>
+            <p className="text-[#EFF6FF] text-base font-normal font-['Inter']" style={{ width: '320px' }}>
+              Real people. Fast replies. Clear answers. We follow your project closely, so you&apos;re never left figuring things out alone.
+            </p>
+          </div>
+          <button
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+            onClick={() => {
+              const pricingSection = document.querySelector('main');
+              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            <span className="text-center text-white text-base font-semibold font-['Montserrat'] leading-5">
+              {t("home.hero.cta")}
+            </span>
+            <ArrowRight className="h-4 w-4 text-white" />
+          </button>
+        </div>
+
+        {/* Right image */}
+        <div className="flex-1 self-stretch flex items-center justify-center">
+          <img
+            src="/images/why_us_4.png"
+            alt="Support illustration"
+            className="h-full object-contain"
+            style={{ maxHeight: '891px' }}
+          />
+        </div>
+      </section>
+
+      {/* Templates Section */}
+      <section className="w-full py-24 flex flex-col justify-start items-center gap-12 bg-black">
+        {/* Header */}
+        <div className="w-full px-16 flex justify-start items-center gap-48">
+          <div className="flex-1">
+            <span className="text-[#EFF6FF] text-5xl font-semibold font-['Montserrat'] leading-[70px]">Templates that already </span>
+            <span className="text-[#ED4C14] text-5xl font-semibold font-['Montserrat'] leading-[70px]">look like you.</span>
+          </div>
+          <div className="flex-1 flex flex-col justify-start items-start gap-6">
+            <p className="text-[#EFF6FF] text-base font-normal font-['Montserrat'] leading-6">
+              Explore a curated collection of designs made for different industries and styles. Each one is built to adapt, ready to be customized for your brand and launched by our team.
+            </p>
+            <button
+              className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+              onClick={() => window.location.href = '/templates'}
+            >
+              <span className="text-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
+                {t("nav.templates")}
+              </span>
+              <ArrowRight className="h-4 w-4 text-blue-950" />
+            </button>
+          </div>
+        </div>
+
+        {/* Carousel rows */}
+        <div className="w-full flex flex-col gap-20 overflow-hidden">
+          {/* Row 1 — scrolls left */}
+          <div className="relative h-96 overflow-hidden">
+            <div className="absolute top-0 left-0 flex items-center gap-12 animate-scroll-left" style={{ width: 'max-content' }}>
+              {[...Array(2)].flatMap(() => [
+                '/images/Rectangle 103.png',
+                '/images/Rectangle 104.png',
+                '/images/Rectangle 113.png',
+                '/images/Rectangle 114.png',
+              ]).map((src, i) => (
+                <img key={i} src={src} alt="Template" className="w-[706px] h-96 rounded-[20px] object-cover flex-shrink-0" />
+              ))}
+            </div>
+          </div>
+
+          {/* Row 2 — scrolls right */}
+          <div className="relative h-96 overflow-hidden">
+            <div className="absolute top-0 left-0 flex items-center gap-12 animate-scroll-right" style={{ width: 'max-content' }}>
+              {[...Array(2)].flatMap(() => [
+                '/images/Rectangle 114.png',
+                '/images/Rectangle 113.png',
+                '/images/Rectangle 104.png',
+                '/images/Rectangle 103.png',
+              ]).map((src, i) => (
+                <img key={i} src={src} alt="Template" className="w-[706px] h-96 rounded-[20px] object-cover flex-shrink-0" />
               ))}
             </div>
           </div>
         </div>
-      </section> */}
+      </section>
 
-      {/* Review Widgets Section */}
-      <section className="py-24">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold tracking-tight mb-4">
-              {t("home.reviews.title")}
+      {/* Add-ons Section */}
+      <section className="w-full pl-16 py-24 bg-black flex justify-start items-center gap-24 overflow-hidden relative">
+        {/* Left content */}
+        <div className="flex-1 flex flex-col justify-start items-start gap-12 relative z-10">
+          <div className="flex flex-col justify-start items-start gap-6">
+            <h2 className="text-5xl font-semibold font-['Inter']">
+              <span className="text-white">Your </span>
+              <span className="text-[#ED4C14]">website<br /></span>
+              <span className="text-white">can </span>
+              <span className="text-[#ED4C14]">grow</span>
+              <span className="text-white"> with you.</span>
             </h2>
-            <p className="text-lg text-muted-foreground">
-              {t("home.reviews.subtitle")}
+            <p className="text-white text-base font-normal font-['Montserrat'] leading-6 max-w-lg">
+              As your needs change, you can add new capabilities to your website. You can choose from bookings, forms, or advanced tools. Everything integrates smoothly, and we handle the setup for you.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            <div>
-              <FacebookReviewWidget
-                rating={5.0}
-                totalReviews={5}
-                profileUrl="https://www.facebook.com/haycWebsites/reviews"
-                size="lg"
-                className="h-full"
-              />
+          <div className="relative w-[520px]">
+            {/* Rotated border element below text */}
+            <div className="absolute left-0 top-2 w-[420px] h-[260px] pointer-events-none opacity-30">
+              <div className="w-full h-full border-2 border-[#ED4C14] origin-top-left rotate-[32.53deg]" />
             </div>
-            <div>
-              <TrustpilotReviewWidget
-                rating={4.4}
-                totalReviews={12}
-                profileUrl="https://www.trustpilot.com/review/hayc.gr"
-                size="lg"
-                className="h-full"
-              />
-            </div>
-            <div>
-              <G2ReviewWidget
-                rating={0}
-                totalReviews={0}
-                profileUrl="https://www.g2.com/products/hayc/reviews"
-                size="lg"
-                className="h-full"
-              />
+
+            {/* Accordion */}
+            <div className="relative z-10 w-[473px] flex flex-col gap-3">
+              {addonCategories.map((cat, i) => (
+                <div key={i} className="flex flex-col gap-6">
+                  <button
+                    type="button"
+                    className="flex items-center gap-3 text-left"
+                    onClick={() => setOpenAddon(i)}
+                  >
+                    {openAddon === i && (
+                      <ArrowRight className="w-5 h-5 text-[#ED4C14] flex-shrink-0" />
+                    )}
+                    <span className={`text-2xl font-medium font-['Montserrat'] ${openAddon === i ? 'text-white pl-0' : 'text-white/50 pl-8'}`}>
+                      {cat.title}
+                    </span>
+                  </button>
+                  {openAddon === i && (
+                    <div className="flex flex-col gap-3">
+                      <div className="pl-8">
+                        <p className="text-white text-base font-normal font-['Montserrat'] leading-6">
+                          {cat.description}
+                        </p>
+                      </div>
+                      <div className="pl-8 flex items-center gap-2.5 flex-wrap">
+                        <span className="text-white text-sm font-semibold font-['Montserrat'] tracking-tight">Add-ons:</span>
+                        {cat.addons.map((addon, j) => (
+                          <span key={j} className="text-indigo-300 text-sm font-medium font-['Montserrat']">
+                            {addon}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  </div>
+              ))}
             </div>
           </div>
         </div>
+
+        {/* Right side image space */}
+        <div className="w-[793px] h-[799px] flex-shrink-0 relative z-10 rounded-tl-[20px] rounded-bl-[20px] bg-white/10 border border-zinc-700" />
+      </section>
+
+      {/* Testimonials Section */}
+      <section className="w-full px-16 py-24 bg-black flex justify-between items-center">
+        {/* Left side */}
+        <div className="flex flex-col justify-center items-start gap-6">
+          <div className="flex flex-col justify-start items-start gap-3">
+            <h2 className="text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+              <span className="text-[#ED4C14]">Words</span>
+              <span className="text-white"> from thriving clients</span>
+            </h2>
+            <p className="text-white text-base font-normal font-['Montserrat'] leading-6 max-w-xs">
+              Real stories from people who turned their ideas into live, growing websites.
+            </p>
+          </div>
+
+          {/* Rating cards */}
+          <div className="w-96 flex flex-col gap-3">
+            {/* Facebook */}
+            <div className="p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <img src="/images/testimonials_facebook.svg" alt="Facebook" className="w-4 h-4" />
+                  <span className="text-blue-400 text-lg font-medium font-['Montserrat']">Facebook</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white text-lg font-medium font-['Montserrat']">5.0</span>
+                  <StarRating rating={5} />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-white text-lg font-medium font-['Montserrat']">Based on</span>
+                  <span className="text-white text-lg font-medium font-['Montserrat']">5</span>
+                  <span className="text-white text-lg font-medium font-['Montserrat']">reviews</span>
+                </div>
+              </div>
+              <img src="/images/testimonials_export.svg" alt="External link" className="w-6 h-6 opacity-80" />
+            </div>
+
+            {/* Trustpilot */}
+            <div className="p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-2">
+                  <img src="/images/testimonials_trustpilot.svg" alt="Trustpilot" className="w-4 h-4" />
+                  <span className="text-green-400 text-lg font-medium font-['Montserrat']">Trustpilot</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-white text-lg font-medium font-['Montserrat']">4.4</span>
+                  <StarRating rating={4.4} />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-white text-lg font-medium font-['Montserrat']">Based on</span>
+                  <span className="text-white text-lg font-medium font-['Montserrat']">5</span>
+                  <span className="text-white text-lg font-medium font-['Montserrat']">reviews</span>
+                </div>
+              </div>
+              <img src="/images/testimonials_export.svg" alt="External link" className="w-6 h-6 opacity-80" />
+            </div>
+          </div>
+        </div>
+
+        {/* Right side — review card + navigation */}
+        <div className="w-[656px] flex flex-col items-end gap-6">
+          {/* Card */}
+          <div className="w-[572px] h-96 p-6 bg-zinc-950 rounded-[20px] outline outline-1 outline-zinc-800 flex flex-col justify-between items-start">
+            <div className="flex flex-col gap-6">
+              <div className="flex items-center gap-6">
+                {testimonials[testimonialIndex].avatar ? (
+                  <img src={testimonials[testimonialIndex].avatar!} alt="avatar" className="w-24 h-24 rounded-full object-cover" />
+                ) : (
+                  <div className="w-24 h-24 bg-zinc-300 rounded-full" />
+                )}
+                <div className="w-44 flex flex-col justify-center items-start gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-[#ED4C14] text-2xl font-medium font-['Montserrat']">{testimonials[testimonialIndex].name}</span>
+                    <span className="text-slate-50 text-lg font-medium font-['Montserrat']">{testimonials[testimonialIndex].title}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-50 text-lg font-medium font-['Montserrat']">{testimonials[testimonialIndex].rating}</span>
+                    <StarRating rating={testimonials[testimonialIndex].rating} />
+                  </div>
+                </div>
+              </div>
+              <p className="text-slate-50 text-base font-normal font-['Montserrat'] leading-6">
+                {testimonials[testimonialIndex].text}
+              </p>
+            </div>
+            <button
+              className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex items-center gap-4 hover:opacity-80 transition-opacity"
+              onClick={() => window.location.href = testimonials[testimonialIndex].projectUrl}
+            >
+              <span className="text-[#EFF6FF] text-base font-semibold font-['Montserrat'] leading-5">See Project</span>
+              <img src="/images/testimonials_white_arrow.svg" alt="arrow" className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Navigation arrows */}
+          <div className="flex items-center gap-12">
+            <button
+              type="button"
+              className="hover:opacity-70 transition-opacity"
+              onClick={() => setTestimonialIndex(i => (i - 1 + testimonials.length) % testimonials.length)}
+            >
+              <img src="/images/testimonials_orange_arrow.svg" alt="Previous" className="w-11 h-9 rotate-180" />
+            </button>
+            <button
+              type="button"
+              className="hover:opacity-70 transition-opacity"
+              onClick={() => setTestimonialIndex(i => (i + 1) % testimonials.length)}
+            >
+              <img src="/images/testimonials_orange_arrow.svg" alt="Next" className="w-11 h-9" />
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="w-full px-16 py-24 bg-black flex flex-col justify-start items-start gap-12">
+        {/* Header */}
+        <div className="w-[580px] flex flex-col justify-start items-start gap-2">
+          <h2 className="text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+            <span className="text-white">Imagine Wix, </span>
+            <span className="text-[#ED4C14]">without<br />the DIY</span>
+            <span className="text-white">.</span>
+          </h2>
+          <p className="text-white text-base font-normal font-['Montserrat'] leading-6">
+            That's what HAYC is. We build it. You use it. No stress, no setup, just results.
+          </p>
+        </div>
+
+        {/* Accordion */}
+        <div className="w-full flex flex-col">
+          {faqs.map((faq, i) => (
+            <div
+              key={i}
+              className="w-full p-6 border-t border-b border-zinc-800 flex flex-col justify-start items-start gap-6"
+            >
+              <button
+                type="button"
+                className="w-full flex justify-between items-center text-left"
+                onClick={() => setOpenFaq(openFaq === i ? null : i)}
+              >
+                <span className="text-white text-xl font-medium font-['Montserrat'] leading-7 pr-4">
+                  {faq.question}
+                </span>
+                {openFaq === i ? (
+                  <img src="/images/CLOSE.svg" alt="Open" className="w-6 h-6 flex-shrink-0" />
+                ) : (
+                  <img src="/images/OPEN.svg" alt="Close" className="w-6 h-6 flex-shrink-0" />
+                )}
+              </button>
+              {openFaq === i && faq.answer && (
+                <p className="text-white text-base font-normal font-['Montserrat'] leading-5">
+                  {faq.answer}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section
+        className="w-full px-36 py-48 bg-black bg-cover bg-center bg-no-repeat flex flex-col justify-start items-center gap-24"
+        style={{ backgroundImage: "url('/images/Final CTA.png')" }}
+      >
+        <h2 className="text-6xl font-semibold font-['Montserrat'] text-center" style={{ maxWidth: '863px' }}>
+          <span className="text-[#ED4C14]">Bring your website</span>
+          <span className="text-white"> to life with HAYC.</span>
+        </h2>
+        <button
+          className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+          onClick={() => window.location.href = '/auth'}
+        >
+          <span className="text-center text-[#EFF6FF] text-base font-semibold font-['Montserrat'] leading-5">
+            Start Today
+          </span>
+          <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
+        </button>
       </section>
 
       {/* Template Preview Modal */}

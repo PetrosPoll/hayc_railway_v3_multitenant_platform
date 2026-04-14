@@ -64,9 +64,10 @@ function ConditionalFooter() {
   const { user } = useAuth();
   const location = useLocation();
 
-  // Hide footer for authenticated users on dashboard or onboarding page, and on email builder
+  // Hide footer for authenticated users on dashboard or onboarding page, profile, and on email builder
   if (
     (user && (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/'))) ||
+    location.pathname === '/profile' ||
     location.pathname === '/onboarding' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
