@@ -57,15 +57,15 @@ export function NavMenu() {
       queryClient.setQueryData(["/api/user"], null);
       setIsOpen(false);
       toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of your account",
+        title: t("nav.logoutSuccessTitle"),
+        description: t("nav.logoutSuccessDescription"),
       });
       // Redirect after successful logout
       window.location.href = "/auth";
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to logout. Please try again.",
+        title: t("nav.logoutErrorTitle"),
+        description: t("nav.logoutErrorDescription"),
         variant: "destructive",
       });
     }
@@ -195,7 +195,7 @@ export function NavMenu() {
                       : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
                 }
               >
-                {t("nav.pricing") || "Pricing"}
+                {t("nav.pricing")}
               </Button>
             </Link>
 
@@ -275,7 +275,7 @@ export function NavMenu() {
                     }
                   >
                     <User className="h-4 w-4 mr-2" />
-                    {t("nav.myAccount") || "My Account"}
+                    {t("nav.myAccount")}
                   </Button>
                 </Link>
               </>
@@ -313,7 +313,7 @@ export function NavMenu() {
                   ? "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-neutral-700 flex items-center justify-center bg-transparent hover:opacity-80"
                   : "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-zinc-300 flex items-center justify-center bg-transparent hover:opacity-80"
               }
-              aria-label="English"
+              aria-label={t("nav.languageEnglishAria")}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
                 <clipPath id="uk1"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
@@ -337,7 +337,7 @@ export function NavMenu() {
                   ? "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-neutral-700 flex items-center justify-center bg-transparent hover:opacity-80"
                   : "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-zinc-300 flex items-center justify-center bg-transparent hover:opacity-80"
               }
-              aria-label="Greek"
+              aria-label={t("nav.languageGreekAria")}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
                 <rect fill="#0D5EAF" width="27" height="18"/>
@@ -579,7 +579,7 @@ export function NavMenu() {
                             : "text-[#182B53] hover:bg-accent"
                           }`}
                       >
-                        {t("nav.pricing") || "Pricing"}
+                        {t("nav.pricing")}
                       </Button>
                     </Link>
 
@@ -638,7 +638,7 @@ export function NavMenu() {
                               }`}
                           >
                             <User className="h-4 w-4 mr-2" />
-                            {t("nav.myAccount") || "My Account"}
+                            {t("nav.myAccount")}
                           </Button>
                         </Link>
                       </>
@@ -678,7 +678,7 @@ export function NavMenu() {
                           setIsOpen(false);
                         }}
                         className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "en" ? "border-primary bg-accent" : ""}`}
-                        aria-label="English"
+                        aria-label={t("nav.languageEnglishAria")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
                           <clipPath id="uk-mobile1"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
@@ -691,7 +691,7 @@ export function NavMenu() {
                             <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
                           </g>
                         </svg>
-                        English
+                        {t("nav.languageEnglishLabel")}
                       </button>
                       <button
                         onClick={() => {
@@ -700,7 +700,7 @@ export function NavMenu() {
                           setIsOpen(false);
                         }}
                         className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "gr" ? "border-primary bg-accent" : ""}`}
-                        aria-label="Greek"
+                        aria-label={t("nav.languageGreekAria")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
                           <rect fill="#0D5EAF" width="27" height="18"/>
@@ -708,7 +708,7 @@ export function NavMenu() {
                           <rect fill="#0D5EAF" width="10" height="10"/>
                           <path fill="#FFF" d="M0,4h10v2H0zM4,0h2v10H4z"/>
                         </svg>
-                        Ελληνικά
+                        {t("nav.languageGreekLabel")}
                       </button>
                     </div>
                   </div>

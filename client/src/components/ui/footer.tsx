@@ -1,12 +1,4 @@
 import { Link } from "react-router-dom";
-import {
-  Facebook,
-  Twitter,
-  Instagram,
-  Linkedin,
-  Mail,
-  Phone,
-} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export function Footer() {
@@ -39,45 +31,47 @@ export function Footer() {
               </svg>
             </Link>
             <p className="text-white text-base font-normal font-['Montserrat'] leading-6 mt-2">
-              We provide cutting-edge subscription<br />management solutions for modern businesses.
+              {t("footer.descriptionLine1")}
+              <br />
+              {t("footer.descriptionLine2")}
             </p>
           </div>
           {/* Social icons */}
           <div className="flex items-center gap-3">
             <a href="https://www.facebook.com/haycWebsites" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-              <img src="/images/facebook_icon.svg" alt="Facebook" className="w-5 h-5" />
+              <img src="/images/facebook_icon.svg" alt={t("footer.social.facebookAlt")} className="w-5 h-5" />
             </a>
             <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-            <img src="/images/insta_icon.svg" alt="Instagram" className="w-5 h-5" />
+            <img src="/images/insta_icon.svg" alt={t("footer.social.instagramAlt")} className="w-5 h-5" />
             </a>
           </div>
         </div>
 
         {/* Col 2 — Quick Links */}
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
-          <p className="text-white text-base font-bold font-['Inter'] leading-7">Quick Links</p>
+          <p className="text-white text-base font-bold font-['Inter'] leading-7">{t("footer.quickLinks")}</p>
           <div className="flex flex-col justify-start items-start gap-3">
-            <Link to="/about" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">About</Link>
-            <Link to="/templates" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Templates</Link>
-            <Link to="/contact" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Contact</Link>
+            <Link to="/about" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.about")}</Link>
+            <Link to="/templates" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.templates")}</Link>
+            <Link to="/contact" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.contact")}</Link>
           </div>
         </div>
 
         {/* Col 3 — Legal */}
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
-          <p className="text-white text-base font-bold font-['Inter'] leading-7">Legal</p>
+          <p className="text-white text-base font-bold font-['Inter'] leading-7">{t("footer.legal")}</p>
           <div className="flex flex-col justify-start items-start gap-3">
-            <Link to="/terms-of-service" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Terms of Service</Link>
-            <Link to="/privacy-policy" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Privacy Policy</Link>
-            <Link to="/cookie-policy" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">Cookie Policy</Link>
+            <Link to="/terms-of-service" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.termsOfService")}</Link>
+            <Link to="/privacy-policy" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.privacyPolicy")}</Link>
+            <Link to="/cookie-policy" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.cookiePolicy")}</Link>
           </div>
         </div>
 
         {/* Col 4 — Contact Us */}
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
-          <p className="text-white text-lg font-bold font-['Inter'] leading-7">Contact Us</p>
+          <p className="text-white text-lg font-bold font-['Inter'] leading-7">{t("footer.contactUs")}</p>
           <div className="flex items-center gap-2">
-            <img src="/images/mail_icon.svg" alt="location" className="w-5 h-5" />
+            <img src="/images/mail_icon.svg" alt={t("footer.emailAlt")} className="w-5 h-5" />
             <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">
               info@hayc.gr
             </a>
@@ -87,7 +81,7 @@ export function Footer() {
 
       {/* Copyright */}
       <p className="text-white text-base font-normal font-['Inter'] leading-6 text-center">
-        © 2026 Hayc. All rights reserved.
+        {t("footer.copyright")}
       </p>
     </footer>
   );

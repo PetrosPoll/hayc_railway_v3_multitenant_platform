@@ -117,13 +117,22 @@
     "nav": {
         "home": "Αρχική",
         "templates": "Πρότυπα",
+        "pricing": "Τιμολόγηση",
         "about": "Σχετικά",
         "contact": "Επικοινωνία",
         "adminDashboard": "Πίνακας ελέγχου διαχειριστή",
         "dashboard": "Πίνακας ελέγχου",
         "myAccount": "Λογαριασμός",
         "languages": "Γλώσσα",
-        "backToWebsites": "Επιστροφή στις ιστοσελίδες"
+        "backToWebsites": "Επιστροφή στις ιστοσελίδες",
+        "logoutSuccessTitle": "Αποσυνδεθήκατε με επιτυχία",
+        "logoutSuccessDescription": "Έχετε αποσυνδεθεί από τον λογαριασμό σας",
+        "logoutErrorTitle": "Σφάλμα",
+        "logoutErrorDescription": "Η αποσύνδεση απέτυχε. Παρακαλώ δοκιμάστε ξανά.",
+        "languageEnglishAria": "Αγγλικά",
+        "languageGreekAria": "Ελληνικά",
+        "languageEnglishLabel": "English",
+        "languageGreekLabel": "Ελληνικά"
     },
     "auth": {
         "login": "Σύνδεση",
@@ -156,6 +165,25 @@
         "backToTemplates": "Επιστροφή στα Πρότυπα",
         "features": "Χαρακτηριστικά",
         "description": "Περιγραφή",
+        "page": {
+            "titlePrefix": "Βρες το",
+            "titleHighlight": "σημείο εκκίνησής σου.",
+            "subtitle": "Μια επιλεγμένη συλλογή από templates που μπορείς να διαλέξεις για τη δική σου επιχείρηση.",
+            "searchPlaceholder": "Αναζήτησε το αντικείμενο της επιχείρησής σου",
+            "industry": "Κλάδος",
+            "preview": "Προεπισκόπηση",
+            "industries": {
+                "agriculture": "Γεωργία & Αγροτική Παραγωγή",
+                "transportation": "Μεταφορές & Logistics",
+                "educationCoaching": "Εκπαίδευση & Coaching",
+                "healthWellness": "Υγεία & Ευεξία",
+                "professionalServices": "Επαγγελματικές Υπηρεσίες",
+                "psychologist": "Ψυχολόγοι & Θεραπεία",
+                "realEstate": "Ακίνητα",
+                "restaurantsFood": "Εστίαση & Φαγητό",
+                "tourismHospitality": "Τουρισμός & Φιλοξενία"
+            }
+        },
         "items": {
             "corporatePro": {
                 "name": "Horizon Studios",
@@ -548,10 +576,215 @@
         "challenge": "Η πρόκληση",
         "solution": "Η λύση"
     },
+    "footer": {
+        "descriptionLine1": "Παρέχουμε σύγχρονες λύσεις διαχείρισης",
+        "descriptionLine2": "συνδρομών για μοντέρνες επιχειρήσεις.",
+        "quickLinks": "Γρήγοροι Σύνδεσμοι",
+        "legal": "Νομικά",
+        "contactUs": "Επικοινωνία",
+        "emailAlt": "Email",
+        "copyright": "© 2026 Hayc. Με επιφύλαξη παντός δικαιώματος.",
+        "social": {
+            "facebookAlt": "Facebook",
+            "instagramAlt": "Instagram"
+        },
+        "links": {
+            "about": "Σχετικά",
+            "templates": "Templates",
+            "contact": "Επικοινωνία",
+            "termsOfService": "Όροι Χρήσης",
+            "privacyPolicy": "Πολιτική Απορρήτου",
+            "cookiePolicy": "Πολιτική Cookies"
+        }
+    },
     "home": {
         "hero": {
+            "titlePrefix": "Μια",
+            "titleHighlight": "ιστοσελίδα",
+            "titleBeforeBreak": "που δουλεύει",
+            "titleAfterBreak": "το ίδιο σκληρά με την επιχείρησή σου.",
             "subtitle": "Δημιουργούμε ιστοσελίδες με όλες τις δυνατότητες που χρειάζεται η επιχείρηση σας.",
-            "cta": "Ξεκινήστε Σήμερα"
+            "cta": "Ξεκινήστε Σήμερα",
+            "socialProof": {
+                "line1": "Απλή διαδικασία. Δυνατά αποτελέσματα.",
+                "line2": "30ήμερη εγγύηση επιστροφής χρημάτων"
+            },
+            "templatePreviewAlt": {
+                "left": "Προεπισκόπηση template αριστερά",
+                "right": "Προεπισκόπηση template δεξιά",
+                "center": "Προεπισκόπηση template στο κέντρο"
+            }
+        },
+        "whyUs": {
+            "section1": {
+                "titlePrefix": "Φτιαγμένο για",
+                "titleHighlight": "founders",
+                "titleSuffix": "που το θέλουν σωστό, χωρίς να τα κάνουν όλα μόνοι τους.",
+                "imageAlt": "Εικονογράφηση γιατί εμάς"
+            },
+            "section2": {
+                "titleHighlight": "Τα κάνουμε όλα για εσένα",
+                "titleSuffix": ", από την πρώτη μέρα",
+                "description": "Ξέχασε builders, plugins και μαντεψιές. Αναλαμβάνουμε τα πάντα, ώστε να γλιτώνεις χρόνο, να αποφεύγεις λάθη και να ξεκινάς με μια ιστοσελίδα που δείχνει και λειτουργεί σωστά από την αρχή.",
+                "imageAlt": "Εικονογράφηση done for you"
+            },
+            "section3": {
+                "titleHighlight": "Φτιαγμένο για απόδοση",
+                "titleSuffix": ", όχι απλώς για παρουσία",
+                "description": "Η ιστοσελίδα σου είναι γρήγορη, mobile-ready και βελτιστοποιημένη για αποτελέσματα, όχι μόνο για clicks. Κάνει αυτό που πρέπει: βοηθά να αναπτύσσεσαι.",
+                "imageAlt": "Εικονογράφηση built to perform"
+            },
+            "section4": {
+                "titleHighlight": "Υποστήριξη",
+                "titleSuffix": " που είναι πραγματικά δίπλα σου",
+                "description": "Αληθινοί άνθρωποι. Γρήγορες απαντήσεις. Καθαρή καθοδήγηση. Παρακολουθούμε το project σου στενά, ώστε να μη μένεις ποτέ μόνος να το καταλάβεις.",
+                "imageAlt": "Εικονογράφηση υποστήριξης"
+            }
+        },
+        "templatesSection": {
+            "titlePrefix": "Templates που ήδη",
+            "titleHighlight": "μοιάζουν με εσένα.",
+            "description": "Ανακάλυψε μια επιλεγμένη συλλογή από designs για διαφορετικά industries και στυλ. Κάθε ένα προσαρμόζεται στο brand σου και λανσάρεται από την ομάδα μας.",
+            "carouselImageAlt": "Template"
+        },
+        "addonsSection": {
+            "titlePrefix": "Η",
+            "titleWebsite": "ιστοσελίδα σου",
+            "titleMiddle": "μπορεί να",
+            "titleHighlight": "μεγαλώνει",
+            "titleSuffix": " μαζί σου.",
+            "description": "Καθώς οι ανάγκες σου αλλάζουν, μπορείς να προσθέτεις νέες δυνατότητες στην ιστοσελίδα σου. Μπορείς να επιλέξεις από κρατήσεις, φόρμες ή προηγμένα εργαλεία. Όλα ενσωματώνονται ομαλά και εμείς αναλαμβάνουμε το setup για εσένα.",
+            "addonsLabel": "Πρόσθετα:",
+            "categories": {
+                "businessTools": {
+                    "title": "Εργαλεία Επιχείρησης",
+                    "description": "Λειτουργικά εργαλεία που βοηθούν να τρέχεις την επιχείρηση ή τον οργανισμό σου",
+                    "addons": {
+                        "bookingSystem": "Σύστημα Κρατήσεων",
+                        "transportBooking": "Κρατήσεις Μεταφοράς",
+                        "donationSystem": "Σύστημα Δωρεών"
+                    }
+                },
+                "digitalPayments": {
+                    "title": "Ψηφιακές Πληρωμές & Monetization",
+                    "description": "Δέξου πληρωμές και αξιοποίησε οικονομικά τις υπηρεσίες σου online.",
+                    "addons": {
+                        "onlinePayments": "Online Πληρωμές"
+                    }
+                },
+                "engagementData": {
+                    "title": "Engagement & Δεδομένα",
+                    "description": "Κατανόησε το κοινό σου και κράτησέ το ενεργό.",
+                    "addons": {
+                        "analyticsDashboard": "Πίνακας Analytics"
+                    }
+                },
+                "educationContent": {
+                    "title": "Εκπαίδευση & Περιεχόμενο",
+                    "description": "Παράδωσε και αξιοποίησε οικονομικά ψηφιακά μαθήματα ή εκπαιδευτικό περιεχόμενο.",
+                    "addons": {
+                        "lms": "Learning Management System (LMS)"
+                    }
+                },
+                "specializedSolutions": {
+                    "title": "Εξειδικευμένες Λύσεις",
+                    "description": "Custom εργαλεία για συγκεκριμένους κλάδους και ανάγκες.",
+                    "addons": {
+                        "customIntegration": "Custom Integration"
+                    }
+                }
+            }
+        },
+        "faqSection": {
+            "titlePrefix": "Φαντάσου το Wix,",
+            "titleHighlightLine1": "χωρίς",
+            "titleHighlightLine2": "το DIY",
+            "titleSuffix": ".",
+            "subtitle": "Αυτό είναι το HAYC. Εμείς το χτίζουμε. Εσύ το χρησιμοποιείς. Χωρίς άγχος, χωρίς setup, μόνο αποτελέσματα.",
+            "icons": {
+                "openAlt": "Άνοιγμα",
+                "closeAlt": "Κλείσιμο"
+            },
+            "items": [
+                {
+                    "question": "Τι είναι το HAYC και πώς λειτουργεί;",
+                    "answer": "Το HAYC είναι ο συνεργάτης σου για την ιστοσελίδα. Διαλέγεις design, μας λες τι χρειάζεσαι και την υλοποιούμε για εσένα από την αρχή μέχρι το τέλος. Στη συνέχεια μπορείς να διαχειρίζεσαι την ιστοσελίδα σου, να παρακολουθείς την πρόοδο και να επεκτείνεις τις δυνατότητές της από το dashboard σου."
+                },
+                {
+                    "question": "Μπορώ να φτιάξω e-shop ή online store με το HAYC;",
+                    "answer": ""
+                },
+                {
+                    "question": "Τι γίνεται αν έχω ήδη domain name;",
+                    "answer": ""
+                },
+                {
+                    "question": "Μπορώ να ακυρώσω τη συνδρομή μου οποιαδήποτε στιγμή;",
+                    "answer": ""
+                },
+                {
+                    "question": "Τι χρειάζεται να κάνω από τη μεριά μου για να φτιάξετε την ιστοσελίδα;",
+                    "answer": ""
+                },
+                {
+                    "question": "Μπορώ να αλλάξω πλάνο συνδρομής αργότερα;",
+                    "answer": ""
+                }
+            ]
+        },
+        "testimonialsSection": {
+            "titleHighlight": "Λόγια",
+            "titleSuffix": "από πελάτες που αναπτύσσονται",
+            "subtitle": "Αληθινές ιστορίες από ανθρώπους που μετέτρεψαν τις ιδέες τους σε ζωντανές ιστοσελίδες που μεγαλώνουν.",
+            "platforms": {
+                "facebook": {
+                    "name": "Facebook",
+                    "alt": "Facebook"
+                },
+                "trustpilot": {
+                    "name": "Trustpilot",
+                    "alt": "Trustpilot"
+                },
+                "common": {
+                    "basedOn": "Με βάση",
+                    "reviews": "κριτικές",
+                    "externalLinkAlt": "Εξωτερικός σύνδεσμος"
+                }
+            },
+            "avatarAlt": "avatar",
+            "seeProject": "Δες το Project",
+            "arrowAlt": "βέλος",
+            "previousAlt": "Προηγούμενο",
+            "nextAlt": "Επόμενο",
+            "fullStarAlt": "αστέρι",
+            "halfStarAlt": "μισό αστέρι",
+            "items": [
+                {
+                    "name": "Όνομα Επώνυμο",
+                    "title": "Τίτλος επιχείρησης",
+                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                },
+                {
+                    "name": "Όνομα Επώνυμο",
+                    "title": "Τίτλος επιχείρησης",
+                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                },
+                {
+                    "name": "Όνομα Επώνυμο",
+                    "title": "Τίτλος επιχείρησης",
+                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                },
+                {
+                    "name": "Όνομα Επώνυμο",
+                    "title": "Τίτλος επιχείρησης",
+                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                }
+            ]
+        },
+        "finalCtaSection": {
+            "titleHighlight": "Δώσε ζωή στην ιστοσελίδα σου",
+            "titleSuffix": "με τη HAYC.",
+            "button": "Ξεκίνα Σήμερα"
         },
         "addons": {
             "bookingAddon": {

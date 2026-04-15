@@ -118,12 +118,21 @@
         "home": "Home",
         "about": "About",
         "templates": "Templates",
+        "pricing": "Pricing",
         "contact": "Contact",
         "adminDashboard": "Admin Dashboard",
         "dashboard": "Dashboard",
         "myAccount": "Account",
         "languages": "Languages",
-        "backToWebsites": "Back to Websites"
+        "backToWebsites": "Back to Websites",
+        "logoutSuccessTitle": "Logged out successfully",
+        "logoutSuccessDescription": "You have been logged out of your account",
+        "logoutErrorTitle": "Error",
+        "logoutErrorDescription": "Failed to logout. Please try again.",
+        "languageEnglishAria": "English",
+        "languageGreekAria": "Greek",
+        "languageEnglishLabel": "English",
+        "languageGreekLabel": "Greek"
     },
     "auth": {
         "login": "Login",
@@ -156,6 +165,25 @@
         "backToTemplates": "Back to Templates",
         "features": "Features",
         "description": "Description",
+        "page": {
+            "titlePrefix": "Find your",
+            "titleHighlight": "starting point.",
+            "subtitle": "A curated set of templates you can choose from for your own business.",
+            "searchPlaceholder": "Search your business topic",
+            "industry": "Industry",
+            "preview": "Preview",
+            "industries": {
+                "agriculture": "Agriculture & Farming",
+                "transportation": "Transportations & Logistics",
+                "educationCoaching": "Education & Coaching",
+                "healthWellness": "Health & Wellness",
+                "professionalServices": "Professional Services",
+                "psychologist": "Psychologists & Therapy",
+                "realEstate": "Real Estate",
+                "restaurantsFood": "Restaurants & Food",
+                "tourismHospitality": "Tourism & Hospitality"
+            }
+        },
         "items": {
             "corporatePro": {
                 "name": "Horizon Studios",
@@ -548,10 +576,215 @@
         "challenge": "Challenge",
         "solution": "Solution"
     },
+    "footer": {
+        "descriptionLine1": "We provide cutting-edge subscription",
+        "descriptionLine2": "management solutions for modern businesses.",
+        "quickLinks": "Quick Links",
+        "legal": "Legal",
+        "contactUs": "Contact Us",
+        "emailAlt": "Email",
+        "copyright": "© 2026 Hayc. All rights reserved.",
+        "social": {
+            "facebookAlt": "Facebook",
+            "instagramAlt": "Instagram"
+        },
+        "links": {
+            "about": "About",
+            "templates": "Templates",
+            "contact": "Contact",
+            "termsOfService": "Terms of Service",
+            "privacyPolicy": "Privacy Policy",
+            "cookiePolicy": "Cookie Policy"
+        }
+    },
     "home": {
         "hero": {
+            "titlePrefix": "A",
+            "titleHighlight": "website",
+            "titleBeforeBreak": "that works",
+            "titleAfterBreak": "as hard as your business.",
             "subtitle": "We create websites with all the features your business needs.",
-            "cta": "Get Started Today"
+            "cta": "Get Started Today",
+            "socialProof": {
+                "line1": "Simple process. Strong results.",
+                "line2": "30-day money-back guarantee"
+            },
+            "templatePreviewAlt": {
+                "left": "Template preview left",
+                "right": "Template preview right",
+                "center": "Template preview center"
+            }
+        },
+        "whyUs": {
+            "section1": {
+                "titlePrefix": "Built for",
+                "titleHighlight": "founders",
+                "titleSuffix": "who want it done right, without doing it all.",
+                "imageAlt": "Why us illustration"
+            },
+            "section2": {
+                "titleHighlight": "Done-for-you",
+                "titleSuffix": ", from day one",
+                "description": "Forget builders, plugins, and guesswork. We handle everything, so you save time, avoid mistakes, and launch with a website that looks and feels right immediately.",
+                "imageAlt": "Done for you illustration"
+            },
+            "section3": {
+                "titleHighlight": "Built to perform",
+                "titleSuffix": ", not just exist",
+                "description": "Your site is fast, mobile-ready, and optimized to bring results, not just clicks. It does what it should: help you grow.",
+                "imageAlt": "Built to perform illustration"
+            },
+            "section4": {
+                "titleHighlight": "Support",
+                "titleSuffix": " that's actually there",
+                "description": "Real people. Fast replies. Clear answers. We follow your project closely, so you're never left figuring things out alone.",
+                "imageAlt": "Support illustration"
+            }
+        },
+        "templatesSection": {
+            "titlePrefix": "Templates that already",
+            "titleHighlight": "look like you.",
+            "description": "Explore a curated collection of designs made for different industries and styles. Each one is built to adapt, ready to be customized for your brand and launched by our team.",
+            "carouselImageAlt": "Template"
+        },
+        "addonsSection": {
+            "titlePrefix": "Your",
+            "titleWebsite": "website",
+            "titleMiddle": "can",
+            "titleHighlight": "grow",
+            "titleSuffix": " with you.",
+            "description": "As your needs change, you can add new capabilities to your website. You can choose from bookings, forms, or advanced tools. Everything integrates smoothly, and we handle the setup for you.",
+            "addonsLabel": "Add-ons:",
+            "categories": {
+                "businessTools": {
+                    "title": "Business Tools",
+                    "description": "Operational tools that help you run your business or organization",
+                    "addons": {
+                        "bookingSystem": "Booking System",
+                        "transportBooking": "Transport Booking",
+                        "donationSystem": "Donation System"
+                    }
+                },
+                "digitalPayments": {
+                    "title": "Digital Payments & Monetization",
+                    "description": "Accept payments and monetize your services online.",
+                    "addons": {
+                        "onlinePayments": "Online Payments"
+                    }
+                },
+                "engagementData": {
+                    "title": "Engagement & Data",
+                    "description": "Understand your audience and keep them engaged.",
+                    "addons": {
+                        "analyticsDashboard": "Analytics Dashboard"
+                    }
+                },
+                "educationContent": {
+                    "title": "Education & Content",
+                    "description": "Deliver and monetize digital courses or learning content.",
+                    "addons": {
+                        "lms": "Learning Management System (LMS)"
+                    }
+                },
+                "specializedSolutions": {
+                    "title": "Specialized Solutions",
+                    "description": "Custom tools built for specific industries and needs.",
+                    "addons": {
+                        "customIntegration": "Custom Integration"
+                    }
+                }
+            }
+        },
+        "faqSection": {
+            "titlePrefix": "Imagine Wix,",
+            "titleHighlightLine1": "without",
+            "titleHighlightLine2": "the DIY",
+            "titleSuffix": ".",
+            "subtitle": "That's what HAYC is. We build it. You use it. No stress, no setup, just results.",
+            "icons": {
+                "openAlt": "Open",
+                "closeAlt": "Close"
+            },
+            "items": [
+                {
+                    "question": "What is HAYC and how does it work?",
+                    "answer": "HAYC is your website partner. You choose a design, tell us what you need, and we build it for you, start to finish. Later on, you can manage your website, track its progress, and expand its capabilities through your dashboard."
+                },
+                {
+                    "question": "Can I build an e-shop or online store with HAYC?",
+                    "answer": ""
+                },
+                {
+                    "question": "What if I already have a domain name?",
+                    "answer": ""
+                },
+                {
+                    "question": "Can I cancel my subscription anytime?",
+                    "answer": ""
+                },
+                {
+                    "question": "What do I need to do on my end for you to build the website?",
+                    "answer": ""
+                },
+                {
+                    "question": "Can I change my subscription plan later?",
+                    "answer": ""
+                }
+            ]
+        },
+        "testimonialsSection": {
+            "titleHighlight": "Words",
+            "titleSuffix": "from thriving clients",
+            "subtitle": "Real stories from people who turned their ideas into live, growing websites.",
+            "platforms": {
+                "facebook": {
+                    "name": "Facebook",
+                    "alt": "Facebook"
+                },
+                "trustpilot": {
+                    "name": "Trustpilot",
+                    "alt": "Trustpilot"
+                },
+                "common": {
+                    "basedOn": "Based on",
+                    "reviews": "reviews",
+                    "externalLinkAlt": "External link"
+                }
+            },
+            "avatarAlt": "avatar",
+            "seeProject": "See Project",
+            "arrowAlt": "arrow",
+            "previousAlt": "Previous",
+            "nextAlt": "Next",
+            "fullStarAlt": "star",
+            "halfStarAlt": "half star",
+            "items": [
+                {
+                    "name": "Name Surname",
+                    "title": "Business title",
+                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                },
+                {
+                    "name": "Name Surname",
+                    "title": "Business title",
+                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                },
+                {
+                    "name": "Name Surname",
+                    "title": "Business title",
+                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                },
+                {
+                    "name": "Name Surname",
+                    "title": "Business title",
+                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                }
+            ]
+        },
+        "finalCtaSection": {
+            "titleHighlight": "Bring your website",
+            "titleSuffix": "to life with HAYC.",
+            "button": "Start Today"
         },
         "addons": {
             "bookingAddon": {

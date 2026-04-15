@@ -3,6 +3,7 @@ import type { Template } from "@shared/schema";
 import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
+import { useTranslation } from "react-i18next";
 import {
   Eye,
   ChevronDown,
@@ -16,6 +17,7 @@ import {
 type EnvatoTemplate = (typeof ENVATO_TEMPLATES)[number];
 
 export default function Templates() {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [industryOpen, setIndustryOpen] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
@@ -25,15 +27,15 @@ export default function Templates() {
   const [currentPage, setCurrentPage] = useState(1);
 
   const industries = [
-    { label: "Agriculture & Farming", value: "Agriculture" },
-    { label: "Transportations & Logistics", value: "Transportation" },
-    { label: "Education & Coaching", value: "education_coaching" },
-    { label: "Health & Wellness", value: "health_wellness" },
-    { label: "Professional Services", value: "professional_services" },
-    { label: "Psychologists & Therapy", value: "psychologist" },
-    { label: "Real Estate", value: "real_estate" },
-    { label: "Restaurants & Food", value: "restaurants_food" },
-    { label: "Tourism & Hospitality", value: "tourism_hospitality" },
+    { key: "agriculture", value: "Agriculture" },
+    { key: "transportation", value: "Transportation" },
+    { key: "educationCoaching", value: "education_coaching" },
+    { key: "healthWellness", value: "health_wellness" },
+    { key: "professionalServices", value: "professional_services" },
+    { key: "psychologist", value: "psychologist" },
+    { key: "realEstate", value: "real_estate" },
+    { key: "restaurantsFood", value: "restaurants_food" },
+    { key: "tourismHospitality", value: "tourism_hospitality" },
   ];
 
   const filteredTemplates = useMemo(() => {
@@ -99,11 +101,11 @@ export default function Templates() {
           {/* Title */}
           <div className="flex flex-col justify-start items-end gap-3">
             <h1 className="text-center text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
-              <span className="text-white">Find your </span>
-              <span className="text-[#ED4C14]">starting point.</span>
+              <span className="text-white">{t("templates.page.titlePrefix")} </span>
+              <span className="text-[#ED4C14]">{t("templates.page.titleHighlight")}</span>
             </h1>
             <p className="text-center text-white text-lg font-medium font-['Montserrat'] w-full">
-              A curated set of templates you can choose from for your own business.
+              {t("templates.page.subtitle")}
             </p>
           </div>
 
@@ -112,7 +114,7 @@ export default function Templates() {
             <Search className="w-6 h-6 text-white flex-shrink-0" />
             <input
               type="text"
-              placeholder="Search your business topic"
+              placeholder={t("templates.page.searchPlaceholder")}
               className="flex-1 bg-transparent text-white text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-white/50 outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -131,7 +133,9 @@ export default function Templates() {
             onClick={() => setIndustryOpen((o) => !o)}
           >
             <span className="text-white text-lg font-medium font-['Montserrat']">
-              {selectedIndustry ?? "Industry"}
+              {selectedIndustry
+                ? t(`templates.page.industries.${selectedIndustry}`)
+                : t("templates.page.industry")}
             </span>
             <ChevronDown className={`w-6 h-6 text-white transition-transform ${industryOpen ? "rotate-180" : ""}`} />
           </button>
@@ -143,16 +147,16 @@ export default function Templates() {
                   key={i}
                   type="button"
                   className={`w-full px-3.5 py-3 text-left text-white text-lg font-medium font-['Montserrat'] hover:bg-black/50 transition-colors ${
-                    selectedIndustry === industry.label ? "bg-black/50" : ""
+                    selectedIndustry === industry.key ? "bg-black/50" : ""
                   }`}
                   onClick={() => {
-                    setSelectedIndustry(industry.label);
+                    setSelectedIndustry(industry.key);
                     setSelectedCategory(industry.value);
                     setIndustryOpen(false);
                     setCurrentPage(1);
                   }}
                 >
-                  {industry.label}
+                  {t(`templates.page.industries.${industry.key}`)}
                 </button>
               ))}
             </div>
@@ -176,7 +180,7 @@ export default function Templates() {
                 <div className="absolute inset-0 rounded-[10px] bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 outline outline-1 outline-white/30">
                     <Eye className="w-4 h-4 text-white" />
-                    <span className="text-white text-sm font-medium font-['Montserrat']">Preview</span>
+                    <span className="text-white text-sm font-medium font-['Montserrat']">{t("templates.page.preview")}</span>
                   </div>
                 </div>
               </div>

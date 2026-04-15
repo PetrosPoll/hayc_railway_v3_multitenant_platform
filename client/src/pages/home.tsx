@@ -35,29 +35,33 @@ export default function Home() {
 
   const addonCategories = [
     {
-      title: "Business Tools",
-      description: "Operational tools that help you run your business or organization",
-      addons: ["Booking System", "Transport Booking", "Donation System"],
+      titleKey: "home.addonsSection.categories.businessTools.title",
+      descriptionKey: "home.addonsSection.categories.businessTools.description",
+      addonKeys: [
+        "home.addonsSection.categories.businessTools.addons.bookingSystem",
+        "home.addonsSection.categories.businessTools.addons.transportBooking",
+        "home.addonsSection.categories.businessTools.addons.donationSystem",
+      ],
     },
     {
-      title: "Digital Payments & Monetization",
-      description: "Accept payments and monetize your services online.",
-      addons: ["Online Payments"],
+      titleKey: "home.addonsSection.categories.digitalPayments.title",
+      descriptionKey: "home.addonsSection.categories.digitalPayments.description",
+      addonKeys: ["home.addonsSection.categories.digitalPayments.addons.onlinePayments"],
     },
     {
-      title: "Engagement & Data",
-      description: "Understand your audience and keep them engaged.",
-      addons: ["Analytics Dashboard"],
+      titleKey: "home.addonsSection.categories.engagementData.title",
+      descriptionKey: "home.addonsSection.categories.engagementData.description",
+      addonKeys: ["home.addonsSection.categories.engagementData.addons.analyticsDashboard"],
     },
     {
-      title: "Education & Content",
-      description: "Deliver and monetize digital courses or learning content.",
-      addons: ["Learning Management System (LMS)"],
+      titleKey: "home.addonsSection.categories.educationContent.title",
+      descriptionKey: "home.addonsSection.categories.educationContent.description",
+      addonKeys: ["home.addonsSection.categories.educationContent.addons.lms"],
     },
     {
-      title: "Specialized Solutions",
-      description: "Custom tools built for specific industries and needs.",
-      addons: ["Custom Integration"],
+      titleKey: "home.addonsSection.categories.specializedSolutions.title",
+      descriptionKey: "home.addonsSection.categories.specializedSolutions.description",
+      addonKeys: ["home.addonsSection.categories.specializedSolutions.addons.customIntegration"],
     },
   ];
 
@@ -190,7 +194,11 @@ export default function Home() {
 
           {/* Headline */}
           <h1 className="text-6xl font-semibold font-['Montserrat'] text-white max-w-4xl mb-4 leading-tight">
-            A <span className="text-[#ED4C14]">website</span> that works<br />as hard as your business.
+            {t("home.hero.titlePrefix")}{" "}
+            <span className="text-[#ED4C14]">{t("home.hero.titleHighlight")}</span>{" "}
+            {t("home.hero.titleBeforeBreak")}
+            <br />
+            {t("home.hero.titleAfterBreak")}
           </h1>
 
           {/* Subtitle */}
@@ -218,8 +226,8 @@ export default function Home() {
 
           {/* Social proof */}
           <div className="flex flex-col items-center gap-1.5">
-            <p className="text-sm font-normal font-['Inter'] text-slate-100">Simple process. Strong results.</p>
-            <p className="text-sm font-normal font-['Inter'] text-slate-100">30-day money-back guarantee</p>
+            <p className="text-sm font-normal font-['Inter'] text-slate-100">{t("home.hero.socialProof.line1")}</p>
+            <p className="text-sm font-normal font-['Inter'] text-slate-100">{t("home.hero.socialProof.line2")}</p>
           </div>
 
           {/* Slide indicators */}
@@ -246,7 +254,7 @@ export default function Home() {
             <div className="absolute left-0 bottom-0 w-[32%] md:w-[30%] lg:w-[28%] z-20">
               <img
                 src="/images/Rectangle 104.png"
-                alt="Template preview left"
+                alt={t("home.hero.templatePreviewAlt.left")}
                 className="block w-full h-auto"
               />
             </div>
@@ -255,7 +263,7 @@ export default function Home() {
             <div className="absolute right-0 bottom-0 w-[32%] md:w-[30%] lg:w-[28%] z-20">
               <img
                 src="/images/Rectangle 114.png"
-                alt="Template preview right"
+                alt={t("home.hero.templatePreviewAlt.right")}
                 className="block w-full h-auto"
               />
             </div>
@@ -264,7 +272,7 @@ export default function Home() {
             <div className="absolute left-1/2 -translate-x-1/2 bottom-[7%] w-[43%] md:w-[39%] lg:w-[36%] z-30">
               <img
                 src="/images/Rectangle 113.png"
-                alt="Template preview center"
+                alt={t("home.hero.templatePreviewAlt.center")}
                 className="block w-full h-auto"
               />
             </div>
@@ -278,9 +286,9 @@ export default function Home() {
         {/* Left content */}
         <div className="flex flex-col justify-start items-start gap-12" style={{ width: '452px', flexShrink: 0 }}>
           <h2 className="text-5xl font-semibold font-['Montserrat'] leading-[70px]">
-            <span className="text-white">Built for </span>
-            <span className="text-[#ED4C14]">founders </span>
-            <span className="text-white">who want it done right, without doing it all.</span>
+            <span className="text-white">{t("home.whyUs.section1.titlePrefix")} </span>
+            <span className="text-[#ED4C14]">{t("home.whyUs.section1.titleHighlight")} </span>
+            <span className="text-white">{t("home.whyUs.section1.titleSuffix")}</span>
           </h2>
           <button
             className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
@@ -300,7 +308,7 @@ export default function Home() {
         <div className="flex-1 flex justify-end items-center">
           <img
             src="/images/why_us_1.png"
-            alt="Why us illustration"
+            alt={t("home.whyUs.section1.imageAlt")}
             className="h-full object-contain"
             style={{ maxHeight: '891px' }}
           />
@@ -313,11 +321,11 @@ export default function Home() {
         <div className="flex flex-col justify-start items-start gap-12" style={{ width: '384px', flexShrink: 0 }}>
           <div className="flex flex-col justify-start items-start gap-3">
             <h2 className="text-4xl font-semibold font-['Inter']" style={{ width: '288px' }}>
-              <span className="text-[#ED4C14]">Done-for-you</span>
-              <span className="text-slate-100">, from day one</span>
+              <span className="text-[#ED4C14]">{t("home.whyUs.section2.titleHighlight")}</span>
+              <span className="text-slate-100">{t("home.whyUs.section2.titleSuffix")}</span>
             </h2>
             <p className="text-slate-100 text-base font-normal font-['Inter']" style={{ width: '320px' }}>
-              Forget builders, plugins, and guesswork. We handle everything, so you save time, avoid mistakes, and launch with a website that looks and feels right immediately.
+              {t("home.whyUs.section2.description")}
             </p>
           </div>
           <button
@@ -338,7 +346,7 @@ export default function Home() {
         <div className="flex-1 self-stretch flex items-center justify-center">
           <img
             src="/images/why_us_2.png"
-            alt="Done for you illustration"
+            alt={t("home.whyUs.section2.imageAlt")}
             className="h-full object-contain"
             style={{ maxHeight: '891px' }}
           />
@@ -351,11 +359,11 @@ export default function Home() {
         <div className="flex flex-col justify-start items-start gap-12" style={{ width: '384px', flexShrink: 0 }}>
           <div className="flex flex-col justify-start items-start gap-3">
             <h2 className="text-4xl font-semibold font-['Inter']" style={{ width: '288px' }}>
-              <span className="text-[#ED4C14]">Built to perform</span>
-              <span className="text-[#EFF6FF]">, not just exist</span>
+              <span className="text-[#ED4C14]">{t("home.whyUs.section3.titleHighlight")}</span>
+              <span className="text-[#EFF6FF]">{t("home.whyUs.section3.titleSuffix")}</span>
             </h2>
             <p className="text-[#EFF6FF] text-base font-normal font-['Inter']" style={{ width: '320px' }}>
-              Your site is fast, mobile-ready, and optimized to bring results, not just clicks. It does what it should: help you grow.
+              {t("home.whyUs.section3.description")}
             </p>
           </div>
           <button
@@ -376,7 +384,7 @@ export default function Home() {
         <div className="flex-1 self-stretch flex items-center justify-center">
           <img
             src="/images/why_us_3.png"
-            alt="Built to perform illustration"
+            alt={t("home.whyUs.section3.imageAlt")}
             className="h-full object-contain"
             style={{ maxHeight: '891px' }}
           />
@@ -389,11 +397,11 @@ export default function Home() {
         <div className="flex flex-col justify-start items-start gap-12" style={{ width: '452px', flexShrink: 0 }}>
           <div className="flex flex-col justify-start items-start gap-3">
             <h2 className="text-4xl font-semibold font-['Inter']" style={{ width: '320px' }}>
-              <span className="text-[#ED4C14]">Support</span>
-              <span className="text-[#EFF6FF]"> that's actually there</span>
+              <span className="text-[#ED4C14]">{t("home.whyUs.section4.titleHighlight")}</span>
+              <span className="text-[#EFF6FF]">{t("home.whyUs.section4.titleSuffix")}</span>
             </h2>
             <p className="text-[#EFF6FF] text-base font-normal font-['Inter']" style={{ width: '320px' }}>
-              Real people. Fast replies. Clear answers. We follow your project closely, so you&apos;re never left figuring things out alone.
+              {t("home.whyUs.section4.description")}
             </p>
           </div>
           <button
@@ -414,7 +422,7 @@ export default function Home() {
         <div className="flex-1 self-stretch flex items-center justify-center">
           <img
             src="/images/why_us_4.png"
-            alt="Support illustration"
+            alt={t("home.whyUs.section4.imageAlt")}
             className="h-full object-contain"
             style={{ maxHeight: '891px' }}
           />
@@ -426,12 +434,12 @@ export default function Home() {
         {/* Header */}
         <div className="w-full px-16 flex justify-start items-center gap-48">
           <div className="flex-1">
-            <span className="text-[#EFF6FF] text-5xl font-semibold font-['Montserrat'] leading-[70px]">Templates that already </span>
-            <span className="text-[#ED4C14] text-5xl font-semibold font-['Montserrat'] leading-[70px]">look like you.</span>
+            <span className="text-[#EFF6FF] text-5xl font-semibold font-['Montserrat'] leading-[70px]">{t("home.templatesSection.titlePrefix")} </span>
+            <span className="text-[#ED4C14] text-5xl font-semibold font-['Montserrat'] leading-[70px]">{t("home.templatesSection.titleHighlight")}</span>
           </div>
           <div className="flex-1 flex flex-col justify-start items-start gap-6">
             <p className="text-[#EFF6FF] text-base font-normal font-['Montserrat'] leading-6">
-              Explore a curated collection of designs made for different industries and styles. Each one is built to adapt, ready to be customized for your brand and launched by our team.
+              {t("home.templatesSection.description")}
             </p>
             <button
               className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
@@ -456,7 +464,7 @@ export default function Home() {
                 '/images/Rectangle 113.png',
                 '/images/Rectangle 114.png',
               ]).map((src, i) => (
-                <img key={i} src={src} alt="Template" className="w-[706px] h-96 rounded-[20px] object-cover flex-shrink-0" />
+                <img key={i} src={src} alt={t("home.templatesSection.carouselImageAlt")} className="w-[706px] h-96 rounded-[20px] object-cover flex-shrink-0" />
               ))}
             </div>
           </div>
@@ -470,7 +478,7 @@ export default function Home() {
                 '/images/Rectangle 104.png',
                 '/images/Rectangle 103.png',
               ]).map((src, i) => (
-                <img key={i} src={src} alt="Template" className="w-[706px] h-96 rounded-[20px] object-cover flex-shrink-0" />
+                <img key={i} src={src} alt={t("home.templatesSection.carouselImageAlt")} className="w-[706px] h-96 rounded-[20px] object-cover flex-shrink-0" />
               ))}
             </div>
           </div>
@@ -483,14 +491,14 @@ export default function Home() {
         <div className="flex-1 flex flex-col justify-start items-start gap-12 relative z-10">
           <div className="flex flex-col justify-start items-start gap-6">
             <h2 className="text-5xl font-semibold font-['Inter']">
-              <span className="text-white">Your </span>
-              <span className="text-[#ED4C14]">website<br /></span>
-              <span className="text-white">can </span>
-              <span className="text-[#ED4C14]">grow</span>
-              <span className="text-white"> with you.</span>
+              <span className="text-white">{t("home.addonsSection.titlePrefix")} </span>
+              <span className="text-[#ED4C14]">{t("home.addonsSection.titleWebsite")}<br /></span>
+              <span className="text-white">{t("home.addonsSection.titleMiddle")} </span>
+              <span className="text-[#ED4C14]">{t("home.addonsSection.titleHighlight")}</span>
+              <span className="text-white">{t("home.addonsSection.titleSuffix")}</span>
             </h2>
             <p className="text-white text-base font-normal font-['Montserrat'] leading-6 max-w-lg">
-              As your needs change, you can add new capabilities to your website. You can choose from bookings, forms, or advanced tools. Everything integrates smoothly, and we handle the setup for you.
+              {t("home.addonsSection.description")}
             </p>
           </div>
 
@@ -513,21 +521,21 @@ export default function Home() {
                       <ArrowRight className="w-5 h-5 text-[#ED4C14] flex-shrink-0" />
                     )}
                     <span className={`text-2xl font-medium font-['Montserrat'] ${openAddon === i ? 'text-white pl-0' : 'text-white/50 pl-8'}`}>
-                      {cat.title}
+                      {t(cat.titleKey)}
                     </span>
                   </button>
                   {openAddon === i && (
                     <div className="flex flex-col gap-3">
                       <div className="pl-8">
                         <p className="text-white text-base font-normal font-['Montserrat'] leading-6">
-                          {cat.description}
+                          {t(cat.descriptionKey)}
                         </p>
                       </div>
                       <div className="pl-8 flex items-center gap-2.5 flex-wrap">
-                        <span className="text-white text-sm font-semibold font-['Montserrat'] tracking-tight">Add-ons:</span>
-                        {cat.addons.map((addon, j) => (
+                        <span className="text-white text-sm font-semibold font-['Montserrat'] tracking-tight">{t("home.addonsSection.addonsLabel")}</span>
+                        {cat.addonKeys.map((addonKey, j) => (
                           <span key={j} className="text-indigo-300 text-sm font-medium font-['Montserrat']">
-                            {addon}
+                            {t(addonKey)}
                           </span>
                         ))}
                       </div>
