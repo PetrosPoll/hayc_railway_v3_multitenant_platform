@@ -1,5 +1,4 @@
 {
-    "welcome": "Welcome to our website!",
     "stages": {
         "planning": "Σχεδιασμός & Σχεδίαση",
         "development": "Development",
@@ -65,10 +64,6 @@
         "maintenance": "ongoing maintenance"
     },
     "status": {
-        "pending": "Pending",
-        "in-progress": "In Progress",
-        "waiting": "We are waiting for information",
-        "completed": "Completed",
         "cancelled": "Cancelled",
         "connected": "Connected",
         "active": "Active",
@@ -80,22 +75,10 @@
         "paused": "Paused"
     },
     "actions": {
-        "selectUser": "Select a user",
-        "addWebsite": "Add Website Progress",
-        "createProgress": "Create Website Progress",
-        "enterDomain": "Enter domain name",
         "delete": "Delete",
-        "confirm": "Confirm",
         "cancel": "Cancel",
-        "sendEmail": "Send Email Notification",
-        "dontSendEmail": "Don't Send Email",
-        "dashboard": "Dashboard",
         "login": "Login",
         "logout": "Logout",
-        "viewProjects": "View Projects",
-        "getStarted": "Get Started",
-        "learnMore": "Learn More",
-        "scrollDown": "Scroll Down",
         "view": "View",
         "deleting": "Deleting...",
         "disconnect": "Disconnect",
@@ -106,9 +89,7 @@
         },
         "upgradeConfirmation": {
             "yourAnnualSavings": "Your Annual Savings",
-            "monthlyPlan12Months": "Monthly Plan (12 months):",
             "yearlyPlan": "Yearly Plan:",
-            "totalSavings": "Total Savings:",
             "savePerMonth": "Save per month with yearly billing!",
             "perMonth": "month",
             "creditFromCurrentPlan": "Credit from Current Plan",
@@ -133,32 +114,11 @@
             "yearlyPlanWithCoupon": "Yearly plan (with coupon)"
         }
     },
-    "labels": {
-        "currentStage": "Current Stage",
-        "selectStage": "Select stage",
-        "domain": "Domain",
-        "reminderDays": "Remind every",
-        "days": "days",
-        "waitingInfo": "Enter required information from user...",
-        "email": "Email",
-        "password": "Password",
-        "username": "Username"
-    },
-    "dialogs": {
-        "deleteTitle": "Delete Website Progress",
-        "deleteDescription": "Are you sure you want to delete the progress for {domain}? This action cannot be undone.",
-        "addTitle": "Add New Website Progress",
-        "addDescription": "Create a new website progress tracking for a user",
-        "emailTitle": "Send Email Notification",
-        "emailDescription": "Do you want to send an email notification about this stage change?"
-    },
     "nav": {
         "home": "Home",
         "about": "About",
         "templates": "Templates",
         "contact": "Contact",
-        "services": "Services",
-        "projects": "Projects",
         "adminDashboard": "Admin Dashboard",
         "dashboard": "Dashboard",
         "myAccount": "Account",
@@ -170,37 +130,19 @@
         "register": "Register",
         "email": "Email",
         "password": "Password",
-        "confirmPassword": "Confirm Password",
         "processing": "Processing...",
         "forgotPassword": "Forgot Password?",
         "alreadyHaveAccount": "Already have an account?",
         "dontHaveAccount": "Don't have an account?",
         "loginLink": "Login",
         "registerLink": "Register",
-        "passwordValidation": "Password must be at least 8 characters",
-        "confirmPasswordValidation": "Passwords must match",
-        "emailValidation": "Please enter a valid email address",
         "loginSuccessful": "Login successful",
         "registrationSuccessful": "Registration successful",
         "welcome": "Welcome",
         "loginFailed": "Login failed. Please check your email and password."
     },
     "contact": {
-        "title": "Contact Us",
-        "subtitle": "Get in touch with us - we'd love to hear from you!",
-        "contactInformation": "Contact Information",
-        "callUs": "Call us",
-        "emailUs": "Email us",
-        "ourLocation": "Our location",
-        "location": "Greece",
-        "socialMedia": "Social Media",
-        "sendMessage": "Send us a message",
         "form": {
-            "name": "Name",
-            "email": "Email",
-            "subject": "Subject",
-            "message": "Message",
-            "submit": "Send Message",
             "sending": "Sending...",
             "success": "Your message has been sent successfully!",
             "error": "Failed to send message. Please try again later."
@@ -211,22 +153,9 @@
         "message": "Did you forget to add the page to the router?"
     },
     "templates": {
-        "title": "Templates",
-        "subtitle": "Explore our pre-built templates",
-        "searchPlaceholder": "Search templates...",
-        "allCategories": "All Categories",
-        "categories": {
-            "hospitality": "Hospitality & Tourism",
-            "food": "Food & Entertainment",
-            "health": "Health & Wellness",
-            "services": "Professional Services",
-            "arts": "Creativity & Arts",
-            "education": "Education"
-        },
         "backToTemplates": "Back to Templates",
         "features": "Features",
         "description": "Description",
-        "livePreview": "Live Preview",
         "items": {
             "corporatePro": {
                 "name": "Horizon Studios",
@@ -616,130 +545,65 @@
     },
     "projects": {
         "backToHome": "Back to Home",
-        "techStack": {
-            "title": "Technology Stack"
-        },
         "challenge": "Challenge",
-        "keyFeatures": "Key Features",
         "solution": "Solution"
     },
     "home": {
-        "title": "Do you need website?",
         "hero": {
-            "title": "Do you need website?",
             "subtitle": "We create websites with all the features your business needs.",
             "cta": "Get Started Today"
         },
         "addons": {
-            "title": "Add-ons",
             "bookingAddon": {
-                "title": "Appointment Booking",
-                "description": "Let your customers schedule appointments or sessions online.",
                 "tags": [
-                    "Online Payments",
-                    "Calendar",
-                    "Different providers"
-                ],
-                "alt": "Appointment Booking"
+                    "Calendar"
+                ]
             },
             "lmsAddon": {
-                "title": "LMS",
-                "description": "Turn your website into a learning platform. Upload videos, create lessons, and let users access your content.",
                 "tags": [
-                    "Video Lessons",
                     "Member Access",
-                    "Weekly Lessons",
                     "Audio Lessons"
-                ],
-                "alt": "LMS"
+                ]
             },
             "multistepFormAddon": {
-                "title": "Smart Forms",
-                "description": "Collect any kind of information through beautiful, multistep forms — from client onboarding to service requests.",
                 "tags": [
-                    "Data Collection",
                     "Price Calculations"
-                ],
-                "alt": "Smart Forms"
+                ]
             },
             "qrCodeAddon": {
-                "title": "Smart QR & Discount System",
-                "description": "Generate unique QR codes and send automated discount codes by email. Track redemptions and re-engage your customers.",
                 "tags": [
-                    "Email Code",
                     "Resturant Discount"
-                ],
-                "alt": "Smart QR & Discount System"
+                ]
             },
             "realEstateAddon": {
-                "title": "Real Estate Listings",
-                "description": "Display properties with images, location, and contact info. Perfect for realtors and property managers.",
                 "tags": [
-                    "Advance Search Form",
-                    "Images",
-                    "Property Interest Form"
-                ],
-                "alt": "Real Estate Listings"
+                    "Images"
+                ]
             },
             "transportBookingAddon": {
-                "title": "Transport Request Form",
-                "description": "Let users enter pickup and drop-off locations, choose a vehicle, and submit a transport request — ideal for taxi, delivery, or shuttle services.",
                 "tags": [
-                    "Route Planning",
                     "Car Selection",
-                    "Email Trip Requests",
                     "Multilanguage"
-                ],
-                "alt": "Transport Request Form"
+                ]
             },
             "donationaddon": {
-                "title": "Donation System",
-                "description": "Create a donation platform to raise funds for your cause. Includes secure payments and goal tracking.",
                 "tags": [
-                    "Secure Payments",
-                    "Goal Tracking",
-                    "Donor Management"
-                ],
-                "alt": "Donation System"
+                    "Goal Tracking"
+                ]
             },
             "onlinepayments": {
-                "title": "Online Payments",
-                "description": "Integrate secure online payments into your website. Supports credit cards, PayPal, and other payment methods.",
                 "tags": [
-                    "Credit Cards",
-                    "Secure Payments",
-                    "Stripe Integration"
-                ],
-                "alt": "Online Payments"
+                    "Secure Payments"
+                ]
             },
             "newsletterLimitsAddon": {
-                "title": "Increase newsletter limits",
-                "description": "Optional add-ons raise how many emails you can send per month: up to 15,000 or up to 100,000 — pick the tier that fits your list and sending frequency.",
                 "tags": [
-                    "15,000 emails / month",
                     "100,000 emails / month",
-                    "Campaigns & broadcasts",
                     "Subscriber management"
-                ],
-                "alt": "Newsletter sending limits"
-            },
-            "cta": {
-                "title": "Find the best integrations",
-                "description": "Add any of these to your subscription and unlock new ways to grow faster, attract more customers, and boost revenue!",
-                "button": "Book a free call →"
+                ]
             }
         },
-        "description": "Transform your ideas into reality with our expert development team",
-        "featuresTitle": "Our Features",
-        "features": {
-            "design": "Modern Design",
-            "development": "Custom Development",
-            "support": "24/7 Support"
-        },
         "projects": {
-            "title": "Our Projects",
-            "subtitle": "Check out some of our recent work",
-            "view": "View Project",
             "items": {
                 "techStartInnovationHub": {
                     "title": "TechStart Innovation Hub",
@@ -837,71 +701,6 @@
                 }
             }
         },
-        "testimonials": {
-            "title": "What Our Clients Say"
-        },
-        "reviews": {
-            "title": "Our Reviews on Social Platforms",
-            "subtitle": "See what our customers are saying about us on Facebook and Trustpilot"
-        },
-        "templates": {
-            "title": "Templates",
-            "subtitle": "Explore our pre-built templates",
-            "searchPlaceholder": "Search templates...",
-            "allCategories": "All Categories",
-            "backToTemplates": "Back to Templates",
-            "categories": {
-                "blog": "Blog",
-                "corporate": "Corporate",
-                "landing": "Landing Page",
-                "portfolio": "Portfolio"
-            },
-            "description": "Description",
-            "features": "Features",
-            "items": {
-                "blogStandard": {
-                    "description": "Professional blog template with modern design",
-                    "features": {
-                        "articleLayout": "Article Layout",
-                        "categories": "Categories",
-                        "comments": "Comments System"
-                    },
-                    "fullDescription": "A comprehensive blog template with all essential features",
-                    "name": "Blog Standard"
-                },
-                "corporatePro": {
-                    "description": "Professional corporate website template",
-                    "features": {
-                        "customForms": "Custom Forms",
-                        "modernUI": "Modern UI",
-                        "responsiveDesign": "Responsive Design"
-                    },
-                    "fullDescription": "Complete corporate solution with modern design",
-                    "name": "Corporate Pro"
-                },
-                "landingPro": {
-                    "description": "High-converting landing page template",
-                    "features": {
-                        "ctaSections": "CTA Sections",
-                        "featureShowcase": "Feature Showcase",
-                        "testimonials": "Testimonials"
-                    },
-                    "fullDescription": "Optimized landing page for maximum conversions",
-                    "name": "Landing Pro"
-                },
-                "portfolioMaster": {
-                    "description": "Stunning portfolio template for creatives",
-                    "features": {
-                        "contactForm": "Contact Form",
-                        "galleryLayout": "Gallery Layout",
-                        "projectShowcase": "Project Showcase"
-                    },
-                    "fullDescription": "Perfect portfolio template to showcase your work",
-                    "name": "Portfolio Master"
-                }
-            },
-            "livePreview": "Live Preview"
-        },
         "plans": {
             "title": "Choose Your Plan",
             "subtitle": "Find the perfect plan for your needs",
@@ -911,7 +710,6 @@
             "period": {
                 "month": "/month",
                 "year": "/year",
-                "perMonth": "per month",
                 "billedYearly": "billed once yearly"
             },
             "setupFee": "setup fee",
@@ -956,7 +754,6 @@
                 "20Emails1GB": "20 emails (1GB)",
                 "5ChangesMonth48h": "5 changes/month (48h)",
                 "advancedAnalytics": "Advanced Analytics",
-                "advancedSEO": "Advanced SEO",
                 "newsletter10000EmailsMonth": "Newsletter (10,000 emails/month)",
                 "allAddOnsIncluded": "All add-ons included for free"
             },
@@ -965,29 +762,7 @@
                 "now": "Subscribe Now"
             },
             "tooltips": {
-                "coreFeatures": "Essential website building tools including drag-and-drop editor, responsive templates, basic SEO tools, SSL certificates, and real-time analytics dashboard. Perfect for getting your business online quickly and professionally.",
-                "basicSupport": "Email support with guaranteed response within 24-48 hours. Our support team helps with technical issues, account questions, and basic troubleshooting. Includes access to our knowledge base and video tutorials.",
-                "advancedFeatures": "Premium tools including advanced SEO optimization, custom domain integration, enhanced security features, A/B testing capabilities, advanced analytics and custom CSS/HTML editing options.",
-                "prioritySupport": "Fast-track support with 4-8 hour response times via email and live chat during business hours. Priority queue placement for all technical issues, plus access to phone support and screen sharing sessions.",
-                "allFeatures": "Complete platform access including white-label solutions, API access for custom integrations, advanced automation tools, multi-language support, enterprise-grade security, and unlimited third-party integrations.",
-                "dedicatedSupport": "Personal account manager available 24/7 with direct phone line and email. Includes priority issue resolution, monthly strategy consultations, custom training sessions, and dedicated onboarding specialist.",
-                "oneProject": "Create and manage one complete website project with full access to all plan features. Includes domain hosting, SSL certificate, email accounts, and comprehensive analytics for your single business website.",
-                "fiveProjects": "Manage up to 5 different website projects simultaneously. Each project gets individual settings, analytics, domains, and customization options. Perfect for agencies or businesses with multiple brands.",
-                "unlimitedProjects": "Create and manage unlimited website projects with no restrictions. Ideal for agencies, developers, or large enterprises. Each project includes full features, individual analytics, and separate management dashboards.",
-                "storage1gb": "1GB of secure cloud storage for your website files, images, documents, and media. Includes automatic backups, CDN delivery, and secure file management. Sufficient for most small business websites.",
-                "storage10gb": "10GB of premium cloud storage with enhanced performance and security. Perfect for websites with rich media content, multiple product images, or extensive document libraries. Includes advanced backup options.",
-                "unlimitedStorage": "Unlimited secure cloud storage space for all your projects. Store unlimited images, videos, documents, and files. Includes enterprise-grade security, automatic backups, and global CDN for fast loading times.",
-                "customDomain": "Connect your own custom domain name (e.g., www.yourbusiness.com) to your website. Includes domain management tools, DNS configuration, and SSL certificate setup for professional branding.",
-                "emailAccount": "Professional email accounts using your domain name (e.g., info@yourbusiness.com). Includes spam filtering, email forwarding, autoresponders, and webmail access from any device.",
                 "analytics": "Basic website traffic tracking and visitor insights to understand your audience and website performance",
-                "seo": "Advanced search engine optimization tools including keyword research, meta tag management, sitemap generation, search console integration, and performance monitoring to improve your search rankings.",
-                "ecommerce": "Complete online store functionality with product catalog management, shopping cart, payment processing, inventory tracking, order management, and customer accounts. Supports multiple payment methods.",
-                "ssl": "Secure Socket Layer certificate for encrypted data transmission. Ensures your website displays the secure 'https' and padlock icon, building customer trust and improving search engine rankings.",
-                "responsive": "Your website automatically adapts to all screen sizes including smartphones, tablets, and desktops. Ensures optimal viewing experience across all devices with touch-friendly navigation.",
-                "backup": "Automatic daily backups of your entire website stored securely in the cloud. One-click restore functionality allows you to recover your site quickly in case of any issues or unwanted changes.",
-                "template": "Access to professional website templates and design tools. Customize layouts, colors, fonts, and content to match your brand identity with our intuitive design editor.",
-                "hosting": "Reliable web hosting service with 99.9% uptime guarantee. Includes fast loading speeds, global CDN, automatic scaling, and secure infrastructure to keep your website running smoothly.",
-                "support": "Professional customer support to help you with any questions or technical issues. Our team is here to ensure your website runs smoothly and meets your business needs.",
                 "default": "Get detailed information about this feature by contacting our support team. We're happy to explain how this feature can benefit your website and business goals.",
                 "3Pages": "Up to 3 professional web pages for your website, perfect for showcasing your business basics like home, about, and contact information",
                 "1Email1GB": "Professional email address using your domain name (e.g., info@yourbusiness.com) with 1GB storage capacity",
@@ -1026,10 +801,7 @@
                 "title": "Uptime Guarantee",
                 "description": "Your website will stay online 99% of the time — or we cover your next month."
             }
-        },
-        "notificationPreferenceUpdated": "Notification preference updated",
-        "tipsSubtitle": "Helpful tips for your website",
-        "tipsTitle": "Tips & Tricks"
+        }
     },
     "dashboard": {
         "noInvoicesForMonth": "No invoices found for this month",
@@ -1038,11 +810,8 @@
         "loading": "Loading...",
         "currentPlanBadge": "Current Plan",
         "planSuffix": "{{tier}} Plan",
-        "websiteNotLaunched": "Your website has not been completed yet",
-        "changesAvailableAfterLaunch": "While your website is not yet complete, you can make unlimited changes.",
         "confirmPurchase": "Confirm Purchase",
         "reviewPurchaseDetails": "Review the details of your purchase below",
-        "title": "Dashboard",
         "completed": "Completed",
         "media": "Media",
         "tags": "Tags",
@@ -1067,16 +836,10 @@
         "completeOnboardingMessage": "Complete the onboarding form to create your website",
         "createNewWebsite": "Create New Website",
         "tips": "Latest Tips",
-        "createNewWebsite": "Create New Website",
         "websiteViewDetails": "Website",
-        "userInfo": "User Information",
         "websitesDescription": "Manage your website projects",
         "profile": "Profile",
-        "language": "Language",
         "loggedOut": "Logged out successfully",
-        "requestAnalyticsAccess": "Request Analytics Access",
-        "analyticsRequestSent": "Analytics access request sent successfully",
-        "myProfile": "My Profile",
         "attachFiles": "Attach Files (Optional)",
         "uploadFiles": "Upload files",
         "mediaDescription": "Upload and manage files that you want to share with us for your website. You can delete files anytime for ownership control.",
@@ -1092,7 +855,6 @@
         "noCompletedWebsites": "No completed websites in this view.",
         "noDraftWebsites": "No draft websites in this view.",
         "websitesSearchPlaceholder": "Search by project name…",
-        "websitesSortLabel": "Sort",
         "websitesSortLastUpdated": "Last updated",
         "websitesSortFirstCreated": "First created",
         "websitesSortLastCreated": "Last created",
@@ -1101,95 +863,32 @@
         "noWebsitesMessage": "Fill out the onboarding form so we can start working on your website.",
         "completeOnboarding": "Complete Onboarding Form",
         "noSubscriptionsMessage": "You need to subscribe to a plan before we can create your website.",
-        "profileInformation": "Profile Information",
         "newSubscription": "New Subscription Ready",
-        "phoneNumber": "Phone Number",
         "notProvided": "Not provided",
-        "update": "Update",
         "cancel": "Cancel",
-        "enterPhoneNumber": "Enter your phone number",
-        "updateGoogleAnalyticsEmail": "Update Google Analytics email",
-        "updateEmail": "Update Email",
-        "openGoogleAnalytics": "Open Google Analytics",
-        "requestGoogleAnalyticsAccess": "Request Google Analytics Access",
-        "phoneNumberUpdated": "Phone number updated successfully",
-        "errorUpdatingPhone": "Error updating phone number",
-        "analyticsEmailUpdated": "Analytics email updated successfully",
-        "errorUpdatingEmail": "Error updating email",
-        "analyticsAccessRequest": "Analytics access request sent",
-        "errorSendingRequest": "Error sending request",
-        "validPhoneNumber": "Please enter a valid phone number",
-        "validEmailAddress": "Please enter a valid email address",
         "updatePaymentMethod": "Update Payment Method",
-        "noSubscriptionsFound": "No subscriptions found.",
         "viewPlans": "View Plans",
-        "package": "Package",
-        "status": "Active",
-        "price": "Price",
-        "startDate": "Start Date",
-        "nextBillingAccessExpiry": "Next Billing / Access Expiry",
-        "addOns": "Add ons",
-        "upgradeActions": "Upgrade / Actions",
-        "cancellation": "Cancellation",
-        "showAvailableAddOns": "Show Available Add-ons",
         "upgradeToYearly": "Upgrade to Yearly",
-        "yearlyPlan": "Yearly Plan",
         "resume": "Resubscribe",
-        "notApplicable": "Not Applicable",
         "documentType": "Document Type",
         "invoice": "Invoice",
         "receipt": "Receipt",
         "vatNumber": "VAT Number",
         "notRequiredForReceipts": "Not required for receipts",
-        "enterVatNumber": "Enter VAT number",
-        "save": "Save",
-        "vatNumberUpdated": "VAT number updated successfully",
-        "errorUpdatingVat": "Error updating VAT number",
         "billingUpdated": "Billing information updated successfully",
         "billingUpdateFailed": "Failed to update billing information",
         "wrappInvoiceCreated": "Invoice created with Wrapp successfully",
         "wrappInvoiceCreateFailed": "Failed to create invoice with Wrapp",
-        "transactions": "Transactions",
-        "amount": "Amount",
-        "date": "Date",
-        "pdf": "PDF",
-        "noDocumentReady": "No document ready",
-        "pdfNotAvailable": "PDF not available",
-        "pdfNotAvailableDesc": "Your subscription PDF is not yet available.",
-        "downloadPdf": "Download PDF",
-        "pdfDownloadDesc": "Your subscription PDF is opening in a new window.",
         "subscriptionCancelled": "Subscription cancelled",
         "subscriptionCancelledDesc": "Your subscription has been cancelled successfully.",
         "error": "Error",
         "failedToCancelSubscription": "Failed to cancel subscription. Please try again.",
-        "failedToUpgrade": "Failed to initiate upgrade. Please try again.",
-        "failedToBillingPortal": "Failed to access billing portal. Please try again.",
         "areSureCancel": "Are you sure you want to cancel?",
         "actionCannotBeUndone": "This action cannot be undone. Your subscription will be cancelled immediately, and you will lose access to premium features at the end of your current billing period.",
         "noKeepSubscription": "No, keep my subscription",
         "yesCancelSubscription": "Yes, cancel subscription",
-        "resumeSubscription": "Resubscribe",
-        "aboutToRenew": "You are about to renew your",
-        "subscriptionRegainAccess": "subscription. Once completed, you will regain access to all the features of your plan.",
-        "redirectedToCheckout": "You will be redirected to the checkout page to complete the payment process.",
-        "proceedToCheckout": "Proceed to Checkout",
-        "availableAddOns": "Available Add-ons",
-        "selectAdditionalFeatures": "Select additional features to enhance your",
-        "subscriptionId": "Subscription ID",
-        "alreadyAttached": "(Already attached to this subscription)",
-        "totalAdditionalCost": "Total Additional Cost:",
-        "purchaseAddOns": "Purchase Add-ons",
-        "proratedBillingTitle": "Prorated Billing",
-        "proratedBillingDescription": "You'll be charged a prorated amount today based on the remaining days until your next billing date. Starting next billing cycle, the full add-on price will be included with your regular subscription payment.",
         "processing": "Processing...",
         "success": "Success",
-        "addOnsPurchased": "Add-ons purchased successfully!",
-        "failedToPurchaseAddOns": "Failed to purchase add-ons. Please try again.",
-        "leaveReviewsGetFreeMonth": "🎁 Leave 2 reviews and get the next month for free",
-        "tier": "Tier",
-        "billingPeriod": "Billing Period",
-        "purchasedAt": "Purchased At",
-        "currency": "Currency",
         "progress": "Progress",
         "analytics": "Analytics",
         "newsletter": "Newsletter",
@@ -1241,12 +940,8 @@
         "connectNewAccountDescription": "Please disconnect the existing account on the other site first and reconnect here.",
         "emailBuilder": "Email Builder",
         "emailBuilderDescription": "Design and create beautiful email templates with our visual editor",
-        "groups": "Groups",
-        "groupsDescription": "Organize subscribers into groups for targeted campaigns",
         "contacts": "Contacts",
         "contactsDescription": "Manage your subscriber list and contact information",
-        "form": "Newsletter Form",
-        "formDescription": "Send emails via SES and manage newsletter subscriptions",
         "emailTemplates": "Email Templates",
         "emailTemplatesDescription": "View and manage your saved email templates",
         "createEmailTemplatesDesc": "Create and design beautiful email templates for your newsletters.",
@@ -1269,7 +964,6 @@
         },
         "renewAutomatically": "Renew automatically",
         "noTransactions": "No transactions yet",
-        "analyticsComingSoon": "Analytics dashboard coming soon",
         "newsletterComingSoon": "Newsletter management coming soon",
         "backToWebsites": "Back to Websites",
         "stage": "Stage",
@@ -1283,17 +977,14 @@
         "viewDownloadInvoices": "View and download your invoices / receipts.",
         "subscription": "Subscription",
         "subscriptionPlan": "Subscription Plan",
-        "change": "CHANGE",
         "cancelSubscription": "CANCEL SUBSCRIPTION",
         "websiteProject": "Website project",
-        "website": "Website",
         "subscribedSince": "Subscribed Since",
         "payment": "Payment",
         "view": "VIEW",
         "nextPayment": "Next Payment",
         "paymentDue": "Payment Due",
         "promotionalOffer": "Your next payment is €0.00 due to a promotional offer applied to your subscription.",
-        "paymentInfoComingSoon": "Payment management coming soon",
         "download": "Download",
         "duplicate": "Duplicate",
         "templateDuplicated": "Template duplicated successfully",
@@ -1320,7 +1011,6 @@
         "changeHistory": "Change History",
         "preLaunchChanges": "Pre-Launch Changes",
         "unlimitedChangesBeforeLaunch": "You have unlimited change requests available before your website is launched. Limits will apply after the Website Launch stage is completed.",
-        "by": "by",
         "changeRequestSubmitted": "Change Request Submitted",
         "changeRequestSubmittedDescription": "Your change request has been submitted successfully.",
         "paymentMethod": "Payment Method",
@@ -1329,7 +1019,6 @@
         "opening": "Opening...",
         "stripeSecure": "You'll be redirected to Stripe's secure portal",
         "noActiveSubscription": "No active subscription found",
-        "subscribe": "Subscribe Now",
         "billingHistory": "Billing History",
         "viewInvoicesMessage": "View your past invoices / receipts and billing history in the Invoices / receipts section.",
         "discover": "Add-ons",
@@ -1409,23 +1098,8 @@
         },
         "invoicesPerWebsite": {
             "title": "Website Invoices / Receipts",
-            "number": "Invoice Number",
-            "issueDate": "Issue Date",
-            "amount": "Amount",
             "download": "Download",
             "descriptionSeparator": "•"
-        },
-        "tabs": {
-            "overview": "Overview",
-            "tips": "Tips",
-            "websiteChanges": "Website Changes",
-            "websiteProgress": "Website Progress"
-        },
-        "websiteChanges": {
-            "contactAdmin": "Contact Admin",
-            "noChangesAvailable": "No changes available",
-            "remainingChanges": "Remaining changes",
-            "title": "Website Changes"
         },
         "billingInformation": "Billing Information",
         "city": "City",
@@ -1642,8 +1316,7 @@
                         "sender": "Sender"
                     },
                     "plainText": "Plain text only",
-                    "default": "Default",
-                    "scheduleLabel": "Schedule Send (Optional)"
+                    "default": "Default"
                 },
                 "navigation": {
                     "back": "Back",
@@ -1700,13 +1373,11 @@
             }
         },
         "campaignsDescription": "Create and manage email campaigns for your subscribers",
-        "account": "Account",
         "accountSettings": "Account Settings",
         "basicInfo": "Basic Information",
         "name": "Name",
         "email": "Email",
         "phone": "Phone",
-        "notProvided": "Not provided",
         "languagePreference": "Language Preference",
         "languageDescription": "Choose your preferred language for dashboard and email notifications",
         "updating": "Updating...",
@@ -1757,7 +1428,7 @@
         "lastName": "Last Name",
         "optional": "(optional)",
         "pending": "Pending",
-        "active": "Subscribed",
+        "active": "Active",
         "confirmed": "Confirmed",
         "unsubscribed": "Unsubscribed",
         "noTagsAvailable": "No tags available. Create tags first.",
@@ -1818,36 +1489,6 @@
         "importCompleteDescription": "Import has been completed successfully",
         "failedToImportContacts": "Failed to import contacts",
         "failedToImportContactsDescription": "Failed to import contacts",
-        "noContactsToImport": "No contacts to import",
-        "loadingContacts": "Loading contacts...",
-        "importComplete": "Import complete",
-        "importCompleteDescription": "Import has been completed successfully",
-        "failedToImportContacts": "Failed to import contacts",
-        "failedToImportContactsDescription": "Failed to import contacts",
-        "noContactsToImport": "No contacts to import",
-        "loadingContacts": "Loading contacts...",
-        "importComplete": "Import complete",
-        "importCompleteDescription": "Import has been completed successfully",
-        "failedToImportContacts": "Failed to import contacts",
-        "failedToImportContactsDescription": "Failed to import contacts",
-        "noContactsToImport": "No contacts to import",
-        "loadingContacts": "Loading contacts...",
-        "importComplete": "Import complete",
-        "importCompleteDescription": "Import has been completed successfully",
-        "failedToImportContacts": "Failed to import contacts",
-        "failedToImportContactsDescription": "Failed to import contacts",
-        "noContactsToImport": "No contacts to import",
-        "loadingContacts": "Loading contacts...",
-        "importComplete": "Import complete",
-        "importCompleteDescription": "Import has been completed successfully",
-        "failedToImportContacts": "Failed to import contacts",
-        "failedToImportContactsDescription": "Failed to import contacts",
-        "noContactsToImport": "No contacts to import",
-        "loadingContacts": "Loading contacts...",
-        "importComplete": "Import complete",
-        "importCompleteDescription": "Import has been completed successfully",
-        "failedToImportContacts": "Failed to import contacts",
-        "failedToImportContactsDescription": "Failed to import contacts",
         "tags": "Tags",
         "subscribed": "Subscribed",
         "searchContacts": "Search by name or email...",
@@ -1893,7 +1534,6 @@
         "subscribersInGroup": "Subscribers in {groupName} Group",
         "subscriberCountInGroup": "{count} subscriber(s) in this group",
         "noSubscribersInGroup": "No subscribers in this group yet",
-        "name": "Name",
         "email": "Email",
         "status": "Status",
         "subscribedDate": "Subscribed Date",
@@ -1925,8 +1565,6 @@
         "selectGroup": "Select a group...",
         "enterEmail": "Enter email address",
         "enterName": "Enter subscriber name",
-        "active": "Active",
-        "unsubscribed": "Unsubscribed",
         "addSubscriberButton": "Add Subscriber",
         "updateSubscriber": "Update Subscriber",
         "subscriberAdded": "Subscriber added",
@@ -1979,8 +1617,6 @@
     "upgradeConfirmation": {
         "title": "Upgrade to Yearly Billing",
         "backToDashboard": "Back to Dashboard",
-        "invalidUpgradeRequest": "Invalid Upgrade Request",
-        "returnToDashboard": "Return to Dashboard",
         "whatHappening": "What's Happening",
         "upgradeDescription1": "Your",
         "upgradeDescription2": "subscription will be upgraded to yearly billing immediately. The remaining value from your current monthly plan will be deducted from the total yearly amount, so you'll pay less upfront. No refund will be issued.",
@@ -2010,75 +1646,12 @@
         "annualTotal": "Annual Total:",
         "upgradeToYearlyNow": "Upgrade to Yearly Now",
         "upgradeAgreement": "By upgrading now, you agree to immediate yearly billing. The value of any unused days from your current monthly plan will be deducted from the yearly total, which will be charged immediately.",
-        "upgradeSuccessful": "Upgrade Successful!",
-        "upgradeSuccessfulDesc": "Your subscription has been upgraded to yearly billing. The value of any unused days from your previous monthly plan has been deducted from the total amount.",
-        "upgradeFailed": "Upgrade Failed",
         "monthly": "Monthly",
         "yearly": "Yearly"
     },
-    "footer": {
-        "aboutUs": "About Us",
-        "aboutUsDescription": "We provide cutting-edge subscription management solutions for modern businesses.",
-        "quickLinks": "Quick Links",
-        "contactUs": "Contact Us",
-        "legal": "Legal",
-        "legalInfo": "Legal Information",
-        "termsOfService": "Terms of Service",
-        "privacyPolicy": "Privacy Policy",
-        "cookiePolicy": "Cookie Policy",
-        "billingPolicy": "Billing & Subscription",
-        "aup": "Acceptable Use Policy",
-        "allRightsReserved": "All rights reserved"
-    },
-    "about": {
-        "hero": {
-            "subtitle": "OUR GOAL FOR HAYC",
-            "mainTitle": "To deliver professional websites fast, continuously evolving with new features, and giving small and medium businesses the tools they need to grow",
-            "description1": "with 0% risk",
-            "description2": "",
-            "description3": ""
-        },
-        "howItWorks": {
-            "title": "How does hayc work?",
-            "description": "With hayc the process is simple: we start with a short call to understand your needs, you sign up and provide your content through an easy form, and we take care of everything.",
-            "guarantee": "In just 15 days your website is online,",
-            "continuedDescription": "with ongoing support and new features for as long as your subscription is active."
-        },
-        "differences": {
-            "title": "What makes us different from others?",
-            "customCoded": {
-                "title": "Custom Coded Websites",
-                "description": "We are a team with professional programmers who know how to build websites from scratch. ",
-                "highlight": "We are not builders ",
-                "continuedDescription": "like for example Wix, Squarespace and others. What we do, is we customize your own website, which can be connected to your work organization and your goals."
-            },
-            "zeroRisk": {
-                "title": "0% risk for your money",
-                "description": "We always try to do everything as perfectly as possible and continue working on it year after year. To do this, if you are not happy with any of your money, you can get it within the first 30 days. It is a risk-free business for you!"
-            },
-            "fullPayment": {
-                "title": "We want you to pay full price",
-                "description": "We always want you to pay 100% of your price. We create strategic combined tools which will cost you thousands of euros to find and purchase for your business and we offer them at a very low cost."
-            }
-        },
-        "cta": {
-            "title": "Interested in something else?",
-            "subtitle": "Get in touch now!",
-            "button": "Contact Us"
-        }
-    },
     "websiteProgress": {
-        "title": "Website Development Progress",
-        "noProgress": "No website development in progress",
-        "progress": "Development Progress",
-        "progressCompleted": "completed",
-        "changeRequest": "Request for Change on the Website",
-        "changes": "Changes",
         "uploadMedia": "Upload Media",
         "noWebsites": "No websites found.",
-        "loading": "Loading...",
-        "nearlyFull": "Nearly Full",
-        "unlimited": "Unlimited",
         "actionRequired": "Action Required",
         "websiteDevelopment": "Website Development Progress",
         "viewOnboardingForm": "View Onboarding Form",
@@ -2096,92 +1669,6 @@
             "description": "View the information submitted in your onboarding form",
             "noData": "No onboarding form data available for this website",
             "close": "Close"
-        },
-        "stages": {
-            "planning": {
-                "title": "Planning & Design",
-                "description": "Requirements Gathering, Structure and Functionality Design"
-            },
-            "development": "Development",
-            "testing": "Testing",
-            "deployment": "Deployment",
-            "completed": "Completed",
-            "welcome": {
-                "title": "Welcome & Project Setup",
-                "description": "Welcome to hayc! We start right away by setting up your project and preparing everything for a smooth launch"
-            },
-            "layout": {
-                "title": "Layout Selection",
-                "description": "We choose the best layout for your website based on your preferences or the examples you’ve shared with us"
-            },
-            "content": {
-                "title": "Content Collection & Organization",
-                "description": "We organize the information you provide (via our form or email) and distribute your content within the selected layout"
-            },
-            "preview": {
-                "title": "First Demo Preview",
-                "description": "Your website draft is ready! You receive a private link to view it and give us your feedback"
-            },
-            "feedback": {
-                "title": "Feedback & Improvements",
-                "description": "We make any quick changes or adjustments based on your feedback to ensure everything feels just right"
-            },
-            "launch": {
-                "title": "Website Launch",
-                "description": "Your website goes live and is ready for your business!"
-            },
-            "uiux": {
-                "title": "UI/UX Development",
-                "description": "User interface and experience design"
-            },
-            "backend": {
-                "title": "Backend Development",
-                "description": "Server functionality and database implementation"
-            },
-            "delivery": {
-                "title": "Final Version & Delivery",
-                "description": "Final checks and website delivery"
-            },
-            "contentCreation": {
-                "title": "Content Creation",
-                "description": "Website content writing and organization"
-            },
-            "seo": {
-                "title": "SEO Optimization",
-                "description": "Search engine optimization and performance improvement"
-            },
-            "security": {
-                "title": "Security Implementation",
-                "description": "Security measures and protection installation"
-            },
-            "analytics": {
-                "title": "Analytics Installation",
-                "description": "Analytics and tracking implementation"
-            },
-            "maintenance": {
-                "title": "Maintenance Setup",
-                "description": "Ongoing maintenance and support setup"
-            }
-        },
-        "changeRequestForm": {
-            "title": "Request Website Change",
-            "description": "Submit a change request for",
-            "subject": "Subject",
-            "subjectPlaceholder": "Brief description of the change",
-            "message": "Message",
-            "messagePlaceholder": "Brief description of the change",
-            "submit": "Submit Request",
-            "confirm": "Confirm",
-            "submiting": "Submitting...",
-            "cancel": "Cancel",
-            "confirmTitle": "Confirm Website Change Request",
-            "confirmDescription": "Are you sure you want to submit a website change request for",
-            "successful": "Request Submitted Successfully!",
-            "successfulDesc1": "Your website change request for",
-            "successfulDesc2": "has been successfully submitted.",
-            "successfulDesc3": "Our team will review your request and get back to you soon. You will receive an email confirmation with the details of your request.",
-            "thankYouMessage": "Thank you for choosing our services!",
-            "ok": "OK"
         }
     },
     "tips": {
@@ -2189,33 +1676,17 @@
         "description": "Expert tech tips below to read helpful insights and recommendations.",
         "noTips": "No tips available yet",
         "noTipsDescription": "Check back later for helpful tips and insights.",
-        "readMore": "Read More",
         "by": "by",
         "emailNotifications": "Email notifications for new tips",
         "loadMore": "Load More",
         "showLess": "Show Less",
-        "moreItems": "{count} more",
         "success": "Success",
         "notificationPreferenceUpdated": "Notification preference updated successfully"
     },
-    "tabs": {
-        "overview": "Overview",
-        "websiteProgress": "Website Progress",
-        "websiteChanges": "Website Changes",
-        "tips": "Tips"
-    },
     "websiteChanges": {
         "title": "Website Changes",
-        "remainingChanges": "Remaining Changes",
-        "noChanges": "No changes recorded this month.",
-        "changesAllowed": "Changes allowed this month:",
-        "changeRequestRecorded": "Change request recorded successfully.",
-        "changesRemaining": "Changes Remaining",
         "changesUsed": "Changes Used",
-        "domain": "Domain",
-        "noChangesDescription": "No changes have been requested yet",
         "recentChanges": "Recent Changes",
-        "recordedBy": "Recorded by",
         "unlimited": "Unlimited",
         "limitReached": "Limit Reached",
         "nearlyFull": "Nearly Full",
@@ -2280,7 +1751,7 @@
     "preCheckout": {
         "planDetails": "Plan Details",
         "setupFee": "Setup Fee",
-        "oneTime": "one-time",
+        "oneTime": "One time",
         "total": "Total",
         "today": "today",
         "then": "Then",
@@ -2315,26 +1786,13 @@
         "postalCodePlaceholder": "Enter postal code",
         "password": "Password",
         "passwordPlaceholder": "Enter your password",
-        "planDetails": "Plan Details",
-        "addOns": "Add-ons:",
-        "setupFee": "Setup Fee",
-        "total": "Total",
         "processing": "Processing...",
         "completePurchase": "Complete Purchase",
-        "chooseAddOns": "Choose Your Add-ons",
-        "advancedAnalytics": "Advanced Analytics",
-        "advancedAnalyticsDesc": "Get detailed insights and analytics for your business",
-        "prioritySupport": "Priority Support",
-        "prioritySupportDesc": "24/7 priority support with dedicated account manager",
-        "extraStorage": "Extra Storage",
-        "extraStorageDesc": "Additional 500GB of secure storage",
-        "loading": "Loading...",
         "youreGetting": "You're Getting:",
         "professionalWebsite": "Your professional website built for you",
         "professionalWebsiteDesc": "Custom design tailored to your business",
         "hostingDomain": "Hosting & domain setup",
         "hostingDomainDesc": "Everything configured and ready to go",
-        "oneTime": "One time",
         "ongoingUpdates": "Ongoing updates and monthly support",
         "ongoingUpdatesDesc": "We keep your site fresh and running smoothly",
         "clientDashboard": "Access to client dashboard",
@@ -2347,11 +1805,7 @@
         "privacyPolicyLink": "Privacy Policy"
     },
     "payment": {
-        "paymentError": "Payment Error",
-        "noSessionId": "No session ID found",
-        "sessionFetchError": "Failed to fetch session data",
-        "paymentNotCompleted": "Payment not completed",
-        "errorOccurred": "An error occurred"
+        "paymentError": "Payment Error"
     },
     "onboarding": {
         "logoSuccess": {
@@ -2373,16 +1827,16 @@
         "websiteLanguage": "Website Language",
         "english": "English",
         "greek": "Greek",
-        "welcomeTitle": "Welcome to HAYC!",
+        "welcomeTitle": "Welcome!",
         "welcomeSubtitle": "Your payment has been processed successfully and your subscription is now active.",
-        "welcomeMessage": "IMPORTANT",
-        "welcomeDescriptionStrong": "This is your most important next step! ",
-        "welcomeDescription": "We cannot begin working on your website until you complete the project requirements form",
+        "welcomeMessage": "One last important step!",
+        "welcomeDescriptionStrong": "Complete the form below before you can use your Dashboard.",
+        "welcomeDescription": " We know some questions look too detailed, but you can skip what you don't know right now and add it later!",
         "continueToFormMessage": "The form will gather all the details we need about your business, preferences, and project requirements to create the perfect website for you.",
-        "continueToForm": "Continue to Project Requirements Form",
-        "formDescription": "This will only take a few minutes and is required to start your project.",
+        "continueToForm": "Continue to Form",
+        "formDescription": "It only takes 5 minutes to complete",
         "required": "REQUIRED",
-        "noticeDescription": "Complete this form to start your project. We cannot begin without these details!",
+        "noticeDescription": "You need to complete this form before you can use your dashboard.",
         "formTitle": "Project Requirements Form",
         "step": "Step",
         "stepOf": "of",
@@ -2394,104 +1848,13 @@
         "submitForm": "Submit Requirements",
         "goDashboard": "Go to Dashboard",
         "tryAgain": "Try Again",
-        "formSubtitle": "Help us understand your project needs",
-        "businessInformation": "Business Information",
-        "fullName": "Full Name",
-        "fullNamePlaceholder": "Enter your full name",
-        "businessName": "Your site title",
-        "businessNamePlaceholder": "Enter your site title",
-        "email": "Email Address",
-        "emailPlaceholder": "Enter your email address",
-        "phone": "Phone Number",
-        "phonePlaceholder": "Enter your phone number",
-        "websiteDetails": "Website Details",
-        "websiteType": "Type of Website",
-        "websiteTypePlaceholder": "Select website type",
-        "websiteTypeOptions": {
-            "corporate": "Corporate/Business",
-            "portfolio": "Portfolio",
-            "blog": "Blog",
-            "restaurant": "Restaurant",
-            "landing": "Landing Page",
-            "educational": "Educational",
-            "other": "Other"
-        },
         "languageOptions": {
             "english": "English",
             "greek": "Greek (Ελληνικά)"
         },
-        "existingWebsite": "Do you have an existing website?",
-        "existingWebsiteUrl": "Current Website URL (if any)",
-        "existingWebsiteUrlPlaceholder": "https://yourwebsite.com",
-        "inspirationWebsites": "Inspiration/Reference Websites",
         "inspirationWebsitesPlaceholder": "URLs of a website you like",
-        "projectRequirements": "Project Requirements",
-        "specificRequirements": "Specific Requirements or Features",
-        "specificRequirementsPlaceholder": "Describe any specific features, functionality, or requirements you need",
-        "designPreferences": "Design Preferences",
-        "designPreferencesPlaceholder": "Describe your preferred style, colors, layout preferences, etc.",
-        "contentStatus": "Content Status",
-        "contentStatusPlaceholder": "Select content status",
-        "contentStatusOptions": {
-            "ready": "Content is ready",
-            "partial": "Content is partially ready",
-            "needHelp": "Need help with content creation"
-        },
-        "timeline": "Expected Timeline",
-        "timelinePlaceholder": "Select expected timeline",
-        "timelineOptions": {
-            "asap": "As soon as possible",
-            "1week": "Within 1 week",
-            "2weeks": "Within 2 weeks",
-            "1month": "Within 1 month",
-            "flexible": "Flexible"
-        },
-        "budget": "Budget Range (Optional)",
-        "budgetPlaceholder": "Enter your budget range",
-        "additionalInfo": "Additional Information",
-        "additionalInfoPlaceholder": "Any other information you'd like to share about your project",
-        "formSuccess": "Requirements Submitted Successfully!",
-        "formSuccessMessage": "Thank you for providing your project requirements. Our team will review your submission and get back to you within 24 hours to discuss the next steps.",
-        "formSuccessNote": "You will receive a confirmation email shortly with all the details you provided.",
-        "backToDashboard": "Back to Dashboard",
         "requiredField": "This field is required",
         "validEmail": "Please enter a valid email address",
-        "validPhone": "Please enter a valid phone number",
-        "validUrl": "Please enter a valid URL",
-        "yes": "Yes",
-        "no": "No",
-        "notSure": "Not Sure",
-        "domainQuestion": "Do you already own a domain name?",
-        "servicesQuestion": "What kind of services/products does your business offer?",
-        "servicesPlaceholder": "Describe your services or products in detail...",
-        "priceRange": "Product/Service Price Range (€)",
-        "min": "Min",
-        "max": "Max",
-        "dragHandles": "Drag the handles to set your price range",
-        "businessAddress": "Business Address",
-        "businessAddressPlaceholder": "Enter your complete business address...",
-        "howDidYouHear": "How did you hear about us?",
-        "selectOption": "Select an option",
-        "howDidYouHearOptions": {
-            "googleSearch": "Google Search",
-            "socialMedia": "Social Media",
-            "friendReferral": "Friend/Referral",
-            "onlineAd": "Online Advertisement",
-            "radioTv": "Radio/TV",
-            "other": "Other"
-        },
-        "referenceSource": "Reference Source",
-        "googleSearch": "Google Search",
-        "socialMedia": "Social Media",
-        "friendReferral": "Friend/Business Referral",
-        "advertising": "Advertising",
-        "other": "Other",
-        "uploadLogo": "Upload Business Logo",
-        "clickToUpload": "Click to upload your business logo",
-        "fileFormats": "PNG, JPG, GIF up to 10MB",
-        "chooseFile": "Choose File",
-        "logoPreview": "Business Logo Preview",
-        "preferredDateTime": "Preferred Date and Time",
         "uploadSuccessful": "Upload Successful",
         "uploadSuccessfulDesc": "Business logo \"{filename}\" uploaded successfully.",
         "uploadError": "Upload Error",
@@ -2515,17 +1878,8 @@
             "confirmation": "Confirmation"
         },
         "pageTitle": "Complete Your Website Setup | hayc",
-        "required": "REQUIRED",
-        "noticeDescription": "You need to complete this form before you can use your dashboard.",
         "paymentSuccessful": "Payment Successful!",
         "paymentSuccessfulDesc": "Your subscription is now active. Please complete the form below to start your project.",
-        "welcomeTitle": "Welcome!",
-        "welcomeMessage": "One last important step!",
-        "welcomeDescriptionStrong": "Complete the form below before you can use your Dashboard.",
-        "welcomeDescription": " We know some questions look too detailed, but you can skip what you don't know right now and add it later!",
-        "continueToForm": "Continue to Form",
-        "formDescription": "It only takes 5 minutes to complete",
-        "deadlineFuture": "Deadline must be today or in the future",
         "validation": {
             "emailTypo": "Please check your email address. Did you mean gmail.com, yahoo.com, or outlook.com?",
             "emailInvalid": "Please enter a valid email address",
@@ -2567,21 +1921,14 @@
             "tiktokLink": "https://tiktok.com/@yourbusiness",
             "youtubeLink": "https://youtube.com/@yourbusiness",
             "otherSocialLinks": "Any other social media links...",
-            "additionalNotes": "Any additional information or comments...",
-            "customTemplateRequest": "Tell us about your dream website design, features you need, or any specific inspiration you have in mind..."
+            "additionalNotes": "Any additional information or comments..."
         },
         "helperTexts": {
             "accountEmailNote": "This is the email associated with your account and cannot be changed.",
             "contactEmailNote": "Email of the person responsible for website communication (can be different from account email).",
             "redirectInboxNote": "Provide the email address where all professional emails should be forwarded.",
             "projectDeadlineNote": "If there's a specific date you need idealy the site ready (optional)",
-            "uploadTextContentNote": "You can also upload more text content from your dashboard after form submission.",
-            "uploadMediaContentNote": "You can also upload more files from your dashboard after form submission.",
             "colorPaletteNote": "Note: The following colors help us find the best combinations that will suit your website.",
-            "primaryColor": "The main color of your brand, used for buttons and highlights.",
-            "backgroundColor": "The background color of your website, usually white or light.",
-            "textColor": "The color of the main text across your website.",
-            "accentColor": "An optional color used for accents or secondary highlights.",
             "primaryColorDesc": "The main color of your brand, used for buttons and highlights.",
             "backgroundColorDesc": "The background color of your website, usually white or light.",
             "textColorDesc": "The color of the main text across your website.",
@@ -2590,7 +1937,6 @@
         "options": {
             "yes": "Yes",
             "no": "No",
-            "notProvided": "Not provided",
             "domainConnectionMyself": "I will connect it myself, I know how",
             "domainConnectionYou": "Please connect it for me, I don’t know how",
             "domainPurchaseMyself": "I will purchase the domain myself on my own platform",
@@ -2608,10 +1954,7 @@
             "domainNotice": "⚠️ Note: Once a domain is purchased, it cannot be changed.",
             "siteStyleCurved": "Curved / Rounded",
             "siteStyleStraightDesc": "Sharp edges and straight lines",
-            "siteStyleCurvedDesc": "Soft edges and rounded corners",
-            "statusDraft": "Draft",
-            "statusSubmitted": "Submitted",
-            "statusCompleted": "Completed"
+            "siteStyleCurvedDesc": "Soft edges and rounded corners"
         },
         "uploadTexts": {
             "uploadTextFiles": "Upload your text content files (Word docs, PDFs, etc.)",
@@ -2621,8 +1964,7 @@
             "uploadMediaFiles": "Upload your photos, videos, and documents",
             "mediaFileFormats": "Images: JPG, PNG, GIF | Videos: MP4, MOV | Documents: PDF, DOC, DOCX (max 50MB each)",
             "uploadLogoFiles": "Upload your logo files",
-            "logoFileFormats": "PNG, JPG, JPEG, GIF, WEBP (max 10MB)",
-            "logoPreviewAlt": "Logo preview"
+            "logoFileFormats": "PNG, JPG, JPEG, GIF, WEBP (max 10MB)"
         },
         "labels": {
             "whatIsYourDomain": "What is your domain name?",
@@ -2637,13 +1979,7 @@
             "primaryColor": "Κύριο Χρώμα",
             "backgroundColor": "Χρώμα Φόντου",
             "textColor": "Χρώμα Κειμένου",
-            "accentColor": "Χρώμα Έμφασης",
-            "colorLabels": {
-                "color1": "Color 1",
-                "color2": "Color 2",
-                "color3": "Color 3",
-                "color4": "Color 4"
-            }
+            "accentColor": "Χρώμα Έμφασης"
         },
         "pages": {
             "home": "Home",
@@ -2659,17 +1995,11 @@
             "description": "Select a template that matches your visual preferences. This helps us understand what you like. If you don't find what you're looking for, no worries - we can find something for you!",
             "browseTemplates": "Browse Templates",
             "changeTemplate": "Change Template",
-            "additionalNotes": "Write us if you have any notes about the layout.",
-            "customTemplateLabel": "Describe Your Ideal Website Layout"
+            "additionalNotes": "Write us if you have any notes about the layout."
         },
         "templates": {
-            "title": "Website Templates",
             "subtitle": "Choose a design that fits your business style",
             "allCategories": "All Categories",
-            "preview": "Preview",
-            "select": "Select",
-            "loading": "Loading templates...",
-            "noResults": "No templates found for this category.",
             "categories": {
                 "business": "Business & Services",
                 "restaurant": "Restaurants & Food",
@@ -2709,18 +2039,7 @@
                 "feature2": "✓ 2 initial concepts",
                 "feature3": "✓ 2 rounds of revisions",
                 "feature4": "✓ Final files in multiple formats"
-            },
-            "premiumLogoFeatures": {
-                "feature1": "✓ Complete brand identity package",
-                "feature2": "✓ 3 initial concepts",
-                "feature3": "✓ Unlimited revisions",
-                "feature4": "✓ Logo variations & color schemes",
-                "feature5": "✓ Brand style guide",
-                "feature6": "✓ Social media assets"
-            },
-            "nextStepLabel": "Next Step:",
-            "nextStepDescription": "You'll be redirected to a secure payment page. After successful payment, your onboarding form will be automatically submitted.",
-            "noLogoService": "No logo design service selected. Click \"Continue\" to proceed to the final review."
+            }
         },
         "reviewSubmit": {
             "title": "Review Your Information",
@@ -2741,17 +2060,14 @@
         },
         "confirmation": {
             "title": "Your website project has been created!",
-            "description": "Our team is starting immediately. You can track progress inside your hayc dashboard.",
-            "contactNote": "We will only contact you if absolutely necessary."
+            "description": "Our team is starting immediately. You can track progress inside your hayc dashboard."
         },
         "paymentDialog": {
             "title": "Choose Payment Method",
             "description": "How would you like to pay for your logo design service?",
             "useSavedCard": "Use Saved Card",
-            "endingIn": "ending in",
             "useNewCard": "Use New Card",
-            "redirectToPayment": "Redirect to secure payment page",
-            "processing": "Processing..."
+            "redirectToPayment": "Redirect to secure payment page"
         },
         "buttons": {
             "proceedToPayment": "Proceed to Payment"
@@ -2765,7 +2081,6 @@
             "uploadServiceUnavailable": "Upload service unavailable. Please try again later.",
             "paymentError": "Failed to initiate payment. Please try again.",
             "paymentFailed": "Payment requires additional verification. Please use a new card.",
-            "paymentProcessError": "Failed to process payment. Please try again.",
             "authRequired": "Please log in to submit the onboarding form.",
             "sessionExpired": "Your session has expired. Please log in again.",
             "demoDataLoaded": "All form fields have been filled with test data.",
@@ -2781,7 +2096,6 @@
             "businessDescription": "Write us your services *",
             "hasDomain": "Do you already have a domain name? *",
             "existingDomain": "Your Domain Name",
-            "domainAccess": "Access Details to Your Domain Provider",
             "preferredDomains": "Give us 2–3 preferred domain names",
             "hasEmails": "Do you already have professional emails? *",
             "emailAccess": "Email Provider Access Details",
@@ -2813,19 +2127,14 @@
             "youtubeLink": "YouTube",
             "otherSocialLinks": "Other Social Media",
             "projectDeadline": "Ideal deadline",
-            "additionalNotes": "Other notes / comments",
-            "emailProvider": "Email Provider",
-            "brandGuide": "Brand Guidelines (Optional)",
-            "googleBusinessLink": "Google Business Profile",
-            "textContentFiles": "Text Content Files",
-            "mediaContentFiles": "Media Content Files"
+            "additionalNotes": "Other notes / comments"
         }
     },
     "landingPage": {
         "notice": "Due to high demand, delivery time may vary slightly",
         "hero": {
-          "title": "Your website, without having to deal with it ever again",
-          "subtitle": "We build it, manage it, and improve it for you — with a fixed monthly cost and zero commission on every sale."
+            "title": "Your website, without having to deal with it ever again",
+            "subtitle": "We build it, manage it, and improve it for you — with a fixed monthly cost and zero commission on every sale."
         },
         "form": {
             "title": "Get Started Today",
@@ -2838,8 +2147,6 @@
             "submitting": "Processing...",
             "successTitle": "Almost Ready!",
             "successSubtitle": "Pick a convenient time for your free consultation",
-            "calendlyPlaceholder": "Calendly Widget Will Appear Here",
-            "calendlyNote": "Replace this with your actual Calendly embed code",
             "emailValidation": "Please enter a valid email address",
             "phoneValidation": "Please enter a valid phone number"
         },
@@ -2899,8 +2206,6 @@
         },
         "testimonialVideo": {
             "title": "Watch what people saying",
-            "placeholder": "Customer Testimonial Video",
-            "embedNote": "Replace this with your actual video embed",
             "quote": "What people saying about their websites.",
             "author": "Penny Deligiannis - Agapi apostolopoulou"
         },
@@ -2973,8 +2278,7 @@
             },
             "button": "Start Your Website Today",
             "badges": "🔒 Risk-Free Guarantee • ⚡ Live in 15 Days • 🎯 Built for Growth"
-        },
-        "videoTitle": "Website Creation Video"
+        }
     },
     "digitalProductsManagement": {
         "title": "Digital Products",
@@ -3033,10 +2337,8 @@
             "deleting": "Deleting..."
         },
         "common": {
-            "close": "Close",
             "cancel": "Cancel",
             "save": "Save",
-            "saveChanges": "Save changes",
             "saving": "Saving...",
             "retry": "Retry"
         },
@@ -3061,23 +2363,6 @@
             "failedToUpdateCourse": "Failed to update course",
             "failedToCreateCourse": "Failed to create course",
             "failedToLoadProducts": "Failed to load products. Please try again."
-        },
-        "courseDrawer": {
-            "closeDrawerAria": "Close course drawer",
-            "newTitle": "New Course",
-            "editTitle": "Edit Course",
-            "fields": {
-                "title": "Title",
-                "description": "Description",
-                "priceEur": "Price (EUR)",
-                "thumbnailUrl": "Thumbnail URL",
-                "status": "Status"
-            },
-            "placeholders": {
-                "courseTitle": "Course title",
-                "optionalDescription": "Optional description",
-                "selectStatus": "Select status"
-            }
         },
         "courseEditor": {
             "defaultNewCourseTitle": "New Course",
@@ -3117,7 +2402,6 @@
                 "fields": {
                     "introVideoUrl": "Intro Video URL",
                     "videoUrl": "Video URL",
-                    "durationSeconds": "Duration (seconds)",
                     "durationMinutes": "Duration (minutes)",
                     "videoDurationDetected": "Duration detected: {{minutes}}m",
                     "freePreview": "Free Preview"
@@ -3186,16 +2470,8 @@
             },
             "placeholders": {
                 "brandName": "e.g. FC Barcelona",
-                "logoUrl": "https://example.com/logo.png",
                 "selectFont": "Select a font",
                 "selectBorderRadius": "Select border radius"
-            },
-            "borderRadiusOptions": {
-                "none": "None (0px)",
-                "small": "Small (4px)",
-                "medium": "Medium (8px)",
-                "large": "Large (16px)",
-                "full": "Full (9999px)"
             },
             "actions": {
                 "preview": "Preview"
@@ -3223,7 +2499,6 @@
         "successMessage": "We appreciate you taking the time to share your thoughts. This helps us improve our service.",
         "backToDashboard": "Back to Dashboard",
         "selectReason": "Please select a reason",
-        "feedbackSent": "Feedback submitted successfully",
         "submitFailed": "Failed to submit feedback"
     },
     "forgotPassword": {
@@ -3268,9 +2543,5 @@
         "missingToken": "No unsubscribe token provided.",
         "backToHome": "Back to Home",
         "error": "An error occurred. Please try again later."
-    },
-    "emailFooter": {
-        "unsubscribeText": "If you no longer wish to receive these emails, you can",
-        "unsubscribeLink": "unsubscribe here"
     }
 }
