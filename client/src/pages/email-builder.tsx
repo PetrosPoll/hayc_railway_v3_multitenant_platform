@@ -1124,12 +1124,12 @@ export default function EmailBuilderPage() {
                     value: [
                       {
                         name: 'Facebook',
-                        url: 'https://facebook.com',
+                        url: 'https://www.facebook.com/haycWebsites',
                         icon: 'https://cdn.tools.unlayer.com/social/icons/circle-black/facebook.png'
                       },
                       {
                         name: 'Instagram',
-                        url: 'https://instagram.com',
+                        url: 'https://www.instagram.com/hayc_websites/',
                         icon: 'https://cdn.tools.unlayer.com/social/icons/circle-black/instagram.png'
                       },
                       {
@@ -1139,7 +1139,7 @@ export default function EmailBuilderPage() {
                       },
                       {
                         name: 'LinkedIn',
-                        url: 'https://linkedin.com',
+                        url: 'https://www.linkedin.com/company/hayc/',
                         icon: 'https://cdn.tools.unlayer.com/social/icons/circle-black/linkedin.png'
                       },
                       {

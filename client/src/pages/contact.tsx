@@ -133,13 +133,13 @@ export default function ContactPage() {
           <div className="flex flex-col gap-2">
             <span className="text-slate-100 text-lg font-medium font-['Montserrat']">Find us on Social Media</span>
             <div className="flex items-center gap-6">
-              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+              <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
                 <img src="/images/insta_icon.svg" alt="Instagram" className="w-6 h-6" />
               </a>
-              <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+              <a href="https://www.linkedin.com/company/hayc/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
                 <img src="/images/linkedin_icon.svg" alt="LinkedIn" className="w-6 h-6" />
               </a>
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+              <a href="https://www.facebook.com/haycWebsites" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
                 <img src="/images/facebook_icon.svg" alt="Facebook" className="w-6 h-6" />
               </a>
             </div>

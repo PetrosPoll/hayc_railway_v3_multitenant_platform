@@ -112,7 +112,7 @@ export default function ReviewsProgram() {
                   className="w-full bg-blue-600 hover:bg-blue-700"
                 >
                   <a
-                    href="https://www.facebook.com/haycWebsites/reviews"
+                    href="https://www.facebook.com/haycWebsites"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-center"

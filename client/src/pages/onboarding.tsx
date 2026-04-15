@@ -1846,8 +1846,8 @@ export default function Onboarding() {
 
       // Step 6: Social Media
       hasSocialMedia: "yes" as const,
-      facebookLink: "https://facebook.com/acmecoffee",
-      instagramLink: "https://instagram.com/acmecoffee",
+      facebookLink: "https://www.facebook.com/haycWebsites",
+      instagramLink: "https://www.instagram.com/hayc_websites/",
 
       // Step 7: Practical Information
       projectDeadline: "2025-12-01",
