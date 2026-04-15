@@ -87,8 +87,8 @@ export default function Auth() {
   // Show loading while checking authentication
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div>Loading...</div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-[#EFF6FF]">Loading...</div>
       </div>
     );
   }
@@ -111,10 +111,10 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-white/15 bg-[#172554]/35 backdrop-blur-sm shadow-2xl shadow-black/40">
         <CardHeader>
-          <CardTitle>{isRegistering ? t('auth.register') : t('auth.login')}</CardTitle>
+          <CardTitle className="text-[#EFF6FF]">{isRegistering ? t('auth.register') : t('auth.login')}</CardTitle>
           {/*CardDescription removed as it wasn't in the original code and the changes didn't provide a proper translation replacement*/}
         </CardHeader>
         <CardContent>
@@ -132,12 +132,13 @@ export default function Auth() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('auth.email')}</FormLabel>
+                    <FormLabel className="text-[#EFF6FF]">{t('auth.email')}</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="your@email.com" 
                         {...field}
                         disabled={authMutation.isPending} 
+                        className="border-[#EFF6FF]/20 bg-white/5 text-[#EFF6FF] placeholder:text-[#EFF6FF]/50 focus-visible:ring-[#EFF6FF]/40"
                       />
                     </FormControl>
                     <FormMessage />
@@ -190,7 +191,7 @@ export default function Auth() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('auth.password')}</FormLabel>
+                    <FormLabel className="text-[#EFF6FF]">{t('auth.password')}</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input 
@@ -198,12 +199,12 @@ export default function Auth() {
                           placeholder="your password" 
                           {...field}
                           disabled={authMutation.isPending}
-                          className="pr-10"
+                          className="pr-10 border-[#EFF6FF]/20 bg-white/5 text-[#EFF6FF] placeholder:text-[#EFF6FF]/50 focus-visible:ring-[#EFF6FF]/40"
                         />
                         <button
                           type="button"
                           onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#EFF6FF]/60 hover:text-[#EFF6FF] transition-colors"
                           disabled={authMutation.isPending}
                           aria-label={showPassword ? "Hide password" : "Show password"}
                           aria-pressed={showPassword}
@@ -226,7 +227,7 @@ export default function Auth() {
                 <div className="text-right">
                   <Link 
                     to="/forgot-password" 
-                    className="text-sm text-primary hover:underline"
+                    className="text-sm text-[#93C5FD] hover:text-[#EFF6FF] hover:underline"
                     data-testid="link-forgot-password"
                   >
                     {t('auth.forgotPassword') || 'Forgot Password?'}
@@ -236,7 +237,7 @@ export default function Auth() {
 
               <Button 
                 type="submit"
-                className="w-full" 
+                className="w-full bg-[#EFF6FF] text-[#172554] hover:bg-[#DBEAFE]" 
                 disabled={authMutation.isPending}
               >
                 {authMutation.isPending ? t('auth.processing') : (isRegistering ? t('auth.register') : t('auth.login'))}

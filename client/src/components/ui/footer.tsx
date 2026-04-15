@@ -48,11 +48,7 @@ export function Footer() {
               <img src="/images/facebook_icon.svg" alt="Facebook" className="w-5 h-5" />
             </a>
             <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.67">
-                <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                <circle cx="12" cy="12" r="4" />
-                <circle cx="17.5" cy="6.5" r="0.01" fill="white" strokeWidth="2" />
-              </svg>
+            <img src="/images/insta_icon.svg" alt="Instagram" className="w-5 h-5" />
             </a>
           </div>
         </div>
@@ -81,10 +77,7 @@ export function Footer() {
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
           <p className="text-white text-lg font-bold font-['Inter'] leading-7">Contact Us</p>
           <div className="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.67">
-              <rect x="2" y="4" width="20" height="16" rx="2" />
-              <polyline points="2,4 12,13 22,4" />
-            </svg>
+            <img src="/images/mail_icon.svg" alt="location" className="w-5 h-5" />
             <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">
               info@hayc.gr
             </a>

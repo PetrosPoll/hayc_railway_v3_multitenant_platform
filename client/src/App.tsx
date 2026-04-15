@@ -18,6 +18,7 @@ import OnboardingLogoSuccess from "./pages/onboarding-logo-success";
 import Contact from "./pages/contact";
 import About from "./pages/about";
 import Templates from "./pages/templates";
+import Pricing from "./pages/pricing";
 import TemplateDetail from "./pages/template-detail";
 import PreCheckout from "./pages/pre-checkout";
 import UpgradeConfirmation from "./pages/upgrade-confirmation";
@@ -230,6 +231,7 @@ function AppContent() {
           <Route path="/success" element={<Success />} />
           <Route path="/pre-checkout/:planId" element={<PreCheckout />} />
           <Route path="/templates" element={<Templates />} />
+          <Route path="/pricing" element={<Pricing />} />
           <Route path="/templates/:id" element={<TemplateDetail />} />
           <Route path="/fast-and-affordable-websites-book-a-call" element={<WebsiteCreation />} />
           <Route path="/fast-and-affordable-websites-book-a-call-en" element={<WebsiteCreationEN />} />

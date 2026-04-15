@@ -184,6 +184,21 @@ export function NavMenu() {
               </Button>
             </Link>
 
+            <Link to="/pricing">
+              <Button
+                variant={pathname === "/pricing" ? "default" : "ghost"}
+                className={
+                  pathname === "/pricing"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0"
+                    : isLoggedOut
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-['Montserrat'] leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
+              >
+                {t("nav.pricing") || "Pricing"}
+              </Button>
+            </Link>
+
             <Link to="/about">
               <Button
                 variant={pathname === "/about" ? "default" : "ghost"}
@@ -553,6 +568,18 @@ export function NavMenu() {
                           }`}
                       >
                         {t("nav.templates")}
+                      </Button>
+                    </Link>
+
+                    <Link to="/pricing" onClick={() => setIsOpen(false)}>
+                      <Button
+                        variant={pathname === "/pricing" ? "default" : "ghost"}
+                        className={`w-full justify-start border-0 ${pathname === "/pricing"
+                            ? "bg-[#182B53] text-white"
+                            : "text-[#182B53] hover:bg-accent"
+                          }`}
+                      >
+                        {t("nav.pricing") || "Pricing"}
                       </Button>
                     </Link>
 
