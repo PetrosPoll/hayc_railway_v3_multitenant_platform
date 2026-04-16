@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "./button";
-import { Home, User, LogOut, Shield, Menu } from "lucide-react";
+import { Home, User, LogOut, Shield } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { User as UserType } from "@shared/schema";
 import { logout } from "@/lib/api";
@@ -356,19 +356,18 @@ export function NavMenu() {
     <nav
       className={`fixed w-full z-50 font-['Montserrat'] ${isLoggedOut ? (isTransparent ? "bg-transparent" : "bg-black") : "bg-white border-b border-border"}`}
     >
-      <div className="container mx-auto px-16 py-6 flex justify-between items-center w-full">
+      <div className="container mx-auto px-0 md:px-16 py-0 md:py-6 flex justify-between items-center w-full">
         {/* Mobile Menu */}
-        <div className="md:hidden flex justify-between w-full gap-3">
-          {/* Logo - only show when menu is closed */}
-          {!isOpen && (
-            <Link to="/" className="flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                xmlnsXlink="http://www.w3.org/1999/xlink"
-                width="5em"
-                height="2.5em"
-                viewBox="0 0 148 49.81"
-              >
+        <div className="md:hidden flex justify-between items-center w-full px-4 py-6">
+          {/* Logo */}
+          <Link to="/" className="flex items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              xmlnsXlink="http://www.w3.org/1999/xlink"
+              width="6em"
+              height="3em"
+              viewBox="0 0 148 49.81"
+            >
                 <defs>
                   <clipPath id="clip-path-mobile-header">
                     <rect
@@ -433,19 +432,23 @@ export function NavMenu() {
                     </g>
                   </g>
                 </g>
-              </svg>
-            </Link>
-          )}
+            </svg>
+          </Link>
 
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-              </Button>
+              <button
+                type="button"
+                className="w-11 h-11 px-2.5 pt-2.5 pb-1.5 flex flex-col justify-center items-center gap-1.5"
+              >
+                <span className="w-full border-t-2 border-[#EFF6FF]" />
+                <span className="w-full border-t-2 border-[#EFF6FF]" />
+                <span className="w-full border-t-2 border-[#EFF6FF]" />
+              </button>
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-[80%] sm:w-[385px] flex flex-col gap-4 pt-8"
+              className="mobile-drawer-panel w-[80%] sm:w-[385px] flex flex-col gap-4 pt-8"
             >
               <div className="flex items-center mb-6">
                 <Link
@@ -529,7 +532,7 @@ export function NavMenu() {
               </div>
 
               {/* Mobile Navigation Links */}
-              <div className="flex flex-col gap-4">
+              <div className="mobile-drawer-nav flex flex-col gap-4">
                 {!user &&
                   pathname !== "/dashboard" &&
                   pathname !== "/reviews-program" && (
@@ -542,7 +545,7 @@ export function NavMenu() {
                             : "text-[#182B53] hover:bg-accent"
                           }`}
                       >
-                        <Home className="h-4 w-4 mr-2" />
+                        {/* <Home className="h-4 w-4 mr-2" /> */}
                         {t("nav.home")}
                       </Button>
                     </Link>
@@ -668,7 +671,7 @@ export function NavMenu() {
                 )}
 
                 {!user && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="mobile-drawer-language mt-4 pt-4 border-t border-gray-200">
                     <p className="text-sm text-gray-600 mb-2">{t("nav.languages")}</p>
                     <div className="flex flex-col gap-2">
                       <button

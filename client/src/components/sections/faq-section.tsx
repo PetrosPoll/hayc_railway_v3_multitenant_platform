@@ -1,89 +1,68 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
 
 type FaqItem = {
-  questionKey: string;
-  answerKey: string;
+  question: string;
+  answer: string;
 };
 
-const FAQS: FaqItem[] = [
+const faqs: FaqItem[] = [
   {
-    questionKey: "home.faqSection.items.0.question",
-    answerKey: "home.faqSection.items.0.answer",
+    question: "What is HAYC and how does it work?",
+    answer:
+      "HAYC is your website partner. You choose a design, tell us what you need, and we build it for you, start to finish. Later on, you can manage your website, track its progress, and expand its capabilities through your dashboard.",
   },
-  {
-    questionKey: "home.faqSection.items.1.question",
-    answerKey: "home.faqSection.items.1.answer",
-  },
-  {
-    questionKey: "home.faqSection.items.2.question",
-    answerKey: "home.faqSection.items.2.answer",
-  },
-  {
-    questionKey: "home.faqSection.items.3.question",
-    answerKey: "home.faqSection.items.3.answer",
-  },
-  {
-    questionKey: "home.faqSection.items.4.question",
-    answerKey: "home.faqSection.items.4.answer",
-  },
-  {
-    questionKey: "home.faqSection.items.5.question",
-    answerKey: "home.faqSection.items.5.answer",
-  },
+  { question: "Can I build an e-shop or online store with HAYC?", answer: "" },
+  { question: "What if I already have a domain name?", answer: "" },
+  { question: "Can I cancel my subscription anytime?", answer: "" },
+  { question: "What do I need to do on my end for you to build the website?", answer: "" },
+  { question: "Can I change my subscription plan later?", answer: "" },
 ];
 
 export function FaqSection() {
-  const { t } = useTranslation();
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
-  return (
-    <section className="w-full px-16 py-24 bg-black flex flex-col justify-start items-start gap-12">
-      <div className="w-[580px] flex flex-col justify-start items-start gap-2">
-        <h2 className="text-5xl font-semibold font-['Montserrat'] leading-[70px]">
-          <span className="text-white">{t("home.faqSection.titlePrefix")} </span>
-          <span className="text-[#ED4C14]">
-            {t("home.faqSection.titleHighlightLine1")}
-            <br />
-            {t("home.faqSection.titleHighlightLine2")}
-          </span>
-          <span className="text-white">{t("home.faqSection.titleSuffix")}</span>
-        </h2>
-        <p className="text-white text-base font-normal font-['Montserrat'] leading-6">
-          {t("home.faqSection.subtitle")}
-        </p>
-      </div>
+  const toggleFaq = (i: number) => setOpenFaq((prev) => (prev === i ? null : i));
 
-      <div className="w-full flex flex-col">
-        {FAQS.map((faq, i) => {
-          const answer = t(faq.answerKey, { defaultValue: "" });
-          return (
-          <div
-            key={i}
-            className="w-full p-6 border-t border-b border-zinc-800 flex flex-col justify-start items-start gap-6"
-          >
-            <button
-              type="button"
-              className="w-full flex justify-between items-center text-left"
-              onClick={() => setOpenFaq(openFaq === i ? null : i)}
+  return (
+    <section className="w-full bg-black">
+      <div className="max-w-screen-xl mx-auto px-4 py-[50px] flex flex-col gap-12">
+        <div className="w-full flex flex-col items-start">
+          <h2 className="text-3xl lg:text-5xl font-semibold font-['Montserrat'] lg:leading-[70px] leading-10">
+            <span className="text-white">Imagine Wix, </span>
+            <span className="text-[#ED4C14]">without the DIY</span>
+            <span className="text-white">.</span>
+          </h2>
+          <p className="text-base font-normal font-['Montserrat'] leading-6 text-white mt-2">
+            That's what HAYC is. We build it. You use it. No stress, no setup, just results.
+          </p>
+        </div>
+
+        <div className="w-full flex flex-col">
+          {faqs.map((faq, i) => (
+            <div
+              key={i}
+              className="border-t border-b border-zinc-800 px-2.5 py-6 flex flex-col gap-6 cursor-pointer"
+              onClick={() => toggleFaq(i)}
             >
-              <span className="text-white text-xl font-medium font-['Montserrat'] leading-7 pr-4">
-                {t(faq.questionKey)}
-              </span>
-              {openFaq === i ? (
-                <img src="/images/CLOSE.svg" alt={t("home.faqSection.icons.closeAlt")} className="w-6 h-6 flex-shrink-0" />
-              ) : (
-                <img src="/images/OPEN.svg" alt={t("home.faqSection.icons.openAlt")} className="w-6 h-6 flex-shrink-0" />
+              <div className="flex justify-between items-center gap-4">
+                <p className="text-xl font-medium font-['Montserrat'] leading-7 text-white flex-1">
+                  {faq.question}
+                </p>
+                <img
+                  src={openFaq === i ? "/images/OPEN.svg" : "/images/CLOSE.svg"}
+                  alt={openFaq === i ? "open icon" : "close icon"}
+                  className="w-6 h-6"
+                />
+              </div>
+
+              {openFaq === i && faq.answer && (
+                <p className="text-base font-normal font-['Montserrat'] leading-5 text-white">
+                  {faq.answer}
+                </p>
               )}
-            </button>
-            {openFaq === i && answer && (
-              <p className="text-white text-base font-normal font-['Montserrat'] leading-5">
-                {answer}
-              </p>
-            )}
-          </div>
-          );
-        })}
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

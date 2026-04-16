@@ -219,7 +219,7 @@ function AppContent() {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden w-full">
       {/* Conditionally render NavMenu */}
       <ConditionalNavMenu />
       <div className="flex-1">

@@ -62,14 +62,14 @@ export function TestimonialsSection() {
   const [testimonialIndex, setTestimonialIndex] = useState(0);
 
   return (
-    <section className="w-full px-16 py-24 bg-black flex justify-between items-center">
-      <div className="flex flex-col justify-center items-start gap-6">
+    <section className="w-full px-4 md:px-16 py-12 md:py-24 bg-black flex flex-col md:flex-row justify-start md:justify-between items-start gap-12">
+      <div className="w-full md:w-auto flex flex-col justify-center items-start gap-6">
         <div className="flex flex-col justify-start items-start gap-3">
-          <h2 className="text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+          <h2 className="text-3xl md:text-5xl font-semibold font-['Montserrat'] leading-10 md:leading-[70px]">
             <span className="text-[#ED4C14]">{t("home.testimonialsSection.titleHighlight")}</span>
             <span className="text-white"> {t("home.testimonialsSection.titleSuffix")}</span>
           </h2>
-          <p className="text-white text-base font-normal font-['Montserrat'] leading-6 max-w-xs">
+          <p className="text-white text-base font-normal font-['Montserrat'] leading-5 md:leading-6">
             {t("home.testimonialsSection.subtitle")}
           </p>
         </div>
@@ -123,22 +123,22 @@ export function TestimonialsSection() {
         </div>
       </div>
 
-      <div className="w-[656px] flex flex-col items-end gap-6">
-        <div className="w-[572px] h-96 p-6 bg-zinc-950 rounded-[20px] outline outline-1 outline-zinc-800 flex flex-col justify-between items-start">
+      <div className="w-full md:w-[656px] flex flex-col items-start md:items-end gap-6">
+        <div className="w-full md:w-[572px] p-6 bg-zinc-950 md:bg-zinc-950 rounded-[20px] outline outline-1 outline-zinc-800 flex flex-col justify-between items-start backdrop-blur-md md:backdrop-blur-none" style={{ minHeight: '384px' }}>
           <div className="flex flex-col gap-6">
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
               {TESTIMONIALS[testimonialIndex].avatar ? (
                 <img src={TESTIMONIALS[testimonialIndex].avatar!} alt={t("home.testimonialsSection.avatarAlt")} className="w-24 h-24 rounded-full object-cover" />
               ) : (
                 <div className="w-24 h-24 bg-zinc-300 rounded-full" />
               )}
-              <div className="w-44 flex flex-col justify-center items-start gap-3">
+              <div className="flex flex-col justify-center items-start gap-3">
                 <div className="flex flex-col">
-                  <span className="text-[#ED4C14] text-2xl font-medium font-['Montserrat']">{t(TESTIMONIALS[testimonialIndex].nameKey)}</span>
-                  <span className="text-slate-50 text-lg font-medium font-['Montserrat']">{t(TESTIMONIALS[testimonialIndex].titleKey)}</span>
+                  <span className="text-[#ED4C14] text-xl md:text-2xl font-medium font-['Montserrat'] leading-7">{t(TESTIMONIALS[testimonialIndex].nameKey)}</span>
+                  <span className="text-slate-50 text-base font-normal md:font-medium font-['Montserrat'] leading-5">{t(TESTIMONIALS[testimonialIndex].titleKey)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-50 text-lg font-medium font-['Montserrat']">{TESTIMONIALS[testimonialIndex].rating}</span>
+                  <span className="text-slate-100 text-lg font-medium font-['Inter']">{TESTIMONIALS[testimonialIndex].rating}</span>
                   <StarRating
                     rating={TESTIMONIALS[testimonialIndex].rating}
                     fullStarAlt={t("home.testimonialsSection.fullStarAlt")}
@@ -147,22 +147,22 @@ export function TestimonialsSection() {
                 </div>
               </div>
             </div>
-            <p className="text-slate-50 text-base font-normal font-['Montserrat'] leading-6">
+            <p className="text-slate-50 text-base font-normal font-['Montserrat'] leading-5">
               {t(TESTIMONIALS[testimonialIndex].textKey)}
             </p>
           </div>
           <button
-            className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex items-center gap-4 hover:opacity-80 transition-opacity"
+            className="mt-6 h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] rounded-[10px] inline-flex items-center gap-4 hover:opacity-80 transition-opacity"
             onClick={() => {
               window.location.href = TESTIMONIALS[testimonialIndex].projectUrl;
             }}
           >
-            <span className="text-[#EFF6FF] text-base font-semibold font-['Montserrat'] leading-5">{t("home.testimonialsSection.seeProject")}</span>
+            <span className="text-zinc-950 md:text-[#EFF6FF] text-base font-semibold font-['Montserrat'] leading-5">{t("home.testimonialsSection.seeProject")}</span>
             <img src="/images/testimonials_white_arrow.svg" alt={t("home.testimonialsSection.arrowAlt")} className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="flex items-center gap-12">
+        <div className="flex items-center gap-12 self-center md:self-end">
           <button
             type="button"
             className="hover:opacity-70 transition-opacity"

@@ -23,28 +23,28 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-background mt-[65px]">
       {/* About Page Header */}
-      <section className="w-full px-16 pt-12 pb-24 bg-black flex flex-col justify-center items-center gap-6">
+      <section className="w-full px-4 lg:px-16 pt-12 pb-24 bg-black flex flex-col justify-center items-center gap-6">
         {/* 3D Asterisk image */}
         <img
           src="/images/about_header.png"
           alt="HAYC asterisk"
-          className="w-72 h-72 object-contain"
+          className="w-64 h-64 lg:w-72 lg:h-72 object-contain"
         />
 
         {/* Content */}
-        <div className="w-[736px] flex flex-col justify-center items-center gap-12">
+        <div className="w-full lg:w-[736px] flex flex-col justify-center items-center gap-12">
           <div className="flex flex-col justify-start items-end gap-3">
-            <h1 className="text-center text-6xl font-semibold font-['Montserrat']">
+            <h1 className="text-center text-3xl lg:text-6xl leading-10 lg:leading-tight font-semibold font-['Montserrat']">
               <span className="text-[#ED4C14]">Helping businesses</span>
               <span className="text-white"> get successfully online.</span>
             </h1>
-            <p className="text-center text-white text-lg font-medium font-['Montserrat']">
+            <p className="text-center text-white text-base lg:text-lg font-normal lg:font-medium leading-5 lg:leading-normal font-['Montserrat']">
               HAYC isn't a DIY website builder. It's a website creation service. Choose a template, and we take care of build, hosting, and ongoing updates.
             </p>
           </div>
 
           {/* Buttons */}
-          <div className="flex justify-start items-start gap-3">
+          <div className="flex flex-col lg:flex-row justify-center lg:justify-start items-center lg:items-start gap-3">
             <button
               className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
               onClick={() => window.location.href = '/templates'}
@@ -68,29 +68,29 @@ export default function AboutPage() {
       </section>
 
       {/* Mission Section */}
-      <section className="w-full px-16 py-24 bg-black flex justify-start items-start gap-20">
-        <div className="w-32 text-right text-[#ED4C14] text-lg font-medium font-['Montserrat'] flex-shrink-0">
+      <section className="w-full bg-black flex flex-col lg:flex-row px-4 lg:px-16 py-12 lg:py-24 gap-6 lg:gap-20">
+        <div className="text-[#ED4C14] text-lg font-medium font-['Montserrat'] text-left lg:text-right lg:w-32 lg:flex-shrink-0">
           OUR MISSION
         </div>
-        <div className="flex-1 text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+        <div className="text-3xl lg:text-5xl font-semibold font-['Montserrat'] leading-10 lg:leading-[70px] flex-1">
           <span className="text-white">To launch professional websites in days, then keep them evolving </span>
           <span className="text-white/30">with ongoing support and new features.</span>
         </div>
       </section>
 
       {/* Vision Section */}
-      <section className="w-full px-16 py-24 bg-black flex justify-start items-start gap-20">
-        <div className="w-32 text-right text-[#ED4C14] text-lg font-medium font-['Montserrat'] flex-shrink-0">
+      <div className="w-full bg-black flex flex-col lg:flex-row px-4 lg:px-16 py-12 lg:py-24 gap-6 lg:gap-20">
+        <div className="text-[#ED4C14] text-lg font-medium font-['Montserrat'] text-left lg:text-right lg:w-32 lg:flex-shrink-0">
           OUR VISION
         </div>
-        <div className="flex-1 text-5xl font-semibold font-['Montserrat'] leading-[70px]">
-          <span className="text-white">A world where every small business can have a modern, reliable </span>
-          <span className="text-white/30">website without needing a team, tools, or tech stress.</span>
+        <div className="self-stretch justify-start">
+          <span className="text-white text-3xl font-semibold font-['Montserrat'] leading-10">A world where every small business can have a modern, reliable </span>
+          <span className="text-white/30 text-3xl font-semibold font-['Montserrat'] leading-10">website without needing a team, tools, or tech stress.</span>
         </div>
-      </section>
+      </div>
 
       {/* Full Width Image */}
-      <div className="w-full" style={{ height: '800px' }}>
+      <div className="w-full h-52 lg:h-[800px]">
         <img
           src="/images/Rectangle 117.png"
           alt="HAYC"
@@ -99,46 +99,46 @@ export default function AboutPage() {
       </div>
 
       {/* Stats Section */}
-      <section className="w-full px-16 py-24 bg-black flex justify-center items-center gap-48">
+      <section className="w-full bg-black flex flex-col lg:flex-row justify-center items-center px-4 lg:px-16 py-24 gap-20 lg:gap-48">
         <div className="flex-1 flex flex-col justify-center items-center">
-          <span className="text-center text-white text-6xl font-semibold font-['Montserrat']">99%</span>
+          <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-['Montserrat']">99%</span>
           <span className="text-center text-white text-lg font-medium font-['Montserrat']">uptime guarantee</span>
         </div>
         <div className="flex-1 flex flex-col justify-center items-center">
-          <span className="text-center text-white text-6xl font-semibold font-['Montserrat']">Save 20%</span>
+          <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-['Montserrat']">Save 20%</span>
           <span className="text-center text-white text-lg font-medium font-['Montserrat']">on annual plans</span>
         </div>
         <div className="flex-1 flex flex-col justify-center items-center">
-          <span className="text-center text-white text-6xl font-semibold font-['Montserrat']">30-day</span>
+          <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-['Montserrat']">30-day</span>
           <span className="text-center text-white text-lg font-medium font-['Montserrat']">money-back guarantee</span>
         </div>
       </section>
 
       {/* Process Section */}
-      <section className="w-full px-16 py-24 bg-black flex flex-col justify-start items-start gap-2.5">
+      <section className="w-full px-4 lg:px-16 py-12 lg:py-24 bg-black flex flex-col justify-start items-start gap-2.5">
         {/* Header */}
-        <div className="w-full py-12 flex justify-start items-start gap-20">
-          <div className="w-36 text-right text-[#ED4C14] text-lg font-medium font-['Montserrat'] flex-shrink-0">
+        <div className="w-full py-12 flex flex-col lg:flex-row justify-start items-start gap-6 lg:gap-20">
+          <div className="text-left lg:text-right lg:w-36 lg:flex-shrink-0 text-[#ED4C14] text-lg font-medium font-['Montserrat']">
             OUR PROCESS
           </div>
-          <div className="flex-1 text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+          <div className="flex-1 text-3xl lg:text-5xl font-semibold font-['Montserrat'] leading-10 lg:leading-[70px]">
             <span className="text-white">We created our process to feel effortle</span>
             <span className="text-white/30">ss and help every business get the website it deserves with ease.</span>
           </div>
         </div>
 
         {/* Cards */}
-        <div className="w-full flex justify-start items-center gap-3">
+        <div className="w-full flex flex-col lg:flex-row justify-start items-center gap-3">
           {processSteps.map((step, i) => {
             const isOpen = openProcess === i;
             return (
               <div
                 key={i}
                 onClick={() => setOpenProcess(i)}
-                className={`h-96 px-6 pt-6 pb-12 rounded-[10px] flex flex-col justify-start items-start gap-2 cursor-pointer transition-all duration-300 ${
+                className={`px-6 pt-6 pb-12 rounded-[10px] flex flex-col justify-start items-start gap-2 cursor-pointer transition-all duration-300 ${
                   isOpen
-                    ? 'flex-1 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 outline outline-1 outline-offset-[-1px] outline-white/80'
-                    : 'w-56 bg-gradient-to-br from-neutral-700/0 to-neutral-700/10 outline outline-1 outline-offset-[-1px] outline-white/50'
+                    ? 'w-full lg:flex-1 h-96 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 outline outline-1 outline-offset-[-1px] outline-white/80'
+                    : 'w-full lg:w-56 lg:h-96 bg-gradient-to-br from-neutral-700/0 to-neutral-700/10 outline outline-1 outline-offset-[-1px] outline-white/50'
                 }`}
                 style={{ flexShrink: isOpen ? 1 : 0 }}
               >
@@ -146,7 +146,7 @@ export default function AboutPage() {
                   {step.num}
                 </span>
                 <div className="flex-1 flex flex-col justify-start items-start">
-                  <span className={`text-4xl font-semibold font-['Montserrat'] ${isOpen ? 'text-white' : 'text-white/30'}`}>
+                  <span className={`text-2xl lg:text-4xl font-semibold font-['Montserrat'] ${isOpen ? 'text-white' : 'text-white/30'}`}>
                     {step.title}
                   </span>
                   {isOpen && (

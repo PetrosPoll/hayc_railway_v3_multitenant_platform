@@ -2,6 +2,54 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.mobile-drawer-panel {
+  background: #00070f;
+  color: #eff6ff;
+  border-right: 1px solid rgba(239, 246, 255, 0.2);
+}
+
+.mobile-drawer-panel [data-radix-dialog-close] {
+  color: rgba(239, 246, 255, 0.75);
+}
+
+.mobile-drawer-panel .mobile-drawer-nav button {
+  background: transparent;
+  color: #eff6ff !important;
+  border-color: transparent;
+}
+
+.mobile-drawer-panel .mobile-drawer-nav button:hover {
+  background: rgba(160, 186, 243, 0.14);
+}
+
+.mobile-drawer-panel .mobile-drawer-nav button[class*="bg-[#182B53]"] {
+  background: #182b53;
+  color: #eff6ff !important;
+}
+
+.mobile-drawer-panel .mobile-drawer-language {
+  border-top-color: rgba(239, 246, 255, 0.2);
+}
+
+.mobile-drawer-panel .mobile-drawer-language p {
+  color: rgba(239, 246, 255, 0.75);
+}
+
+.mobile-drawer-panel .mobile-drawer-language button {
+  background: transparent !important;
+  color: #eff6ff !important;
+  border-color: rgba(239, 246, 255, 0.3) !important;
+}
+
+.mobile-drawer-panel .mobile-drawer-language button:hover {
+  background: rgba(160, 186, 243, 0.12) !important;
+}
+
 @keyframes progress-indeterminate {
   0% {
     transform: translateX(-100%);
