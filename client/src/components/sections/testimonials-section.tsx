@@ -74,8 +74,8 @@ export function TestimonialsSection() {
           </p>
         </div>
 
-        <div className="w-96 flex flex-col gap-3">
-          <div className="p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
+        <div className="w-full md:w-[572px] flex flex-col gap-3">
+          <div className="w-full p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <img src="/images/testimonials_facebook.svg" alt={t("home.testimonialsSection.platforms.facebook.alt")} className="w-4 h-4" />
@@ -98,7 +98,7 @@ export function TestimonialsSection() {
             <img src="/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} className="w-6 h-6 opacity-80" />
           </div>
 
-          <div className="p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
+          <div className="w-full p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <img src="/images/testimonials_trustpilot.svg" alt={t("home.testimonialsSection.platforms.trustpilot.alt")} className="w-4 h-4" />
