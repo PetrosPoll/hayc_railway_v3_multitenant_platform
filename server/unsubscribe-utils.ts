@@ -68,6 +68,25 @@ export function generateUnsubscribeUrl(baseUrl: string, contactId: number, websi
   return `${baseUrl}/unsubscribe?token=${encodeURIComponent(token)}`;
 }
 
+export function resolveUnsubscribeBaseUrl(): string {
+  const rawBaseUrl =
+    process.env.PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    process.env.WEBSITE_URL ||
+    process.env.VITE_APP_URL ||
+    "https://hayc.gr";
+
+  const trimmed = rawBaseUrl.trim().replace(/\/+$/, "");
+
+  // Guard against storage/CDN hosts that cannot serve app routes like /unsubscribe.
+  const isStorageHost =
+    /\.s3[.-][a-z0-9-]+\.amazonaws\.com$/i.test(trimmed) ||
+    /amazonaws\.com/i.test(trimmed) ||
+    /cloudfront\.net/i.test(trimmed);
+
+  return isStorageHost ? "https://hayc.gr" : trimmed;
+}
+
 export function generateUnsubscribeFooter(unsubscribeUrl: string, language: 'en' | 'gr' = 'en'): string {
   const texts = {
     en: {
