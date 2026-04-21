@@ -103,8 +103,8 @@ export default function ContactPage() {
   return (
     <div className="min-h-screen bg-black mt-[70px]">
       {/* Contact Page Header */}
-      <section className="w-full py-24 bg-black flex flex-col justify-center items-center gap-3">
-        <h1 className="text-center text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
+      <section className="w-full px-4 py-12 lg:px-16 lg:py-24 bg-black flex flex-col justify-center items-center gap-3">
+        <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
           <span className="text-white">Talk to </span>
           <span className="text-[#ED4C14]">HAYC</span>
         </h1>
@@ -114,12 +114,12 @@ export default function ContactPage() {
       </section>
 
       {/* Contact Form Section */}
-      <section className="w-full px-16 py-24 bg-black flex justify-start items-start gap-6">
+      <section className="w-full px-4 py-12 lg:px-16 lg:py-24 bg-black flex flex-col lg:flex-row justify-start items-start gap-6">
         {/* Left — Contact Information card */}
-        <div className="w-96 p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12 flex-shrink-0">
-          <span className="text-white text-2xl font-medium font-['Montserrat']">Contact Information</span>
+        <div className="w-full lg:w-96 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12 flex-shrink-0">
+          <span className="text-white text-xl lg:text-2xl font-medium font-['Montserrat'] leading-7">Contact Information</span>
 
-          <div className="flex flex-col justify-start items-start gap-6">
+          <div className="w-48 flex flex-col justify-start items-start gap-6">
             <div className="flex items-center gap-6">
               <img src="/images/mail_icon.svg" alt="location" className="w-6 h-6" />
               <span className="text-white text-lg font-medium font-['Montserrat']">info@hayc.gr</span>
@@ -147,8 +147,8 @@ export default function ContactPage() {
         </div>
 
         {/* Right — Send us a message card */}
-        <div className="flex-1 p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12">
-          <span className="text-white text-2xl font-medium font-['Montserrat']">Send us a message</span>
+        <div className="w-full flex-1 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12">
+          <span className="text-white text-xl lg:text-2xl font-medium font-['Montserrat'] leading-7">Send us a message</span>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-full flex flex-col gap-8">
@@ -233,7 +233,7 @@ export default function ContactPage() {
                 />
 
                 {/* Privacy checkbox */}
-                <div className="flex items-center gap-3">
+                <div className="w-full max-w-80 flex items-center gap-3">
                   <input
                     type="checkbox"
                     className="w-5 h-5 rounded-full border border-neutral-500 bg-transparent accent-[#ED4C14] cursor-pointer"
@@ -265,7 +265,7 @@ export default function ContactPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting || !turnstileToken}
-                className="w-full px-5 py-3 bg-[#ED4C14] rounded-lg flex justify-center items-center gap-2 hover:opacity-80 transition-opacity text-slate-100 text-base font-semibold font-['Montserrat'] leading-5 border-0"
+                className="w-full px-5 py-3 bg-[#ED4C14] rounded-lg shadow-[0px_1px_2px_0px_rgba(10,13,18,0.05)] flex justify-center items-center gap-2 hover:opacity-80 transition-opacity text-slate-100 text-base font-semibold font-['Montserrat'] leading-5 border-0"
                 data-testid="button-submit"
               >
                 {isSubmitting ? t("contact.form.sending") : "Send message"}

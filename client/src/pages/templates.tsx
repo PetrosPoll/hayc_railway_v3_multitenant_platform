@@ -96,21 +96,21 @@ export default function Templates() {
   return (
     <div className="min-h-screen bg-black mt-[65px]">
       {/* Templates Page Header */}
-      <section className="w-full px-16 pt-24 pb-12 bg-black flex flex-col justify-center items-center gap-6">
-        <div className="flex flex-col justify-center items-center gap-12">
+      <section className="w-full px-4 lg:px-16 pt-24 pb-12 bg-black flex flex-col justify-center items-center gap-6">
+        <div className="w-full flex flex-col justify-center items-center gap-12">
           {/* Title */}
-          <div className="flex flex-col justify-start items-end gap-3">
-            <h1 className="text-center text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
+          <div className="w-full flex flex-col justify-start items-center gap-3">
+            <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
               <span className="text-white">{t("templates.page.titlePrefix")} </span>
               <span className="text-[#ED4C14]">{t("templates.page.titleHighlight")}</span>
             </h1>
-            <p className="text-center text-white text-lg font-medium font-['Montserrat'] w-full">
+            <p className="w-full max-w-[768px] text-center text-white text-lg font-medium font-['Montserrat']">
               {t("templates.page.subtitle")}
             </p>
           </div>
 
           {/* Search bar */}
-          <div className="w-full p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white/80 flex justify-start items-center gap-12">
+          <div className="w-full p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[10px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-white/80 flex justify-start items-start lg:items-center gap-6 lg:gap-12">
             <Search className="w-6 h-6 text-white flex-shrink-0" />
             <input
               type="text"
@@ -124,9 +124,9 @@ export default function Templates() {
       </section>
 
       {/* Templates Grid Section */}
-      <section className="w-full px-16 py-24 bg-black flex flex-col justify-center items-center gap-12">
+      <section className="w-full px-4 py-12 lg:px-16 lg:py-24 bg-black flex flex-col justify-center items-center gap-12">
         {/* Industry filter dropdown */}
-        <div className="w-full relative flex items-center gap-3">
+        <div className="w-full relative inline-flex justify-start items-center gap-3">
           <button
             type="button"
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
@@ -141,12 +141,12 @@ export default function Templates() {
           </button>
 
           {industryOpen && (
-            <div className="absolute left-0 top-[33px] z-50 bg-gradient-to-br from-black/50 to-black/90 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white/80 overflow-hidden">
+            <div className="absolute left-0 top-[33px] z-50 w-full max-w-[343px] bg-gradient-to-br from-black/50 to-black/90 rounded-[10px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-white/80 overflow-hidden">
               {industries.map((industry, i) => (
                 <button
                   key={i}
                   type="button"
-                  className={`w-full px-3.5 py-3 text-left text-white text-lg font-medium font-['Montserrat'] hover:bg-black/50 transition-colors ${
+                  className={`w-full p-3.5 text-left text-white text-lg font-medium font-['Montserrat'] hover:bg-black/50 transition-colors ${
                     selectedIndustry === industry.key ? "bg-black/50" : ""
                   }`}
                   onClick={() => {
@@ -164,7 +164,7 @@ export default function Templates() {
         </div>
 
         {/* Templates grid — use existing templates data */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-6">
           {templates.map((template) => (
             <div
               key={template.id}
@@ -192,7 +192,7 @@ export default function Templates() {
         </div>
 
         {/* Pagination */}
-        <div className="flex justify-start items-center">
+        <div className="w-full inline-flex justify-center items-center">
           <button
             type="button"
             className="w-10 h-10 p-2.5 rounded-lg flex justify-center items-center hover:bg-white/10 transition-colors"
