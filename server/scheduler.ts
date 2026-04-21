@@ -3,7 +3,7 @@ import { newsletterCampaigns, websiteProgress, subscriptions as subscriptionsTab
 import { eq, and, lte } from "drizzle-orm";
 import { EmailService } from "./email-service";
 import type { IStorage } from "./storage";
-import { generateUnsubscribeUrl, generateUnsubscribeFooter } from "./unsubscribe-utils";
+import { generateUnsubscribeUrl, generateUnsubscribeFooter, resolveUnsubscribeBaseUrl } from "./unsubscribe-utils";
 import { getEmailLimitWithAddOns } from "./email-limits";
 
 async function markScheduledCampaignFailed(
@@ -285,8 +285,8 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
       let successCount = 0;
       let failCount = 0;
 
-      // Determine base URL for unsubscribe links (use VITE_APP_URL for production)
-      const baseUrl = process.env.VITE_APP_URL || 'https://hayc.gr';
+      // Determine base URL for unsubscribe links.
+      const baseUrl = resolveUnsubscribeBaseUrl();
 
       for (const subscriber of finalRecipients) {
         try {

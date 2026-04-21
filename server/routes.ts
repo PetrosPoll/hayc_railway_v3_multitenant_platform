@@ -59,7 +59,7 @@ import multer from "multer";
 import { createHash, randomBytes } from "crypto";
 import rateLimit from "express-rate-limit";
 import { getPrices, initializePricingCache } from "./stripe/pricing";
-import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUrl, generateUnsubscribeFooter } from "./unsubscribe-utils";
+import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUrl, generateUnsubscribeFooter, resolveUnsubscribeBaseUrl } from "./unsubscribe-utils";
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
@@ -9189,8 +9189,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let successCount = 0;
         let failCount = 0;
 
-        // Determine base URL for unsubscribe links (use VITE_APP_URL for production)
-        const baseUrl = process.env.VITE_APP_URL || 'https://hayc.gr';
+        // Determine base URL for unsubscribe links.
+        const baseUrl = resolveUnsubscribeBaseUrl();
 
         for (const subscriber of finalRecipients) {
           try {
@@ -12167,8 +12167,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let complaintCount = 0;
       const errors: string[] = [];
 
-      // Determine base URL for unsubscribe links (use VITE_APP_URL for production)
-      const baseUrl = process.env.VITE_APP_URL || 'https://hayc.gr';
+      // Determine base URL for unsubscribe links.
+      const baseUrl = resolveUnsubscribeBaseUrl();
 
       for (const recipient of recipients) {
         try {
