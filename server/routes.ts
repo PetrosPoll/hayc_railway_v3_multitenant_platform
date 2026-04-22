@@ -46,6 +46,7 @@ import {
   adminContacts,
   adminContactTags,
   adminTags,
+  adminTemplates,
   websiteInvoices,
   paymentObligations,
   internalEmailLog,
@@ -1554,11 +1555,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.websiteId);
-      const templates = await db
+      if (Number.isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+
+      const [website] = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
+      if (website.userId !== req.user.id && !isAdmin) {
+        return res.status(403).json({ error: "Not authorized to access these templates" });
+      }
+
+      const existingTemplates = await db
         .select()
         .from(emailTemplates)
         .where(eq(emailTemplates.websiteProgressId, websiteId))
         .orderBy(desc(emailTemplates.updatedAt));
+
+      const normalizedExistingNames = new Set(
+        existingTemplates.map((t) => t.name.trim().toLowerCase()),
+      );
+
+      const defaultTemplates = await db
+        .select({
+          name: adminTemplates.name,
+          html: adminTemplates.html,
+          design: adminTemplates.design,
+          thumbnail: adminTemplates.thumbnail,
+          category: adminTemplates.category,
+        })
+        .from(adminTemplates)
+        .orderBy(desc(adminTemplates.updatedAt), desc(adminTemplates.createdAt));
+
+      const missingDefaults = defaultTemplates.filter(
+        (t) => !normalizedExistingNames.has(t.name.trim().toLowerCase()),
+      );
+
+      if (missingDefaults.length > 0) {
+        await db.insert(emailTemplates).values(
+          missingDefaults.map((t) => ({
+            websiteProgressId: websiteId,
+            name: t.name,
+            html: t.html,
+            design: t.design,
+            thumbnail: t.thumbnail,
+            category: t.category,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })),
+        );
+      }
+
+      const templates = missingDefaults.length
+        ? await db
+            .select()
+            .from(emailTemplates)
+            .where(eq(emailTemplates.websiteProgressId, websiteId))
+            .orderBy(desc(emailTemplates.updatedAt))
+        : existingTemplates;
 
       res.json(templates);
     } catch (error) {
