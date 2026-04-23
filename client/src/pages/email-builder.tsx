@@ -24,7 +24,14 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Download, Loader2, Eye, X, Mail } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { EmailTemplate } from "@shared/schema";
-import { sampleTemplates, loadSampleTemplate as loadSampleTemplateUtil, type SampleTemplate } from "@/templates/email-samples/sample-templates";
+
+interface DefaultSampleTemplate {
+  id: number;
+  name: string;
+  html: string;
+  category: string | null;
+  description?: string;
+}
 
 export default function EmailBuilderPage() {
   const { websiteId } = useParams<{ websiteId: string }>();
@@ -85,6 +92,28 @@ export default function EmailBuilderPage() {
       return response.json();
     },
   });
+
+  const { data: sampleTemplateOptions = [], isLoading: sampleTemplatesLoading } = useQuery<DefaultSampleTemplate[]>({
+    queryKey: ["/api/default-email-templates"],
+    queryFn: async () => {
+      const response = await fetch("/api/default-email-templates", {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch default templates");
+      }
+      return response.json();
+    },
+  });
+  const sampleTemplatesToShow: DefaultSampleTemplate[] =
+    sampleTemplateOptions.length > 0
+      ? sampleTemplateOptions
+      : templates.map((template) => ({
+          id: template.id,
+          name: template.name,
+          html: template.html ?? "",
+          category: template.category,
+        }));
 
   // Load template when both editor is ready and templates are fetched
   useEffect(() => {
@@ -709,7 +738,7 @@ export default function EmailBuilderPage() {
     }
   };
 
-  const loadSampleTemplate = async (template: SampleTemplate) => {
+  const loadSampleTemplate = async (template: DefaultSampleTemplate) => {
     const unlayer = emailEditorRef.current?.editor;
     if (!unlayer) {
       toast({
@@ -721,7 +750,7 @@ export default function EmailBuilderPage() {
     }
 
     try {
-      const processedHtml = await loadSampleTemplateUtil(template);
+      const processedHtml = template.html;
       unlayer.loadDesign({
         html: processedHtml,
         classic: true
@@ -1285,12 +1314,16 @@ export default function EmailBuilderPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-96 overflow-y-auto">
-            {sampleTemplates.length === 0 ? (
+            {sampleTemplatesLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : sampleTemplatesToShow.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 No sample templates available.
               </div>
             ) : (
-              sampleTemplates.map((template) => (
+              sampleTemplatesToShow.map((template) => (
                 <div
                   key={template.id}
                   className="p-4 border rounded-lg hover:border-primary cursor-pointer transition-colors"
@@ -1323,41 +1356,8 @@ export default function EmailBuilderPage() {
                         e.stopPropagation();
                         const previewWindow = window.open("", "_blank");
                         if (previewWindow) {
-                          fetch(template.htmlPath)
-                            .then(res => res.text())
-                            .then(html => {
-                              // Images are now on Cloudinary, so no path replacement needed
-                              // Only replace local image paths if they exist (for backward compatibility)
-                              const templatePath = template.htmlPath.replace("/template.html", "");
-                              const processedHtml = html
-                                // Only replace relative image paths, not full URLs (Cloudinary)
-                                .replace(/src=(["'])(images\/[^"']+)\1/g, (match, quote, imagePath) => {
-                                  // Skip if already a full URL (Cloudinary)
-                                  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-                                    return match;
-                                  }
-                                  return `src=${quote}${templatePath}/${imagePath}${quote}`;
-                                })
-                                .replace(/url\((['"]?)(images\/[^"')]+)\1\)/g, (match, quote, imagePath) => {
-                                  // Skip if already a full URL (Cloudinary)
-                                  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-                                    return match;
-                                  }
-                                  return `url(${quote}${templatePath}/${imagePath}${quote})`;
-                                })
-                                .replace(/background-image:\s*url\((['"]?)(images\/[^"')]+)\1\)/g, (match, quote, imagePath) => {
-                                  // Skip if already a full URL (Cloudinary)
-                                  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-                                    return match;
-                                  }
-                                  return `background-image: url(${quote}${templatePath}/${imagePath}${quote})`;
-                                });
-                              previewWindow.document.write(processedHtml);
-                              previewWindow.document.close();
-                            })
-                            .catch(err => {
-                              console.error("Failed to preview template:", err);
-                            });
+                          previewWindow.document.write(template.html);
+                          previewWindow.document.close();
                         }
                       }}
                       data-testid={`preview-sample-${template.id}`}

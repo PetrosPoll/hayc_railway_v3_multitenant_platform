@@ -1547,6 +1547,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email Template routes (for Unlayer email builder)
+  // Get default templates available for all users (sourced from admin templates)
+  app.get("/api/default-email-templates", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const templates = await db
+        .select({
+          id: adminTemplates.id,
+          name: adminTemplates.name,
+          html: adminTemplates.html,
+          design: adminTemplates.design,
+          thumbnail: adminTemplates.thumbnail,
+          category: adminTemplates.category,
+          createdAt: adminTemplates.createdAt,
+          updatedAt: adminTemplates.updatedAt,
+        })
+        .from(adminTemplates)
+        .orderBy(desc(adminTemplates.updatedAt), desc(adminTemplates.createdAt));
+
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching default email templates:", error);
+      res.status(500).json({ error: "Failed to fetch default email templates" });
+    }
+  });
+
   // Get all templates for a website
   app.get("/api/email-templates/:websiteId", async (req, res) => {
     try {
