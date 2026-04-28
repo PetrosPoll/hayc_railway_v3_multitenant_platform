@@ -19456,7 +19456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rate limiter for public contact form - 2 per 30 minutes per IP
   const publicContactLimiter = rateLimit({
     windowMs: 30 * 60 * 1000,
-    max: 2,
+    max: 10,
     message: "Too many contact form submissions from this IP, please try again later",
     standardHeaders: true,
     legacyHeaders: false,
