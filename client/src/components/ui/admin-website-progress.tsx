@@ -114,14 +114,11 @@ function WebsiteProgressRowActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 shrink-0 gap-1"
-          data-testid={`button-website-actions-${website.id}`}
-        >
-          Actions
-          <MoreHorizontal className="h-4 w-4" />
+        <Button asChild variant="outline" size="sm" className="h-8 shrink-0 gap-1">
+          <span data-testid={`button-website-actions-${website.id}`}>
+            Actions
+            <MoreHorizontal className="h-4 w-4" />
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56" onClick={(e) => e.stopPropagation()}>
@@ -683,11 +680,23 @@ function ContactFormConfigSection({ website }: { website: Website }) {
     enabled: !!website.siteId,
   });
   useEffect(() => {
-    if (data && typeof (data as Record<string, unknown>)?.siteConfig === "object" && data !== null) {
-      const siteConfig = (data as Record<string, unknown>).siteConfig as Record<string, unknown>;
-      if (typeof siteConfig?.apiUrl === "string" && siteConfig.apiUrl) {
-        setApiUrl(siteConfig.apiUrl);
-      }
+    if (!data || typeof data !== "object") return;
+
+    const config = data as Record<string, unknown>;
+    const nestedSiteConfig =
+      typeof config.siteConfig === "object" && config.siteConfig !== null
+        ? (config.siteConfig as Record<string, unknown>)
+        : null;
+
+    const fetchedApiUrl =
+      typeof nestedSiteConfig?.apiUrl === "string" && nestedSiteConfig.apiUrl
+        ? nestedSiteConfig.apiUrl
+        : typeof config.apiUrl === "string" && config.apiUrl
+          ? config.apiUrl
+          : null;
+
+    if (fetchedApiUrl) {
+      setApiUrl(fetchedApiUrl);
     }
   }, [data]);
 

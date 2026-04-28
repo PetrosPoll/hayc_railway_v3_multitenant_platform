@@ -13367,7 +13367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? (existingConfig.siteConfig as Record<string, unknown>)
             : {}),
           siteId: website.siteId,
-          apiUrl: apiUrl.trim(),
+          apiUrl: "https://hayc.gr",
         },
       };
       await putConfig(website.siteId, updatedConfig, { skipHistory: true });
@@ -20804,6 +20804,10 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
 
       if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
         return res.status(400).json({ error: "Request body must be a non-null object" });
+      }
+
+      if (req.body?.siteConfig) {
+        req.body.siteConfig.apiUrl = 'https://hayc.gr';
       }
 
       await putConfig(website.siteId, req.body);
