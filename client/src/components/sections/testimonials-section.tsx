@@ -62,8 +62,9 @@ export function TestimonialsSection() {
   const [testimonialIndex, setTestimonialIndex] = useState(0);
 
   return (
-    <section className="w-full px-4 md:px-16 py-12 md:py-24 bg-black flex flex-col md:flex-row justify-start md:justify-between items-start gap-12">
-      <div className="w-full md:w-auto flex flex-col justify-center items-start gap-6">
+    <section className="w-full px-4 md:px-16 py-12 md:py-24 bg-black">
+      <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-start md:justify-between items-start gap-12">
+        <div className="w-full md:w-auto flex flex-col justify-center items-start gap-6">
         <div className="flex flex-col justify-start items-start gap-3">
           <h2 className="text-3xl md:text-5xl font-semibold font-['Montserrat'] leading-10 md:leading-[70px]">
             <span className="text-[#ED4C14]">{t("home.testimonialsSection.titleHighlight")}</span>
@@ -121,9 +122,9 @@ export function TestimonialsSection() {
             <img src="/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} className="w-6 h-6 opacity-80" />
           </div>
         </div>
-      </div>
+        </div>
 
-      <div className="w-full md:w-[656px] flex flex-col items-start md:items-end gap-6">
+        <div className="w-full md:w-[656px] flex flex-col items-start md:items-end gap-6">
         <div className="w-full md:w-[572px] p-6 bg-zinc-950 md:bg-zinc-950 rounded-[20px] outline outline-1 outline-zinc-800 flex flex-col justify-between items-start backdrop-blur-md md:backdrop-blur-none" style={{ minHeight: '384px' }}>
           <div className="flex flex-col gap-6">
             <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
@@ -177,6 +178,7 @@ export function TestimonialsSection() {
           >
             <img src="/images/testimonials_orange_arrow.svg" alt={t("home.testimonialsSection.nextAlt")} className="w-11 h-9" />
           </button>
+        </div>
         </div>
       </div>
     </section>

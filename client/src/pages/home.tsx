@@ -19,6 +19,7 @@ import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
 import { TestimonialsSection } from "@/components/sections/testimonials-section";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
+import { LottieAnimation } from "@/components/ui/lottie-animation";
 import type { Template } from "@shared/schema";
 
 // Selected templates to display on home page carousel
@@ -263,9 +264,10 @@ export default function Home() {
       </section>
 
       {/* Why Us - Section 1 */}
-      <section className="w-full bg-black px-4 md:px-16 py-12 md:py-0 flex flex-col md:flex-row justify-start items-center gap-12 md:min-h-[891px]">
-        {/* Left content */}
-        <div className="w-full md:flex-col flex flex-col justify-start items-start gap-12 md:w-[452px] md:flex-shrink-0">
+      <section className="w-full bg-black px-4 md:px-16 py-12 md:py-0">
+        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-start items-center gap-12 md:min-h-[491px]">
+          {/* Left content */}
+          <div className="w-full md:flex-col flex flex-col justify-start items-start gap-12 md:w-[452px] md:flex-shrink-0">
           <h2 className="text-3xl md:text-5xl font-semibold font-['Montserrat'] leading-10 md:leading-[70px]">
             <span className="text-white">Built for </span>
             <span className="text-[#ED4C14]">founders </span>
@@ -283,23 +285,24 @@ export default function Home() {
             </span>
             <ArrowRight className="h-4 w-4" />
           </button>
-        </div>
+          </div>
 
-        {/* Right image */}
-        <div className="w-full md:flex-1 flex justify-center md:justify-end items-center">
-          <img
-            src="/images/why_us_1.png"
-            alt="Why us illustration"
-            className="w-full md:h-full object-contain"
-            style={{ maxHeight: '891px' }}
-          />
+          {/* Right image */}
+          <div className="w-full md:flex-1 self-stretch flex items-center justify-center">
+            <LottieAnimation
+              desktopSrc="/animations/why-us-1.json"
+              mobileSrc="/animations/why-us-1-mobile.json"
+              className="w-full max-w-[600px]"
+            />
+          </div>
         </div>
       </section>
 
       {/* Why Us - Section 2 */}
-      <section className="w-full bg-black px-4 md:px-16 py-12 md:py-0 flex flex-col md:flex-row justify-start items-center gap-12 md:min-h-[891px]">
-        {/* Left content */}
-        <div className="w-full flex flex-col justify-start items-start gap-12 md:w-[384px] md:flex-shrink-0">
+      <section className="w-full bg-black px-4 md:px-16 py-12 md:py-0">
+        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-start items-center gap-12 md:min-h-[491px]">
+          {/* Left content */}
+          <div className="w-full flex flex-col justify-start items-start gap-12 md:w-[384px] md:flex-shrink-0">
           <div className="flex flex-col justify-start items-start gap-3">
             <h2 className="text-4xl md:text-4xl font-semibold font-['Inter'] w-full md:w-72">
               <span className="text-[#ED4C14]">{t("home.whyUs.section2.titleHighlight")}</span>
@@ -321,23 +324,24 @@ export default function Home() {
             </span>
             <ArrowRight className="h-4 w-4" />
           </button>
-        </div>
+          </div>
 
-        {/* Right image */}
-        <div className="w-full md:flex-1 self-stretch flex items-center justify-center">
-          <img
-            src="/images/why_us_2.png"
-            alt={t("home.whyUs.section2.imageAlt")}
-            className="w-full md:h-full object-contain"
-            style={{ maxHeight: '891px' }}
-          />
+          {/* Right image */}
+          <div className="w-full md:flex-1 self-stretch flex items-center justify-center">
+            <LottieAnimation
+              desktopSrc="/animations/why-us-2.json"
+              mobileSrc="/animations/why-us-2-mobile.json"
+              className="w-full max-w-[600px]"
+            />
+          </div>
         </div>
       </section>
 
       {/* Why Us - Section 3 */}
-      <section className="w-full bg-black px-4 md:px-16 py-12 md:py-0 flex flex-col md:flex-row justify-start items-center gap-12 md:min-h-[891px]">
-        {/* Left content */}
-        <div className="w-full flex flex-col justify-start items-start gap-12 md:w-[384px] md:flex-shrink-0">
+      <section className="w-full bg-black px-4 md:px-16 py-12 md:py-0">
+        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-start items-center gap-12 md:min-h-[491px]">
+          {/* Left content */}
+          <div className="w-full flex flex-col justify-start items-start gap-12 md:w-[384px] md:flex-shrink-0">
           <div className="flex flex-col justify-start items-start gap-3">
             <h2 className="text-4xl md:text-4xl font-semibold font-['Inter'] w-full md:w-72">
               <span className="text-[#ED4C14]">{t("home.whyUs.section3.titleHighlight")}</span>
@@ -359,23 +363,24 @@ export default function Home() {
             </span>
             <ArrowRight className="h-4 w-4" />
           </button>
-        </div>
+          </div>
 
-        {/* Right image */}
-        <div className="w-full md:flex-1 self-stretch flex items-center justify-center">
-          <img
-            src="/images/why_us_3.png"
-            alt={t("home.whyUs.section3.imageAlt")}
-            className="w-full md:h-full object-contain"
-            style={{ maxHeight: '891px' }}
-          />
+          {/* Right image */}
+          <div className="w-full md:flex-1 self-stretch flex items-center justify-center">
+            <LottieAnimation
+              desktopSrc="/animations/why-us-3.json"
+              mobileSrc="/animations/why-us-3-mobile.json"
+              className="w-full max-w-[600px]"
+            />
+          </div>
         </div>
       </section>
 
       {/* Why Us - Section 4 */}
-      <section className="w-full bg-black px-4 md:px-16 py-12 md:py-0 flex flex-col md:flex-row justify-start items-center gap-12 md:min-h-[891px]">
-        {/* Left content */}
-        <div className="w-full flex flex-col justify-start items-start gap-12 md:w-[384px] md:flex-shrink-0">
+      <section className="w-full bg-black px-4 md:px-16 py-12 md:py-0">
+        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-start items-center gap-12 md:min-h-[491px]">
+          {/* Left content */}
+          <div className="w-full flex flex-col justify-start items-start gap-12 md:w-[384px] md:flex-shrink-0">
           <div className="flex flex-col justify-start items-start gap-3">
             <h2 className="text-4xl md:text-4xl font-semibold font-['Inter'] w-full md:w-80">
               <span className="text-[#ED4C14]">{t("home.whyUs.section4.titleHighlight")}</span>
@@ -397,40 +402,42 @@ export default function Home() {
             </span>
             <ArrowRight className="h-4 w-4" />
           </button>
-        </div>
+          </div>
 
-        {/* Right image */}
-        <div className="w-full md:flex-1 self-stretch flex items-center justify-center">
-          <img
-            src="/images/why_us_4.png"
-            alt={t("home.whyUs.section4.imageAlt")}
-            className="w-full md:h-full object-contain"
-            style={{ maxHeight: '891px' }}
-          />
+          {/* Right image */}
+          <div className="w-full md:flex-1 self-stretch flex items-center justify-center">
+            <LottieAnimation
+              desktopSrc="/animations/why-us-4.json"
+              mobileSrc="/animations/why-us-4-mobile.json"
+              className="w-full max-w-[600px]"
+            />
+          </div>
         </div>
       </section>
 
       {/* Templates Section */}
       <section className="w-full flex flex-col justify-start items-center gap-12 bg-black py-12 md:py-24">
         {/* Header */}
-        <div className="hidden md:flex w-full px-16 justify-start items-center gap-48">
-          <div className="flex-1">
-            <span className="text-[#EFF6FF] text-5xl font-semibold font-['Montserrat'] leading-[70px]">{t("home.templatesSection.titlePrefix")} </span>
-            <span className="text-[#ED4C14] text-5xl font-semibold font-['Montserrat'] leading-[70px]">{t("home.templatesSection.titleHighlight")}</span>
-          </div>
-          <div className="flex-1 flex flex-col justify-start items-start gap-6">
-            <p className="text-[#EFF6FF] text-base font-normal font-['Montserrat'] leading-6">
-              {t("home.templatesSection.description")}
-            </p>
-            <button
-              className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
-              onClick={() => window.location.href = '/templates'}
-            >
-              <span className="text-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
-                {t("nav.templates")}
-              </span>
-              <ArrowRight className="h-4 w-4 text-blue-950" />
-            </button>
+        <div className="hidden md:block w-full px-16">
+          <div className="w-full max-w-7xl mx-auto flex justify-start items-center gap-48">
+            <div className="flex-1">
+              <span className="text-[#EFF6FF] text-5xl font-semibold font-['Montserrat'] leading-[70px]">{t("home.templatesSection.titlePrefix")} </span>
+              <span className="text-[#ED4C14] text-5xl font-semibold font-['Montserrat'] leading-[70px]">{t("home.templatesSection.titleHighlight")}</span>
+            </div>
+            <div className="flex-1 flex flex-col justify-start items-start gap-6">
+              <p className="text-[#EFF6FF] text-base font-normal font-['Montserrat'] leading-6">
+                {t("home.templatesSection.description")}
+              </p>
+              <button
+                className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
+                onClick={() => window.location.href = '/templates'}
+              >
+                <span className="text-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
+                  {t("nav.templates")}
+                </span>
+                <ArrowRight className="h-4 w-4 text-blue-950" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -517,8 +524,8 @@ export default function Home() {
       </section>
 
       {/* Add-ons Section */}
-      <section className="w-full pl-4 md:pl-16 py-12 md:py-24 bg-black flex flex-col md:flex-row justify-start items-start md:items-center gap-12 md:gap-24 overflow-hidden relative">
-        <div className="hidden md:flex absolute right-[340px] top-1/2 -translate-y-1/2 w-[400px] h-[400px] items-center justify-center pointer-events-none z-0 animate-spin-slow">
+      <section className="w-full px-4 md:px-16 py-12 md:py-24 bg-black overflow-hidden relative">
+        {/* <div className="hidden md:flex absolute right-[340px] top-1/2 -translate-y-1/2 w-[400px] h-[400px] items-center justify-center pointer-events-none z-0">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24.24 23.468"
@@ -531,10 +538,11 @@ export default function Home() {
               opacity="0.35"
             />
           </svg>
-        </div>
+        </div> */}
 
-        {/* Left content */}
-        <div className="w-full md:flex-1 flex flex-col justify-start items-start gap-12 relative z-10">
+        <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-start items-start md:items-center gap-12 md:gap-24">
+          {/* Left content */}
+          <div className="w-full md:flex-1 flex flex-col justify-start items-start gap-12 relative z-10 md:max-w-2xl">
           <div className="flex flex-col justify-start items-start gap-6">
             <h2 className="text-3xl md:text-5xl font-semibold font-['Inter'] leading-10 md:leading-normal">
               <span className="text-white">Your </span>
@@ -568,7 +576,7 @@ export default function Home() {
                     <span className={`font-['Montserrat'] font-medium ${
                       isOpen
                         ? 'text-2xl text-white'
-                        : 'text-xl md:text-2xl text-white/50 pl-8 md:pl-8 leading-7'
+                        : 'text-xl md:text-2xl text-white/50 leading-7'
                     }`}>
                       {t(cat.titleKey)}
                     </span>
@@ -602,15 +610,16 @@ export default function Home() {
               );
             })}
           </div>
-        </div>
+          </div>
 
-        {/* Right side image space */}
-        <div className="hidden md:flex w-[793px] h-[799px] flex-shrink-0 relative z-10">
-          <img
-            src="/images/addons_section.png"
-            alt="Add-ons illustration"
-            className="w-full h-full object-cover rounded-tl-[20px] rounded-bl-[20px]"
-          />
+          {/* Right side image space */}
+          <div className="hidden md:flex w-[793px] h-[799px] flex-shrink-0 relative z-10">
+            <img
+              src="/images/addons_section.png"
+              alt="Add-ons illustration"
+              className="w-full h-full object-cover rounded-tl-[20px] rounded-bl-[20px]"
+            />
+          </div>
         </div>
       </section>
 

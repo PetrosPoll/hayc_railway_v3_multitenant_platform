@@ -33,6 +33,7 @@ export function NavMenu() {
   });
   const user = authUser ?? userData?.user;
   const isLoggedOut = !user;
+  const logoHref = user ? "/dashboard" : "/";
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
@@ -75,7 +76,7 @@ export function NavMenu() {
     <>
       <div className="flex items-center space-x-4">
         <div className="flex items-center">
-          <Link to="/" className="flex items-center me-16">
+          <Link to={logoHref} className="flex items-center me-16">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               xmlnsXlink="http://www.w3.org/1999/xlink"
@@ -360,7 +361,7 @@ export function NavMenu() {
         {/* Mobile Menu */}
         <div className="md:hidden flex justify-between items-center w-full px-4 py-6">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to={logoHref} className="flex items-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               xmlnsXlink="http://www.w3.org/1999/xlink"
@@ -452,7 +453,7 @@ export function NavMenu() {
             >
               <div className="flex items-center mb-6">
                 <Link
-                  to="/"
+                  to={logoHref}
                   className="flex items-center"
                   onClick={() => setIsOpen(false)}
                 >
