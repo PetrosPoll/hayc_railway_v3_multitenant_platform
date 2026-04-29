@@ -19299,14 +19299,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.header("Access-Control-Allow-Headers", "Content-Type");
     
     try {
-      const { key, email, name, firstName, lastName, group, tags: tagNames, subscribed } = req.body;
+      if (req.body?._hp) {
+        return res.status(200).json({ success: true });
+      }
+
+      const { key, siteId, email, name, firstName, lastName, group, tags: tagNames, subscribed } = req.body;
       
       // Determine subscription status - defaults to true for backward compatibility
       // If 'subscribed' is explicitly false, contact will be added but not subscribed
       const isSubscribed = subscribed !== false;
 
-      if (!key || !email) {
-        return res.status(400).json({ error: "Missing required fields: key and email" });
+      if (!key && !siteId) {
+        return res.status(400).json({ error: "key or siteId is required" });
+      }
+
+      if (!email) {
+        return res.status(400).json({ error: "Missing required fields: email" });
       }
 
       // Validate email format
@@ -19315,8 +19323,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid email format" });
       }
 
-      // Verify API key
-      const analyticsKey = await storage.getAnalyticsKeyByApiKey(key);
+      // Verify API key (or resolve via siteId fallback)
+      let analyticsKey;
+      if (key) {
+        analyticsKey = await storage.getAnalyticsKeyByApiKey(key);
+      } else {
+        const [website] = await db
+          .select({ id: websiteProgress.id })
+          .from(websiteProgress)
+          .where(eq(websiteProgress.siteId, String(siteId)))
+          .limit(1);
+
+        if (website) {
+          analyticsKey = await storage.getAnalyticsKeyByWebsiteId(website.id);
+        }
+      }
       if (!analyticsKey || !analyticsKey.isActive) {
         return res.status(401).json({ error: "Invalid or inactive API key" });
       }
