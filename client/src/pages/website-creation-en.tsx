@@ -11,6 +11,8 @@ import { ChevronUp, Star, Phone, Mail, CheckCircle, Clock, Zap, Shield, Users, A
 import { FacebookReviewWidget, TrustpilotReviewWidget, G2ReviewWidget } from "@/components/ui/review-widget";
 import { useTranslation } from "react-i18next";
 import { getStoredUTMParams } from "@/lib/utm";
+import { useNavigate } from "react-router-dom";
+import { GET_STARTED_DEFAULT_PATH } from "@/lib/get-started-default-path";
 
 type LeadFormData = {
   email: string;
@@ -18,6 +20,7 @@ type LeadFormData = {
 };
 
 export default function WebsiteCreationLandingEN() {
+  const navigate = useNavigate();
   const [showCalendly, setShowCalendly] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState<string>("");
@@ -733,7 +736,7 @@ export default function WebsiteCreationLandingEN() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-full overflow-hidden">
               <Button 
-                onClick={scrollToForm}
+                onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
                 size="lg"
                 className="bg-white text-orange-600 hover:bg-gray-100 px-6 md:px-8 py-4 text-lg font-semibold w-full sm:w-auto max-w-full"
               >

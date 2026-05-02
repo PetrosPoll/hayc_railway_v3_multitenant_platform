@@ -1,6 +1,7 @@
 import { ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { GET_STARTED_DEFAULT_PATH } from "@/lib/get-started-default-path";
 
 export function FinalCtaSection() {
   const { t } = useTranslation();
@@ -19,7 +20,7 @@ export function FinalCtaSection() {
         <button
           className="h-11 px-5 py-3.5 bg-gradient-to-b from-blue-600 to-blue-950 rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
           onClick={() => {
-            navigate("/auth");
+            navigate(GET_STARTED_DEFAULT_PATH);
           }}
         >
           <span className="text-center text-white text-base font-semibold font-['Montserrat'] leading-5">

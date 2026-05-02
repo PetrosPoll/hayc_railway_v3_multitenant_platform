@@ -22,6 +22,7 @@ import { FinalCtaSection } from "@/components/sections/final-cta-section";
 import { HowWeWorkSection } from "@/components/sections/how-we-work-section";
 import { LottieAnimation } from "@/components/ui/lottie-animation";
 import type { Template } from "@shared/schema";
+import { GET_STARTED_DEFAULT_PATH } from "@/lib/get-started-default-path";
 
 // Selected templates to display on home page carousel
 // You can change these IDs to display different templates
@@ -213,10 +214,7 @@ export default function Home() {
           {/* CTA Button */}
           <Button
             className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-[#0C275F] md:text-[#EFF6FF] rounded-[10px] text-base font-semibold font-['Montserrat'] leading-5 border-0 group mb-3"
-            onClick={() => {
-              const pricingSection = document.querySelector('main');
-              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
+            onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             {t("home.hero.cta")}
             <ArrowRight className="ml-4 h-4 w-4" />
@@ -276,10 +274,7 @@ export default function Home() {
           </h2>
           <button
             className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-blue-950 md:text-[#EFF6FF] rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
-            onClick={() => {
-              const pricingSection = document.querySelector('main');
-              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
+            onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             <span className="text-base font-semibold font-['Montserrat'] leading-5">
               {t("home.hero.cta")}
@@ -315,10 +310,7 @@ export default function Home() {
           </div>
           <button
             className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-blue-950 md:text-white rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
-            onClick={() => {
-              const pricingSection = document.querySelector('main');
-              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
+            onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             <span className="text-base font-semibold font-['Montserrat'] leading-5">
               {t("home.hero.cta")}
@@ -354,10 +346,7 @@ export default function Home() {
           </div>
           <button
             className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-blue-950 md:text-white rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
-            onClick={() => {
-              const pricingSection = document.querySelector('main');
-              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
+            onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             <span className="text-base font-semibold font-['Montserrat'] leading-5">
               {t("home.hero.cta")}
@@ -393,10 +382,7 @@ export default function Home() {
           </div>
           <button
             className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-blue-950 md:text-white rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
-            onClick={() => {
-              const pricingSection = document.querySelector('main');
-              pricingSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }}
+            onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             <span className="text-base font-semibold font-['Montserrat'] leading-5">
               {t("home.hero.cta")}
@@ -458,7 +444,7 @@ export default function Home() {
               </div>
               <button
                 className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
-                onClick={() => navigate('/templates')}
+                onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
               >
                 <span className="text-center justify-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
                   {t("home.hero.cta")}

@@ -1,5 +1,6 @@
 import { ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { GET_STARTED_DEFAULT_PATH } from "@/lib/get-started-default-path";
 
 // Figma frame dimensions
 const FRAME_W = 1440;
@@ -126,7 +127,7 @@ export function HowWeWorkSection() {
             </div>
 
             <button
-              onClick={() => navigate("/pricing")}
+              onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
               style={{
                 height: "44px",
                 padding: "14px 20px",
