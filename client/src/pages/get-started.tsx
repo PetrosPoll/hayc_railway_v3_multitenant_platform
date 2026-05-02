@@ -102,8 +102,14 @@ export default function GetStarted() {
     }
   }, [searchParams, setValue]);
 
-  const nextStep = () => setCurrentStep((s) => s + 1);
-  const prevStep = () => setCurrentStep((s) => s - 1);
+  const nextStep = () => {
+    setCurrentStep((s) => s + 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const prevStep = () => {
+    setCurrentStep((s) => s - 1);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const onSubmit = (values: WizardValues) => {
     // TODO: pass values to checkout flow
