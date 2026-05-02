@@ -47,7 +47,7 @@ export default function AboutPage() {
           <div className="flex flex-col lg:flex-row justify-center lg:justify-start items-center lg:items-start gap-3">
             <button
               className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
-              onClick={() => window.location.href = '/templates'}
+              onClick={() => navigate('/templates')}
             >
               <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
                 Explore Templates
@@ -56,7 +56,7 @@ export default function AboutPage() {
             </button>
             <button
               className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
-              onClick={() => window.location.href = '/contact'}
+              onClick={() => navigate('/contact')}
             >
               <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
                 Contact us

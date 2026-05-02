@@ -70,7 +70,7 @@ export default function Auth() {
       setTimeout(() => {
         // Redirect based on user role: staff go to admin, subscribers go to dashboard
         const redirectPath = data.user?.role !== 'subscriber' ? '/admin' : '/dashboard';
-        window.location.href = redirectPath;
+        navigate(redirectPath);
       }, 1000);
     },
     onError: (error: Error) => {

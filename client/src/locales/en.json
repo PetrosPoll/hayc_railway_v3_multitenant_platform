@@ -2776,5 +2776,137 @@
         "missingToken": "No unsubscribe token provided.",
         "backToHome": "Back to Home",
         "error": "An error occurred. Please try again later."
+    },
+    "getStarted": {
+        "cancelAriaLabel": "Cancel and go home",
+        "exitModal": {
+            "title": "Leave setup?",
+            "description": "Your progress won't be saved. You'll need to start over if you come back.",
+            "keepGoing": "Keep going",
+            "leaveAnyway": "Leave anyway"
+        },
+        "intro": {
+            "headlineLine1": "Start with a few",
+            "headlineLine2": "simple steps",
+            "subtextLine1": "Tell us about your business and we'll shape",
+            "subtextLine2": "the right starting point for your website.",
+            "secondary": "A guided setup, made to keep things simple.",
+            "cta": "Get Started"
+        },
+        "navigation": {
+            "back": "Back",
+            "next": "Next",
+            "continueSetup": "Continue Setup"
+        },
+        "businessType": {
+            "titleLine1": "What kind of business are you",
+            "titleLine2": "building this website for?",
+            "subtitle": "Pick the option that feels closest to your business.",
+            "options": {
+                "localBusiness": "Local Business",
+                "serviceBusiness": "Service Business",
+                "personalBrand": "Personal Brand",
+                "creativeBusiness": "Creative Business",
+                "onlineStore": "Online Store",
+                "hospitalityTravel": "Hospitality/Travel",
+                "healthWellness": "Health/Wellness",
+                "other": "Other"
+            }
+        },
+        "goal": {
+            "title": "What do you want your website to help you do?",
+            "subtitle": "Choose the main goal for your website.",
+            "options": {
+                "getMoreEnquiries": "Get more enquiries",
+                "bookMoreAppointments": "Book more appointments",
+                "sellProductsOnline": "Sell products online",
+                "showcaseMyWork": "Showcase my work",
+                "buildTrust": "Build trust in my business",
+                "shareInformationClearly": "Share information clearly",
+                "somethingElse": "Something else"
+            }
+        },
+        "recommendation": {
+            "eyebrow": "Your website setup",
+            "title": "Here's a starting point for your website",
+            "subtitle": "Based on your answers, this setup would be a strong fit for your business.",
+            "structureTitle": "Suggested Structure",
+            "addonsTitle": "Suggested Add-Ons",
+            "templateHeading": "Suggested Template",
+            "structure": {
+                "home": "Home",
+                "about": "About",
+                "services": "Services",
+                "contact": "Contact",
+                "booking": "Booking"
+            },
+            "addons": {
+                "bookingIntegration": "Booking Integration",
+                "basicSeo": "Basic SEO",
+                "analytics": "Analytics"
+            },
+            "template": {
+                "name": "Clean Service",
+                "description": "A minimal, professional direction for service-based businesses.",
+                "note": "This is a starting point. You'll be able to tailor it as we continue."
+            }
+        },
+        "chooseDesign": {
+            "title": "Choose a starting design",
+            "subtitle": "Pick a direction that feels closest to your brand.",
+            "chooseForMe": "Choose for me",
+            "chooseForMeSubtitle": "We'll pick the best direction for you",
+            "options": {
+                "cleanMinimal": "Clean & Minimal",
+                "boldModern": "Bold & Modern",
+                "warmOrganic": "Warm & Organic"
+            }
+        },
+        "summary": {
+            "title": "Your website setup is ready",
+            "subtitle": "Complete your account to continue and get your website started.",
+            "selectedDesign": "Selected Design:",
+            "designLabels": {
+                "auto": "Best match (auto)",
+                "cleanMinimal": "Clean & Minimal",
+                "boldModern": "Bold & Modern",
+                "warmOrganic": "Warm & Organic",
+                "unknown": "—"
+            },
+            "walkthroughTitle": "A quick walkthrough of what happens next:",
+            "readyIn15Days": "Ready in 15 days",
+            "pagesIncluded": "Home, About, Services, Contact",
+            "bookingIntegration": "Booking Integration",
+            "basicSeoSetup": "Basic SEO setup",
+            "customizeLater": "You'll be able to customise everything later",
+            "createAccount": "Create your account",
+            "placeholders": {
+                "fullName": "Full Name",
+                "email": "you@company.com",
+                "subject": "Subject"
+            },
+            "choosePlan": "Choose your plan",
+            "perMonth": "/ per month",
+            "recommended": "Recommended",
+            "setupFee": "Each plan requires + 99€ setup fee",
+            "continueWith": "Continue with {{plan}}",
+            "visa": "VISA",
+            "payLabel": "Pay",
+            "cancelAnytime": "Cancel anytime",
+            "plans": {
+                "essential": {
+                    "label": "Essential",
+                    "description": "For growing businesses."
+                },
+                "basic": {
+                    "label": "Basic",
+                    "description": "For getting online fast."
+                },
+                "pro": {
+                    "label": "Pro",
+                    "description": "For teams that want a partner."
+                }
+            }
+        }
     }
 }

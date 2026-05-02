@@ -14,6 +14,7 @@ import { initializeUTMCapture } from "./lib/utm";
 
 // Page imports
 import Onboarding from "./pages/onboarding";
+import GetStarted from "./pages/get-started";
 import OnboardingLogoSuccess from "./pages/onboarding-logo-success";
 import Contact from "./pages/contact";
 import About from "./pages/about";
@@ -70,6 +71,7 @@ function ConditionalFooter() {
     (user && (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/'))) ||
     location.pathname === '/profile' ||
     location.pathname === '/onboarding' ||
+    location.pathname === '/get-started' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
     location.pathname === '/reviews-program' ||
@@ -90,6 +92,7 @@ function ConditionalNavMenu() {
   // Hide navigation for onboarding, website-creation landing pages, website dashboard pages, and email builder
   if (
     location.pathname === '/onboarding' ||
+    location.pathname === '/get-started' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
     location.pathname.startsWith('/dashboard/website/') ||
@@ -229,6 +232,7 @@ function AppContent() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<About />} />
           <Route path="/success" element={<Success />} />
+          <Route path="/get-started" element={<GetStarted />} />
           <Route path="/pre-checkout/:planId" element={<PreCheckout />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/pricing" element={<Pricing />} />

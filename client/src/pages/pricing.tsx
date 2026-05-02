@@ -1,14 +1,17 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
 
 export default function PricingPage() {
+  const navigate = useNavigate();
   const [billing, setBilling] = useState<"monthly" | "annually">("monthly");
   const [showComparison, setShowComparison] = useState(false);
   const [mobileComparisonPlan, setMobileComparisonPlan] = useState<"basic" | "essential" | "pro">("basic");
 
   const plans = [
     {
+      tier: "basic" as const,
       name: "Basic",
       tagline: "For getting online fast.",
       monthlyPrice: "34€",
@@ -23,6 +26,7 @@ export default function PricingPage() {
       highlighted: false,
     },
     {
+      tier: "essential" as const,
       name: "Essential",
       tagline: "For growing businesses.",
       monthlyPrice: "39€",
@@ -38,6 +42,7 @@ export default function PricingPage() {
       highlighted: true,
     },
     {
+      tier: "pro" as const,
       name: "Pro",
       tagline: "For teams that want a partner.",
       monthlyPrice: "200€",
@@ -245,7 +250,13 @@ export default function PricingPage() {
                       ? "bg-[#ED4C14]"
                       : "bg-gradient-to-b from-white/20 to-white/5"
                   }`}
-                  onClick={() => (window.location.href = "/auth")}
+                  onClick={() =>
+                    navigate(
+                      `/get-started?plan=${plan.tier}&billing=${
+                        billing === "monthly" ? "monthly" : "yearly"
+                      }`,
+                    )
+                  }
                 >
                   <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">Get Started</span>
                 </button>

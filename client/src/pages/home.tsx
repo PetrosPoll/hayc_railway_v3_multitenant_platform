@@ -434,7 +434,7 @@ export default function Home() {
               </p>
               <button
                 className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
-                onClick={() => window.location.href = '/templates'}
+                onClick={() => navigate('/templates')}
               >
                 <span className="text-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
                   {t("nav.templates")}
@@ -458,7 +458,7 @@ export default function Home() {
               </div>
               <button
                 className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
-                onClick={() => window.location.href = '/templates'}
+                onClick={() => navigate('/templates')}
               >
                 <span className="text-center justify-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
                   {t("home.hero.cta")}
@@ -602,12 +602,13 @@ export default function Home() {
                           ))}
                         </div>
                       </div>
-                      <img
+                      {/* <img
                         src="/images/addons_section.png"
                         alt={t(cat.titleKey)}
-                        className="md:hidden w-full rounded-[20px] object-cover mt-3"
+                        className="md:hidden w-full h-[320px] rounded-[20px] object-cover mt-3"
                         style={{ height: '320px' }}
-                      />
+                      /> */}
+                      <div className="md:hidden w-full h-[320px] bg-neutral-700/30 rounded-[20px] mt-3" />
                     </div>
                   )}
                 </div>
@@ -618,11 +619,13 @@ export default function Home() {
 
           {/* Right side image space */}
           <div className="hidden md:flex w-[793px] h-[799px] flex-shrink-0 relative z-10">
-            <img
+            {/* <img
               src="/images/addons_section.png"
               alt="Add-ons illustration"
               className="w-full h-full object-cover rounded-tl-[20px] rounded-bl-[20px]"
-            />
+            /> */}
+                      <div className="w-full w-[793px] h-[799px] bg-neutral-700/30 rounded-[20px] md:rounded-tl-[20px] md:rounded-bl-[20px] md:rounded-tr-none md:rounded-br-none" />
+
           </div>
         </div>
       </section>

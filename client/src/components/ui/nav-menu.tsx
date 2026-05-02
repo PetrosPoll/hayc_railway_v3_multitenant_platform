@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./button";
 import { Home, User, LogOut, Shield } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +26,7 @@ interface Subscription {
 
 export function NavMenu() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const { user: authUser } = useAuth();
   const { data: userData } = useQuery<UserResponse>({
@@ -62,7 +63,7 @@ export function NavMenu() {
         description: t("nav.logoutSuccessDescription"),
       });
       // Redirect after successful logout
-      window.location.href = "/auth";
+      navigate("/auth");
     } catch (error) {
       toast({
         title: t("nav.logoutErrorTitle"),

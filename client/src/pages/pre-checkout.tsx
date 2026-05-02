@@ -797,6 +797,7 @@ function PreCheckoutPage({
 }
 
 export default function PreCheckout() {
+  const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
   const queryParams = new URLSearchParams(location.search);
@@ -816,7 +817,7 @@ export default function PreCheckout() {
         <p className="mt-2 text-muted-foreground">
           {t("preCheckout.selectPlanFirst")}
         </p>
-        <Button onClick={() => (window.location.href = "/")} className="mt-4">
+        <Button onClick={() => navigate("/")} className="mt-4">
           {t("preCheckout.viewPlans")}
         </Button>
       </div>

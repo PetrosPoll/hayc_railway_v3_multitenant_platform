@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, Navigate } from "react-router-dom";
+import { useSearchParams, Navigate, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export default function Success() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -51,7 +52,7 @@ export default function Success() {
             url: `/onboarding${subscriptionParam}`
           });
           
-          window.location.href = `/onboarding${subscriptionParam}`;
+          navigate(`/onboarding${subscriptionParam}`);
         } else {
           setErrorKey("payment.paymentNotCompleted");
           setLoading(false);

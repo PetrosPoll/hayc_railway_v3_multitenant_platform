@@ -574,7 +574,7 @@ export default function WebsiteDashboard() {
           description: t("dashboard.loggedOut") || "Logged out successfully",
         });
         // Use full page redirect to ensure clean logout
-        window.location.href = "/auth";
+        navigate("/auth");
       }
     } catch (error) {
       toast({

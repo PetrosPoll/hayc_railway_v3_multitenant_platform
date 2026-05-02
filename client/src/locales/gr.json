@@ -2776,5 +2776,137 @@
         "missingToken": "Δεν παρέχεται token κατάργησης εγγραφής.",
         "backToHome": "Επιστροφή στην Αρχική",
         "error": "Παρουσιάστηκε σφάλμα. Παρακαλώ δοκιμάστε ξανά αργότερα."
+    },
+    "getStarted": {
+        "cancelAriaLabel": "Ακύρωση και επιστροφή στην αρχική",
+        "exitModal": {
+            "title": "Αποχώρηση από τη ρύθμιση;",
+            "description": "Η πρόοδός σας δεν θα αποθηκευτεί. Θα πρέπει να ξεκινήσετε από την αρχή αν επιστρέψετε.",
+            "keepGoing": "Συνέχεια",
+            "leaveAnyway": "Αποχώρηση έτσι κι αλλιώς"
+        },
+        "intro": {
+            "headlineLine1": "Ξεκινήστε με λίγα",
+            "headlineLine2": "απλά βήματα",
+            "subtextLine1": "Πείτε μας για την επιχείρησή σας και θα διαμορφώσουμε",
+            "subtextLine2": "το σωστό σημείο εκκίνησης για την ιστοσελίδα σας.",
+            "secondary": "Μια καθοδηγούμενη ρύθμιση, για να μείνουν τα πράγματα απλά.",
+            "cta": "Ξεκινήστε"
+        },
+        "navigation": {
+            "back": "Πίσω",
+            "next": "Επόμενο",
+            "continueSetup": "Συνέχεια ρύθμισης"
+        },
+        "businessType": {
+            "titleLine1": "Τι είδους επιχείρηση",
+            "titleLine2": "φτιάχνετε αυτή την ιστοσελίδα για;",
+            "subtitle": "Διαλέξτε την επιλογή που ταιριάζει καλύτερα στην επιχείρησή σας.",
+            "options": {
+                "localBusiness": "Τοπική επιχείρηση",
+                "serviceBusiness": "Υπηρεσίες",
+                "personalBrand": "Προσωπικό brand",
+                "creativeBusiness": "Δημιουργική επιχείρηση",
+                "onlineStore": "Online κατάστημα",
+                "hospitalityTravel": "Φιλοξενία/Ταξίδια",
+                "healthWellness": "Υγεία/Ευεξία",
+                "other": "Άλλο"
+            }
+        },
+        "goal": {
+            "title": "Τι θέλετε να σας βοηθήσει η ιστοσελίδα να πετύχετε;",
+            "subtitle": "Επιλέξτε τον κύριο στόχο για την ιστοσελίδα σας.",
+            "options": {
+                "getMoreEnquiries": "Περισσότερα αιτήματα επικοινωνίας",
+                "bookMoreAppointments": "Περισσότερα ραντεβού",
+                "sellProductsOnline": "Πώληση προϊόντων online",
+                "showcaseMyWork": "Παρουσίαση της δουλειάς μου",
+                "buildTrust": "Εμπιστοσύνη στην επιχείρησή μου",
+                "shareInformationClearly": "Σαφής πληροφόρηση",
+                "somethingElse": "Κάτι άλλο"
+            }
+        },
+        "recommendation": {
+            "eyebrow": "Ρύθμιση ιστοσελίδας σας",
+            "title": "Ένα σημείο εκκίνησης για την ιστοσελίδα σας",
+            "subtitle": "Με βάσει τις απαντήσεις σας, αυτή η ρύθμιση ταιριάζει στην επιχείρησή σας.",
+            "structureTitle": "Προτεινόμενη δομή",
+            "addonsTitle": "Προτεινόμενα πρόσθετα",
+            "templateHeading": "Προτεινόμενο template",
+            "structure": {
+                "home": "Αρχική",
+                "about": "Σχετικά",
+                "services": "Υπηρεσίες",
+                "contact": "Επικοινωνία",
+                "booking": "Κράτηση"
+            },
+            "addons": {
+                "bookingIntegration": "Ενσωμάτωση κρατήσεων",
+                "basicSeo": "Βασικό SEO",
+                "analytics": "Analytics"
+            },
+            "template": {
+                "name": "Clean Service",
+                "description": "Μια λιτή, επαγγελματική κατεύθυνση για επιχειρήσεις υπηρεσιών.",
+                "note": "Αυτό είναι ένα σημείο εκκίνησης. Θα μπορείτε να το προσαρμόσετε στη συνέχεια."
+            }
+        },
+        "chooseDesign": {
+            "title": "Διαλέξτε ένα αρχικό design",
+            "subtitle": "Προτιμήστε την κατεύθυνση που ταιριάζει στο brand σας.",
+            "chooseForMe": "Επιλέξτε για εμένα",
+            "chooseForMeSubtitle": "Θα διαλέξουμε την καλύτερη κατεύθυνση για εσάς",
+            "options": {
+                "cleanMinimal": "Καθαρό & λιτό",
+                "boldModern": "Τολμηρό & μοντέρνο",
+                "warmOrganic": "Ζεστό & φυσικό"
+            }
+        },
+        "summary": {
+            "title": "Η ρύθμιση της ιστοσελίδας σας είναι έτοιμη",
+            "subtitle": "Ολοκληρώστε τον λογαριασμό σας για να συνεχίσετε και να ξεκινήσει η ιστοσελίδα σας.",
+            "selectedDesign": "Επιλεγμένο design:",
+            "designLabels": {
+                "auto": "Βέλτιστη επιλογή (αυτόματο)",
+                "cleanMinimal": "Καθαρό & λιτό",
+                "boldModern": "Τολμηρό & μοντέρνο",
+                "warmOrganic": "Ζεστό & φυσικό",
+                "unknown": "—"
+            },
+            "walkthroughTitle": "Μια γρήγορη επισκόπηση του τι ακολουθεί:",
+            "readyIn15Days": "Έτοιμο σε 15 ημέρες",
+            "pagesIncluded": "Αρχική, Σχετικά, Υπηρεσίες, Επικοινωνία",
+            "bookingIntegration": "Ενσωμάτωση κρατήσεων",
+            "basicSeoSetup": "Βασική ρύθμιση SEO",
+            "customizeLater": "Θα μπορείτε να τα προσαρμόσετε όλα αργότερα",
+            "createAccount": "Δημιουργήστε τον λογαριασμό σας",
+            "placeholders": {
+                "fullName": "Ονοματεπώνυμο",
+                "email": "you@company.com",
+                "subject": "Θέμα"
+            },
+            "choosePlan": "Επιλέξτε πλάνο",
+            "perMonth": "/ ανά μήνα",
+            "recommended": "Προτεινόμενο",
+            "setupFee": "Κάθε πλάνο απαιτεί + 99€ τέλος ρύθμισης",
+            "continueWith": "Συνέχεια με {{plan}}",
+            "visa": "VISA",
+            "payLabel": "Pay",
+            "cancelAnytime": "Ακύρωση ανά πάσα στιγμή",
+            "plans": {
+                "essential": {
+                    "label": "Essential",
+                    "description": "Για αναπτυσσόμενες επιχειρήσεις."
+                },
+                "basic": {
+                    "label": "Basic",
+                    "description": "Για γρήγορη παρουσία online."
+                },
+                "pro": {
+                    "label": "Pro",
+                    "description": "Για ομάδες που θέλουν συνεργάτη."
+                }
+            }
+        }
     }
 }
