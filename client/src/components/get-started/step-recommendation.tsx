@@ -31,11 +31,35 @@ export default function StepRecommendation({
   onBack,
 }: StepRecommendationProps) {
   const { t } = useTranslation();
+
+  const navButtons = (
+    <>
+      <button
+        type="button"
+        onClick={onBack}
+        className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
+      >
+        <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+          {t("getStarted.navigation.back")}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onNext}
+        className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors"
+      >
+        <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+          {t("getStarted.navigation.continueSetup")}
+        </span>
+      </button>
+    </>
+  );
+
   return (
     <div className="w-full min-h-screen bg-black overflow-hidden px-4 md:px-0 box-border">
       <div className="flex flex-col md:flex-row w-full md:pl-16 md:items-center md:gap-12">
-        {/* Left / top panel — class list matches step-goal.tsx exactly */}
-        <div className="flex-1 flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 min-h-screen md:min-h-0 md:justify-center">
+        {/* Left / top — headline + row sections (desktop: includes nav at bottom) */}
+        <div className="flex-1 flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 min-h-0 md:justify-center">
           <div className="flex flex-col gap-3">
             <div className="text-white text-sm md:text-base font-normal font-['Montserrat'] leading-5 md:leading-6">
               {t("getStarted.recommendation.eyebrow")}
@@ -78,31 +102,12 @@ export default function StepRecommendation({
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={onBack}
-              className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
-            >
-              <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
-                {t("getStarted.navigation.back")}
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={onNext}
-              className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors"
-            >
-              <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
-                {t("getStarted.navigation.continueSetup")}
-              </span>
-            </button>
-          </div>
+          <div className="hidden md:flex items-center gap-4">{navButtons}</div>
         </div>
 
-        {/* Right / bottom panel — outer class list matches step-goal.tsx exactly */}
-        <div className="flex-1 h-[323px] md:h-screen bg-[#111111] mt-12 md:mt-0">
-          <div className="h-full w-full min-h-0 flex flex-col justify-start md:justify-center gap-5 md:gap-3 overflow-y-auto box-border py-4 md:py-16 md:pl-6 md:pr-16">
+        {/* Right / bottom panel — mobile: break out of root px-4 so panel spans screen width */}
+        <div className="flex-1 h-[323px] md:h-screen bg-[#111111] mt-12 md:mt-0 max-md:-mx-4 max-md:w-[calc(100%+2rem)] shrink-0">
+          <div className="h-full w-full min-h-0 flex flex-col justify-start md:justify-center gap-5 md:gap-3 overflow-y-auto box-border py-4 md:py-16 px-4 md:pl-6 md:pr-16">
             <div className="text-white text-2xl font-medium font-['Montserrat']">
               {t("getStarted.recommendation.templateHeading")}
             </div>
@@ -114,11 +119,17 @@ export default function StepRecommendation({
                 {t("getStarted.recommendation.template.description")}
               </div>
             </div>
-            <div className="w-full h-44 md:h-[596px] shrink-0 bg-neutral-700/30 rounded-[20px]" />
+            {/* Mobile: full width of parent + rounded corners; desktop: breakout inner pr-16 */}
+            <div className="h-44 w-full shrink-0 rounded-2xl bg-neutral-700/30 p-4 box-border md:ml-0 md:h-[596px] md:w-[calc(100%+4rem)] md:rounded-none md:rounded-l-[20px] md:rounded-r-none md:p-6 md:-mr-16" />
             <div className="text-white text-sm font-semibold font-['Montserrat'] tracking-tight md:text-lg md:font-medium shrink-0">
               {t("getStarted.recommendation.template.note")}
             </div>
           </div>
+        </div>
+
+        {/* Mobile: nav after template (below structure + add-ons + suggested template) */}
+        <div className="flex md:hidden items-center gap-4 w-full shrink-0 pt-8 pb-12">
+          {navButtons}
         </div>
       </div>
     </div>
