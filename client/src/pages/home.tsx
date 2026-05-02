@@ -19,6 +19,7 @@ import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
 import { TestimonialsSection } from "@/components/sections/testimonials-section";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
+import { HowWeWorkSection } from "@/components/sections/how-we-work-section";
 import { LottieAnimation } from "@/components/ui/lottie-animation";
 import type { Template } from "@shared/schema";
 
@@ -414,6 +415,9 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* How We Work Section */}
+      <HowWeWorkSection />
 
       {/* Templates Section */}
       <section className="w-full flex flex-col justify-start items-center gap-12 bg-black py-12 md:py-24">
