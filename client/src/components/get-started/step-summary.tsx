@@ -64,10 +64,10 @@ export default function StepSummary({
         </div>
       </div>
 
-      {/* Two column cards */}
-      <div className="w-full flex flex-col md:flex-row justify-start items-start gap-6">
+      {/* Two column cards — desktop: equal height (stretch to tallest) */}
+      <div className="w-full flex flex-col md:flex-row justify-start items-stretch gap-6">
         {/* LEFT CARD — summary */}
-        <div className="w-full md:flex-1 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-6">
+        <div className="w-full md:flex-1 md:min-h-0 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-6">
           {/* Selected design row */}
           <div className="flex justify-start items-start gap-3">
             <div className="flex-1 flex flex-col gap-2 md:gap-3">
@@ -122,7 +122,7 @@ export default function StepSummary({
         </div>
 
         {/* RIGHT CARD — account + plan */}
-        <div className="w-full md:flex-1 md:h-[763.05px] p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-8 md:gap-24">
+        <div className="w-full md:flex-1 md:min-h-0 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-8 md:gap-24">
           <div className="flex flex-col gap-6">
             <div className="text-white text-base md:text-2xl font-medium font-['Montserrat']">
               {t("getStarted.summary.createAccount")}

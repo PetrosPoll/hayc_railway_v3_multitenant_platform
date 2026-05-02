@@ -8,7 +8,7 @@ interface StepIntroProps {
 export default function StepIntro({ onNext }: StepIntroProps) {
   const { t } = useTranslation();
   return (
-    <div className="w-full min-h-screen bg-black overflow-hidden">
+    <div className="w-full min-h-screen bg-black overflow-hidden px-4 md:px-0 box-border">
       {/*
         Desktop: single row (flex-row), left content + right image side by side
         Mobile: single column (flex-col), content on top, image below

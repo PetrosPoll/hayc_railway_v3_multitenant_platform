@@ -23,7 +23,7 @@ export default function StepBusinessType({
 }: StepBusinessTypeProps) {
   const { t } = useTranslation();
   return (
-    <div className="w-full min-h-screen bg-black overflow-hidden">
+    <div className="w-full min-h-screen bg-black overflow-hidden px-4 md:px-0 box-border">
       <div className="flex flex-col md:flex-row w-full md:pl-16 md:items-center md:gap-12">
         {/* Left / top panel */}
         <div className="flex-1 flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 min-h-screen md:min-h-0 md:justify-center">

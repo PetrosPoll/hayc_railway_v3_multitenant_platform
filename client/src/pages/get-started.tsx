@@ -182,12 +182,15 @@ export default function GetStarted() {
       </div>
 
       <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
-        <DialogContent className="bg-[#111111] border border-zinc-800 text-white font-['Montserrat'] max-w-md">
-          <DialogHeader>
+        <DialogContent
+          className="bg-[#111111] border border-zinc-800 text-white font-['Montserrat'] max-w-md rounded-2xl sm:rounded-lg"
+          closeBtnClassName="border-white/30 bg-white/15 text-white shadow-md hover:bg-white/25 hover:text-white hover:opacity-100 focus-visible:ring-[#ED4C14]/60 focus-visible:ring-offset-[#111111]"
+        >
+          <DialogHeader className="gap-3 text-center sm:text-left pt-8 sm:pt-2 pr-14 sm:pr-4">
             <DialogTitle className="text-white text-xl font-semibold font-['Montserrat']">
               {t("getStarted.exitModal.title")}
             </DialogTitle>
-            <DialogDescription className="text-white/60 text-sm font-normal font-['Montserrat'] leading-6 pt-1">
+            <DialogDescription className="text-white/60 text-sm font-normal font-['Montserrat'] leading-6">
               {t("getStarted.exitModal.description")}
             </DialogDescription>
           </DialogHeader>

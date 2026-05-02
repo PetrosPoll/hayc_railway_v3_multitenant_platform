@@ -36,8 +36,8 @@ export default function StepChooseDesign({
         </div>
       </div>
 
-      {/* Grid — 2 cols desktop, 1 col mobile */}
-      <div className="w-full flex flex-col md:flex-row md:flex-wrap justify-start items-start gap-3 md:gap-6">
+      {/* Grid — 2 cols desktop (centered), 1 col mobile */}
+      <div className="w-full flex flex-col md:flex-row md:flex-wrap md:justify-center justify-start items-stretch gap-3 md:gap-6">
         {DESIGN_IDS.map((designId) => {
           const isSelected = form.watch("selectedDesign") === designId;
           const label = t(CHOOSE_DESIGN_OPTION_KEY[designId]);
