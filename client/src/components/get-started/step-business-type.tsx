@@ -1,7 +1,11 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
-import { BUSINESS_TYPES, type WizardValues } from "@/pages/get-started";
+import {
+  BUSINESS_TYPE_OTHER,
+  BUSINESS_TYPES,
+  type WizardValues,
+} from "@/pages/get-started";
 import { BUSINESS_TYPE_I18N_KEY } from "@/lib/get-started-translations";
 import {
   FormControl,
@@ -22,6 +26,12 @@ export default function StepBusinessType({
   onBack,
 }: StepBusinessTypeProps) {
   const { t } = useTranslation();
+  const businessType = form.watch("businessType");
+  const otherDetails = form.watch("businessTypeOtherDetails");
+  const canContinue =
+    !!businessType &&
+    (businessType !== BUSINESS_TYPE_OTHER || !!otherDetails?.trim());
+
   return (
     <div className="w-full min-h-screen bg-black overflow-hidden px-4 md:px-0 box-border">
       <div className="flex flex-col md:flex-row w-full md:pl-16 md:items-center md:gap-12">
@@ -53,7 +63,17 @@ export default function StepBusinessType({
                         <button
                           key={type}
                           type="button"
-                          onClick={() => field.onChange(type)}
+                          onClick={() => {
+                            if (type === BUSINESS_TYPE_OTHER) {
+                              if (field.value !== BUSINESS_TYPE_OTHER) {
+                                form.setValue("businessTypeOtherDetails", "");
+                              }
+                              field.onChange(BUSINESS_TYPE_OTHER);
+                            } else {
+                              form.setValue("businessTypeOtherDetails", "");
+                              field.onChange(type);
+                            }
+                          }}
                           className={cn(
                             "px-3.5 py-2 rounded-[10px] outline outline-1 outline-offset-[-1px]",
                             "flex justify-start items-center gap-3",
@@ -87,6 +107,27 @@ export default function StepBusinessType({
             )}
           />
 
+          {businessType === BUSINESS_TYPE_OTHER && (
+            <FormField
+              control={form.control}
+              name="businessTypeOtherDetails"
+              render={({ field }) => (
+                <FormItem className="w-full max-w-xl">
+                  <FormControl>
+                    <input
+                      {...field}
+                      value={field.value ?? ""}
+                      placeholder={t(
+                        "getStarted.businessType.otherPlaceholder",
+                      )}
+                      className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          )}
+
           <div className="flex items-center gap-4">
             <button
               type="button"
@@ -101,7 +142,7 @@ export default function StepBusinessType({
             <button
               type="button"
               onClick={onNext}
-              disabled={!form.watch("businessType")}
+              disabled={!canContinue}
               className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">

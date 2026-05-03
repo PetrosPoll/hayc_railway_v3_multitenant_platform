@@ -37,6 +37,9 @@ export const BUSINESS_TYPES = [
   "Other",
 ] as const;
 
+/** Selecting this on the business-type step shows a free-text field. */
+export const BUSINESS_TYPE_OTHER = "Other" as (typeof BUSINESS_TYPES)[number];
+
 export const GOALS = [
   "Get more enquiries",
   "Book more appointments",
@@ -47,13 +50,19 @@ export const GOALS = [
   "Something else",
 ] as const;
 
+/** Selecting this on the goal step clears other goals and shows a free-text field. */
+export const GOAL_SOMETHING_ELSE =
+  "Something else" as (typeof GOALS)[number];
+
 export const PLANS = ["basic", "essential", "pro"] as const;
 
 export const WIZARD_BILLING_PERIODS = ["monthly", "yearly"] as const;
 
 const wizardSchema = z.object({
   businessType: z.enum(BUSINESS_TYPES).optional(),
-  goal: z.enum(GOALS).optional(),
+  businessTypeOtherDetails: z.string().optional(),
+  goals: z.array(z.enum(GOALS)).optional(),
+  goalOtherDetails: z.string().optional(),
   selectedDesign: z.string().optional(),
   fullName: z.string().optional(),
   email: z.string().optional(),
@@ -75,7 +84,9 @@ export default function GetStarted() {
     resolver: zodResolver(wizardSchema),
     defaultValues: {
       businessType: undefined,
-      goal: undefined,
+      businessTypeOtherDetails: "",
+      goals: [],
+      goalOtherDetails: "",
       selectedDesign: undefined,
       fullName: "",
       email: "",

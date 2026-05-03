@@ -2811,11 +2811,12 @@
                 "hospitalityTravel": "Hospitality/Travel",
                 "healthWellness": "Health/Wellness",
                 "other": "Other"
-            }
+            },
+            "otherPlaceholder": "Describe your type of business."
         },
         "goal": {
             "title": "What do you want your website to help you do?",
-            "subtitle": "Choose the main goal for your website.",
+            "subtitle": "Choose all that apply.",
             "options": {
                 "getMoreEnquiries": "Get more enquiries",
                 "bookMoreAppointments": "Book more appointments",
@@ -2824,7 +2825,8 @@
                 "buildTrust": "Build trust in my business",
                 "shareInformationClearly": "Share information clearly",
                 "somethingElse": "Something else"
-            }
+            },
+            "otherPlaceholder": "Tell us what you want to achieve."
         },
         "recommendation": {
             "eyebrow": "Your website setup",
