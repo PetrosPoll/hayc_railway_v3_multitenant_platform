@@ -132,7 +132,8 @@
         "languageEnglishAria": "English",
         "languageGreekAria": "Greek",
         "languageEnglishLabel": "English",
-        "languageGreekLabel": "Greek"
+        "languageGreekLabel": "Greek",
+        "mobileMenuTitle": "Menu"
     },
     "auth": {
         "login": "Login",
@@ -760,24 +761,24 @@
             "halfStarAlt": "half star",
             "items": [
                 {
-                    "name": "Name Surname",
-                    "title": "Business title",
-                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                    "name": "Alex Rivera",
+                    "title": "Founder · CloudMetrics",
+                    "text": "We needed a credible site quickly without becoming designers ourselves. Hayc nailed the tone, pacing, and structure—our demo requests doubled in six weeks."
                 },
                 {
-                    "name": "Name Surname",
-                    "title": "Business title",
-                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                    "name": "Nina Kostas",
+                    "title": "Studio lead · Kostas Interiors",
+                    "text": "The process felt genuinely simple. Revisions landed fast, hosting was sorted, and the mobile experience matches our portfolio work perfectly."
                 },
                 {
-                    "name": "Name Surname",
-                    "title": "Business title",
-                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                    "name": "Marcus Dahl",
+                    "title": "Owner · Dahl Fitness",
+                    "text": "Bookings integrate cleanly and people finally understand our packages online. Exactly the professional presence we’d been delaying for months."
                 },
                 {
-                    "name": "Name Surname",
-                    "title": "Business title",
-                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                    "name": "Jordan Lee",
+                    "title": "Product lead · Studio Haru",
+                    "text": "We launched in two weeks—the copy, layout, and performance feel like us. Support was quick and clear; tweaks never turned into endless back-and-forth."
                 }
             ]
         },

@@ -50,6 +50,11 @@ html, body {
   background: rgba(160, 186, 243, 0.12) !important;
 }
 
+.mobile-drawer-panel .mobile-drawer-language button.language-selected {
+  border-color: #ffffff !important;
+  border-width: 2px !important;
+}
+
 @keyframes progress-indeterminate {
   0% {
     transform: translateX(-100%);
@@ -160,4 +165,42 @@ html, body {
 
 .hero-preview-desk-slot-right {
   animation: hero-preview-desk-from-edge 700ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+@keyframes testimonial-deck-exit-left {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(-15%, 0, 0) scale(0.97);
+    opacity: 0;
+  }
+}
+
+@keyframes testimonial-deck-exit-right {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(15%, 0, 0) scale(0.97);
+    opacity: 0;
+  }
+}
+
+.animate-testimonial-deck-exit-left {
+  animation: testimonial-deck-exit-left 380ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+.animate-testimonial-deck-exit-right {
+  animation: testimonial-deck-exit-right 380ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-testimonial-deck-exit-left,
+  .animate-testimonial-deck-exit-right {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

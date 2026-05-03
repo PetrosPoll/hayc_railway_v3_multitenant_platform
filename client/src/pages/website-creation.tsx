@@ -731,7 +731,7 @@ export default function WebsiteCreationLanding() {
               <Button 
                 onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
                 size="lg"
-                className="bg-white text-orange-600 hover:bg-gray-100 px-6 md:px-8 py-4 text-lg font-semibold w-full sm:w-auto max-w-full"
+                className="bg-[#ED4C14] text-[#EFF6FF] hover:bg-[#ED4C14]/90 hover:opacity-95 px-6 md:px-8 py-4 text-lg font-semibold w-full sm:w-auto max-w-full border-0"
               >
                 {t('landingPage.cta1.button')}
               </Button>

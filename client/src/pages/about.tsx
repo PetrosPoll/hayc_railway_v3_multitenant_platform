@@ -24,12 +24,18 @@ export default function AboutPage() {
     <div className="min-h-screen bg-background mt-[65px]">
       {/* About Page Header */}
       <section className="w-full px-4 lg:px-16 pt-12 pb-24 bg-black flex flex-col justify-center items-center gap-6">
-        {/* 3D Asterisk image */}
-        <img
-          src="/images/about_header.png"
-          alt="HAYC asterisk"
-          className="w-64 h-64 lg:w-72 lg:h-72 object-contain"
-        />
+        {/* 3D Asterisk video */}
+        <div className="h-64 w-64 overflow-hidden lg:h-72 lg:w-72">
+          <video
+            src="/videos/asterisk_1_jtw9zn.mp4"
+            className="h-full w-full object-cover object-center mix-blend-screen brightness-110 contrast-125"
+            autoPlay
+            muted
+            loop
+            playsInline
+            aria-label="HAYC asterisk"
+          />
+        </div>
 
         {/* Content */}
         <div className="w-full lg:w-[736px] flex flex-col justify-center items-center gap-12">
@@ -89,12 +95,16 @@ export default function AboutPage() {
         </div>
       </div>
 
-      {/* Full Width Image */}
-      <div className="w-full h-52 lg:h-[800px]">
-        <img
-          src="/images/help_as_you_can.png"
-          alt="HAYC"
-          className="w-full h-full object-cover"
+      {/* Full Width Video */}
+      <div className="w-full h-52 lg:h-[800px] bg-black overflow-hidden">
+        <video
+          src="/videos/Logo_Animation_1_g2fcoo.mp4"
+          className="h-full w-full object-cover"
+          autoPlay
+          muted
+          loop
+          playsInline
+          aria-label="HAYC logo animation"
         />
       </div>
 

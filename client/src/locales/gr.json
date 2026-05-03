@@ -132,7 +132,8 @@
         "languageEnglishAria": "Αγγλικά",
         "languageGreekAria": "Ελληνικά",
         "languageEnglishLabel": "English",
-        "languageGreekLabel": "Ελληνικά"
+        "languageGreekLabel": "Ελληνικά",
+        "mobileMenuTitle": "Μενού"
     },
     "auth": {
         "login": "Σύνδεση",
@@ -760,24 +761,24 @@
             "halfStarAlt": "μισό αστέρι",
             "items": [
                 {
-                    "name": "Όνομα Επώνυμο",
-                    "title": "Τίτλος επιχείρησης",
-                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                    "name": "Αλέξ Ριβέρα",
+                    "title": "Ιδρυτής · CloudMetrics",
+                    "text": "Χρειαζόμασταν αξιόπιστη ιστοσελίδα γρήγορα χωρίς να γίνουμε designers. Το Hayc πέτυχε τόνο, ρυθμό και δομή — τα demo requests διπλασιάστηκαν σε έξι εβδομάδες."
                 },
                 {
-                    "name": "Όνομα Επώνυμο",
-                    "title": "Τίτλος επιχείρησης",
-                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                    "name": "Νίνα Κώστας",
+                    "title": "Studio head · Kostas Interiors",
+                    "text": "Η διαδικασία ήταν ουσιαστικά απλή. Οι διορθώσεις ήταν γρήγορες, το hosting ήταν τακτοποιημένο και το mobile ταιριάζει απόλυτα με το portfolio μας."
                 },
                 {
-                    "name": "Όνομα Επώνυμο",
-                    "title": "Τίτλος επιχείρησης",
-                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                    "name": "Μάρκους Ντάλ",
+                    "title": "Ιδιοκτήτης · Dahl Fitness",
+                    "text": "Τα ραντεβού ενσωματώνονται καθαρά και πλέον κατανοούν τις υπηρεσίες μας στο web. Επαγγελματική παρουσία όπως την καθυστερούσαμε μήνες."
                 },
                 {
-                    "name": "Όνομα Επώνυμο",
-                    "title": "Τίτλος επιχείρησης",
-                    "text": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In vel cursus dui. Morbi semper, neque at aliquet malesuada, dui est mollis turpis, in sollicitudin urna odio in massa. Praesent eu turpis sit amet augue viverra hendrerit."
+                    "name": "Jordan Lee",
+                    "title": "Product lead · Studio Haru",
+                    "text": "Ξεκινήσαμε live μέσα σε δύο εβδομάδες—κείμενο, διάταξη και απόδοση μας αντιπροσωπεύουν. Η υποστήριξη ήταν γρήγορη και ξεκάθαρη και οι αλλαγές δεν έγιναν ατέλειωτο ping-pong."
                 }
             ]
         },

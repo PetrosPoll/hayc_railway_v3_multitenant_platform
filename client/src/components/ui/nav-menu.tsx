@@ -6,7 +6,7 @@ import { User as UserType } from "@shared/schema";
 import { logout } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/ui/authContext";
 
@@ -123,28 +123,28 @@ export function NavMenu() {
                       data-name="Path 902"
                       d="M61.828,22.27V38.076H53.823V23.5c0-4.465-2.052-6.518-5.594-6.518-3.849,0-6.619,2.362-6.619,7.441V38.076H33.6V0H41.61V13.34a12.138,12.138,0,0,1,8.775-3.285c6.517,0,11.444,3.8,11.444,12.215"
                       transform="translate(-6.611 0)"
-                      fill="#00398e"
+                      fill="#ffffff"
                     ></path>
                     <path
                       id="Path_903"
                       data-name="Path 903"
                       d="M102.242,12.917v27.61H94.6v-3.18c-2,2.41-4.927,3.591-8.622,3.591-7.8,0-13.8-5.542-13.8-14.214s6-14.216,13.8-14.216a10.606,10.606,0,0,1,8.263,3.338V12.917ZM94.39,26.723c0-4.774-3.079-7.648-7.03-7.648-4,0-7.082,2.874-7.082,7.648s3.079,7.646,7.082,7.646c3.951,0,7.03-2.873,7.03-7.646"
                       transform="translate(-14.197 -2.46)"
-                      fill="#00398e"
+                      fill="#ffffff"
                     ></path>
                     <path
                       id="Path_904"
                       data-name="Path 904"
                       d="M140.745,13.019V37.388c0,10.264-5.388,14.983-15.037,14.983-5.08,0-10.006-1.282-13.187-3.8l3.182-5.747a15.335,15.335,0,0,0,9.339,3.079c5.388,0,7.7-2.514,7.7-7.494V37.49a11.314,11.314,0,0,1-8.159,3.183c-6.928,0-11.8-3.849-11.8-12.42V13.019h8.006V27.072c0,4.67,2.053,6.723,5.594,6.723,3.7,0,6.364-2.362,6.364-7.44V13.019Z"
                       transform="translate(-22.135 -2.561)"
-                      fill="#00398e"
+                      fill="#ffffff"
                     ></path>
                     <path
                       id="Path_905"
                       data-name="Path 905"
                       d="M149.683,26.724c0-8.315,6.414-14.214,15.395-14.214,5.8,0,10.366,2.513,12.367,7.03l-6.209,3.335a6.881,6.881,0,0,0-6.209-3.8c-4.054,0-7.236,2.821-7.236,7.646s3.182,7.646,7.236,7.646a6.794,6.794,0,0,0,6.209-3.8l6.209,3.386c-2,4.414-6.569,6.979-12.367,6.979-8.981,0-15.395-5.9-15.395-14.214"
                       transform="translate(-29.445 -2.461)"
-                      fill="#00398e"
+                      fill="#ffffff"
                     ></path>
                   </g>
                 </g>
@@ -312,7 +312,7 @@ export function NavMenu() {
               }}
               className={
                 i18n.language === "en"
-                  ? "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-neutral-700 flex items-center justify-center bg-transparent hover:opacity-80"
+                  ? "h-10 p-2.5 rounded-[5px] outline outline-2 outline-offset-[-1px] outline-white flex items-center justify-center bg-transparent hover:opacity-80"
                   : "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-zinc-300 flex items-center justify-center bg-transparent hover:opacity-80"
               }
               aria-label={t("nav.languageEnglishAria")}
@@ -336,7 +336,7 @@ export function NavMenu() {
               }}
               className={
                 i18n.language === "gr"
-                  ? "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-neutral-700 flex items-center justify-center bg-transparent hover:opacity-80"
+                  ? "h-10 p-2.5 rounded-[5px] outline outline-2 outline-offset-[-1px] outline-white flex items-center justify-center bg-transparent hover:opacity-80"
                   : "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-zinc-300 flex items-center justify-center bg-transparent hover:opacity-80"
               }
               aria-label={t("nav.languageGreekAria")}
@@ -451,7 +451,9 @@ export function NavMenu() {
             <SheetContent
               side="left"
               className="mobile-drawer-panel w-[80%] sm:w-[385px] flex flex-col gap-4 pt-8"
+              aria-describedby={undefined}
             >
+              <SheetTitle className="sr-only">{t("nav.mobileMenuTitle")}</SheetTitle>
               <div className="flex items-center mb-6">
                 <Link
                   to={logoHref}
@@ -682,7 +684,7 @@ export function NavMenu() {
                           localStorage.setItem("language", "en");
                           setIsOpen(false);
                         }}
-                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "en" ? "border-primary bg-accent" : ""}`}
+                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "en" ? "language-selected" : ""}`}
                         aria-label={t("nav.languageEnglishAria")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
@@ -704,7 +706,7 @@ export function NavMenu() {
                           localStorage.setItem("language", "gr");
                           setIsOpen(false);
                         }}
-                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "gr" ? "border-primary bg-accent" : ""}`}
+                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "gr" ? "language-selected" : ""}`}
                         aria-label={t("nav.languageGreekAria")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">

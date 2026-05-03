@@ -434,11 +434,11 @@ export default function Home() {
 
           {/* CTA Button */}
           <Button
-            className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-[#0C275F] md:text-[#EFF6FF] rounded-[10px] text-base font-semibold font-['Montserrat'] leading-5 border-0 group mb-3"
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] text-base font-semibold font-['Montserrat'] leading-5 border-0 group mb-3"
             onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             {t("home.hero.cta")}
-            <ArrowRight className="ml-4 h-4 w-4" />
+            <ArrowRight className="ml-4 h-4 w-4 text-[#EFF6FF]" />
           </Button>
 
           {/* Social proof */}
@@ -596,13 +596,13 @@ export default function Home() {
             <span className="text-white">who want it done right, without doing it all.</span>
           </h2>
           <button
-            className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-blue-950 md:text-[#EFF6FF] rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
             onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             <span className="text-base font-semibold font-['Montserrat'] leading-5">
               {t("home.hero.cta")}
             </span>
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
           </button>
           </div>
 
@@ -632,13 +632,13 @@ export default function Home() {
             </p>
           </div>
           <button
-            className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-blue-950 md:text-white rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
             onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             <span className="text-base font-semibold font-['Montserrat'] leading-5">
               {t("home.hero.cta")}
             </span>
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
           </button>
           </div>
 
@@ -668,13 +668,13 @@ export default function Home() {
             </p>
           </div>
           <button
-            className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-blue-950 md:text-white rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
             onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             <span className="text-base font-semibold font-['Montserrat'] leading-5">
               {t("home.hero.cta")}
             </span>
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
           </button>
           </div>
 
@@ -704,13 +704,13 @@ export default function Home() {
             </p>
           </div>
           <button
-            className="h-11 px-5 py-3.5 bg-[#A0BAF3] md:bg-[#ED4C14] hover:opacity-80 text-blue-950 md:text-white rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
+            className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] inline-flex justify-start items-center gap-4 transition-opacity"
             onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
           >
             <span className="text-base font-semibold font-['Montserrat'] leading-5">
               {t("home.hero.cta")}
             </span>
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
           </button>
           </div>
 
@@ -767,12 +767,12 @@ export default function Home() {
               </div>
               <button
                 className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
-                onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
+                onClick={() => navigate("/templates")}
               >
-                <span className="text-center justify-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
-                  {t("home.hero.cta")}
+                <span className="text-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
+                  {t("nav.templates")}
                 </span>
-                <ArrowRight className="w-4 h-4 text-blue-950" />
+                <ArrowRight className="h-4 w-4 text-blue-950" />
               </button>
             </div>
           </div>
