@@ -1,7 +1,11 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
-import { PLANS, type WizardValues } from "@/pages/get-started";
+import {
+  PLANS,
+  WIZARD_BILLING_PERIODS,
+  type WizardValues,
+} from "@/pages/get-started";
 import { SUMMARY_SELECTED_DESIGN_I18N_KEY } from "@/lib/get-started-translations";
 import {
   FormControl,
@@ -19,12 +23,13 @@ import {
 
 const PLAN_CONFIG: {
   id: (typeof PLANS)[number];
-  price: string;
+  monthlyPrice: number;
+  yearlyPricePerMonth: number;
   recommended: boolean;
 }[] = [
-  { id: "essential", price: "39€", recommended: true },
-  { id: "basic", price: "34€", recommended: false },
-  { id: "pro", price: "200€", recommended: false },
+  { id: "essential", monthlyPrice: 39, yearlyPricePerMonth: 31, recommended: true },
+  { id: "basic", monthlyPrice: 34, yearlyPricePerMonth: 27, recommended: false },
+  { id: "pro", monthlyPrice: 200, yearlyPricePerMonth: 160, recommended: false },
 ];
 
 interface StepSummaryProps {
@@ -41,6 +46,7 @@ export default function StepSummary({
   const { t } = useTranslation();
   const selectedDesignId = form.watch("selectedDesign");
   const selectedPlanId = form.watch("plan");
+  const selectedBillingPeriod = form.watch("billingPeriod") ?? "monthly";
 
   const designLabel =
     selectedDesignId && SUMMARY_SELECTED_DESIGN_I18N_KEY[selectedDesignId]
@@ -191,6 +197,55 @@ export default function StepSummary({
             <div className="flex flex-col gap-3">
               <FormField
                 control={form.control}
+                name="billingPeriod"
+                render={({ field }) => {
+                  const current = field.value ?? "monthly";
+                  return (
+                    <FormItem className="w-full">
+                      <div className="text-white text-sm font-medium font-['Montserrat'] mb-2">
+                        {t("getStarted.summary.billing.label")}
+                      </div>
+                      <FormControl>
+                        <div className="flex flex-row flex-wrap gap-2">
+                          {WIZARD_BILLING_PERIODS.map((period) => {
+                            const isSel = current === period;
+                            return (
+                              <button
+                                key={period}
+                                type="button"
+                                onClick={() => field.onChange(period)}
+                                className={cn(
+                                  "px-3.5 py-2 rounded-[10px] outline outline-1 outline-offset-[-1px]",
+                                  "text-white text-sm font-semibold font-['Montserrat']",
+                                  "transition-colors cursor-pointer border-0",
+                                  "bg-gradient-to-br from-neutral-700/30 to-neutral-700/20",
+                                  isSel
+                                    ? "outline-[#ED4C14]"
+                                    : "outline-white/30",
+                                )}
+                              >
+                                {t(
+                                  period === "monthly"
+                                    ? "getStarted.summary.billing.monthly"
+                                    : "getStarted.summary.billing.yearly",
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </FormControl>
+                      {current === "yearly" && (
+                        <p className="mt-2 text-white/60 text-xs font-normal font-['Montserrat'] leading-snug">
+                          {t("getStarted.summary.billing.yearlyExplanation")}
+                        </p>
+                      )}
+                    </FormItem>
+                  );
+                }}
+              />
+
+              <FormField
+                control={form.control}
                 name="plan"
                 render={({ field }) => (
                   <FormItem>
@@ -198,6 +253,10 @@ export default function StepSummary({
                       <div className="flex flex-col gap-3">
                         {PLAN_CONFIG.map((plan) => {
                           const isSelected = field.value === plan.id;
+                          const displayPrice =
+                            selectedBillingPeriod === "yearly"
+                              ? plan.yearlyPricePerMonth
+                              : plan.monthlyPrice;
                           return (
                             <button
                               key={plan.id}
@@ -239,10 +298,14 @@ export default function StepSummary({
                                       -
                                     </span>
                                     <span className="text-white text-sm md:text-base font-normal font-['Montserrat'] leading-6">
-                                      {plan.price}
+                                      {displayPrice}€
                                     </span>
                                     <span className="hidden md:inline text-white/80 text-sm font-normal font-['Montserrat'] leading-5">
-                                      {t("getStarted.summary.perMonth")}
+                                      {selectedBillingPeriod === "yearly"
+                                        ? t(
+                                            "getStarted.summary.perMonthAnnual",
+                                          )
+                                        : t("getStarted.summary.perMonth")}
                                     </span>
                                   </div>
                                   <div className="text-white/50 text-xs md:text-sm font-normal font-['Montserrat'] tracking-tight">

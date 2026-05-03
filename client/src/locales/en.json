@@ -2888,7 +2888,14 @@
                 "subject": "Subject"
             },
             "choosePlan": "Choose your plan",
+            "billing": {
+                "label": "Billing period",
+                "monthly": "Monthly",
+                "yearly": "Yearly",
+                "yearlyExplanation": "Prices show the equivalent per month when you choose annual billing."
+            },
             "perMonth": "/ per month",
+            "perMonthAnnual": "/ per month (billed yearly)",
             "recommended": "Recommended",
             "setupFee": "Each plan requires + 99€ setup fee",
             "continueWith": "Continue with {{plan}}",

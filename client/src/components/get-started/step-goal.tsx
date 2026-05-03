@@ -61,33 +61,17 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
                           key={goalOption}
                           type="button"
                           onClick={() => {
-                            if (goalOption === GOAL_SOMETHING_ELSE) {
-                              if (isSelected) {
-                                field.onChange(
-                                  selected.filter((g) => g !== GOAL_SOMETHING_ELSE),
-                                );
-                                form.setValue("goalOtherDetails", "");
-                              } else {
-                                field.onChange([GOAL_SOMETHING_ELSE]);
-                                form.setValue("goalOtherDetails", "");
-                              }
-                              return;
-                            }
+                            const next = isSelected
+                              ? selected.filter((g) => g !== goalOption)
+                              : [...selected, goalOption];
+                            field.onChange(next);
 
-                            const hadSomethingElse =
-                              selected.includes(GOAL_SOMETHING_ELSE);
-                            const base = selected.filter(
-                              (g) => g !== GOAL_SOMETHING_ELSE,
-                            );
-                            if (hadSomethingElse) {
+                            if (
+                              goalOption === GOAL_SOMETHING_ELSE &&
+                              isSelected
+                            ) {
                               form.setValue("goalOtherDetails", "");
                             }
-
-                            const nextIsSelected = base.includes(goalOption);
-                            const next = nextIsSelected
-                              ? base.filter((g) => g !== goalOption)
-                              : [...base, goalOption];
-                            field.onChange(next);
                           }}
                           className={cn(
                             "px-3.5 py-2 rounded-[10px] outline outline-1 outline-offset-[-1px]",
