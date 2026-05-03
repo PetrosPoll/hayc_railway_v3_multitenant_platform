@@ -92,7 +92,7 @@ export default function AboutPage() {
       {/* Full Width Image */}
       <div className="w-full h-52 lg:h-[800px]">
         <img
-          src="/images/Rectangle 117.png"
+          src="/images/help_as_you_can.png"
           alt="HAYC"
           className="w-full h-full object-cover"
         />

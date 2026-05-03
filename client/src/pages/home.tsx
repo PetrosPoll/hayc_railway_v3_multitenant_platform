@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { type User, type Subscription } from "@shared/schema";
-import React, { useCallback, useEffect, useState, useMemo } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState, useMemo } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import AutoScroll from "embla-carousel-auto-scroll";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,22 @@ import { GET_STARTED_DEFAULT_PATH } from "@/lib/get-started-default-path";
 // Selected templates to display on home page carousel
 // You can change these IDs to display different templates
 const SELECTED_TEMPLATE_IDS = [1, 5, 10, 15, 20, 25, 30, 35];
+
+/** Static hero bottom cards; index matches hero clip: booking → 0, LMS → 1, resort → 2 */
+const HERO_BOTTOM_PREVIEW_IMAGES = [
+  "/images/dream_yacht.png",
+  "/images/career_courses.png",
+  "/images/resort_hotel.png",
+] as const;
+
+function shufflePreviewUrlsOnce(previews: string[]): string[] {
+  const arr = [...previews];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 
 export default function Home() {
   const { t } = useTranslation();
@@ -98,6 +114,11 @@ export default function Home() {
     );
   }, []);
 
+  /** One shuffle per marquee row over full ENVATO preview list (-50% loop needs two identical copies concatenated below). */
+  const templatesMarqueeRow1Previews = useMemo(() => shufflePreviewUrlsOnce(ENVATO_TEMPLATES.map((t) => t.preview)), []);
+
+  const templatesMarqueeRow2Previews = useMemo(() => shufflePreviewUrlsOnce(ENVATO_TEMPLATES.map((t) => t.preview)), []);
+
   const toggleAddOnExpansion = (addonId: string) => {
     setExpandedAddOns(prev => ({
       ...prev,
@@ -156,44 +177,244 @@ export default function Home() {
     (autoScrollApi as any)?.play();
   }, [emblaApi]);
 
-  const slides = [
-    "/images/hero_bg_image_hayc1.png",
-    "/images/hero_bg_image_hayc2.png",
-    "/images/hero_bg_image_hayc3.png",
-  ];
+  const heroDesktopVideos = [
+    "/videos/booking_p5ifxx.mp4",
+    "/videos/LMS_rykuy0.mp4",
+    "/videos/Luxury_resort_pbrj1p.mp4",
+  ] as const;
+  const heroMobileVideos = [
+    "/videos/booking_mobile_vnztu8.mp4",
+    "/videos/LMS_-_mobile_smautk.mp4",
+    "/videos/Luxury_resort_mobile_rhantd.mp4",
+  ] as const;
+
+  const heroSlideCount = heroDesktopVideos.length;
+  const heroFullReadyMask = (1 << heroSlideCount) - 1;
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isMdUp, setIsMdUp] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 768px)").matches
+      : true,
+  );
+  const [desktopVideosBuffered, setDesktopVideosBuffered] = useState(false);
+  const [mobileVideosBuffered, setMobileVideosBuffered] = useState(false);
+  const mobileVideoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const desktopVideoRefs = useRef<(HTMLVideoElement | null)[]>([]);
+  const desktopReadyMaskRef = useRef(0);
+  const mobileReadyMaskRef = useRef(0);
+  const prevIsMdUpRef = useRef<boolean | undefined>(undefined);
 
   useEffect(() => {
-    const id = window.setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000);
-    return () => window.clearInterval(id);
-  }, [slides.length]);
+    const mq = window.matchMedia("(min-width: 768px)");
+    const handler = () => setIsMdUp(mq.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+
+  const markHeroClipReady = useCallback(
+    (which: "desktop" | "mobile", index: number) => {
+      const maskRef = which === "desktop" ? desktopReadyMaskRef : mobileReadyMaskRef;
+      const setBuffered =
+        which === "desktop" ? setDesktopVideosBuffered : setMobileVideosBuffered;
+      maskRef.current |= 1 << index;
+      if ((maskRef.current & heroFullReadyMask) === heroFullReadyMask) {
+        setBuffered(true);
+      }
+    },
+    [heroFullReadyMask],
+  );
+
+  const tolerateHeroClipError = useCallback(
+    (which: "desktop" | "mobile") => {
+      const maskRef = which === "desktop" ? desktopReadyMaskRef : mobileReadyMaskRef;
+      const setBuffered =
+        which === "desktop" ? setDesktopVideosBuffered : setMobileVideosBuffered;
+      maskRef.current = heroFullReadyMask;
+      setBuffered(true);
+    },
+    [heroFullReadyMask],
+  );
+
+  const syncHeroReadyFromRefs = useCallback(() => {
+    const syncStack = (
+      refs: React.MutableRefObject<(HTMLVideoElement | null)[]>,
+      maskRef: React.MutableRefObject<number>,
+      setBuffered: React.Dispatch<React.SetStateAction<boolean>>,
+    ) => {
+      let mask = 0;
+      refs.current.forEach((v, i) => {
+        if (i >= heroSlideCount) return;
+        if (v?.readyState >= HTMLMediaElement.HAVE_ENOUGH_DATA) mask |= 1 << i;
+      });
+      maskRef.current |= mask;
+      if ((maskRef.current & heroFullReadyMask) === heroFullReadyMask) {
+        setBuffered(true);
+      }
+    };
+    syncStack(desktopVideoRefs, desktopReadyMaskRef, setDesktopVideosBuffered);
+    syncStack(mobileVideoRefs, mobileReadyMaskRef, setMobileVideosBuffered);
+  }, [heroFullReadyMask, heroSlideCount]);
+
+  useLayoutEffect(() => {
+    syncHeroReadyFromRefs();
+  }, [syncHeroReadyFromRefs]);
+
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => syncHeroReadyFromRefs());
+    const t = window.setTimeout(syncHeroReadyFromRefs, 400);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearTimeout(t);
+    };
+  }, [isMdUp, syncHeroReadyFromRefs]);
+
+  /** On breakpoint change: reset readiness for newly active stack & apply new preload via load(). */
+  useEffect(() => {
+    if (prevIsMdUpRef.current === undefined) {
+      prevIsMdUpRef.current = isMdUp;
+      return;
+    }
+    if (prevIsMdUpRef.current === isMdUp) return;
+    prevIsMdUpRef.current = isMdUp;
+
+    if (isMdUp) {
+      desktopReadyMaskRef.current = 0;
+      setDesktopVideosBuffered(false);
+    } else {
+      mobileReadyMaskRef.current = 0;
+      setMobileVideosBuffered(false);
+    }
+
+    requestAnimationFrame(() => {
+      desktopVideoRefs.current.forEach((v) => {
+        if (v) void v.load();
+      });
+      mobileVideoRefs.current.forEach((v) => {
+        if (v) void v.load();
+      });
+      syncHeroReadyFromRefs();
+    });
+  }, [isMdUp, syncHeroReadyFromRefs]);
+
+  useEffect(() => {
+    mobileVideoRefs.current.forEach((v, i) => {
+      if (!v) return;
+      if (!isMdUp) {
+        if (i === currentSlide) {
+          v.currentTime = 0;
+          void v.play().catch(() => {});
+        } else {
+          v.pause();
+          v.currentTime = 0;
+        }
+      } else {
+        v.pause();
+      }
+    });
+    desktopVideoRefs.current.forEach((v, i) => {
+      if (!v) return;
+      if (isMdUp) {
+        if (i === currentSlide) {
+          v.currentTime = 0;
+          void v.play().catch(() => {});
+        } else {
+          v.pause();
+          v.currentTime = 0;
+        }
+      } else {
+        v.pause();
+      }
+    });
+  }, [currentSlide, isMdUp]);
+
+  const [heroBottomPreviewMotionKey, setHeroBottomPreviewMotionKey] = useState(0);
+  const prevHeroSlideForBottomPreviewRef = useRef(currentSlide);
+
+  useEffect(() => {
+    if (prevHeroSlideForBottomPreviewRef.current !== currentSlide) {
+      setHeroBottomPreviewMotionKey((k) => k + 1);
+      prevHeroSlideForBottomPreviewRef.current = currentSlide;
+    }
+  }, [currentSlide]);
+
+  const handleHeroVideoEnded = useCallback(() => {
+    setCurrentSlide((prev) => (prev + 1) % heroSlideCount);
+  }, [heroSlideCount]);
 
   return (
     <div className="min-h-screen bg-background  mt-md-[65px]">
       {/* Hero Section */}
-      <section className="relative overflow-hidden md:h-[115vh]">
+      <section className="relative overflow-hidden min-h-screen md:h-[115vh]">
 
-        {/* Background slideshow */}
-        <div
-          className="absolute inset-0 flex transition-transform duration-700 ease-in-out"
-          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
-        >
-          {slides.map((src, i) => (
-            <div
-              key={i}
-              className="relative min-w-full h-full bg-cover bg-center flex-shrink-0"
-              style={{ backgroundImage: `url(${src})` }}
-            />
-          ))}
+        {/* Background video rotation (both stacks mount so preload is not skipped by display:none) */}
+        <div className="absolute inset-0 overflow-hidden bg-black">
+          <div
+            className={`absolute inset-0 transition-opacity duration-500 ease-out ${
+              !isMdUp
+                ? "pointer-events-none -z-[1] opacity-0"
+                : desktopVideosBuffered
+                  ? "z-0 opacity-100"
+                  : "z-0 opacity-0"
+            }`}
+          >
+            {heroDesktopVideos.map((src, i) => (
+              <video
+                key={src}
+                ref={(el) => {
+                  desktopVideoRefs.current[i] = el;
+                }}
+                className={`absolute inset-0 h-full w-full transform-gpu object-cover transition-opacity duration-700 ease-in-out ${
+                  i === currentSlide ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none"
+                }`}
+                src={src}
+                muted
+                playsInline
+                preload={isMdUp ? "auto" : "metadata"}
+                disablePictureInPicture
+                disableRemotePlayback
+                onCanPlayThrough={() => markHeroClipReady("desktop", i)}
+                onError={() => tolerateHeroClipError("desktop")}
+                onEnded={handleHeroVideoEnded}
+              />
+            ))}
+          </div>
+          <div
+            className={`absolute inset-0 transition-opacity duration-500 ease-out ${
+              isMdUp
+                ? "pointer-events-none -z-[1] opacity-0"
+                : mobileVideosBuffered
+                  ? "z-0 opacity-100"
+                  : "z-0 opacity-0"
+            }`}
+          >
+            {heroMobileVideos.map((src, i) => (
+              <video
+                key={src}
+                ref={(el) => {
+                  mobileVideoRefs.current[i] = el;
+                }}
+                className={`absolute inset-0 h-full w-full transform-gpu object-cover transition-opacity duration-700 ease-in-out ${
+                  i === currentSlide ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none"
+                }`}
+                src={src}
+                muted
+                playsInline
+                preload={!isMdUp ? "auto" : "metadata"}
+                disablePictureInPicture
+                disableRemotePlayback
+                onCanPlayThrough={() => markHeroClipReady("mobile", i)}
+                onError={() => tolerateHeroClipError("mobile")}
+                onEnded={handleHeroVideoEnded}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-black/50 z-10" />
 
         {/* Main content */}
-        <div className="relative z-20 w-full flex flex-col items-center text-center px-4 pt-28 md:pt-[12vh]">
+        <div className="relative z-20 w-full flex flex-col items-center text-center px-4 pt-0 md:pt-[12vh] min-h-[calc(100vh-180px)] md:min-h-0 justify-center">
 
           {/* Headline */}
           <h1 className="text-4xl md:text-6xl font-semibold font-['Montserrat'] text-white max-w-4xl mb-4 md:mb-6 leading-tight">
@@ -228,7 +449,7 @@ export default function Home() {
 
           {/* Slide indicators */}
           <div className="hidden md:flex gap-2 mt-2">
-            {slides.map((_, i) => (
+            {Array.from({ length: heroSlideCount }, (_, i) => (
               <button
                 key={i}
                 type="button"
@@ -242,22 +463,124 @@ export default function Home() {
         </div>
 
         {/* Bottom template previews */}
-        {/* Desktop version */}
-        <div className="hidden md:block absolute bottom-0 left-0 w-full z-20 overflow-hidden" style={{ height: '42vh' }}>
-          <div className="absolute inset-0 bg-gradient-to-b from-black/0 via-black/30 to-black z-10 pointer-events-none" />
-          <div className="absolute bottom-0 w-full flex items-end overflow-hidden" style={{ gap: '20px', left: '-3%', width: '106%' }}>
-            <img src="/images/Rectangle 104.png" alt="Template preview" className="rounded-t-[20px] flex-shrink-0" style={{ width: '31%' }} />
-            <img src="/images/Rectangle 113.png" alt="Template preview" className="rounded-t-[20px] flex-shrink-0" style={{ width: '38%' }} />
-            <img src="/images/Rectangle 114.png" alt="Template preview" className="rounded-t-[20px] flex-shrink-0" style={{ width: '31%' }} />
-          </div>
+
+        {/* Desktop version — images permuted with hero slide (same rhythm as videos) */}
+        <div
+          className="hidden md:flex absolute bottom-0 left-0 w-full z-20 items-end justify-between overflow-hidden"
+          style={{ height: "48vh", gap: "18px" }}
+        >
+          {(
+            [
+              {
+                slotKey: "left" as const,
+                clipIndex: (currentSlide + 2) % heroSlideCount,
+                roundClass:
+                  "rounded-tr-[20px] rounded-tl-[4px]",
+                widthPct: "31%",
+                heightPct: "75%",
+                motionClass:
+                  heroBottomPreviewMotionKey > 0
+                    ? "hero-preview-desk-slot-left"
+                    : "",
+              },
+              {
+                slotKey: "center" as const,
+                clipIndex: currentSlide,
+                roundClass: "rounded-t-[20px]",
+                widthPct: "38%",
+                heightPct: "92%",
+                motionClass:
+                  heroBottomPreviewMotionKey > 0
+                    ? "hero-preview-desk-slot-center"
+                    : "",
+              },
+              {
+                slotKey: "right" as const,
+                clipIndex: (currentSlide + 1) % heroSlideCount,
+                roundClass:
+                  "rounded-tl-[20px] rounded-tr-[4px]",
+                widthPct: "31%",
+                heightPct: "75%",
+                motionClass:
+                  heroBottomPreviewMotionKey > 0
+                    ? "hero-preview-desk-slot-right"
+                    : "",
+              },
+            ] as const
+          ).map(
+            ({
+              slotKey,
+              clipIndex,
+              roundClass,
+              widthPct,
+              heightPct,
+              motionClass,
+            }) => (
+              <div
+                key={`${slotKey}-${currentSlide}`}
+                className={`relative flex-shrink-0 overflow-hidden self-end bg-black ${roundClass} ${motionClass}`}
+                style={{
+                  width: widthPct,
+                  height: heightPct,
+                }}
+              >
+                <img
+                  src={HERO_BOTTOM_PREVIEW_IMAGES[clipIndex]}
+                  alt="Template preview"
+                  className="absolute inset-0 h-full w-full object-cover object-top"
+                />
+              </div>
+            ),
+          )}
+          <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-black/0 via-black/20 to-black" />
         </div>
 
-        {/* Mobile previews */}
-        <div className="md:hidden relative w-full flex justify-center items-end gap-3 mt-4">
-          <img src="/images/Rectangle 104.png" alt="Template preview" className="rounded-[10px] object-cover flex-shrink-0" style={{ width: '43%', height: '144px' }} />
-          <img src="/images/Rectangle 113.png" alt="Template preview" className="rounded-[10px] object-cover flex-shrink-0" style={{ width: '55%', height: '187px' }} />
-          <img src="/images/Rectangle 114.png" alt="Template preview" className="rounded-[10px] object-cover flex-shrink-0" style={{ width: '43%', height: '144px' }} />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/0 to-black pointer-events-none" />
+        {/* Mobile version — layered layout; assets rotate with hero slide */}
+        <div
+          className="md:hidden absolute bottom-0 left-0 z-20 flex w-full items-end justify-center overflow-hidden"
+          style={{ height: "200px" }}
+        >
+          {/* Left card — just a sliver peeking in */}
+          <img
+            key={`m-left-${currentSlide}`}
+            src={HERO_BOTTOM_PREVIEW_IMAGES[(currentSlide + 2) % heroSlideCount]}
+            alt="Template preview"
+            className="flex-shrink-0 rounded-[10px] object-cover object-top"
+            style={{
+              width: "230px",
+              height: "144px",
+              marginRight: "-100px",
+              zIndex: 1,
+            }}
+          />
+          {/* Center card — dominant */}
+          <img
+            key={`m-center-${currentSlide}`}
+            src={HERO_BOTTOM_PREVIEW_IMAGES[currentSlide]}
+            alt="Template preview"
+            className="flex-shrink-0 rounded-t-[10px] object-cover object-top"
+            style={{
+              width: "300px",
+              height: "187px",
+              zIndex: 2,
+              position: "relative",
+            }}
+          />
+          {/* Right card — just a sliver peeking in */}
+          <img
+            key={`m-right-${currentSlide}`}
+            src={HERO_BOTTOM_PREVIEW_IMAGES[(currentSlide + 1) % heroSlideCount]}
+            alt="Template preview"
+            className="flex-shrink-0 rounded-[10px] object-cover object-top"
+            style={{
+              width: "230px",
+              height: "144px",
+              marginLeft: "-100px",
+              zIndex: 1,
+            }}
+          />
+          {/* Gradient fade to black */}
+          <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-b from-black/0 via-black/20 to-black" />
         </div>
 
       </section>
@@ -403,7 +726,7 @@ export default function Home() {
       </section>
 
       {/* How We Work Section */}
-      <HowWeWorkSection />
+      {/* <HowWeWorkSection /> */}
 
       {/* Templates Section */}
       <section className="w-full flex flex-col justify-start items-center gap-12 bg-black py-12 md:py-24">
@@ -431,9 +754,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Mobile layout */}
-        <div className="md:hidden w-full max-w-96 px-4 inline-flex flex-col justify-start items-center gap-12">
-          <div className="self-stretch flex flex-col justify-start items-start gap-3">
+        {/* Mobile layout — full-bleed carousels; copy keeps side padding */}
+        <div className="md:hidden flex w-full flex-col items-stretch justify-start gap-12">
+          <div className="flex w-full flex-col items-start justify-start gap-3 self-stretch px-4">
             <div className="self-stretch justify-start">
               <span className="text-white text-3xl font-semibold font-['Montserrat'] leading-10">Templates that already look </span>
               <span className="text-[#ED4C14] text-3xl font-semibold font-['Montserrat'] leading-10">like you.</span>
@@ -456,24 +779,14 @@ export default function Home() {
           <div className="self-stretch flex flex-col justify-start items-center gap-3">
             <div className="w-full h-60 relative overflow-hidden">
               <div className="absolute left-0 top-0 inline-flex justify-start items-center gap-6 animate-scroll-left" style={{ width: 'max-content' }}>
-                {[...Array(3)].flatMap(() => [
-                  '/images/Rectangle 103.png',
-                  '/images/Rectangle 104.png',
-                  '/images/Rectangle 113.png',
-                  '/images/Rectangle 114.png',
-                ]).map((src, i) => (
+                {[...templatesMarqueeRow1Previews, ...templatesMarqueeRow1Previews].map((src, i) => (
                   <img key={`mobile-row1-${i}`} className="w-96 h-60 rounded-[20px] object-cover flex-shrink-0" src={src} alt={t("home.templatesSection.carouselImageAlt")} />
                 ))}
               </div>
             </div>
             <div className="w-full h-60 relative overflow-hidden">
               <div className="absolute left-0 top-0 inline-flex justify-start items-center gap-6 animate-scroll-right" style={{ width: 'max-content' }}>
-                {[...Array(3)].flatMap(() => [
-                  '/images/Rectangle 114.png',
-                  '/images/Rectangle 113.png',
-                  '/images/Rectangle 104.png',
-                  '/images/Rectangle 103.png',
-                ]).map((src, i) => (
+                {[...templatesMarqueeRow2Previews, ...templatesMarqueeRow2Previews].map((src, i) => (
                   <img key={`mobile-row2-${i}`} className="w-96 h-60 rounded-[20px] object-cover flex-shrink-0" src={src} alt={t("home.templatesSection.carouselImageAlt")} />
                 ))}
               </div>
@@ -486,12 +799,7 @@ export default function Home() {
           {/* Row 1 — scrolls left */}
           <div className="relative h-96 overflow-hidden">
             <div className="absolute top-0 left-0 flex items-center gap-12 animate-scroll-left" style={{ width: 'max-content' }}>
-              {[...Array(2)].flatMap(() => [
-                '/images/Rectangle 103.png',
-                '/images/Rectangle 104.png',
-                '/images/Rectangle 113.png',
-                '/images/Rectangle 114.png',
-              ]).map((src, i) => (
+              {[...templatesMarqueeRow1Previews, ...templatesMarqueeRow1Previews].map((src, i) => (
                 <img key={i} src={src} alt={t("home.templatesSection.carouselImageAlt")} className="w-[706px] h-96 rounded-[20px] object-cover flex-shrink-0" />
               ))}
             </div>
@@ -500,12 +808,7 @@ export default function Home() {
           {/* Row 2 — scrolls right */}
           <div className="relative h-96 overflow-hidden">
             <div className="absolute top-0 left-0 flex items-center gap-12 animate-scroll-right" style={{ width: 'max-content' }}>
-              {[...Array(2)].flatMap(() => [
-                '/images/Rectangle 114.png',
-                '/images/Rectangle 113.png',
-                '/images/Rectangle 104.png',
-                '/images/Rectangle 103.png',
-              ]).map((src, i) => (
+              {[...templatesMarqueeRow2Previews, ...templatesMarqueeRow2Previews].map((src, i) => (
                 <img key={i} src={src} alt={t("home.templatesSection.carouselImageAlt")} className="w-[706px] h-96 rounded-[20px] object-cover flex-shrink-0" />
               ))}
             </div>
