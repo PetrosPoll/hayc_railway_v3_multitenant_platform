@@ -111,116 +111,22 @@ function ProtectedReviewsProgram() {
   return <ReviewsProgram />;
 }
 
-// Global scroll positions storage (outside component to persist between renders)
-const scrollPositionsStorage = {
-  positions: new Map(),
-
-  save: (path, position) => {
-    scrollPositionsStorage.positions.set(path, position);
-    sessionStorage.setItem('scrollPositions', JSON.stringify(Array.from(scrollPositionsStorage.positions.entries())));
-  },
-
-  get: (path) => {
-    const position = scrollPositionsStorage.positions.get(path);
-    return position;
-  },
-
-  load: () => {
-    const savedPositions = sessionStorage.getItem('scrollPositions');
-    if (savedPositions) {
-      const positions = new Map(JSON.parse(savedPositions));
-      scrollPositionsStorage.positions = positions;
-    }
-  }
-};
-
-// Custom scroll management component
-function ScrollManager() {
-  const location = useLocation();
+/** Scroll to top on every client-side route change (pathname or query). */
+function ScrollToTop() {
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
-    // Load saved positions on mount
-    scrollPositionsStorage.load();
-
-    // Disable browser's automatic scroll restoration
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual';
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
     }
-
-    let isNavigating = false;
-
-    // Store scroll position before navigation
-    const handleBeforeUnload = () => {
-      const currentPath = window.location.pathname + window.location.search;
-      scrollPositionsStorage.save(currentPath, window.scrollY);
-    };
-
-    // Handle browser navigation (back/forward) - just for logging
-    const handlePopState = (event) => {
-      console.log('🔙 Browser back/forward detected');
-      isNavigating = true;
-
-      setTimeout(() => {
-        isNavigating = false;
-      }, 150);
-    };
-
-    // Listen for scroll to save position
-    const handleScroll = () => {
-      if (!isNavigating) {
-        const currentPath = location.pathname + location.search;
-        scrollPositionsStorage.save(currentPath, window.scrollY);
-      }
-    };
-
-    // Save current scroll position when leaving page
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        const currentPath = location.pathname + location.search;
-        scrollPositionsStorage.save(currentPath, window.scrollY);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [location]);
-
-  useEffect(() => {
-    // Handle route changes (this runs after navigation)
-    const currentPath = location.pathname + location.search;
-
-    // Always check for saved position first
-    const savedPosition = scrollPositionsStorage.get(currentPath);
-
-    // Immediately restore scroll position to prevent flash
-    if (savedPosition !== undefined && savedPosition > 0) {
-      // Set scroll position immediately
-      window.scrollTo(0, savedPosition);
-      // And again on next frame to ensure it sticks
-      requestAnimationFrame(() => {
-        window.scrollTo(0, savedPosition);
-      });
-    } else {
-      window.scrollTo(0, 0);
-    }
-  }, [location]);
+    window.scrollTo(0, 0);
+  }, [pathname, search]);
 
   return null;
 }
 
 // Wrapper component to use hooks that need Router context
 function AppContent() {
-  const location = useLocation();
-
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden w-full">
       {/* Conditionally render NavMenu */}
@@ -378,7 +284,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <Router>
-            <ScrollManager />
+            <ScrollToTop />
             <AppContent />
             <Toaster />
           </Router>
