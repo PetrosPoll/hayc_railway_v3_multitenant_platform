@@ -9,6 +9,7 @@ import { WhyUsSection } from "@/components/sections/why-us-section";
 import { TemplatesSection } from "@/components/sections/templates-section";
 import { AddonsSection } from "@/components/sections/addons-section";
 import { HeroSection } from "@/components/sections/hero-section";
+import { HowWeWorkSection } from "@/components/sections/how-we-work-section";
 
 export default function Home() {
   // Example query for user data
@@ -30,7 +31,7 @@ export default function Home() {
       <WhyUsSection />
 
       {/* How We Work Section */}
-      {/* <HowWeWorkSection /> */}
+      <HowWeWorkSection />
 
       <TemplatesSection />
 

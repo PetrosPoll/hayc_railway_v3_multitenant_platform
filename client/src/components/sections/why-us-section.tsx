@@ -206,7 +206,7 @@ export function WhyUsSection() {
         </div>
       </div>
 
-      <div className="flex flex-col md:hidden px-4">
+      <div className="hidden">
         {WHY_US_SECTIONS.map((section, i) => (
           <div
             key={i}
