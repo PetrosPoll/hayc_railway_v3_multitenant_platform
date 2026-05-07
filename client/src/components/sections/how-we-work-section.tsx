@@ -131,16 +131,16 @@ export function HowWeWorkSection() {
               </p>
               <button
                 onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
-                className="h-10 px-4 bg-[#A0BAF3] rounded-[10px] inline-flex
+                className="h-10 px-4 bg-[#ED4C14] rounded-[10px] inline-flex
                            items-center gap-4 border-0 cursor-pointer w-fit"
               >
                 <span
-                  className="text-[#0C275F] text-sm font-semibold
+                  className="text-[#EFF6FF] text-sm font-semibold
                                  font-['Montserrat']"
                 >
                   Get Started
                 </span>
-                <ArrowRight className="h-4 w-4 text-[#0C275F]" />
+                <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
               </button>
             </div>
           </div>
@@ -389,7 +389,7 @@ export function HowWeWorkSection() {
                             style={{
                               height: "40px",
                               padding: "0 18px",
-                              background: "#A0BAF3",
+                              background: "#ED4C14",
                               borderRadius: "10px",
                               display: "inline-flex",
                               alignItems: "center",
@@ -401,7 +401,7 @@ export function HowWeWorkSection() {
                           >
                             <span
                               style={{
-                                color: "#0C275F",
+                                color: "#EFF6FF",
                                 fontSize: "14px",
                                 fontWeight: 600,
                                 fontFamily: "Montserrat",
@@ -410,7 +410,7 @@ export function HowWeWorkSection() {
                               Get Started
                             </span>
                             <ArrowRight
-                              style={{ width: "14px", height: "14px", color: "#0C275F" }}
+                              style={{ width: "14px", height: "14px", color: "#EFF6FF" }}
                             />
                           </button>
                         </div>
