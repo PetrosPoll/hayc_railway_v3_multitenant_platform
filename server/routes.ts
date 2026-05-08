@@ -46,6 +46,7 @@ import {
   adminContacts,
   adminContactTags,
   adminTags,
+  adminTemplates,
   websiteInvoices,
   paymentObligations,
   internalEmailLog,
@@ -1589,6 +1590,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Email Template routes (for Unlayer email builder)
+  // Get default templates available for all users (sourced from admin templates)
+  app.get("/api/default-email-templates", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const templates = await db
+        .select({
+          id: adminTemplates.id,
+          name: adminTemplates.name,
+          html: adminTemplates.html,
+          design: adminTemplates.design,
+          thumbnail: adminTemplates.thumbnail,
+          category: adminTemplates.category,
+          createdAt: adminTemplates.createdAt,
+          updatedAt: adminTemplates.updatedAt,
+        })
+        .from(adminTemplates)
+        .orderBy(desc(adminTemplates.updatedAt), desc(adminTemplates.createdAt));
+
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching default email templates:", error);
+      res.status(500).json({ error: "Failed to fetch default email templates" });
+    }
+  });
+
   // Get all templates for a website
   app.get("/api/email-templates/:websiteId", async (req, res) => {
     try {
@@ -1597,11 +1626,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.websiteId);
-      const templates = await db
+      if (Number.isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+
+      const [website] = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
+      if (website.userId !== req.user.id && !isAdmin) {
+        return res.status(403).json({ error: "Not authorized to access these templates" });
+      }
+
+      const existingTemplates = await db
         .select()
         .from(emailTemplates)
         .where(eq(emailTemplates.websiteProgressId, websiteId))
         .orderBy(desc(emailTemplates.updatedAt));
+
+      const normalizedExistingNames = new Set(
+        existingTemplates.map((t) => t.name.trim().toLowerCase()),
+      );
+
+      const defaultTemplates = await db
+        .select({
+          name: adminTemplates.name,
+          html: adminTemplates.html,
+          design: adminTemplates.design,
+          thumbnail: adminTemplates.thumbnail,
+          category: adminTemplates.category,
+        })
+        .from(adminTemplates)
+        .orderBy(desc(adminTemplates.updatedAt), desc(adminTemplates.createdAt));
+
+      const missingDefaults = defaultTemplates.filter(
+        (t) => !normalizedExistingNames.has(t.name.trim().toLowerCase()),
+      );
+
+      if (missingDefaults.length > 0) {
+        await db.insert(emailTemplates).values(
+          missingDefaults.map((t) => ({
+            websiteProgressId: websiteId,
+            name: t.name,
+            html: t.html,
+            design: t.design,
+            thumbnail: t.thumbnail,
+            category: t.category,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          })),
+        );
+      }
+
+      const templates = missingDefaults.length
+        ? await db
+            .select()
+            .from(emailTemplates)
+            .where(eq(emailTemplates.websiteProgressId, websiteId))
+            .orderBy(desc(emailTemplates.updatedAt))
+        : existingTemplates;
 
       res.json(templates);
     } catch (error) {
@@ -13343,7 +13433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? (existingConfig.siteConfig as Record<string, unknown>)
             : {}),
           siteId: website.siteId,
-          apiUrl: apiUrl.trim(),
+          apiUrl: "https://hayc.gr",
         },
       };
       await putConfig(website.siteId, updatedConfig, { skipHistory: true });
@@ -19290,14 +19380,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.header("Access-Control-Allow-Headers", "Content-Type");
     
     try {
-      const { key, email, name, firstName, lastName, group, tags: tagNames, subscribed } = req.body;
+      if (req.body?._hp) {
+        return res.status(200).json({ success: true });
+      }
+
+      const { key, siteId, email, name, firstName, lastName, group, tags: tagNames, subscribed } = req.body;
       
       // Determine subscription status - defaults to true for backward compatibility
       // If 'subscribed' is explicitly false, contact will be added but not subscribed
       const isSubscribed = subscribed !== false;
 
-      if (!key || !email) {
-        return res.status(400).json({ error: "Missing required fields: key and email" });
+      if (!key && !siteId) {
+        return res.status(400).json({ error: "key or siteId is required" });
+      }
+
+      if (!email) {
+        return res.status(400).json({ error: "Missing required fields: email" });
       }
 
       // Validate email format
@@ -19306,8 +19404,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid email format" });
       }
 
-      // Verify API key
-      const analyticsKey = await storage.getAnalyticsKeyByApiKey(key);
+      // Verify API key (or resolve via siteId fallback)
+      let analyticsKey;
+      if (key) {
+        analyticsKey = await storage.getAnalyticsKeyByApiKey(key);
+      } else {
+        const [website] = await db
+          .select({ id: websiteProgress.id })
+          .from(websiteProgress)
+          .where(eq(websiteProgress.siteId, String(siteId)))
+          .limit(1);
+
+        if (website) {
+          analyticsKey = await storage.getAnalyticsKeyByWebsiteId(website.id);
+        }
+      }
       if (!analyticsKey || !analyticsKey.isActive) {
         return res.status(401).json({ error: "Invalid or inactive API key" });
       }
@@ -19527,7 +19638,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Contact configuration missing" });
       }
 
-      const fromAddress = process.env.EMAIL_FROM ?? "noreply@hayc.gr";
+      const [onboardingIdentity] = await db
+        .select({ businessName: onboardingFormResponses.businessName })
+        .from(onboardingFormResponses)
+        .where(eq(onboardingFormResponses.websiteProgressId, website.id))
+        .orderBy(desc(onboardingFormResponses.createdAt))
+        .limit(1);
+
+      const fromAddress = "notifications@hayc.gr";
+      const senderName = (website.projectName || onboardingIdentity?.businessName || website.domain || "Client").trim();
       const siteLabel = website.projectName ?? website.domain;
 
       // Email 1 — Notification to business owner
@@ -19561,7 +19680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subject: ownerSubject,
           message: ownerSubject,
           fromEmail: fromAddress,
-          fromName: "Hayc",
+          fromName: senderName,
           html: ownerHtml,
           replyToAddresses: [email],
         }),
@@ -19570,7 +19689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           subject: visitorSubject,
           message: visitorSubject,
           fromEmail: fromAddress,
-          fromName: "Hayc",
+          fromName: senderName,
           html: visitorHtml,
           replyToAddresses: [ownerEmail],
         }),
@@ -20787,6 +20906,10 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
 
       if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
         return res.status(400).json({ error: "Request body must be a non-null object" });
+      }
+
+      if (req.body?.siteConfig) {
+        req.body.siteConfig.apiUrl = 'https://hayc.gr';
       }
 
       await putConfig(website.siteId, req.body);
