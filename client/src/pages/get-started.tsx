@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/components/ui/authContext";
 import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -79,6 +80,8 @@ export default function GetStarted() {
   const [showExitModal, setShowExitModal] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { user: sessionUser } = useAuth();
+  const isLoggedIn = !!sessionUser;
 
   const form = useForm<WizardValues>({
     resolver: zodResolver(wizardSchema),
@@ -113,6 +116,16 @@ export default function GetStarted() {
     }
   }, [searchParams, setValue]);
 
+  useEffect(() => {
+    if (!sessionUser) return;
+    if (sessionUser.email) {
+      setValue("email", sessionUser.email);
+    }
+    if (sessionUser.username) {
+      setValue("fullName", sessionUser.username);
+    }
+  }, [sessionUser, setValue]);
+
   const nextStep = () => {
     setCurrentStep((s) => s + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -123,8 +136,10 @@ export default function GetStarted() {
   };
 
   const onSubmit = (values: WizardValues) => {
-    // TODO: pass values to checkout flow
-    console.log("wizard submit", values);
+    const plan = values.plan ?? "essential";
+    const billingPeriod = values.billingPeriod ?? "monthly";
+    const isYearly = billingPeriod === "yearly";
+    navigate(`/pre-checkout/${plan}?isYearly=${isYearly}`);
   };
 
   const renderStepContent = () => {
@@ -170,6 +185,7 @@ export default function GetStarted() {
             form={form}
             onBack={prevStep}
             onSubmit={form.handleSubmit(onSubmit)}
+            isLoggedIn={isLoggedIn}
           />
         );
       default:
@@ -223,7 +239,7 @@ export default function GetStarted() {
               type="button"
               onClick={() => {
                 setShowExitModal(false);
-                navigate("/");
+                navigate(isLoggedIn ? "/dashboard" : "/");
               }}
               className="h-10 px-5 rounded-[10px] bg-[#ED4C14] border-0 text-white text-sm font-semibold font-['Montserrat'] cursor-pointer hover:bg-[#d44310] transition-colors"
             >

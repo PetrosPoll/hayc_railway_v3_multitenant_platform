@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/ui/authContext";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -106,6 +107,10 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+type PreCheckoutUserResponse = {
+  user: { email: string; username: string };
+};
+
 interface PreCheckoutPageProps {
   planId: string;
   isYearly: boolean;
@@ -121,7 +126,18 @@ function PreCheckoutPage({
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  const { data: apiSession } = useQuery({
+    queryKey: ["/api/user", "soft-session"],
+    queryFn: async (): Promise<PreCheckoutUserResponse | null> => {
+      const res = await fetch("/api/user", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Failed to load session");
+      return res.json();
+    },
+    retry: false,
+  });
+  const user = authUser ?? apiSession?.user ?? null;
   const { t, i18n } = useTranslation();
   //const queryClient = useQueryClient(); //Removed as it's unused and causing error
 

@@ -36,12 +36,15 @@ interface StepSummaryProps {
   form: UseFormReturn<WizardValues>;
   onBack: () => void;
   onSubmit: () => void;
+  /** When true, account fields are skipped (user came from session); pre-checkout will use the same session. */
+  isLoggedIn?: boolean;
 }
 
 export default function StepSummary({
   form,
   onBack: _onBack,
   onSubmit,
+  isLoggedIn = false,
 }: StepSummaryProps) {
   const { t } = useTranslation();
   const selectedDesignId = form.watch("selectedDesign");
@@ -66,7 +69,9 @@ export default function StepSummary({
           {t("getStarted.summary.title")}
         </div>
         <div className="w-full text-center text-white text-sm md:text-lg font-medium font-['Montserrat']">
-          {t("getStarted.summary.subtitle")}
+          {isLoggedIn
+            ? t("getStarted.summary.subtitleLoggedIn")
+            : t("getStarted.summary.subtitle")}
         </div>
       </div>
 
@@ -131,63 +136,73 @@ export default function StepSummary({
         <div className="w-full md:flex-1 md:min-h-0 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-8 md:gap-24">
           <div className="flex flex-col gap-6">
             <div className="text-white text-base md:text-2xl font-medium font-['Montserrat']">
-              {t("getStarted.summary.createAccount")}
+              {isLoggedIn
+                ? t("getStarted.summary.createAccountLoggedIn")
+                : t("getStarted.summary.createAccount")}
             </div>
-            <div className="flex flex-col gap-3">
-              <FormField
-                control={form.control}
-                name="fullName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <input
-                        {...field}
-                        value={field.value ?? ""}
-                        placeholder={t("getStarted.summary.placeholders.fullName")}
-                        className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <input
-                        {...field}
-                        value={field.value ?? ""}
-                        type="email"
-                        placeholder={t(
-                          "getStarted.summary.placeholders.email",
-                        )}
-                        className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="subject"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <input
-                        {...field}
-                        value={field.value ?? ""}
-                        placeholder={t(
-                          "getStarted.summary.placeholders.subject",
-                        )}
-                        className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            </div>
+            {isLoggedIn ? (
+              <p className="text-white/80 text-sm font-normal font-['Montserrat'] leading-6">
+                {t("getStarted.summary.signedInAs", {
+                  email: form.watch("email") || "—",
+                })}
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <FormField
+                  control={form.control}
+                  name="fullName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder={t("getStarted.summary.placeholders.fullName")}
+                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          {...field}
+                          value={field.value ?? ""}
+                          type="email"
+                          placeholder={t(
+                            "getStarted.summary.placeholders.email",
+                          )}
+                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="subject"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <input
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder={t(
+                            "getStarted.summary.placeholders.subject",
+                          )}
+                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-6">

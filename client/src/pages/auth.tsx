@@ -32,7 +32,7 @@ export default function Auth() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, setUser } = useAuth();
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -48,40 +48,8 @@ export default function Auth() {
     mutationFn: async (data: FormData) => {
       const endpoint = isRegistering ? "/api/register" : "/api/login";
       const response = await apiRequest("POST", endpoint, data);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Authentication failed');
-      }
       return response.json();
     },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["/api/user"], data);
-      const userLanguage = data?.user?.language;
-      if (userLanguage && i18n.language !== userLanguage) {
-        i18n.changeLanguage(userLanguage);
-        localStorage.setItem("language", userLanguage);
-      }
-      toast({
-        title: isRegistering ? t("auth.registrationSuccessful") : t("auth.loginSuccessful"),
-        description: t("auth.welcome")
-      });
-      // Add a small delay to show the toast before redirecting
-      setTimeout(() => {
-        // Redirect based on user role: staff go to admin, subscribers go to dashboard
-        const redirectPath = data.user?.role !== 'subscriber' ? '/admin' : '/dashboard';
-        navigate(redirectPath);
-      }, 1000);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: isRegistering ? t("auth.registrationFailed") : t("auth.loginFailed"),
-        // description: error.message || t("auth.invalidCredentials"),
-        variant: "destructive",
-      });
-
-      form.reset();
-    }
   });
 
   // Show loading while checking authentication
@@ -100,13 +68,36 @@ export default function Auth() {
   }
 
   const onSubmit = async (formData: FormData) => {
+    if (authMutation.isPending) {
+      return;
+    }
     try {
-      if (authMutation.isPending) {
-        return;
+      const data = await authMutation.mutateAsync(formData);
+      queryClient.setQueryData(["/api/user"], data);
+      if (data?.user) {
+        setUser(data.user);
       }
-      await authMutation.mutateAsync(formData);
+      const userLanguage = data?.user?.language;
+      if (userLanguage && i18n.language !== userLanguage) {
+        i18n.changeLanguage(userLanguage);
+        localStorage.setItem("language", userLanguage);
+      }
+      toast({
+        title: isRegistering ? t("auth.registrationSuccessful") : t("auth.loginSuccessful"),
+        description: t("auth.welcome"),
+      });
+      setTimeout(() => {
+        const redirectPath =
+          data.user?.role !== "subscriber" ? "/admin" : "/dashboard";
+        navigate(redirectPath);
+      }, 1000);
     } catch (error) {
-      console.error('Form submission error:', error);
+      console.error("Form submission error:", error);
+      toast({
+        title: isRegistering ? t("auth.registrationFailed") : t("auth.loginFailed"),
+        variant: "destructive",
+      });
+      form.reset();
     }
   };
 

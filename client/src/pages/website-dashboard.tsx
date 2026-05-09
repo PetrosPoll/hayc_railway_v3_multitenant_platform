@@ -68,6 +68,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/ui/authContext";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Subscription } from "@shared/schema";
@@ -365,6 +366,7 @@ export default function WebsiteDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { setUser } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -569,6 +571,7 @@ export default function WebsiteDashboard() {
       });
       if (response.ok) {
         queryClient.setQueryData(["/api/user"], null);
+        setUser(null);
         toast({
           title: t("dashboard.success") || "Success",
           description: t("dashboard.loggedOut") || "Logged out successfully",
@@ -4270,8 +4273,18 @@ export default function WebsiteDashboard() {
 
         <SidebarInset>
           <div className="flex flex-col min-h-screen">
-            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
               <SidebarTrigger />
+              <Button
+                type="button"
+                size="sm"
+                className="gap-2 shrink-0"
+                onClick={() => navigate("/get-started")}
+                data-testid="button-create-new-website-dashboard"
+              >
+                <Plus className="h-4 w-4" />
+                {t("dashboard.createNewWebsite") || "Start a new Idea"}
+              </Button>
             </header>
             <div className="flex-1 p-4 md:p-6">
               {renderBreadcrumbs()}

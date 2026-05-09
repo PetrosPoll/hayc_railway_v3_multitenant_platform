@@ -1068,7 +1068,7 @@
         "emailNewsletterResets": "Resets",
         "emailsRemaining": "Remaining emails",
         "completeOnboardingMessage": "Complete the onboarding form to create your website",
-        "createNewWebsite": "Create New Website",
+        "createNewWebsite": "Start a new idea",
         "tips": "Latest Tips",
         "websiteViewDetails": "Website",
         "websitesDescription": "Manage your website projects",
@@ -2868,6 +2868,7 @@
         "summary": {
             "title": "Your website setup is ready",
             "subtitle": "Complete your account to continue and get your website started.",
+            "subtitleLoggedIn": "Choose your plan and continue — you'll confirm billing and details on the next step.",
             "selectedDesign": "Selected Design:",
             "designLabels": {
                 "auto": "Best match (auto)",
@@ -2883,6 +2884,8 @@
             "basicSeoSetup": "Basic SEO setup",
             "customizeLater": "You'll be able to customise everything later",
             "createAccount": "Create your account",
+            "createAccountLoggedIn": "Your account",
+            "signedInAs": "Signed in as {{email}}. Billing and invoice details are completed on the next step.",
             "placeholders": {
                 "fullName": "Full Name",
                 "email": "you@company.com",
