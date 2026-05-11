@@ -135,14 +135,14 @@ function WebsiteProgressRowActions({
           data-testid={`menu-view-analytics-${website.id}`}
         >
           <BarChart3 className="h-4 w-4" />
-          View analytics code
+          Analytics integration
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onOpenNewsletterDialog()}
           data-testid={`menu-view-newsletter-${website.id}`}
         >
           <Mail className="h-4 w-4" />
-          View newsletter code
+          Newsletter integration
         </DropdownMenuItem>
         {canManageWebsites ? (
           <>
@@ -211,6 +211,7 @@ function AnalyticsTrackingCode({
   variant?: "accordion" | "dialog";
 }) {
   const [copied, setCopied] = useState(false);
+  const [showWordPressCode, setShowWordPressCode] = useState(false);
   const isDialog = variant === "dialog";
   const boxClass = isDialog
     ? "mt-0 p-4 border rounded-lg bg-muted/50"
@@ -259,52 +260,94 @@ function AnalyticsTrackingCode({
 
   return (
     <div className={boxClass}>
-      <div
-        className={`flex items-center mb-3 ${isDialog ? "justify-end" : "justify-between"}`}
-      >
-        {!isDialog && (
+      {!isDialog && (
+        <div className="flex items-center mb-3 justify-between">
           <h3 className="font-semibold text-lg">Analytics Tracking Code</h3>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={copyToClipboard}
-          className="gap-2"
-        >
-          {copied ? (
-            <>
-              <Check className="h-4 w-4" />
-              Copied!
-            </>
-          ) : (
-            "Copy Code"
-          )}
-        </Button>
-      </div>
-      
-      <div className="space-y-3">
-        <div>
-          <Label className="text-sm font-medium">API Key:</Label>
-          <code className="block mt-1 p-2 bg-background rounded text-xs font-mono break-all">
-            {analyticsData.key.apiKey}
+        </div>
+      )}
+
+      <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+        <div className="flex items-center gap-2 mb-2">
+          <h4 className="font-semibold text-sm">React Website (HAYC Template)</h4>
+          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+            Active
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Analytics tracking is built into the React website template via the
+          <code className="mx-1 px-1 py-0.5 bg-background rounded font-mono">
+            useAnalytics
           </code>
-        </div>
-        
-        <div>
-          <Label className="text-sm font-medium">
-            Add this code to functions.php (API key is already embedded):
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1 mb-2">
-            Copy and paste this entire PHP code block into your theme's functions.php file. The API key is automatically included, so no additional setup is needed.
-          </p>
-          <pre className="mt-1 p-3 bg-background rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-            {analyticsData.phpTrackingCode || analyticsData.trackingScript}
-          </pre>
-        </div>
-        
-        <p className="text-xs text-muted-foreground">
-          This will automatically add analytics tracking to all pages. No need to handle the API key separately - it's already in the code above.
+          hook located at{" "}
+          <code className="px-1 py-0.5 bg-background rounded font-mono">
+            src/hayc/use-analytics.ts
+          </code>
+          . It fires a pageview event automatically on every route change using
+          the site's <code className="mx-1 px-1 py-0.5 bg-background rounded font-mono">
+            siteId
+          </code>
+          — no API key or additional setup is needed in the site code. To enable
+          it, call <code className="mx-1 px-1 py-0.5 bg-background rounded font-mono">
+            useAnalytics()
+          </code>{" "}
+          once inside a component that is a child of{" "}
+          <code className="px-1 py-0.5 bg-background rounded font-mono">
+            BrowserRouter
+          </code>.
         </p>
+      </div>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowWordPressCode((v) => !v)}
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+        >
+          <span>{showWordPressCode ? "▾" : "▸"}</span>
+          <span>WordPress integration (legacy)</span>
+        </button>
+
+        {showWordPressCode && (
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyToClipboard}
+              className="gap-2"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Copied!
+                </>
+              ) : (
+                "Copy Code"
+              )}
+            </Button>
+            <div>
+              <Label className="text-sm font-medium">API Key:</Label>
+              <code className="block mt-1 p-2 bg-background rounded text-xs font-mono break-all">
+                {analyticsData.key.apiKey}
+              </code>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">
+                Add this code to functions.php (API key is already embedded):
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-2">
+                Copy and paste this entire PHP code block into your theme's functions.php file. The API key is automatically included, so no additional setup is needed.
+              </p>
+              <pre className="mt-1 p-3 bg-background rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                {analyticsData.phpTrackingCode || analyticsData.trackingScript}
+              </pre>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              This will automatically add analytics tracking to all pages. No need to handle the API key separately - it's already in the code above.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -321,6 +364,7 @@ function NewsletterIntegrationCode({
 }) {
   const [copied, setCopied] = useState(false);
   const [copiedApiKey, setCopiedApiKey] = useState(false);
+  const [showWordPressCode, setShowWordPressCode] = useState(false);
   const isDialog = variant === "dialog";
   const boxClass = isDialog
     ? "mt-0 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20"
@@ -406,92 +450,148 @@ on_sent_ok: "fetch('${apiEndpoint}', {
         </div>
       )}
 
-      <div className="space-y-4">
-        <div>
-          <Label className="text-sm font-medium">API Key (same as analytics):</Label>
-          <div className="flex items-center gap-2 mt-1">
-            <code className="flex-1 p-2 bg-background rounded text-xs font-mono break-all">
-              {analyticsData.key.apiKey}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyApiKeyToClipboard}
-              className="gap-2 flex-shrink-0"
-            >
-              {copiedApiKey ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy
-                </>
-              )}
-            </Button>
-          </div>
+      <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+        <div className="flex items-center gap-2 mb-2">
+          <h4 className="font-semibold text-sm">React Website (HAYC Template)</h4>
+          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+            Active
+          </span>
         </div>
-        
-        <div>
-          <Label className="text-sm font-medium">
-            Contact Form 7 Integration for functions.php:
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1 mb-2">
-            Copy and paste this PHP code into your theme's functions.php file. Users will be able to opt-in to the newsletter by checking a checkbox in the form. The API key is already embedded in the code.
-          </p>
-          <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-800 mb-2">
-            <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">Required: Add a checkbox to your Contact Form 7</p>
-            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-              Add a checkbox field with the name <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded">newsletter-subscribe</code> to your form. You can customize the label text to any language.
-            </p>
-            <p className="text-xs font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-              [checkbox newsletter-subscribe "Subscribe to our newsletter"]
-            </p>
-            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-              Example in Greek: <span className="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Εγγραφή στο newsletter</span>
-            </p>
-          </div>
-          <div className="relative">
-            <pre className="p-3 bg-background rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-              {analyticsData.phpNewsletterCode || contactForm7Code}
-            </pre>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyCodeToClipboard}
-              className="absolute top-2 right-2 gap-2"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        <div className="p-3 bg-background/50 rounded border-l-4 border-blue-500">
-          <p className="text-sm font-medium mb-2">How it works:</p>
-          <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-            <li>Add the checkbox <code className="bg-background px-1 rounded">[checkbox newsletter-subscribe "Subscribe to our newsletter"]</code> to your Contact Form 7</li>
-            <li>When someone checks the checkbox and submits the form, they are immediately subscribed to the newsletter</li>
-            <li>Subscribers automatically appear in the "Contact Form Subscribers" group</li>
-            <li>The user can then send newsletters to all subscribers from their dashboard</li>
-            <li>Duplicate emails are automatically handled - existing subscribers won't be added twice</li>
-          </ul>
-        </div>
-        
-        <p className="text-xs text-muted-foreground">
-          API Endpoint: <code className="bg-background px-1 py-0.5 rounded">{apiEndpoint}</code>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          The React website template has two built-in newsletter integration points:
         </p>
+        <ul className="text-xs text-muted-foreground space-y-2 list-disc list-inside mt-2">
+          <li>
+            <code className="px-1 py-0.5 bg-background rounded font-mono">
+              src/components/ContactForm.tsx
+            </code>
+            {" "}— the contact form fires a call to{" "}
+            <code className="px-1 py-0.5 bg-background rounded font-mono">
+              /api/newsletter/subscribe
+            </code>
+            {" "}on every submission using the site's{" "}
+            <code className="px-1 py-0.5 bg-background rounded font-mono">siteId</code>
+            . The visitor controls their subscription via a toggle checkbox
+            before submitting.
+          </li>
+          <li>
+            <code className="px-1 py-0.5 bg-background rounded font-mono">
+              src/components/NewsletterForm.tsx
+            </code>
+            {" "}— a standalone email-only subscription form for use in footers
+            or dedicated sections. Accepts only an email address, uses the same{" "}
+            <code className="px-1 py-0.5 bg-background rounded font-mono">siteId</code>
+            {" "}lookup, and includes a honeypot field. Drop{" "}
+            <code className="px-1 py-0.5 bg-background rounded font-mono">
+              {"<NewsletterForm />"}
+            </code>
+            {" "}anywhere on a page to use it.
+          </li>
+        </ul>
+        <p className="text-xs text-muted-foreground mt-2">
+          No API key or additional setup is needed for either component.
+        </p>
+      </div>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowWordPressCode((v) => !v)}
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+        >
+          <span>{showWordPressCode ? "▾" : "▸"}</span>
+          <span>WordPress / Contact Form 7 integration (legacy)</span>
+        </button>
+
+        {showWordPressCode && (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">API Key (same as analytics):</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="flex-1 p-2 bg-background rounded text-xs font-mono break-all">
+                  {analyticsData.key.apiKey}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyApiKeyToClipboard}
+                  className="gap-2 flex-shrink-0"
+                >
+                  {copiedApiKey ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">
+                Contact Form 7 Integration for functions.php:
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-2">
+                Copy and paste this PHP code into your theme's functions.php file. Users will be able to opt-in to the newsletter by checking a checkbox in the form. The API key is already embedded in the code.
+              </p>
+              <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-800 mb-2">
+                <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">Required: Add a checkbox to your Contact Form 7</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                  Add a checkbox field with the name <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded">newsletter-subscribe</code> to your form. You can customize the label text to any language.
+                </p>
+                <p className="text-xs font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
+                  [checkbox newsletter-subscribe "Subscribe to our newsletter"]
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  Example in Greek: <span className="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Εγγραφή στο newsletter</span>
+                </p>
+              </div>
+              <div className="relative">
+                <pre className="p-3 bg-background rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                  {analyticsData.phpNewsletterCode || contactForm7Code}
+                </pre>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyCodeToClipboard}
+                  className="absolute top-2 right-2 gap-2"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-3 bg-background/50 rounded border-l-4 border-blue-500">
+              <p className="text-sm font-medium mb-2">How it works:</p>
+              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Add the checkbox <code className="bg-background px-1 rounded">[checkbox newsletter-subscribe "Subscribe to our newsletter"]</code> to your Contact Form 7</li>
+                <li>When someone checks the checkbox and submits the form, they are immediately subscribed to the newsletter</li>
+                <li>Subscribers automatically appear in the "Contact Form Subscribers" group</li>
+                <li>The user can then send newsletters to all subscribers from their dashboard</li>
+                <li>Duplicate emails are automatically handled - existing subscribers won't be added twice</li>
+              </ul>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              API Endpoint: <code className="bg-background px-1 py-0.5 rounded">{apiEndpoint}</code>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2151,7 +2251,7 @@ export function AdminWebsiteProgress() {
           <DialogHeader>
             <DialogTitle>
               {integrationCodeDialog?.panel === "analytics"
-                ? "Analytics tracking code"
+                ? "Analytics integration"
                 : "Newsletter integration"}
             </DialogTitle>
             <DialogDescription>{integrationCodeDialog?.domain}</DialogDescription>
