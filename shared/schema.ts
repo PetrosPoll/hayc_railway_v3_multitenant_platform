@@ -1036,6 +1036,7 @@ export const analyticsEvents = pgTable("analytics_events", {
   userAgent: text("user_agent"),
   deviceType: text("device_type"),
   sessionId: text("session_id"),
+  metadata: jsonb("metadata"),
   ipHash: text("ip_hash"),
   timestamp: timestamp("timestamp").notNull(),
   createdAt: timestamp("created_at").defaultNow(),

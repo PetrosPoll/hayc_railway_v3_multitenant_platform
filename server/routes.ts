@@ -19321,7 +19321,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.header("Access-Control-Allow-Headers", "Content-Type");
     
     try {
-      const { key, siteId, type, page, referrer, timestamp, sessionId, deviceType } = req.body;
+      const { key, siteId, type, page, referrer, timestamp, sessionId, deviceType, metadata } = req.body;
 
       if ((!key && !siteId) || !type || !page) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -19353,6 +19353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date(timestamp || Date.now()),
         sessionId: sessionId || null,
         deviceType: deviceType || null,
+        metadata: metadata || null,
       });
 
       res.status(200).json({ success: true });
