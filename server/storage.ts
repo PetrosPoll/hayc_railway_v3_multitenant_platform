@@ -1,6 +1,6 @@
 import { users, subscriptions, transactions, websiteInvoices, emails, newsletterSubscribers, newsletterCampaigns, emailTemplates, websiteProgress, websiteAnalyticsKeys, analyticsEvents, analyticsDailySummaries, templates, stripePrices, contacts, tags, contactTags, customPayments, paymentObligations, paymentSettlements, type User, type InsertUser, type Subscription, type Transaction, type InsertTransaction, type WebsiteInvoice, type InsertWebsiteInvoice, type Email, type InsertEmail, UserRole, type NewsletterCampaign, type InsertNewsletterCampaign, type WebsiteProgress, type WebsiteAnalyticsKey, type AnalyticsEvent, type AnalyticsDailySummary, type InsertAnalyticsEvent, type StripePrice, type InsertStripePrice, type Contact, type InsertContact, type Tag, type InsertTag, type ContactTag, type InsertContactTag, type CustomPayment, type InsertCustomPayment, type PaymentObligation, type InsertPaymentObligation, type PaymentSettlement, type InsertPaymentSettlement } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
+import { eq, sql, and, gte, lte, lt, inArray } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
@@ -90,6 +90,13 @@ export interface IStorage {
     topOutboundClicks: { url: string; count: number }[];
     topFileDownloads: { file: string; count: number }[];
     topNotFoundPages: { page: string; count: number }[];
+    formSubmissions: { form: string; count: number }[];
+    formStarts: { form: string; count: number }[];
+    formAbandons: { form: string; count: number }[];
+    formConversions: { form: string; starts: number; submits: number; abandons: number; conversionRate: number | null }[];
+    hourlyTraffic: { hour: number; count: number }[];
+    returningVisitors: number;
+    newVisitors: number;
   }>;
   // Template operations
   getAllTemplates(): Promise<any[]>;
@@ -703,6 +710,13 @@ export class DatabaseStorage implements IStorage {
     topOutboundClicks: { url: string; count: number }[];
     topFileDownloads: { file: string; count: number }[];
     topNotFoundPages: { page: string; count: number }[];
+    formSubmissions: { form: string; count: number }[];
+    formStarts: { form: string; count: number }[];
+    formAbandons: { form: string; count: number }[];
+    formConversions: { form: string; starts: number; submits: number; abandons: number; conversionRate: number | null }[];
+    hourlyTraffic: { hour: number; count: number }[];
+    returningVisitors: number;
+    newVisitors: number;
   }> {
     const events = await this.getAnalyticsEvents(websiteProgressId, startDate, endDate);
     const pageviewEvents = events.filter(e => e.eventType === 'pageview');
@@ -710,6 +724,9 @@ export class DatabaseStorage implements IStorage {
     const outboundClickEvents = events.filter(e => e.eventType === 'outbound_click');
     const fileDownloadEvents = events.filter(e => e.eventType === 'file_download');
     const notFoundEvents = events.filter(e => e.eventType === '404_error');
+    const formSubmitEvents = events.filter(e => e.eventType === 'form_submit');
+    const formStartEvents = events.filter(e => e.eventType === 'form_start');
+    const formAbandonEvents = events.filter(e => e.eventType === 'form_abandon');
 
     const pageviews = pageviewEvents.length;
     const uniqueVisitors = new Set(pageviewEvents.map(e => e.ipHash).filter(Boolean)).size;
@@ -831,6 +848,81 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
+    // Form submissions by form type
+    const formSubmitCounts = new Map<string, number>();
+    formSubmitEvents.forEach(e => {
+      const form = e.metadata && (e.metadata as any).form;
+      if (form) formSubmitCounts.set(form, (formSubmitCounts.get(form) || 0) + 1);
+    });
+    const formSubmissions = Array.from(formSubmitCounts.entries())
+      .map(([form, count]) => ({ form, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Form starts by form type
+    const formStartCounts = new Map<string, number>();
+    formStartEvents.forEach(e => {
+      const form = e.metadata && (e.metadata as any).form;
+      if (form) formStartCounts.set(form, (formStartCounts.get(form) || 0) + 1);
+    });
+    const formStarts = Array.from(formStartCounts.entries())
+      .map(([form, count]) => ({ form, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Form abandons by form type
+    const formAbandonCounts = new Map<string, number>();
+    formAbandonEvents.forEach(e => {
+      const form = e.metadata && (e.metadata as any).form;
+      if (form) formAbandonCounts.set(form, (formAbandonCounts.get(form) || 0) + 1);
+    });
+    const formAbandons = Array.from(formAbandonCounts.entries())
+      .map(([form, count]) => ({ form, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Form conversion rate per form type
+    const formConversions = Array.from(
+      new Set([
+        ...formStarts.map(f => f.form),
+        ...formSubmissions.map(f => f.form),
+      ])
+    ).map(form => {
+      const starts = formStartCounts.get(form) || 0;
+      const submits = formSubmitCounts.get(form) || 0;
+      const rate = starts > 0 ? Math.round((submits / starts) * 100) : null;
+      return { form, starts, submits, abandons: formAbandonCounts.get(form) || 0, conversionRate: rate };
+    });
+
+    // Hourly traffic patterns (0-23)
+    const hourlyCounts = new Array(24).fill(0);
+    pageviewEvents.forEach(e => {
+      const hour = e.timestamp.getHours();
+      hourlyCounts[hour]++;
+    });
+    const hourlyTraffic = hourlyCounts.map((count, hour) => ({ hour, count }));
+
+    // Returning vs new visitors
+    // A visitor is "returning" if their ipHash appeared before startDate
+    const allPriorEvents = startDate
+      ? await db
+          .select()
+          .from(analyticsEvents)
+          .where(
+            and(
+              eq(analyticsEvents.websiteProgressId, websiteProgressId),
+              lt(analyticsEvents.timestamp, startDate)
+            )
+          )
+      : [];
+    const priorIpHashes = new Set(
+      allPriorEvents
+        .filter(e => e.eventType === "pageview" && e.ipHash)
+        .map(e => e.ipHash!)
+    );
+    const currentIpHashes = new Set(
+      pageviewEvents.filter(e => e.ipHash).map(e => e.ipHash!)
+    );
+    const returningVisitors = [...currentIpHashes].filter(ip => priorIpHashes.has(ip)).length;
+    const newVisitors = currentIpHashes.size - returningVisitors;
+
     return {
       pageviews,
       uniqueVisitors,
@@ -845,6 +937,13 @@ export class DatabaseStorage implements IStorage {
       topOutboundClicks,
       topFileDownloads,
       topNotFoundPages,
+      formSubmissions,
+      formStarts,
+      formAbandons,
+      formConversions,
+      hourlyTraffic,
+      returningVisitors,
+      newVisitors,
     };
   }
   

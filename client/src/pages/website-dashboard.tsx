@@ -2820,7 +2820,10 @@ export default function WebsiteDashboard() {
     // Essential/Pro tier: Show analytics
     return (
       <div className="space-y-6">
-        <WebsiteAnalytics websiteId={parseInt(websiteId!)} />
+        <WebsiteAnalytics
+          websiteId={parseInt(websiteId!)}
+          tier={planSubscription?.tier ?? "essential"}
+        />
       </div>
     );
   };
