@@ -86,6 +86,10 @@ export interface IStorage {
     deviceBreakdown: { device: string; count: number }[];
     trafficSources: { source: string; count: number }[];
     dailyStats: { date: string; pageviews: number; visitors: number; sessions: number }[];
+    scrollDepthStats: { depth: number; count: number }[];
+    topOutboundClicks: { url: string; count: number }[];
+    topFileDownloads: { file: string; count: number }[];
+    topNotFoundPages: { page: string; count: number }[];
   }>;
   // Template operations
   getAllTemplates(): Promise<any[]>;
@@ -695,38 +699,47 @@ export class DatabaseStorage implements IStorage {
     deviceBreakdown: { device: string; count: number }[];
     trafficSources: { source: string; count: number }[];
     dailyStats: { date: string; pageviews: number; visitors: number; sessions: number }[];
+    scrollDepthStats: { depth: number; count: number }[];
+    topOutboundClicks: { url: string; count: number }[];
+    topFileDownloads: { file: string; count: number }[];
+    topNotFoundPages: { page: string; count: number }[];
   }> {
     const events = await this.getAnalyticsEvents(websiteProgressId, startDate, endDate);
-    
-    const pageviews = events.length;
-    const uniqueVisitors = new Set(events.map(e => e.ipHash).filter(Boolean)).size;
-    
+    const pageviewEvents = events.filter(e => e.eventType === 'pageview');
+    const scrollDepthEvents = events.filter(e => e.eventType === 'scroll_depth');
+    const outboundClickEvents = events.filter(e => e.eventType === 'outbound_click');
+    const fileDownloadEvents = events.filter(e => e.eventType === 'file_download');
+    const notFoundEvents = events.filter(e => e.eventType === '404_error');
+
+    const pageviews = pageviewEvents.length;
+    const uniqueVisitors = new Set(pageviewEvents.map(e => e.ipHash).filter(Boolean)).size;
+
     // Calculate bounce rate (sessions with only 1 pageview)
     const sessionPageviews = new Map<string, number>();
-    events.forEach(event => {
+    pageviewEvents.forEach(event => {
       const sessionKey = event.sessionId || event.ipHash || 'unknown';
       sessionPageviews.set(sessionKey, (sessionPageviews.get(sessionKey) || 0) + 1);
     });
     const totalSessions = sessionPageviews.size;
     const bouncedSessions = Array.from(sessionPageviews.values()).filter(count => count === 1).length;
     const bounceRate = totalSessions > 0 ? (bouncedSessions / totalSessions) * 100 : 0;
-    
+
     // Calculate average session duration (simplified: use 30 seconds per pageview as estimate)
     const avgSessionDuration = totalSessions > 0 ? (pageviews / totalSessions) * 30 : 0;
-    
+
     // Top pages
     const pageCounts = new Map<string, number>();
-    events.forEach(event => {
+    pageviewEvents.forEach(event => {
       pageCounts.set(event.page, (pageCounts.get(event.page) || 0) + 1);
     });
     const topPages = Array.from(pageCounts.entries())
       .map(([page, count]) => ({ page, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-    
+
     // Top referrers
     const referrerCounts = new Map<string, number>();
-    events.forEach(event => {
+    pageviewEvents.forEach(event => {
       if (event.referrer) {
         referrerCounts.set(event.referrer, (referrerCounts.get(event.referrer) || 0) + 1);
       }
@@ -735,30 +748,30 @@ export class DatabaseStorage implements IStorage {
       .map(([referrer, count]) => ({ referrer, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
-    
+
     // Device breakdown
     const deviceCounts = new Map<string, number>();
-    events.forEach(event => {
+    pageviewEvents.forEach(event => {
       const device = event.deviceType || this.detectDevice(event.userAgent || '');
       deviceCounts.set(device, (deviceCounts.get(device) || 0) + 1);
     });
     const deviceBreakdown = Array.from(deviceCounts.entries())
       .map(([device, count]) => ({ device, count }))
       .sort((a, b) => b.count - a.count);
-    
+
     // Traffic sources
     const sourceCounts = new Map<string, number>();
-    events.forEach(event => {
+    pageviewEvents.forEach(event => {
       const source = this.categorizeTrafficSource(event.referrer);
       sourceCounts.set(source, (sourceCounts.get(source) || 0) + 1);
     });
     const trafficSources = Array.from(sourceCounts.entries())
       .map(([source, count]) => ({ source, count }))
       .sort((a, b) => b.count - a.count);
-    
+
     // Daily stats
     const dailyData = new Map<string, { pageviews: number; visitors: Set<string>; sessions: Set<string> }>();
-    events.forEach(event => {
+    pageviewEvents.forEach(event => {
       const date = event.timestamp.toISOString().split('T')[0];
       if (!dailyData.has(date)) {
         dailyData.set(date, { pageviews: 0, visitors: new Set(), sessions: new Set() });
@@ -768,7 +781,7 @@ export class DatabaseStorage implements IStorage {
       if (event.ipHash) data.visitors.add(event.ipHash);
       if (event.sessionId || event.ipHash) data.sessions.add(event.sessionId || event.ipHash!);
     });
-    
+
     const dailyStats = Array.from(dailyData.entries())
       .map(([date, data]) => ({
         date,
@@ -777,7 +790,47 @@ export class DatabaseStorage implements IStorage {
         sessions: data.sessions.size,
       }))
       .sort((a, b) => a.date.localeCompare(b.date));
-    
+
+    // Scroll depth aggregation
+    const scrollDepthStats = [25, 50, 75, 100].map(threshold => ({
+      depth: threshold,
+      count: scrollDepthEvents.filter(e =>
+        e.metadata && (e.metadata as any).depth === threshold
+      ).length,
+    }));
+
+    // Top outbound clicks
+    const outboundCounts = new Map<string, number>();
+    outboundClickEvents.forEach(e => {
+      const url = e.metadata && (e.metadata as any).url;
+      if (url) outboundCounts.set(url, (outboundCounts.get(url) || 0) + 1);
+    });
+    const topOutboundClicks = Array.from(outboundCounts.entries())
+      .map(([url, count]) => ({ url, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // File downloads
+    const downloadCounts = new Map<string, number>();
+    fileDownloadEvents.forEach(e => {
+      const file = e.metadata && (e.metadata as any).file;
+      if (file) downloadCounts.set(file, (downloadCounts.get(file) || 0) + 1);
+    });
+    const topFileDownloads = Array.from(downloadCounts.entries())
+      .map(([file, count]) => ({ file, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // 404 errors
+    const notFoundCounts = new Map<string, number>();
+    notFoundEvents.forEach(e => {
+      notFoundCounts.set(e.page, (notFoundCounts.get(e.page) || 0) + 1);
+    });
+    const topNotFoundPages = Array.from(notFoundCounts.entries())
+      .map(([page, count]) => ({ page, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
     return {
       pageviews,
       uniqueVisitors,
@@ -788,6 +841,10 @@ export class DatabaseStorage implements IStorage {
       deviceBreakdown,
       trafficSources,
       dailyStats,
+      scrollDepthStats,
+      topOutboundClicks,
+      topFileDownloads,
+      topNotFoundPages,
     };
   }
   

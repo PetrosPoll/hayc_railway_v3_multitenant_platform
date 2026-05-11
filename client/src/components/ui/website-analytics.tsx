@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart3, Users, Eye, TrendingUp, ExternalLink, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
@@ -46,6 +46,10 @@ interface AnalyticsData {
     visitors: number;
     sessions: number;
   }[];
+  scrollDepthStats: { depth: number; count: number }[];
+  topOutboundClicks: { url: string; count: number }[];
+  topFileDownloads: { file: string; count: number }[];
+  topNotFoundPages: { page: string; count: number }[];
 }
 
 const COLORS = {
@@ -83,6 +87,10 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
             deviceBreakdown: [],
             trafficSources: [],
             dailyStats: [],
+            scrollDepthStats: [],
+            topOutboundClicks: [],
+            topFileDownloads: [],
+            topNotFoundPages: [],
           };
         }
         throw new Error("Failed to fetch analytics");
@@ -404,6 +412,102 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Scroll Depth</CardTitle>
+              <CardDescription>How far visitors scroll on average</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.scrollDepthStats.every(s => s.count === 0) ? (
+                <p className="text-sm text-muted-foreground">No scroll data yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {data.scrollDepthStats.map(({ depth, count }) => (
+                    <div key={depth} className="flex items-center gap-3">
+                      <span className="text-sm w-12 text-muted-foreground">{depth}%</span>
+                      <div className="flex-1 bg-muted rounded-full h-2">
+                        <div
+                          className="bg-primary h-2 rounded-full"
+                          style={{
+                            width: `${Math.max(...data.scrollDepthStats.map(s => s.count)) > 0
+                              ? (count / Math.max(...data.scrollDepthStats.map(s => s.count))) * 100
+                              : 0}%`
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm w-8 text-right">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Top Outbound Clicks</CardTitle>
+                <CardDescription>External links clicked by visitors</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data.topOutboundClicks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No outbound clicks yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {data.topOutboundClicks.map(({ url, count }) => (
+                      <div key={url} className="flex items-center justify-between">
+                        <span className="text-sm truncate max-w-[200px] text-muted-foreground">{url}</span>
+                        <span className="text-sm font-medium ml-2">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">File Downloads</CardTitle>
+                <CardDescription>Files downloaded by visitors</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {data.topFileDownloads.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No file downloads yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {data.topFileDownloads.map(({ file, count }) => (
+                      <div key={file} className="flex items-center justify-between">
+                        <span className="text-sm truncate max-w-[200px] text-muted-foreground">{file}</span>
+                        <span className="text-sm font-medium ml-2">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">404 Errors</CardTitle>
+              <CardDescription>Pages visitors tried to access but don't exist</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data.topNotFoundPages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No 404 errors recorded</p>
+              ) : (
+                <div className="space-y-2">
+                  {data.topNotFoundPages.map(({ page, count }) => (
+                    <div key={page} className="flex items-center justify-between">
+                      <span className="text-sm font-mono text-muted-foreground">{page}</span>
+                      <span className="text-sm font-medium ml-2">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </>
       )}
     </div>
