@@ -1,4 +1,4 @@
-import { users, subscriptions, transactions, websiteInvoices, emails, newsletterSubscribers, newsletterCampaigns, emailTemplates, websiteAnalyticsKeys, analyticsEvents, analyticsDailySummaries, templates, stripePrices, contacts, tags, contactTags, customPayments, paymentObligations, paymentSettlements, type User, type InsertUser, type Subscription, type Transaction, type InsertTransaction, type WebsiteInvoice, type InsertWebsiteInvoice, type Email, type InsertEmail, UserRole, type NewsletterCampaign, type InsertNewsletterCampaign, type WebsiteAnalyticsKey, type AnalyticsEvent, type AnalyticsDailySummary, type InsertAnalyticsEvent, type StripePrice, type InsertStripePrice, type Contact, type InsertContact, type Tag, type InsertTag, type ContactTag, type InsertContactTag, type CustomPayment, type InsertCustomPayment, type PaymentObligation, type InsertPaymentObligation, type PaymentSettlement, type InsertPaymentSettlement } from "@shared/schema";
+import { users, subscriptions, transactions, websiteInvoices, emails, newsletterSubscribers, newsletterCampaigns, emailTemplates, websiteProgress, websiteAnalyticsKeys, analyticsEvents, analyticsDailySummaries, templates, stripePrices, contacts, tags, contactTags, customPayments, paymentObligations, paymentSettlements, type User, type InsertUser, type Subscription, type Transaction, type InsertTransaction, type WebsiteInvoice, type InsertWebsiteInvoice, type Email, type InsertEmail, UserRole, type NewsletterCampaign, type InsertNewsletterCampaign, type WebsiteProgress, type WebsiteAnalyticsKey, type AnalyticsEvent, type AnalyticsDailySummary, type InsertAnalyticsEvent, type StripePrice, type InsertStripePrice, type Contact, type InsertContact, type Tag, type InsertTag, type ContactTag, type InsertContactTag, type CustomPayment, type InsertCustomPayment, type PaymentObligation, type InsertPaymentObligation, type PaymentSettlement, type InsertPaymentSettlement } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, and, gte, lte, inArray } from "drizzle-orm";
 import crypto from "crypto";
@@ -69,6 +69,7 @@ export interface IStorage {
   deleteNewsletterCampaign(id: number, websiteProgressId: number): Promise<void>;
   updateCampaignStats(id: number, stats: { openCount?: number; clickCount?: number }): Promise<NewsletterCampaign>;
   // Analytics operations
+  getWebsiteProgressBySiteId(siteId: string): Promise<WebsiteProgress | undefined>;
   getAnalyticsKeyByWebsiteId(websiteProgressId: number): Promise<WebsiteAnalyticsKey | undefined>;
   getAnalyticsKeyByApiKey(apiKey: string): Promise<WebsiteAnalyticsKey | undefined>;
   createAnalyticsKey(websiteProgressId: number, domain: string): Promise<WebsiteAnalyticsKey>;
@@ -604,6 +605,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(newsletterCampaigns.id, id))
       .returning();
     return campaign;
+  }
+
+  async getWebsiteProgressBySiteId(siteId: string): Promise<WebsiteProgress | undefined> {
+    const [website] = await db
+      .select()
+      .from(websiteProgress)
+      .where(eq(websiteProgress.siteId, String(siteId)))
+      .limit(1);
+    return website;
   }
 
   async getAnalyticsKeyByWebsiteId(websiteProgressId: number): Promise<WebsiteAnalyticsKey | undefined> {

@@ -19321,13 +19321,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.header("Access-Control-Allow-Headers", "Content-Type");
     
     try {
-      const { key, type, page, referrer, timestamp, sessionId, deviceType } = req.body;
+      const { key, siteId, type, page, referrer, timestamp, sessionId, deviceType } = req.body;
 
-      if (!key || !type || !page) {
+      if ((!key && !siteId) || !type || !page) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const analyticsKey = await storage.getAnalyticsKeyByApiKey(key);
+      let analyticsKey;
+      if (key) {
+        analyticsKey = await storage.getAnalyticsKeyByApiKey(key);
+      } else {
+        const website = await storage.getWebsiteProgressBySiteId(siteId);
+        if (website) {
+          analyticsKey = await storage.getAnalyticsKeyByWebsiteId(website.id);
+        }
+      }
       if (!analyticsKey || !analyticsKey.isActive) {
         return res.status(401).json({ error: "Invalid or inactive API key" });
       }
