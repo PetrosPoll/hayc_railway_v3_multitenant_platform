@@ -241,7 +241,7 @@ export function HeroSection() {
 
       <div className="absolute inset-0 bg-black/50 z-10" />
 
-      <div className="relative z-20 w-full flex flex-col items-center text-center px-4 pt-0 md:pt-[12vh] min-h-[calc(100vh-180px)] md:min-h-0 justify-center">
+      <div className="relative z-20 w-full flex flex-col items-center text-center px-4 pt-0 md:pt-[24vh] min-h-[calc(100vh-180px)] md:min-h-0 justify-center">
         <h1 className="text-4xl md:text-6xl font-semibold font-['Montserrat'] text-white max-w-4xl mb-4 md:mb-6 leading-tight">
           A <span className="text-[#ED4C14]">website</span> that works as hard as your business.
         </h1>
@@ -249,11 +249,6 @@ export function HeroSection() {
         <p className="text-base md:text-2xl font-normal md:font-medium font-['Montserrat'] text-white mb-6 md:mb-8 leading-5">
           {t("home.hero.subtitle")}
         </p>
-
-        <div className="hidden md:flex mb-4">
-          <div className="w-8 h-8 rounded-full bg-[#ED4C14] border-2 border-white flex items-center justify-center text-white text-xs font-bold -mr-2 z-10">O</div>
-          <div className="w-8 h-8 rounded-full bg-[#182B53] border-2 border-white flex items-center justify-center text-white text-xs font-bold">N</div>
-        </div>
 
         <Button
           className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] text-base font-semibold font-['Montserrat'] leading-5 border-0 group mb-3"

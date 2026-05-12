@@ -36,14 +36,6 @@ export function WhyUsSection() {
   const [whyUsPanelWidth, setWhyUsPanelWidth] = useState(0);
 
   useEffect(() => {
-    const video = whyUsVideoRefs.current[activeWhyUs];
-    if (video) {
-      video.currentTime = 0;
-      video.play().catch(() => {});
-    }
-  }, [activeWhyUs]);
-
-  useEffect(() => {
     const handleScroll = () => {
       const wrapper = whyUsSectionWrapperRef.current;
       if (!wrapper) return;
@@ -74,6 +66,39 @@ export function WhyUsSection() {
       window.removeEventListener("resize", handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    const observers: IntersectionObserver[] = [];
+    whyUsSectionRefs.current.forEach((el, i) => {
+      if (!el) return;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setActiveWhyUs(i);
+            }
+          });
+        },
+        { threshold: 0.5 }
+      );
+      observer.observe(el);
+      observers.push(observer);
+    });
+    return () => observers.forEach((o) => o.disconnect());
+  }, []);
+
+  useEffect(() => {
+    whyUsVideoRefs.current.forEach((video, i) => {
+      if (!video) return;
+      if (i === activeWhyUs) {
+        video.currentTime = 0;
+        video.play().catch(() => {});
+      } else {
+        video.pause();
+        video.currentTime = 0;
+      }
+    });
+  }, [activeWhyUs]);
 
   const WHY_US_SECTIONS = [
     {
@@ -146,15 +171,10 @@ export function WhyUsSection() {
                      ${i === activeWhyUs ? "opacity-100" : "opacity-0 pointer-events-none"}`}
                   src={video.desktop}
                   autoPlay
-                  loop={false}
+                  loop={true}
                   muted
                   playsInline
                   preload="auto"
-                  onEnded={
-                    i === activeWhyUs
-                      ? () => setActiveWhyUs((prev) => (prev + 1) % WHY_US_SECTION_VIDEOS.length)
-                      : undefined
-                  }
                 />
               ))}
             </div>
@@ -206,7 +226,7 @@ export function WhyUsSection() {
         </div>
       </div>
 
-      <div className="hidden">
+      <div className="block md:hidden px-6">
         {WHY_US_SECTIONS.map((section, i) => (
           <div
             key={i}
