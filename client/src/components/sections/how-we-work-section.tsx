@@ -46,6 +46,19 @@ const BACKDROP_R = WHEEL_R - 80;
 const BACKDROP_CX = WHEEL_CX - 80;
 const BACKDROP_CY = WHEEL_CY;
 
+const mobileStepStyles = `
+  @keyframes stepFadeUp {
+    from { opacity: 0; transform: translateY(32px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .step-number-enter {
+    animation: stepFadeUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .step-content-enter {
+    animation: stepFadeUp 0.5s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+`;
+
 export function HowWeWorkSection() {
   const navigate = useNavigate();
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -54,18 +67,14 @@ export function HowWeWorkSection() {
   const [panelMode, setPanelMode] = useState<"top" | "fixed" | "bottom">("top");
   const [panelLeft, setPanelLeft] = useState(0);
   const [panelWidth, setPanelWidth] = useState(0);
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
+  const mobileWrapperRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const handleScroll = () => {
-      const wrapper = wrapperRef.current;
+      const wrapper =
+        typeof window !== "undefined" && window.innerWidth < 768
+          ? mobileWrapperRef.current
+          : wrapperRef.current;
       if (!wrapper) return;
 
       const rect = wrapper.getBoundingClientRect();
@@ -107,54 +116,92 @@ export function HowWeWorkSection() {
       ? Math.min(window.innerWidth / FRAME_W, window.innerHeight / FRAME_H)
       : 1;
 
-  if (isMobile) {
-    return (
-      <div className="w-full bg-black px-4 py-16 flex flex-col gap-16">
-        <h2 className="text-3xl font-semibold font-['Montserrat'] text-right">
-          <span className="text-white">A process created around </span>
-          <span className="text-[#ED4C14]">you.</span>
-        </h2>
-        {STEPS.map((step, i) => (
-          <div key={i} className="flex items-end gap-4">
+  return (
+    <>
+      <div
+        ref={mobileWrapperRef}
+        className="relative w-full bg-black overflow-visible md:hidden"
+        style={{ height: `${STEPS.length * 100}vh` }}
+      >
+        <style>{mobileStepStyles}</style>
+        <div
+          className="h-screen overflow-hidden z-10 flex flex-col justify-center"
+          style={{
+            position: panelMode === "fixed" ? "fixed" : "absolute",
+            top:
+              panelMode === "bottom"
+                ? `${mobileWrapperRef.current
+                    ? mobileWrapperRef.current.getBoundingClientRect().height -
+                      window.innerHeight
+                    : 0}px`
+                : 0,
+            left: 0,
+            width: "100%",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{
+              position: "absolute",
+              top: "9rem",
+              left: "1.5rem",
+              right: "1.5rem",
+              textAlign: "right",
+            }}
+          >
+            <h2 className="text-3xl font-semibold font-['Montserrat'] text-right">
+              <span className="text-white">A process created around </span>
+              <span className="text-[#ED4C14]">you.</span>
+            </h2>
+          </div>
+
+          {/* Active step content */}
+          <div className="px-6 flex flex-col gap-6">
             <div
-              className="text-[#ED4C14] font-semibold font-['Montserrat']
-                           text-7xl leading-none flex-shrink-0"
+              key={`mob-num-${activeStep}`}
+              className="step-number-enter"
+              style={{
+                fontSize: "140px",
+                fontWeight: 600,
+                fontFamily: "Montserrat",
+                lineHeight: 1,
+                color: "#ED4C14",
+              }}
             >
-              {step.number}
+              {STEPS[activeStep].number}
             </div>
-            <div className="flex flex-col gap-3 pb-2">
-              <h3 className="text-white text-lg font-semibold font-['Montserrat']">
-                {step.title}
+            <div
+              key={`mob-content-${activeStep}`}
+              className="step-content-enter"
+              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+            >
+              <h3 className="text-white text-xl font-semibold font-['Montserrat'] leading-tight">
+                {STEPS[activeStep].title}
               </h3>
-              <p className="text-white text-sm font-['Montserrat'] leading-5">
-                {step.description}
+              <p className="text-white/70 text-sm font-['Montserrat'] leading-relaxed">
+                {STEPS[activeStep].description}
               </p>
               <button
+                type="button"
                 onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
                 className="h-10 px-4 bg-[#ED4C14] rounded-[10px] inline-flex
-                           items-center gap-4 border-0 cursor-pointer w-fit"
+                           items-center gap-4 border-0 cursor-pointer w-fit mt-2"
               >
-                <span
-                  className="text-[#EFF6FF] text-sm font-semibold
-                                 font-['Montserrat']"
-                >
+                <span className="text-[#EFF6FF] text-sm font-semibold font-['Montserrat']">
                   Get Started
                 </span>
                 <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
               </button>
             </div>
           </div>
-        ))}
+        </div>
       </div>
-    );
-  }
 
-  return (
-    <div
-      ref={wrapperRef}
-      className="relative w-full bg-black overflow-visible"
-      style={{ height: `${STEPS.length * 100}vh` }}
-    >
+      <div
+        ref={wrapperRef}
+        className="relative w-full bg-black overflow-visible hidden md:block"
+        style={{ height: `${STEPS.length * 100}vh` }}
+      >
       {/* Fixed/absolute panel */}
       <div
         className="h-screen overflow-hidden z-10"
@@ -424,5 +471,6 @@ export function HowWeWorkSection() {
         </div>
       </div>
     </div>
+    </>
   );
 }
