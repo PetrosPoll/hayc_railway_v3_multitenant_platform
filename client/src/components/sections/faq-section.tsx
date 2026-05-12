@@ -11,11 +11,21 @@ const faqs: FaqItem[] = [
     answer:
       "HAYC is your website partner. You choose a design, tell us what you need, and we build it for you, start to finish. Later on, you can manage your website, track its progress, and expand its capabilities through your dashboard.",
   },
-  { question: "Can I build an e-shop or online store with HAYC?", answer: "" },
-  { question: "What if I already have a domain name?", answer: "" },
-  { question: "Can I cancel my subscription anytime?", answer: "" },
-  { question: "What do I need to do on my end for you to build the website?", answer: "" },
-  { question: "Can I change my subscription plan later?", answer: "" },
+  { question: "Can I build an e-shop or online store with HAYC?", answer:
+      "Not in the traditional sense — HAYC doesn't build self-managed e-shops. However, you can add online payment capabilities and booking systems through our add-ons, which we set up and integrate for you.",
+  },
+  { question: "What if I already have a domain name?", answer:
+      "No problem. We can connect your existing domain to your new HAYC website. Just let us know during onboarding and we'll handle the setup.",
+  },
+  { question: "Can I cancel my subscription anytime?", answer:
+      "Yes. You can cancel at any time from your dashboard. Your website stays live until the end of your current billing period, and we offer a 30-day money-back guarantee if you're not satisfied.",
+  },
+  { question: "What do I need to do on my end for you to build the website?", answer:
+      "After subscribing, you fill in a short onboarding form — your business name, what you do, the features you need, and any content like your logo, photos, and text. Our team takes it from there and reaches out if we need anything else.",
+  },
+  { question: "Can I change my subscription plan later?", answer:
+      "Yes. You can upgrade or change your plan at any time from your dashboard. Add-ons can also be added after your website is already live.",
+  },
 ];
 
 export function FaqSection() {
