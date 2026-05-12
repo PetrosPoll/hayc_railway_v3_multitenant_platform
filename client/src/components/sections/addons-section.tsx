@@ -136,7 +136,7 @@ export function AddonsSection() {
             alt="Add-ons illustration"
             className="w-full h-full object-cover rounded-tl-[20px] rounded-bl-[20px]"
           /> */}
-          <div className="w-full w-[793px] h-[799px] bg-neutral-700/30 rounded-[20px] md:rounded-tl-[20px] md:rounded-bl-[20px] md:rounded-tr-none md:rounded-br-none" />
+          <div className="w-full h-full bg-neutral-700/30 rounded-[20px]" />
         </div>
       </div>
     </section>
