@@ -659,39 +659,30 @@
             "categories": {
                 "businessTools": {
                     "title": "Business Tools",
-                    "description": "Operational tools that help you run your business or organization",
+                    "description": "Operational tools that help you run your business or organization.",
                     "addons": {
-                        "bookingSystem": "Booking System",
-                        "transportBooking": "Transport Booking",
-                        "donationSystem": "Donation System"
-                    }
-                },
-                "digitalPayments": {
-                    "title": "Digital Payments & Monetization",
-                    "description": "Accept payments and monetize your services online.",
-                    "addons": {
-                        "onlinePayments": "Online Payments"
+                        "bookingSystem": "Booking System"
                     }
                 },
                 "engagementData": {
                     "title": "Engagement & Data",
-                    "description": "Understand your audience and keep them engaged.",
+                    "description": "Track your website's performance, visitor behavior, and key metrics from your HAYC dashboard.",
                     "addons": {
                         "analyticsDashboard": "Analytics Dashboard"
                     }
                 },
                 "educationContent": {
                     "title": "Education & Content",
-                    "description": "Deliver and monetize digital courses or learning content.",
+                    "description": "Offer online courses and educational content to your audience.",
                     "addons": {
-                        "lms": "Learning Management System (LMS)"
+                        "lms": "Learning Management System"
                     }
                 },
-                "specializedSolutions": {
-                    "title": "Specialized Solutions",
-                    "description": "Custom tools built for specific industries and needs.",
+                "newsletter": {
+                    "title": "Newsletter",
+                    "description": "Send newsletters and campaigns to your subscribers directly from your HAYC dashboard.",
                     "addons": {
-                        "customIntegration": "Custom Integration"
+                        "newsletter": "Newsletter Tool"
                     }
                 }
             }

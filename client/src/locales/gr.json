@@ -686,13 +686,6 @@
                     "addons": {
                         "lms": "Learning Management System (LMS)"
                     }
-                },
-                "specializedSolutions": {
-                    "title": "Εξειδικευμένες Λύσεις",
-                    "description": "Custom εργαλεία για συγκεκριμένους κλάδους και ανάγκες.",
-                    "addons": {
-                        "customIntegration": "Custom Integration"
-                    }
                 }
             }
         },

@@ -12,29 +12,28 @@ export function AddonsSection() {
       descriptionKey: "home.addonsSection.categories.businessTools.description",
       addonKeys: [
         "home.addonsSection.categories.businessTools.addons.bookingSystem",
-        "home.addonsSection.categories.businessTools.addons.transportBooking",
-        "home.addonsSection.categories.businessTools.addons.donationSystem",
       ],
-    },
-    {
-      titleKey: "home.addonsSection.categories.digitalPayments.title",
-      descriptionKey: "home.addonsSection.categories.digitalPayments.description",
-      addonKeys: ["home.addonsSection.categories.digitalPayments.addons.onlinePayments"],
     },
     {
       titleKey: "home.addonsSection.categories.engagementData.title",
       descriptionKey: "home.addonsSection.categories.engagementData.description",
-      addonKeys: ["home.addonsSection.categories.engagementData.addons.analyticsDashboard"],
+      addonKeys: [
+        "home.addonsSection.categories.engagementData.addons.analyticsDashboard",
+      ],
     },
     {
       titleKey: "home.addonsSection.categories.educationContent.title",
       descriptionKey: "home.addonsSection.categories.educationContent.description",
-      addonKeys: ["home.addonsSection.categories.educationContent.addons.lms"],
+      addonKeys: [
+        "home.addonsSection.categories.educationContent.addons.lms",
+      ],
     },
     {
-      titleKey: "home.addonsSection.categories.specializedSolutions.title",
-      descriptionKey: "home.addonsSection.categories.specializedSolutions.description",
-      addonKeys: ["home.addonsSection.categories.specializedSolutions.addons.customIntegration"],
+      titleKey: "home.addonsSection.categories.newsletter.title",
+      descriptionKey: "home.addonsSection.categories.newsletter.description",
+      addonKeys: [
+        "home.addonsSection.categories.newsletter.addons.newsletter",
+      ],
     },
   ];
 
