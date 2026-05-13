@@ -1,24 +1,32 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
 
 export function AddonsSection() {
   const { t } = useTranslation();
-  const [openAddon, setOpenAddon] = useState<string | null>("home.addonsSection.categories.businessTools.title");
+  const [openAddon, setOpenAddon] = useState<string | null>("home.addonsSection.categories.engagementData.title");
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = 0;
+    video.play().catch(() => {});
+  }, [openAddon]);
 
   const addonCategories = [
-    {
-      titleKey: "home.addonsSection.categories.businessTools.title",
-      descriptionKey: "home.addonsSection.categories.businessTools.description",
-      addonKeys: [
-        "home.addonsSection.categories.businessTools.addons.bookingSystem",
-      ],
-    },
     {
       titleKey: "home.addonsSection.categories.engagementData.title",
       descriptionKey: "home.addonsSection.categories.engagementData.description",
       addonKeys: [
         "home.addonsSection.categories.engagementData.addons.analyticsDashboard",
+      ],
+    },
+    {
+      titleKey: "home.addonsSection.categories.businessTools.title",
+      descriptionKey: "home.addonsSection.categories.businessTools.description",
+      addonKeys: [
+        "home.addonsSection.categories.businessTools.addons.bookingSystem",
       ],
     },
     {
@@ -36,6 +44,11 @@ export function AddonsSection() {
       ],
     },
   ];
+
+  const ADDON_VIDEOS: Record<string, string> = {
+    "home.addonsSection.categories.engagementData.title":
+      "https://res.cloudinary.com/dem12vqtl/video/upload/v1778710769/analytics_addon_y5gll4.mp4",
+  };
 
   return (
     <section className="w-full px-4 md:px-16 py-12 md:py-24 bg-black overflow-hidden relative">
@@ -119,7 +132,21 @@ export function AddonsSection() {
                         className="md:hidden w-full h-[320px] rounded-[20px] object-cover mt-3"
                         style={{ height: '320px' }}
                       /> */}
-                      <div className="md:hidden w-full h-[320px] bg-neutral-700/30 rounded-[20px] mt-3" />
+                      <div className="md:hidden w-full mt-3">
+                        {ADDON_VIDEOS[cat.titleKey] ? (
+                          <video
+                            className="w-full h-auto rounded-[20px]"
+                            src={ADDON_VIDEOS[cat.titleKey]}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                        ) : (
+                          <div className="w-full h-[320px] bg-neutral-700/30 rounded-[20px]" />
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -129,13 +156,22 @@ export function AddonsSection() {
         </div>
 
         {/* Right side image space */}
-        <div className="hidden md:flex w-[793px] h-[799px] flex-shrink-0 relative z-10">
-          {/* <img
-            src="/images/addons_section.png"
-            alt="Add-ons illustration"
-            className="w-full h-full object-cover rounded-tl-[20px] rounded-bl-[20px]"
-          /> */}
-          <div className="w-full h-full bg-neutral-700/30 rounded-[20px]" />
+        <div className="hidden md:flex flex-shrink-0 relative z-10 overflow-hidden rounded-[20px] max-w-[700px] w-full">
+          {openAddon && ADDON_VIDEOS[openAddon] ? (
+            <video
+              ref={videoRef}
+              key={openAddon}
+              className="w-full h-auto"
+              src={ADDON_VIDEOS[openAddon]}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+            />
+          ) : (
+            <div className="w-full h-full bg-neutral-700/30 rounded-[20px]" />
+          )}
         </div>
       </div>
     </section>
