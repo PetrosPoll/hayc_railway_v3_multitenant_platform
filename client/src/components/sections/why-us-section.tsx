@@ -159,7 +159,7 @@ export function WhyUsSection() {
                     : 0,
             }}
           >
-            <div className="relative w-full max-w-[600px] h-[500px]">
+            <div className="relative w-full max-w-[800px] h-[720px]">
               {WHY_US_SECTION_VIDEOS.map((video, i) => (
                 <video
                   key={i}
