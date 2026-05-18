@@ -94,9 +94,10 @@ export default function Templates() {
   const lastVisiblePage = visiblePages[visiblePages.length - 1] ?? 1;
 
   return (
-    <div className="min-h-screen bg-black mt-[65px]">
+    <div className="min-h-screen bg-black">
+      <div className="relative bg-cover bg-top bg-no-repeat pt-[65px] bg-[url('/images/templates_main_mobile.png')] lg:bg-[url('/images/templates_main_desktop.png')] lg:bg-center">
       {/* Templates Page Header */}
-      <section className="w-full px-4 lg:px-16 pt-24 pb-12 bg-black flex flex-col justify-center items-center gap-6">
+      <section className="w-full px-4 lg:px-16 pt-24 pb-12 flex flex-col justify-center items-center gap-6">
         <div className="w-full flex flex-col justify-center items-center gap-12">
           {/* Title */}
           <div className="w-full flex flex-col justify-start items-center gap-3">
@@ -124,7 +125,7 @@ export default function Templates() {
       </section>
 
       {/* Templates Grid Section */}
-      <section className="w-full px-4 py-12 lg:px-16 lg:py-24 bg-black flex flex-col justify-center items-center gap-12">
+      <section className="w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-12">
         {/* Industry filter dropdown */}
         <div className="w-full relative inline-flex justify-start items-center gap-3">
           <button
@@ -256,6 +257,7 @@ export default function Templates() {
           </button>
         </div>
       </section>
+      </div>
 
       <TemplatePreviewModal
         template={selectedTemplate}
