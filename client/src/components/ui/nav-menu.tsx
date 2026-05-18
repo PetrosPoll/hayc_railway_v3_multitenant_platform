@@ -52,7 +52,7 @@ export function NavMenu() {
     return () => window.removeEventListener("scroll", update);
   }, [pathname]);
 
-  const isTransparent = isHomePage && !scrolled && !user;
+  const isTransparent = (isHomePage || pathname === "/contact") && !scrolled && !user;
 
   const handleLogout = async () => {
     try {
