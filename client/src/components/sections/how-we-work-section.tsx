@@ -125,7 +125,7 @@ export function HowWeWorkSection() {
       >
         <style>{mobileStepStyles}</style>
         <div
-          className="h-screen overflow-hidden z-10 flex flex-col justify-center"
+          className="relative z-10 flex h-screen flex-col justify-center overflow-hidden"
           style={{
             position: panelMode === "fixed" ? "fixed" : "absolute",
             top:
@@ -139,8 +139,23 @@ export function HowWeWorkSection() {
             width: "100%",
           }}
         >
+          <div aria-hidden className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+            <div
+              style={{
+                position: "absolute",
+                width: "800px",
+                height: "800px",
+                right: "-100px",
+                bottom: "-200px",
+                background:
+                  "radial-gradient(ellipse at center, rgba(237,76,20,0.35) 0%, rgba(237,76,20,0.1) 40%, transparent 70%)",
+              }}
+            />
+          </div>
+
           {/* Header */}
           <div
+            className="relative z-10"
             style={{
               position: "absolute",
               top: "9rem",
@@ -156,7 +171,7 @@ export function HowWeWorkSection() {
           </div>
 
           {/* Active step content */}
-          <div className="px-6 flex flex-col gap-6">
+          <div className="relative z-10 px-6 flex flex-col gap-6">
             <div
               key={`mob-num-${activeStep}`}
               className="step-number-enter"
