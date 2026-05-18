@@ -199,7 +199,7 @@ function TestimonialCard({
           {t(item.textKey)}
         </p>
       </div>
-      {isFront ? (
+      {/* {isFront ? (
         <button
           type="button"
           className="inline-flex h-11 shrink-0 items-center gap-4 self-start rounded-[10px] bg-indigo-300 px-5 py-3.5 transition-opacity hover:opacity-90 md:bg-[#A0BAF3]"
@@ -215,7 +215,7 @@ function TestimonialCard({
           className="flex h-11 w-full max-w-[200px] min-w-[10rem] shrink-0 items-center justify-center self-start rounded-[10px] bg-zinc-800/50 md:w-[calc(40%+96px)]"
           aria-hidden
         />
-      )}
+      )} */}
     </div>
   );
 }
@@ -232,7 +232,11 @@ function StarRating({ rating, fullStarAlt, halfStarAlt }: { rating: number; full
   return <div className="flex items-center gap-1.5">{stars}</div>;
 }
 
-export function TestimonialsSection() {
+type TestimonialsSectionProps = {
+  className?: string;
+};
+
+export function TestimonialsSection({ className }: TestimonialsSectionProps) {
   const { t } = useTranslation();
   const [testimonialIndex, setTestimonialIndex] = useState(0);
   const [deckExit, setDeckExit] = useState<{ fromIdx: number; dir: -1 | 1; nonce: number } | null>(null);
@@ -289,7 +293,7 @@ export function TestimonialsSection() {
   } as const;
 
   return (
-    <section className="w-full px-4 md:px-16 py-12 md:py-24 bg-black">
+    <section className={cn("w-full px-4 md:px-16 py-12 md:py-24 bg-black", className)}>
       <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-start md:justify-between items-start gap-12">
         <div className="w-full md:w-auto flex flex-col justify-center items-start gap-6">
         <div className="flex flex-col justify-start items-start gap-3">
