@@ -6,7 +6,6 @@ import { FinalCtaSection } from "@/components/sections/final-cta-section";
 export default function PricingPage() {
   const navigate = useNavigate();
   const [billing, setBilling] = useState<"monthly" | "annually">("monthly");
-  const [showComparison, setShowComparison] = useState(false);
   const [mobileComparisonPlan, setMobileComparisonPlan] = useState<"basic" | "essential" | "pro">("basic");
 
   const plans = [
@@ -124,10 +123,20 @@ export default function PricingPage() {
     mobileComparisonPlan === "basic" ? "34€" : mobileComparisonPlan === "essential" ? "39€" : "200€";
 
   return (
-    <div className="w-full bg-black min-h-screen px-4 lg:px-16 flex flex-col items-center gap-12 py-16">
-      {/* Pricing Header */}
-      <section className="w-full bg-black px-4 py-[50px] lg:px-16 lg:py-16 flex flex-col items-center gap-3">
-        {/* Badge */}
+    <div className="w-full bg-black min-h-screen flex flex-col items-center gap-4">
+      <div className="w-full relative lg:pt-[65px]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 hidden bg-cover bg-center bg-no-repeat bg-[url('/images/pricing_main_desktop.png')] lg:block"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-top bg-no-repeat bg-[length:100%_auto] bg-[url('/images/pricing_main_mobile.png')] lg:hidden"
+        />
+
+        <div className="relative pt-[65px] lg:pt-0">
+          <section className="relative w-full px-4 py-[50px] lg:px-16 lg:py-16 flex flex-col items-center gap-3">
+            {/* Badge */}
         <div className="px-3 py-1.5 bg-gradient-to-br from-blue-50/0 to-blue-50/5 rounded-full outline outline-1 outline-offset-[-1px] outline-slate-100/50 flex justify-center items-center gap-2.5">
           <span className="text-center text-[#EFF6FF] text-sm font-normal font-['Montserrat'] leading-5">
             Bring your business to the best scale
@@ -146,8 +155,9 @@ export default function PricingPage() {
         <p className="text-center text-[#EFF6FF] text-base font-normal font-['Montserrat'] leading-5" style={{ maxWidth: "601px" }}>
           Select the plan that fits your needs. We created each one with you and your business in mind, to be the perfect fit.
         </p>
-      </section>
+          </section>
 
+          <div className="relative w-full px-4 lg:px-16 flex flex-col items-center gap-12 pb-6">
       {/* Billing toggle */}
       <div className="p-1 bg-white/10 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white/10 flex justify-start items-start">
         <button
@@ -291,33 +301,32 @@ export default function PricingPage() {
           </div>
         </div>
       </div>
+        </div>
+      </div>
+      </div>
 
-      {/* Comparison Table Section */}
-      <div className="w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col items-center gap-12">
-        {/* Toggle button */}
-        <button
-          type="button"
-          onClick={() => setShowComparison(!showComparison)}
-          className="pl-6 pr-5 py-3.5 bg-[#EFF6FF] rounded-lg flex justify-start items-center gap-3 hover:opacity-80 transition-opacity"
-        >
-          <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
-            Compare all Plans
-          </span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className={`w-6 h-6 text-[#0C275F] transition-transform duration-300 ${showComparison ? "rotate-180" : ""}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+      <div className="relative w-full flex flex-col items-center px-4 lg:px-16 pb-16">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('/images/pricing_compare_mobile.png')] lg:hidden"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] hidden w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('/images/pricing_compare_desktop.png')] lg:block"
+        />
 
-        {/* Comparison table */}
-        {showComparison && (
-          <div className="w-full bg-gradient-to-br from-neutral-700/30 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-white/30 overflow-hidden">
+        <div className="relative z-10 w-full flex flex-col items-center gap-12 pt-4">
+          <div className="w-full flex flex-col items-center gap-4">
+            <button
+              type="button"
+              className="px-6 py-3.5 bg-[#EFF6FF] rounded-lg flex justify-center items-center"
+            >
+              <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
+                Compare plans
+              </span>
+            </button>
+
+            <div className="w-full rounded-[20px] outline outline-1 outline-offset-[-1px] outline-white/30 overflow-hidden">
             {/* Mobile table */}
             <div className="w-full flex flex-col lg:hidden">
               <div className="p-5 flex justify-between items-end">
@@ -431,12 +440,16 @@ export default function PricingPage() {
               </div>
             </div>
           </div>
-        )}
+          </div>
+        </div>
+
+        <FaqSection className="bg-transparent relative z-10" />
       </div>
 
-      <FaqSection />
-      <div className="w-[calc(100%+8rem)] -mx-16">
-        <FinalCtaSection />
+      <div className="w-full px-4 lg:px-16">
+        <div className="w-[calc(100%+8rem)] -mx-16 lg:-mx-16">
+          <FinalCtaSection />
+        </div>
       </div>
     </div>
   );

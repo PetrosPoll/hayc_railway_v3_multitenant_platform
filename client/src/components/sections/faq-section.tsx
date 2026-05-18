@@ -28,13 +28,17 @@ const faqs: FaqItem[] = [
   },
 ];
 
-export function FaqSection() {
+type FaqSectionProps = {
+  className?: string;
+};
+
+export function FaqSection({ className = "bg-black" }: FaqSectionProps) {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const toggleFaq = (i: number) => setOpenFaq((prev) => (prev === i ? null : i));
 
   return (
-    <section className="w-full bg-black">
+    <section className={`w-full ${className}`}>
       <div className="max-w-screen-xl mx-auto px-4 py-[50px] flex flex-col gap-12">
         <div className="w-full flex flex-col items-start">
           <h2 className="text-3xl lg:text-5xl font-semibold font-['Montserrat'] lg:leading-[70px] leading-10">
