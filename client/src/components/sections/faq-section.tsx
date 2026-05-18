@@ -63,7 +63,7 @@ export function FaqSection({ className = "bg-black" }: FaqSectionProps) {
                   {faq.question}
                 </p>
                 <img
-                  src={openFaq === i ? "/images/OPEN.svg" : "/images/CLOSE.svg"}
+                  src={openFaq === i ? "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/OPEN.svg" : "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/CLOSE.svg"}
                   alt={openFaq === i ? "open icon" : "close icon"}
                   className="w-6 h-6"
                 />

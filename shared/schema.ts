@@ -576,7 +576,7 @@ export const availableAddOns = [
     description: "Complete appointment and reservation booking system",
     price: 10,
     yearlyPrice: 120,
-    image: "/images/booking-add-on-icon.svg",
+    image: "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/booking-add-on-icon.svg",
   },
   {
     id: "lms",
@@ -584,7 +584,7 @@ export const availableAddOns = [
     description: "Full-featured LMS for courses and educational content",
     price: 10,
     yearlyPrice: 120,
-    image: "/images/lms-add-on-icon.svg",
+    image: "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/lms-add-on-icon.svg",
   },
   {
     id: "payments",
@@ -592,7 +592,7 @@ export const availableAddOns = [
     description: "Secure online payment processing and e-commerce features",
     price: 10,
     // yearlyPrice: 120,
-    image: "/images/online-payment-add-on-icon.svg",
+    image: "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/online-payment-add-on-icon.svg",
   },
   {
     id: "realestate",
@@ -600,7 +600,7 @@ export const availableAddOns = [
     description: "Property listing and management system for real estate",
     price: 10,
     yearlyPrice: 120,
-    image: "/images/real-estate-add-on-icon.svg",
+    image: "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/real-estate-add-on-icon.svg",
     purchasable: false,
   },
   {
@@ -609,7 +609,7 @@ export const availableAddOns = [
     description: "Transportation booking and management system",
     price: 10,
     yearlyPrice: 120,
-    image: "/images/transport-booking-add-on-icon.svg",
+    image: "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/transport-booking-add-on-icon.svg",
     purchasable: false,
   },
   {
@@ -618,7 +618,7 @@ export const availableAddOns = [
     description: "Expand your newsletter subscriber capacity",
     price: 10, // or whatever price
     yearlyPrice: 120,
-    image: "/images/Newsletter-icon.png",
+    image: "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/Newsletter-icon.png",
   },
   {
     id: "newsletter_100",
@@ -626,7 +626,7 @@ export const availableAddOns = [
     description: "Expand your newsletter subscriber capacity",
     price: 35, // or whatever price
     yearlyPrice: 120,
-    image: "/images/Newsletter-icon.png",
+    image: "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/Newsletter-icon.png",
   },
 ];
 

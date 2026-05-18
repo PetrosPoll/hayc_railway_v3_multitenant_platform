@@ -224,9 +224,9 @@ function StarRating({ rating, fullStarAlt, halfStarAlt }: { rating: number; full
   const stars = [];
   for (let i = 1; i <= 5; i++) {
     if (i <= Math.floor(rating)) {
-      stars.push(<img key={i} src="/images/testimonials_full_star.svg" alt={fullStarAlt} className="w-4 h-4" />);
+      stars.push(<img key={i} src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/testimonials_full_star.svg" alt={fullStarAlt} className="w-4 h-4" />);
     } else if (i === Math.ceil(rating) && rating % 1 >= 0.4) {
-      stars.push(<img key={i} src="/images/testimonials_half_star.svg" alt={halfStarAlt} className="w-4 h-4" />);
+      stars.push(<img key={i} src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/testimonials_half_star.svg" alt={halfStarAlt} className="w-4 h-4" />);
     }
   }
   return <div className="flex items-center gap-1.5">{stars}</div>;
@@ -310,7 +310,7 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
           <div className="w-full p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <img src="/images/testimonials_facebook.svg" alt={t("home.testimonialsSection.platforms.facebook.alt")} className="w-4 h-4" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/testimonials_facebook.svg" alt={t("home.testimonialsSection.platforms.facebook.alt")} className="w-4 h-4" />
                 <span className="text-blue-400 text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.facebook.name")}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -327,13 +327,13 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
                 <span className="text-white text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.common.reviews")}</span>
               </div>
             </div>
-            <img src="/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} className="w-6 h-6 opacity-80" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} className="w-6 h-6 opacity-80" />
           </div>
 
           <div className="w-full p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
-                <img src="/images/testimonials_trustpilot.svg" alt={t("home.testimonialsSection.platforms.trustpilot.alt")} className="w-4 h-4" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/testimonials_trustpilot.svg" alt={t("home.testimonialsSection.platforms.trustpilot.alt")} className="w-4 h-4" />
                 <span className="text-green-400 text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.trustpilot.name")}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -350,7 +350,7 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
                 <span className="text-white text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.common.reviews")}</span>
               </div>
             </div>
-            <img src="/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} className="w-6 h-6 opacity-80" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} className="w-6 h-6 opacity-80" />
           </div>
         </div>
         </div>
@@ -412,14 +412,14 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
             className="hover:opacity-70 transition-opacity"
             onClick={() => navigateDeck(-1)}
           >
-            <img src="/images/testimonials_orange_arrow.svg" alt={t("home.testimonialsSection.previousAlt")} className="w-11 h-9 rotate-180" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/testimonials_orange_arrow.svg" alt={t("home.testimonialsSection.previousAlt")} className="w-11 h-9 rotate-180" />
           </button>
           <button
             type="button"
             className="hover:opacity-70 transition-opacity"
             onClick={() => navigateDeck(1)}
           >
-            <img src="/images/testimonials_orange_arrow.svg" alt={t("home.testimonialsSection.nextAlt")} className="w-11 h-9" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/testimonials_orange_arrow.svg" alt={t("home.testimonialsSection.nextAlt")} className="w-11 h-9" />
           </button>
         </div>
         </div>

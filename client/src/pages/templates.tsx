@@ -95,7 +95,7 @@ export default function Templates() {
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="relative bg-cover bg-top bg-no-repeat pt-[65px] bg-[url('/images/templates_main_mobile.png')] lg:bg-[url('/images/templates_main_desktop.png')] lg:bg-center">
+      <div className="relative bg-cover bg-top bg-no-repeat pt-[65px] bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/templates_main_mobile.png')] lg:bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/templates_main_desktop.png')] lg:bg-center">
       {/* Templates Page Header */}
       <section className="w-full px-4 lg:px-16 pt-24 pb-12 flex flex-col justify-center items-center gap-6">
         <div className="w-full flex flex-col justify-center items-center gap-12">

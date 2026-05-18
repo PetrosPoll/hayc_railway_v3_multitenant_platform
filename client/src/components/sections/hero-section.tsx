@@ -7,9 +7,9 @@ import { heroReady } from "@/lib/hero-ready";
 
 /** Static hero bottom cards; index matches hero clip: booking -> 0, LMS -> 1, resort -> 2 */
 const HERO_BOTTOM_PREVIEW_IMAGES = [
-  "/images/dream_yacht.png",
-  "/images/career_courses.png",
-  "/images/resort_hotel.png",
+  "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/dream_yacht.png",
+  "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/career_courses.png",
+  "https://res.cloudinary.com/dem12vqtl/image/upload/public/images/resort_hotel.png",
 ] as const;
 
 export function HeroSection() {

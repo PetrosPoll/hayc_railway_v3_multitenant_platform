@@ -33,11 +33,11 @@ export default function Home() {
       <div className="relative w-full overflow-hidden pb-8">
         <div
           aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-cover bg-center bg-no-repeat bg-[url('/images/home_first_mobile.png')] [mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] lg:hidden"
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/home_first_mobile.png')] [mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] lg:hidden"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 hidden bg-cover bg-center bg-no-repeat bg-[url('/images/home_first_desktop.png')] [mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] lg:block"
+          className="pointer-events-none absolute inset-0 hidden bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/home_first_desktop.png')] [mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] lg:block"
         />
         <div
           aria-hidden
@@ -57,11 +57,11 @@ export default function Home() {
       <div className="relative -mt-24 w-full overflow-hidden pt-24 flex flex-col items-center px-4 lg:px-16 pb-16 lg:-mt-32 lg:pt-32">
         <div
           aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('/images/home_second_mobile.png')] [mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)] lg:hidden"
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/home_second_mobile.png')] [mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)] lg:hidden"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] hidden w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('/images/home_second_desktop.png')] [mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)] lg:block"
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] hidden w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/home_second_desktop.png')] [mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0%,black_18%,black_82%,transparent_100%)] lg:block"
         />
         <div
           aria-hidden
