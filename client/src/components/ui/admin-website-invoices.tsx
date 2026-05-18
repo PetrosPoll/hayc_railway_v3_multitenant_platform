@@ -31,12 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { Download, Upload, Trash2, ChevronDown, ChevronRight, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Info, Pencil, RefreshCw, Plus } from "lucide-react";
-
-declare global {
-  interface Window {
-    cloudinary: any;
-  }
-}
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 
 export function AdminWebsiteInvoices() {
   const { toast } = useToast();
@@ -679,7 +674,17 @@ export function AdminWebsiteInvoices() {
       cloudinaryConfig.apiKey = configData.apiKey;
       cloudinaryConfig.cloudName = configData.cloudName;
 
-      // Open Cloudinary upload widget
+      try {
+        await loadCloudinaryWidget();
+      } catch {
+        toast({
+          title: "Upload Service Unavailable",
+          description: "Please refresh the page and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (window.cloudinary) {
         const widget = window.cloudinary.createUploadWidget(
           {

@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { subscriptions, UserRole, RolePermissions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import {
   Table,
   TableBody,
@@ -166,12 +167,6 @@ interface BackfillCancelledAtResponse {
     errored: number;
   };
   logs: string[];
-}
-
-declare global {
-  interface Window {
-    cloudinary: any;
-  }
 }
 
 const formatMonth = (month: string) => {
@@ -997,10 +992,20 @@ export default function AdminDashboard() {
     [updatePdf, toast],
   );
 
-  const handleUploadClick = (
+  const handleUploadClick = async (
     id: number,
     type: "subscription" | "transaction" | "website",
   ) => {
+    try {
+      await loadCloudinaryWidget();
+    } catch {
+      toast({
+        title: "Error",
+        description: "Upload widget failed to load. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
     const widget = initializeCloudinaryWidget(id, type);
     widget.open();
   };

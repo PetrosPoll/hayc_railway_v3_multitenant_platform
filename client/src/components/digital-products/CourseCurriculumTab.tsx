@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import {
   Select,
   SelectContent,
@@ -663,8 +664,9 @@ export function CourseCurriculumTab({
 
   const openLessonAttachmentUpload = async (chapterId: string, lessonId: string) => {
     if (!courseBaseUrl) return;
-    const w = window as Window & { cloudinary?: { createUploadWidget: (opts: unknown, cb: unknown) => { open: () => void } } };
-    if (!w.cloudinary) {
+    try {
+      await loadCloudinaryWidget();
+    } catch {
       toast({
         title: t("digitalProductsManagement.toasts.errorTitle"),
         description: t("digitalProductsManagement.courseEditor.curriculum.errors.uploadWidgetNotReady"),
@@ -672,6 +674,7 @@ export function CourseCurriculumTab({
       });
       return;
     }
+    const w = window;
 
     const folder = `hdp/${siteId}/lessons/${lessonId}`;
 
@@ -731,7 +734,7 @@ export function CourseCurriculumTab({
       });
     };
 
-    const widget = w.cloudinary.createUploadWidget(
+    const widget = w.cloudinary!.createUploadWidget(
       {
         cloudName: cloudinaryConfig.cloudName,
         apiKey: cloudinaryConfig.apiKey,

@@ -243,7 +243,7 @@ export default function PricingPage() {
                   <div className="flex flex-col gap-4">
                     {plan.features.map((feature, j) => (
                       <div key={j} className="flex items-center gap-2">
-                        <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/tick.svg" alt="check" className="w-4 h-4 flex-shrink-0" />
+                        <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/tick.svg" alt="check" loading="lazy" className="w-4 h-4 flex-shrink-0" />
                         <span className="text-white/80 text-sm font-normal font-['Montserrat'] leading-5">{feature}</span>
                       </div>
                     ))}
@@ -282,21 +282,21 @@ export default function PricingPage() {
         <div className="w-full p-6 bg-gradient-to-bl from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-blue-50/20 flex flex-col lg:flex-row justify-start lg:justify-between items-start lg:items-center gap-3 overflow-hidden">
           <span className="text-white text-2xl font-medium font-['Montserrat']">All Plans Include:</span>
           <div className="w-full lg:w-auto flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/card-tick.svg" alt="" className="w-6 h-6" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/card-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-['Montserrat'] leading-6">
               0% transaction fees on digital products
             </span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/driver.svg" alt="" className="w-6 h-6" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/driver.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Hosting</span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/wrench.svg" alt="" className="w-6 h-6" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/wrench.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Ongoing Maintenance</span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/shield-tick.svg" alt="" className="w-6 h-6" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/shield-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Secure &amp; fast performance</span>
           </div>
         </div>

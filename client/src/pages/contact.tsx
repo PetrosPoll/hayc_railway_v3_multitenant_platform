@@ -122,11 +122,11 @@ export default function ContactPage() {
 
           <div className="w-48 flex flex-col justify-start items-start gap-6">
             <div className="flex items-center gap-6">
-              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/mail_icon.svg" alt="location" className="w-6 h-6" />
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/mail_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
               <span className="text-white text-lg font-medium font-['Montserrat']">info@hayc.gr</span>
             </div>
             <div className="flex items-center gap-6">
-              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/map_pin_icon.svg" alt="location" className="w-6 h-6" />
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/map_pin_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
               <span className="text-white text-lg font-medium font-['Montserrat']">Athens, Greece</span>
             </div>
           </div>
@@ -135,13 +135,13 @@ export default function ContactPage() {
             <span className="text-slate-100 text-lg font-medium font-['Montserrat']">Find us on Social Media</span>
             <div className="flex items-center gap-6">
               <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/insta_icon.svg" alt="Instagram" className="w-6 h-6" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/insta_icon.svg" alt="Instagram" loading="lazy" className="w-6 h-6" />
               </a>
               <a href="https://www.linkedin.com/company/hayc/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/linkedin_icon.svg" alt="LinkedIn" className="w-6 h-6" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/linkedin_icon.svg" alt="LinkedIn" loading="lazy" className="w-6 h-6" />
               </a>
               <a href="https://www.facebook.com/haycWebsites" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/facebook_icon.svg" alt="Facebook" className="w-6 h-6" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/facebook_icon.svg" alt="Facebook" loading="lazy" className="w-6 h-6" />
               </a>
             </div>
           </div>

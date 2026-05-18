@@ -79,6 +79,7 @@ type PaymentMethodInfo = {
   card?: { brand: string; last4: string };
 };
 import { BOOKING_APP_BASE_URL } from "@/lib/utils";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
@@ -3399,7 +3400,9 @@ export default function WebsiteDashboard() {
     const mediaFolderPath = `Website Media/${userData?.user?.email}/${mediaFolderDomain}`;
 
     const handleUploadClick = async () => {
-      if (!window.cloudinary) {
+      try {
+        await loadCloudinaryWidget();
+      } catch {
         toast({
           title: t("dashboard.error"),
           description: t("dashboard.uploadWidgetNotReady"),

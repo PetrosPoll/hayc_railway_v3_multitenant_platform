@@ -341,6 +341,7 @@ export function HeroSection() {
               <img
                 src={HERO_BOTTOM_PREVIEW_IMAGES[clipIndex]}
                 alt="Template preview"
+                loading="lazy"
                 className="absolute inset-0 h-full w-full object-cover object-top"
               />
             </div>
@@ -357,6 +358,7 @@ export function HeroSection() {
           key={`m-left-${currentSlide}`}
           src={HERO_BOTTOM_PREVIEW_IMAGES[(currentSlide + 2) % heroSlideCount]}
           alt="Template preview"
+          loading="lazy"
           className="flex-shrink-0 rounded-[10px] object-cover object-top"
           style={{
             width: "230px",
@@ -369,6 +371,7 @@ export function HeroSection() {
           key={`m-center-${currentSlide}`}
           src={HERO_BOTTOM_PREVIEW_IMAGES[currentSlide]}
           alt="Template preview"
+          loading="lazy"
           className="flex-shrink-0 rounded-t-[10px] object-cover object-top"
           style={{
             width: "300px",
@@ -381,6 +384,7 @@ export function HeroSection() {
           key={`m-right-${currentSlide}`}
           src={HERO_BOTTOM_PREVIEW_IMAGES[(currentSlide + 1) % heroSlideCount]}
           alt="Template preview"
+          loading="lazy"
           className="flex-shrink-0 rounded-[10px] object-cover object-top"
           style={{
             width: "230px",
