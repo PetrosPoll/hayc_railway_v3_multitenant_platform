@@ -35,10 +35,10 @@ export function Footer() {
             </div>
             <div className="inline-flex justify-start items-center gap-3">
               <a href="https://www.facebook.com/haycWebsites" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/facebook_icon.svg" alt={t("footer.social.facebookAlt")} loading="lazy" className="w-5 h-5" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/facebook_icon.svg" alt={t("footer.social.facebookAlt")} loading="lazy" className="w-5 h-5" />
               </a>
               <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/insta_icon.svg" alt={t("footer.social.instagramAlt")} loading="lazy" className="w-5 h-5" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/insta_icon.svg" alt={t("footer.social.instagramAlt")} loading="lazy" className="w-5 h-5" />
               </a>
             </div>
           </div>
@@ -61,7 +61,7 @@ export function Footer() {
           <div className="self-stretch flex flex-col justify-start items-start gap-3">
             <div className="self-stretch text-white text-lg font-bold font-['Inter'] leading-7">{t("footer.contactUs")}</div>
             <div className="self-stretch inline-flex justify-start items-center gap-2">
-              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/mail_icon.svg" alt={t("footer.emailAlt")} loading="lazy" className="w-5 h-5" />
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/mail_icon.svg" alt={t("footer.emailAlt")} loading="lazy" className="w-5 h-5" />
               <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-['Inter'] leading-6 hover:opacity-70 transition-opacity">
                 info@hayc.gr
               </a>
@@ -108,10 +108,10 @@ export function Footer() {
           {/* Social icons */}
           <div className="flex items-center gap-3">
             <a href="https://www.facebook.com/haycWebsites" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/facebook_icon.svg" alt={t("footer.social.facebookAlt")} loading="lazy" className="w-5 h-5" />
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/facebook_icon.svg" alt={t("footer.social.facebookAlt")} loading="lazy" className="w-5 h-5" />
             </a>
             <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/insta_icon.svg" alt={t("footer.social.instagramAlt")} loading="lazy" className="w-5 h-5" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/insta_icon.svg" alt={t("footer.social.instagramAlt")} loading="lazy" className="w-5 h-5" />
             </a>
           </div>
         </div>
@@ -140,7 +140,7 @@ export function Footer() {
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
           <p className="text-white text-lg font-bold font-['Inter'] leading-7">{t("footer.contactUs")}</p>
           <div className="flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/mail_icon.svg" alt={t("footer.emailAlt")} loading="lazy" className="w-5 h-5" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/mail_icon.svg" alt={t("footer.emailAlt")} loading="lazy" className="w-5 h-5" />
             <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">
               info@hayc.gr
             </a>

@@ -127,11 +127,11 @@ export default function PricingPage() {
       <div className="w-full relative lg:pt-[65px]">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 hidden bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/pricing_main_desktop.png')] lg:block"
+          className="pointer-events-none absolute inset-0 hidden bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_desktop.png')] lg:block"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-top bg-no-repeat bg-[length:100%_auto] bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/pricing_main_mobile.png')] lg:hidden"
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-top bg-no-repeat bg-[length:100%_auto] bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_mobile.png')] lg:hidden"
         />
 
         <div className="relative pt-[65px] lg:pt-0">
@@ -243,7 +243,7 @@ export default function PricingPage() {
                   <div className="flex flex-col gap-4">
                     {plan.features.map((feature, j) => (
                       <div key={j} className="flex items-center gap-2">
-                        <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/tick.svg" alt="check" loading="lazy" className="w-4 h-4 flex-shrink-0" />
+                        <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/tick.svg" alt="check" loading="lazy" className="w-4 h-4 flex-shrink-0" />
                         <span className="text-white/80 text-sm font-normal font-['Montserrat'] leading-5">{feature}</span>
                       </div>
                     ))}
@@ -282,21 +282,21 @@ export default function PricingPage() {
         <div className="w-full p-6 bg-gradient-to-bl from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-blue-50/20 flex flex-col lg:flex-row justify-start lg:justify-between items-start lg:items-center gap-3 overflow-hidden">
           <span className="text-white text-2xl font-medium font-['Montserrat']">All Plans Include:</span>
           <div className="w-full lg:w-auto flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/card-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/card-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-['Montserrat'] leading-6">
               0% transaction fees on digital products
             </span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/driver.svg" alt="" loading="lazy" className="w-6 h-6" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/driver.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Hosting</span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/wrench.svg" alt="" loading="lazy" className="w-6 h-6" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/wrench.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Ongoing Maintenance</span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/shield-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
+            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/shield-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Secure &amp; fast performance</span>
           </div>
         </div>
@@ -308,11 +308,11 @@ export default function PricingPage() {
       <div className="relative w-full flex flex-col items-center px-4 lg:px-16 pb-16">
         <div
           aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/pricing_compare_mobile.png')] lg:hidden"
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_compare_mobile.png')] lg:hidden"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] hidden w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/pricing_compare_desktop.png')] lg:block"
+          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] hidden w-screen max-w-[100vw] bg-cover bg-left-top bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_compare_desktop.png')] lg:block"
         />
 
         <div className="relative z-10 w-full flex flex-col items-center gap-12 pt-4">

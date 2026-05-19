@@ -3769,7 +3769,7 @@ export default function Onboarding() {
         {/* Logo Header */}
         <div className="absolute top-6 left-6 z-10">
           <img
-            src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/hayc-logo.png"
+            src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/hayc-logo.png"
             alt="HAYC Logo"
             className="h-12 w-auto"
           />
@@ -3844,7 +3844,7 @@ export default function Onboarding() {
       {/* Logo Header */}
       <div className="absolute top-6 left-6 z-10">
         <img
-          src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/hayc-logo.png"
+          src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/hayc-logo.png"
           alt="HAYC Logo"
           className="h-12 w-auto"
         />

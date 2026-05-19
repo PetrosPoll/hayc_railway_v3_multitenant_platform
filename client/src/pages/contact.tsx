@@ -102,7 +102,7 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-black pt-[70px] lg:pt-0">
-      <div className="relative bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/contact_main_mobile.png')] lg:bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/public/images/contact_main_desktop.png')]">
+      <div className="relative bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_mobile.png')] lg:bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_desktop.png')]">
       {/* Contact Page Header */}
       <section className="w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-3">
         <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
@@ -122,11 +122,11 @@ export default function ContactPage() {
 
           <div className="w-48 flex flex-col justify-start items-start gap-6">
             <div className="flex items-center gap-6">
-              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/mail_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/mail_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
               <span className="text-white text-lg font-medium font-['Montserrat']">info@hayc.gr</span>
             </div>
             <div className="flex items-center gap-6">
-              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/map_pin_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/map_pin_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
               <span className="text-white text-lg font-medium font-['Montserrat']">Athens, Greece</span>
             </div>
           </div>
@@ -135,13 +135,13 @@ export default function ContactPage() {
             <span className="text-slate-100 text-lg font-medium font-['Montserrat']">Find us on Social Media</span>
             <div className="flex items-center gap-6">
               <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/insta_icon.svg" alt="Instagram" loading="lazy" className="w-6 h-6" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/insta_icon.svg" alt="Instagram" loading="lazy" className="w-6 h-6" />
               </a>
               <a href="https://www.linkedin.com/company/hayc/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/linkedin_icon.svg" alt="LinkedIn" loading="lazy" className="w-6 h-6" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/linkedin_icon.svg" alt="LinkedIn" loading="lazy" className="w-6 h-6" />
               </a>
               <a href="https://www.facebook.com/haycWebsites" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
-                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/facebook_icon.svg" alt="Facebook" loading="lazy" className="w-6 h-6" />
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/facebook_icon.svg" alt="Facebook" loading="lazy" className="w-6 h-6" />
               </a>
             </div>
           </div>

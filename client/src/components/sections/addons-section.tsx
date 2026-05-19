@@ -127,7 +127,7 @@ export function AddonsSection() {
                         </div>
                       </div>
                       {/* <img
-                        src="https://res.cloudinary.com/dem12vqtl/image/upload/public/images/addons_section.png"
+                        src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/addons_section.png"
                         alt={t(cat.titleKey)}
                         className="md:hidden w-full h-[320px] rounded-[20px] object-cover mt-3"
                         style={{ height: '320px' }}
