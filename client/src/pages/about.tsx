@@ -56,7 +56,7 @@ export default function AboutPage() {
               {/* 3D Asterisk video */}
               <div className="h-64 w-64 overflow-hidden lg:h-72 lg:w-72">
                 <video
-                  src="/videos/asterisk_1_jtw9zn.mp4"
+                  src="https://d8zdlelupx224.cloudfront.net/asterisk_1_jtw9zn.mp4"
                   className="h-full w-full object-cover object-center mix-blend-screen brightness-110 contrast-125"
                   autoPlay
                   muted
@@ -181,7 +181,7 @@ export default function AboutPage() {
       {/* Full Width Video */}
       <div className="w-full h-52 lg:h-[800px] bg-black overflow-hidden">
         <video
-          src="/videos/Logo_Animation_1_g2fcoo.mp4"
+          src="https://d8zdlelupx224.cloudfront.net/Logo_Animation_1_g2fcoo.mp4"
           className="h-full w-full object-cover"
           autoPlay
           muted

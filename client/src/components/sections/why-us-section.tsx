@@ -5,20 +5,20 @@ import { ArrowRight } from "lucide-react";
 
 const WHY_US_SECTION_VIDEOS = [
   {
-    desktop: "/videos/1st_section_jwhobw.mp4",
-    mobile: "/videos/1st_section_mobile_o5zkhe.mp4",
+    desktop: "https://d8zdlelupx224.cloudfront.net/1st_section_jwhobw.mp4",
+    mobile: "https://d8zdlelupx224.cloudfront.net/1st_section_mobile_o5zkhe.mp4",
   },
   {
-    desktop: "/videos/2nd_section_cusaq2.mp4",
-    mobile: "/videos/2nd_section_mobile_fg7hzr.mp4",
+    desktop: "https://d8zdlelupx224.cloudfront.net/2nd_section_cusaq2.mp4",
+    mobile: "https://d8zdlelupx224.cloudfront.net/2nd_section_mobile_fg7hzr.mp4",
   },
   {
-    desktop: "/videos/3rd_section_ywh42w.mp4",
-    mobile: "/videos/3rd_section_mobile_nx7tqp.mp4",
+    desktop: "https://d8zdlelupx224.cloudfront.net/3rd_section_ywh42w.mp4",
+    mobile: "https://d8zdlelupx224.cloudfront.net/3rd_section_mobile_nx7tqp.mp4",
   },
   {
-    desktop: "/videos/4th_section_pmfk58.mp4",
-    mobile: "/videos/4th_section_mobile_okrksl.mp4",
+    desktop: "https://d8zdlelupx224.cloudfront.net/4th_section_pmfk58.mp4",
+    mobile: "https://d8zdlelupx224.cloudfront.net/4th_section_mobile_okrksl.mp4",
   },
 ] as const;
 

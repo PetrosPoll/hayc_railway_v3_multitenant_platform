@@ -18,14 +18,14 @@ export function HeroSection() {
   const GET_STARTED_DEFAULT_PATH = "/get-started";
 
   const heroDesktopVideos = [
-    "/videos/booking_p5ifxx.mp4",
-    "/videos/LMS_rykuy0.mp4",
-    "/videos/Luxury_resort_pbrj1p.mp4",
+    "https://d8zdlelupx224.cloudfront.net/booking_p5ifxx.mp4",
+    "https://d8zdlelupx224.cloudfront.net/LMS_rykuy0.mp4",
+    "https://d8zdlelupx224.cloudfront.net/Luxury_resort_pbrj1p.mp4",
   ] as const;
   const heroMobileVideos = [
-    "/videos/booking_mobile_vnztu8.mp4",
-    "/videos/LMS_-_mobile_smautk.mp4",
-    "/videos/Luxury_resort_mobile_rhantd.mp4",
+    "https://d8zdlelupx224.cloudfront.net/booking_mobile_vnztu8.mp4",
+    "https://d8zdlelupx224.cloudfront.net/LMS_-_mobile_smautk.mp4",
+    "https://d8zdlelupx224.cloudfront.net/Luxury_resort_mobile_rhantd.mp4",
   ] as const;
 
   const heroSlideCount = heroDesktopVideos.length;
