@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Check, X } from "lucide-react";
+import { Check, File, Film, X } from "lucide-react";
 import {
   Dialog,
   DialogPortal,
@@ -78,22 +78,19 @@ export function PickImageFromMediaDialog({
     gcTime: 0,
   });
 
-  const imageItems = useMemo(
-    () => (data?.media ?? []).filter(isImageMediaItem),
-    [data?.media]
-  );
+  const mediaItems = useMemo(() => data?.media ?? [], [data?.media]);
 
   useEffect(() => {
     if (!open) {
       setSelectedUrl(null);
       return;
     }
-    if (currentFieldUrl && imageItems.some((m) => m.url === currentFieldUrl)) {
+    if (currentFieldUrl && mediaItems.some((m) => m.url === currentFieldUrl)) {
       setSelectedUrl(currentFieldUrl);
     } else {
       setSelectedUrl(null);
     }
-  }, [open, currentFieldUrl, imageItems]);
+  }, [open, currentFieldUrl, mediaItems]);
 
   const handleSelect = () => {
     if (selectedUrl) {
@@ -120,7 +117,7 @@ export function PickImageFromMediaDialog({
         >
           <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
             <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
-              Pick an Image
+              Choose File
             </DialogPrimitive.Title>
             <DialogPrimitive.Close asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Close">
@@ -136,14 +133,16 @@ export function PickImageFromMediaDialog({
                   <Skeleton key={i} className="aspect-square w-full rounded-md" />
                 ))}
               </div>
-            ) : imageItems.length === 0 ? (
+            ) : mediaItems.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-8">
-                No images found. Upload images in the Media tab first.
+                No files found. Upload files in the Media tab first.
               </p>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {imageItems.map((item) => {
+                {mediaItems.map((item) => {
                   const isSelected = selectedUrl === item.url;
+                  const showImagePreview =
+                    item.resourceType === "image" || isImageMediaItem(item);
                   return (
                     <button
                       key={item.publicId}
@@ -161,13 +160,19 @@ export function PickImageFromMediaDialog({
                           <Check className="h-3.5 w-3.5" />
                         </span>
                       )}
-                      <div className="aspect-square w-full overflow-hidden bg-muted">
-                        <img
-                          src={item.previewUrl || item.url}
-                          alt=""
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
+                      <div className="aspect-square w-full overflow-hidden bg-muted flex items-center justify-center">
+                        {showImagePreview ? (
+                          <img
+                            src={item.previewUrl || item.url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : item.resourceType === "video" ? (
+                          <Film className="h-10 w-10 text-muted-foreground" />
+                        ) : (
+                          <File className="h-10 w-10 text-muted-foreground" />
+                        )}
                       </div>
                       <span className="truncate px-2 py-1.5 text-xs text-muted-foreground">
                         {item.name}

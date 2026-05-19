@@ -99,9 +99,37 @@ const IMAGE_FIELD_KEYWORDS = [
   "picture",
 ];
 
-function isImageFieldKey(fieldKey: string): boolean {
+const FILE_FIELD_KEYWORDS = [
+  ...IMAGE_FIELD_KEYWORDS,
+  "icon",
+  "favicon",
+  "asset",
+  "file",
+  "pdf",
+  "document",
+  "attachment",
+  "video",
+  "audio",
+  "media",
+];
+
+const FILE_PATH_EXTENSION = /\.(svg|png|jpe?g|gif|webp|bmp|ico|pdf|mp4|webm|mp3|wav|woff2?|ttf|eot)(\?.*)?$/i;
+
+function isFileFieldKey(fieldKey: string): boolean {
   const key = fieldKey.toLowerCase();
-  return IMAGE_FIELD_KEYWORDS.some((keyword) => key.includes(keyword));
+  return FILE_FIELD_KEYWORDS.some((keyword) => key.includes(keyword));
+}
+
+function looksLikeFilePath(value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (FILE_PATH_EXTENSION.test(trimmed)) return true;
+  if (/^\/[\w./-]+$/.test(trimmed) && trimmed.includes(".")) return true;
+  return false;
+}
+
+function isFileField(fieldKey: string, value: string): boolean {
+  return isFileFieldKey(fieldKey) || looksLikeFilePath(value);
 }
 
 function AutoResizeTextarea({ 
@@ -166,18 +194,18 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
   }
 
   if (typeof value === "string") {
-    const isImageField = isImageFieldKey(fieldKey);
+    const isFile = isFileField(fieldKey, value);
 
     return (
       <div data-field-path={path} className={highlightClass}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
-        {isImageField ? (
+        {isFile ? (
           <div className="flex items-center gap-2">
             <Input
               data-path={path}
               value={value}
               readOnly
-              placeholder="No image selected"
+              placeholder="No file selected"
               className="w-full bg-muted/50"
             />
             <Button
@@ -187,7 +215,7 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
               onClick={() => onRequestPickImage?.(path)}
               disabled={isReadOnly}
             >
-              Pick Image
+              Choose File
             </Button>
           </div>
         ) : isReadOnly ? (
