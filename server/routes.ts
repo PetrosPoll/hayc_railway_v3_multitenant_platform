@@ -19590,6 +19590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name?: string;
         email?: string;
         message?: string;
+        phone?: string;
         _hp?: string;
       };
 
@@ -19624,6 +19625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: String(msg) });
       }
       const { siteId, name, email, message } = parseResult.data;
+      const phone = body.phone;
 
       const [website] = await db
         .select()
@@ -19665,6 +19667,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           name: escapeHtml(name),
           email: escapeHtml(email),
+          phone: phone ?? "N/A",
           message: escapeHtml(message),
           siteLabel: escapeHtml(siteLabel),
         },
