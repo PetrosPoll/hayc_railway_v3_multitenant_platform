@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +6,10 @@ import { CheckCircle, XCircle, AlertCircle, Loader2, Mail } from "lucide-react";
 
 type UnsubscribeStatus = 'loading' | 'success' | 'already_unsubscribed' | 'expired' | 'invalid' | 'error';
 
+const HAYC_HOME_URL = "https://hayc.gr/";
+
 export default function UnsubscribePage() {
   const { t, i18n } = useTranslation();
-  const [, setLocation] = useLocation();
   const [status, setStatus] = useState<UnsubscribeStatus>('loading');
   const [message, setMessage] = useState('');
 
@@ -79,7 +79,7 @@ export default function UnsubscribePage() {
               {message || t('unsubscribe.successMessage', 'You have been successfully unsubscribed. You will no longer receive emails from us.')}
             </p>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={() => setLocation('/')}>
+              <Button variant="outline" onClick={() => { window.location.href = HAYC_HOME_URL; }}>
                 {t('unsubscribe.backToHome', 'Back to Home')}
               </Button>
             </div>
@@ -98,7 +98,7 @@ export default function UnsubscribePage() {
             <p className="text-muted-foreground text-center max-w-md mb-6">
               {message || t('unsubscribe.alreadyMessage', 'You have already unsubscribed from our newsletter.')}
             </p>
-            <Button variant="outline" onClick={() => setLocation('/')}>
+            <Button variant="outline" onClick={() => { window.location.href = HAYC_HOME_URL; }}>
               {t('unsubscribe.backToHome', 'Back to Home')}
             </Button>
           </div>
@@ -116,7 +116,7 @@ export default function UnsubscribePage() {
             <p className="text-muted-foreground text-center max-w-md mb-6">
               {message || t('unsubscribe.expiredMessage', 'This unsubscribe link has expired. Please use the link from a more recent email.')}
             </p>
-            <Button variant="outline" onClick={() => setLocation('/')}>
+            <Button variant="outline" onClick={() => { window.location.href = HAYC_HOME_URL; }}>
               {t('unsubscribe.backToHome', 'Back to Home')}
             </Button>
           </div>
@@ -134,7 +134,7 @@ export default function UnsubscribePage() {
             <p className="text-muted-foreground text-center max-w-md mb-6">
               {message || t('unsubscribe.invalidMessage', 'This unsubscribe link is invalid or has been modified.')}
             </p>
-            <Button variant="outline" onClick={() => setLocation('/')}>
+            <Button variant="outline" onClick={() => { window.location.href = HAYC_HOME_URL; }}>
               {t('unsubscribe.backToHome', 'Back to Home')}
             </Button>
           </div>
@@ -153,7 +153,7 @@ export default function UnsubscribePage() {
             <p className="text-muted-foreground text-center max-w-md mb-6">
               {message || t('unsubscribe.errorMessage', 'An error occurred while processing your request. Please try again later.')}
             </p>
-            <Button variant="outline" onClick={() => setLocation('/')}>
+            <Button variant="outline" onClick={() => { window.location.href = HAYC_HOME_URL; }}>
               {t('unsubscribe.backToHome', 'Back to Home')}
             </Button>
           </div>
