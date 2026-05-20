@@ -9,6 +9,7 @@ import { NavMenu } from "@/components/ui/nav-menu";
 import { Footer } from "@/components/ui/footer";
 import { AuthProvider, useAuth } from "@/components/ui/authContext";
 import { ProtectedRoute } from "@/components/ui/protected-route";
+import { PublicOnlyRoute } from "@/components/ui/public-only-route";
 import { AdminRoute } from "@/components/ui/admin-route";
 import { queryClient } from "./lib/queryClient";
 import { initializeUTMCapture } from "./lib/utm";
@@ -136,16 +137,16 @@ function AppContent() {
       <ConditionalNavMenu />
       <div className="flex-1">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/about" element={<About />} />
+          <Route path="/" element={<PublicOnlyRoute><Home /></PublicOnlyRoute>} />
+          <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+          <Route path="/contact" element={<PublicOnlyRoute><Contact /></PublicOnlyRoute>} />
+          <Route path="/about" element={<PublicOnlyRoute><About /></PublicOnlyRoute>} />
           <Route path="/success" element={<Success />} />
           <Route path="/get-started" element={<GetStarted />} />
           <Route path="/pre-checkout/:planId" element={<PreCheckout />} />
-          <Route path="/templates" element={<Templates />} />
-          <Route path="/pricing" element={<Pricing />} />
-          <Route path="/templates/:id" element={<TemplateDetail />} />
+          <Route path="/templates" element={<PublicOnlyRoute><Templates /></PublicOnlyRoute>} />
+          <Route path="/pricing" element={<PublicOnlyRoute><Pricing /></PublicOnlyRoute>} />
+          <Route path="/templates/:id" element={<PublicOnlyRoute><TemplateDetail /></PublicOnlyRoute>} />
           <Route path="/fast-and-affordable-websites-book-a-call" element={<WebsiteCreation />} />
           <Route path="/fast-and-affordable-websites-book-a-call-en" element={<WebsiteCreationEN />} />
           <Route
