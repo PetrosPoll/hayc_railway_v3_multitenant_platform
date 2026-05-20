@@ -7,16 +7,12 @@ import { useNavigate } from "react-router-dom";
 import { TestimonialsSection } from "@/components/sections/testimonials-section";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
-import { usePreloadImages } from "@/hooks/use-preload-images";
 
 export default function AboutPage() {
-  usePreloadImages([
-    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_mobile.png",
-    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_desktop.png",
-  ]);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [openProcess, setOpenProcess] = useState<number>(0);
+  const [bgLoaded, setBgLoaded] = useState(false);
   const missionRef = useRef<HTMLDivElement | null>(null);
   const [missionProgress, setMissionProgress] = useState(0);
   const visionRef = useRef<HTMLDivElement | null>(null);
@@ -198,13 +194,15 @@ export default function AboutPage() {
 
       {/* Stats + Process — about_first bg */}
       <div className="relative w-full overflow-hidden pb-8">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_mobile.png')] [mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] lg:hidden"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 hidden bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_desktop.png')] [mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_bottom,black_0%,black_55%,transparent_100%)] lg:block"
+        <img
+          src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_desktop.png"
+          srcSet="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_mobile.png 767w, https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_desktop.png 768w"
+          sizes="(max-width: 767px) 100vw, 100vw"
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setBgLoaded(true)}
         />
         <div
           aria-hidden

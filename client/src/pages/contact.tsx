@@ -29,6 +29,7 @@ const contactFormSchema = z.object({
 type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 export default function ContactPage() {
+  const [bgLoaded, setBgLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>("");
   const turnstileRef = useRef<any>(null);
@@ -102,7 +103,17 @@ export default function ContactPage() {
 
   return (
     <div className="min-h-screen bg-black pt-[70px] lg:pt-0">
-      <div className="relative bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_mobile.png')] lg:bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_desktop.png')]">
+      <div className="relative bg-cover bg-center bg-no-repeat">
+        <img
+          src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_desktop.png"
+          srcSet="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_mobile.png 767w, https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_desktop.png 768w"
+          sizes="(max-width: 767px) 100vw, 100vw"
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setBgLoaded(true)}
+        />
       {/* Contact Page Header */}
       <section className="w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-3">
         <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>

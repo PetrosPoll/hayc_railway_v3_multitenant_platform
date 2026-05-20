@@ -2,14 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
-import { usePreloadImages } from "@/hooks/use-preload-images";
 
 export default function PricingPage() {
-  usePreloadImages([
-    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_mobile.png",
-    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_desktop.png",
-  ]);
   const navigate = useNavigate();
+  const [bgLoaded, setBgLoaded] = useState(false);
   const [billing, setBilling] = useState<"monthly" | "annually">("monthly");
   const [mobileComparisonPlan, setMobileComparisonPlan] = useState<"basic" | "essential" | "pro">("basic");
 
@@ -130,13 +126,15 @@ export default function PricingPage() {
   return (
     <div className="w-full bg-black min-h-screen flex flex-col items-center gap-4">
       <div className="w-full relative lg:pt-[65px]">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 hidden bg-cover bg-center bg-no-repeat bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_desktop.png')] lg:block"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute top-0 bottom-0 left-[calc(50%-50vw)] w-screen max-w-[100vw] bg-top bg-no-repeat bg-[length:100%_auto] bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_mobile.png')] lg:hidden"
+        <img
+          src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_desktop.png"
+          srcSet="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_mobile.png 767w, https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_desktop.png 768w"
+          sizes="(max-width: 767px) 100vw, 100vw"
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setBgLoaded(true)}
         />
 
         <div className="relative pt-[65px] lg:pt-0">

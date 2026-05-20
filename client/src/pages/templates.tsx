@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import type { Template } from "@shared/schema";
 import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
-import { usePreloadImages } from "@/hooks/use-preload-images";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,11 +17,8 @@ import {
 type EnvatoTemplate = (typeof ENVATO_TEMPLATES)[number];
 
 export default function Templates() {
-  usePreloadImages([
-    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_mobile.png",
-    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_desktop.png",
-  ]);
   const { t } = useTranslation();
+  const [bgLoaded, setBgLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [industryOpen, setIndustryOpen] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
@@ -100,7 +96,17 @@ export default function Templates() {
 
   return (
     <div className="min-h-screen bg-black">
-      <div className="relative bg-cover bg-top bg-no-repeat pt-[65px] bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_mobile.png')] lg:bg-[url('https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_desktop.png')] lg:bg-center">
+      <div className="relative bg-cover bg-top bg-no-repeat pt-[65px] lg:bg-center">
+        <img
+          src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_desktop.png"
+          srcSet="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_mobile.png 767w, https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_desktop.png 768w"
+          sizes="(max-width: 767px) 100vw, 100vw"
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setBgLoaded(true)}
+        />
       {/* Templates Page Header */}
       <section className="w-full px-4 lg:px-16 pt-24 pb-12 flex flex-col justify-center items-center gap-6">
         <div className="w-full flex flex-col justify-center items-center gap-12">
