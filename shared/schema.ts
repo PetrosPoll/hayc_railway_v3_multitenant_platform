@@ -444,6 +444,99 @@ export const onboardingFormResponses = pgTable("onboarding_form_responses", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const getStartedSubmissions = pgTable("get_started_submissions", {
+  id: serial("id").primaryKey(),
+
+  // --- Flow / system columns ---
+  sessionId: text("session_id").notNull().unique(),
+  submissionId: text("submission_id"),
+  status: text("status").notNull().default("in_progress"),
+  // Status lifecycle:
+  // 'in_progress'     → row created just before Stripe redirect
+  // 'pending_payment' → Stripe checkout session created
+  // 'paid'            → webhook confirmed payment, user + website_progress created
+  // 'draft'           → user started post-checkout steps but hasn't completed yet
+  // 'completed'       → all post-checkout steps submitted
+
+  checkoutSessionId: text("checkout_session_id"),
+  websiteProgressId: integer("website_progress_id").references(
+    () => websiteProgress.id
+  ),
+  websiteLanguage: text("website_language").notNull().default("en"),
+
+  // --- Step 1: Business Type (single-select) ---
+  businessType: text("business_type"),
+  // Values: local_business | service_business | personal_brand |
+  //         creative_business | online_store | hospitality_travel |
+  //         health_wellness | other
+
+  // --- Step 2: Website Goals (multi-select) ---
+  websiteGoals: jsonb("website_goals"),
+  // Array of: get_enquiries | book_appointments | sell_products |
+  //           showcase_work | build_trust | share_information | something_else
+  websiteGoalOther: text("website_goal_other"),
+
+  // --- Step 3: Suggested Setup (system-generated) ---
+  suggestedTemplate: text("suggested_template"),
+  suggestedStructure: jsonb("suggested_structure"),
+  suggestedAddons: jsonb("suggested_addons"),
+
+  // --- Step 4: Design Direction (single-select) ---
+  designDirection: text("design_direction"),
+  // Values: any design slug | choose_for_me
+
+  // --- Step 5: Checkout (account + plan) ---
+  fullName: text("full_name"),
+  email: text("email").notNull(),
+  contactPhone: text("contact_phone"),
+  documentType: text("document_type"),
+  // Values: invoice | receipt
+  vatNumber: text("vat_number"),
+  city: text("city"),
+  street: text("street"),
+  streetNumber: text("street_number"),
+  postalCode: text("postal_code"),
+  selectedPlan: text("selected_plan"),
+  // Values: basic | essential | pro
+  billingPeriod: text("billing_period"),
+  // Values: monthly | yearly
+  selectedAddons: jsonb("selected_addons"),
+
+  // --- Step 6: Add Your Services (post-checkout) ---
+  businessName: text("business_name"),
+  businessDescription: text("business_description"),
+  services: text("services"),
+  hadWebsiteBefore: text("had_website_before"),
+  // Values: yes_worked_well | yes_no_results | no_first_time
+  previousWebsitePlatform: text("previous_website_platform"),
+  // Values: wix | squarespace | wordpress | webflow | someone_built_it | other
+
+  // --- Step 7: Quick Questions (post-checkout) ---
+  selfDescription: text("self_description"),
+  // Values: know_exactly | rough_idea | need_guidance
+  biggestConcerns: jsonb("biggest_concerns"),
+  // Array of: getting_done_fast | making_it_look_right | technical_side |
+  //           bringing_clients | the_cost
+  heardAboutUs: jsonb("heard_about_us"),
+  // Array of: instagram | tiktok | youtube | google | referral | other
+
+  // --- Step 8: Website Structure (post-checkout) ---
+  confirmedPages: jsonb("confirmed_pages"),
+  pagesNotes: text("pages_notes"),
+
+  // --- Step 9: Content & Media (post-checkout, final step) ---
+  websiteContent: text("website_content"),
+  successVision: text("success_vision"),
+  mediaUrls: jsonb("media_urls"),
+  // Array of: { url: string, name: string, publicId: string }
+
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type GetStartedSubmission = typeof getStartedSubmissions.$inferSelect;
+export type InsertGetStartedSubmission = typeof getStartedSubmissions.$inferInsert;
+
 export type WebsiteProgress = typeof websiteProgress.$inferSelect;
 export type WebsiteStage = typeof websiteStages.$inferSelect;
 export type Tip = typeof tips.$inferSelect;
