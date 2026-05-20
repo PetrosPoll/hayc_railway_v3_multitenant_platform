@@ -27,6 +27,16 @@ export function HeroSection() {
     "https://d8zdlelupx224.cloudfront.net/LMS_-_mobile_smautk.mp4",
     "https://d8zdlelupx224.cloudfront.net/Luxury_resort_mobile_rhantd.mp4",
   ] as const;
+  const heroDesktopVideoPosters = [
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1779261693/booking_p5ifxx_poster_mlfjam.jpg",
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1779261692/LMS_rykuy0_poster_hkwgol.jpg",
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1779261693/Luxury_resort_pbrj1p_poster_nixxtl.jpg",
+  ] as const;
+  const heroMobileVideoPosters = [
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1779261693/booking_mobile_vnztu8_poster_efa2cc.jpg",
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1779261692/LMS_-_mobile_smautk_poster_s5witl.jpg",
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1779261692/Luxury_resort_mobile_rhantd_poster_ekfzmv.jpg",
+  ] as const;
 
   const heroSlideCount = heroDesktopVideos.length;
   const heroFullReadyMask = (1 << heroSlideCount) - 1;
@@ -200,6 +210,7 @@ export function HeroSection() {
                 i === currentSlide ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none"
               }`}
               src={src}
+              poster={heroDesktopVideoPosters[i]}
               muted
               playsInline
               preload={isMdUp ? "auto" : "metadata"}
@@ -230,6 +241,7 @@ export function HeroSection() {
                 i === currentSlide ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none"
               }`}
               src={src}
+              poster={heroMobileVideoPosters[i]}
               muted
               playsInline
               preload={!isMdUp ? "auto" : "metadata"}
