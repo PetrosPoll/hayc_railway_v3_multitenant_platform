@@ -7,8 +7,13 @@ import { useNavigate } from "react-router-dom";
 import { TestimonialsSection } from "@/components/sections/testimonials-section";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
+import { usePreloadImages } from "@/hooks/use-preload-images";
 
 export default function AboutPage() {
+  usePreloadImages([
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_mobile.png",
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/about_first_desktop.png",
+  ]);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [openProcess, setOpenProcess] = useState<number>(0);

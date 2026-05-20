@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { Template } from "@shared/schema";
 import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
+import { usePreloadImages } from "@/hooks/use-preload-images";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
 import { useTranslation } from "react-i18next";
 import {
@@ -17,6 +18,10 @@ import {
 type EnvatoTemplate = (typeof ENVATO_TEMPLATES)[number];
 
 export default function Templates() {
+  usePreloadImages([
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_mobile.png",
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/templates_main_desktop.png",
+  ]);
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [industryOpen, setIndustryOpen] = useState(false);

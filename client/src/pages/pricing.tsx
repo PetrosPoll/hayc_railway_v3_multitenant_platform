@@ -2,8 +2,13 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
+import { usePreloadImages } from "@/hooks/use-preload-images";
 
 export default function PricingPage() {
+  usePreloadImages([
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_mobile.png",
+    "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/pricing_main_desktop.png",
+  ]);
   const navigate = useNavigate();
   const [billing, setBilling] = useState<"monthly" | "annually">("monthly");
   const [mobileComparisonPlan, setMobileComparisonPlan] = useState<"basic" | "essential" | "pro">("basic");
