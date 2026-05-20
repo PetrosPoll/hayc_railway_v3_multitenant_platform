@@ -111,11 +111,11 @@ export default function ContactPage() {
           alt=""
           aria-hidden="true"
           fetchPriority="high"
-          className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setBgLoaded(true)}
         />
       {/* Contact Page Header */}
-      <section className="w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-3">
+      <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-3">
         <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
           <span className="text-white">Talk to </span>
           <span className="text-[#ED4C14]">HAYC</span>
@@ -126,7 +126,7 @@ export default function ContactPage() {
       </section>
 
       {/* Contact Form Section */}
-      <section className="w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col lg:flex-row justify-start items-start gap-6">
+      <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col lg:flex-row justify-start items-start gap-6">
         {/* Left — Contact Information card */}
         <div className="w-full lg:w-96 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12 flex-shrink-0">
           <span className="text-white text-xl lg:text-2xl font-medium font-['Montserrat'] leading-7">Contact Information</span>

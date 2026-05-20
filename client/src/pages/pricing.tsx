@@ -133,11 +133,11 @@ export default function PricingPage() {
           alt=""
           aria-hidden="true"
           fetchPriority="high"
-          className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setBgLoaded(true)}
         />
 
-        <div className="relative pt-[65px] lg:pt-0">
+        <div className="relative z-10 pt-[65px] lg:pt-0">
           <section className="relative w-full px-4 py-[50px] lg:px-16 lg:py-16 flex flex-col items-center gap-3">
             {/* Badge */}
         <div className="px-3 py-1.5 bg-gradient-to-br from-blue-50/0 to-blue-50/5 rounded-full outline outline-1 outline-offset-[-1px] outline-slate-100/50 flex justify-center items-center gap-2.5">

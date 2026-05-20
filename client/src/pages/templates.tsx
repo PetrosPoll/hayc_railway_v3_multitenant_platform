@@ -104,11 +104,11 @@ export default function Templates() {
           alt=""
           aria-hidden="true"
           fetchPriority="high"
-          className={`absolute inset-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
+          className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setBgLoaded(true)}
         />
       {/* Templates Page Header */}
-      <section className="w-full px-4 lg:px-16 pt-24 pb-12 flex flex-col justify-center items-center gap-6">
+      <section className="relative z-10 w-full px-4 lg:px-16 pt-24 pb-12 flex flex-col justify-center items-center gap-6">
         <div className="w-full flex flex-col justify-center items-center gap-12">
           {/* Title */}
           <div className="w-full flex flex-col justify-start items-center gap-3">
@@ -136,7 +136,7 @@ export default function Templates() {
       </section>
 
       {/* Templates Grid Section */}
-      <section className="w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-12">
+      <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-12">
         {/* Industry filter dropdown */}
         <div className="w-full relative inline-flex justify-start items-center gap-3">
           <button
