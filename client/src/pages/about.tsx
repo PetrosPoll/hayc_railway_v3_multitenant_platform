@@ -58,7 +58,9 @@ export default function AboutPage() {
               <div className="h-64 w-64 overflow-hidden lg:h-72 lg:w-72">
                 <video
                   src="https://d8zdlelupx224.cloudfront.net/asterisk_1_jtw9zn.mp4"
+                  poster="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1779266708/asterisk_1_jtw9zn_poster_fwlatp.jpg"
                   className="h-full w-full object-cover object-center mix-blend-screen brightness-110 contrast-125"
+                  preload="auto"
                   autoPlay
                   muted
                   loop
@@ -184,6 +186,7 @@ export default function AboutPage() {
         <video
           src="https://d8zdlelupx224.cloudfront.net/Logo_Animation_1_g2fcoo.mp4"
           className="h-full w-full object-cover"
+          preload="metadata"
           autoPlay
           muted
           loop
