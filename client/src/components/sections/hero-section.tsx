@@ -192,13 +192,14 @@ export function HeroSection() {
     <section className="relative overflow-hidden min-h-screen md:h-[115vh]">
       <div className="absolute inset-0 overflow-hidden bg-black">
         <div
-          className={`absolute inset-0 transition-opacity duration-500 ease-out ${
-            !isMdUp
-              ? "pointer-events-none -z-[1] opacity-0"
-              : desktopVideosBuffered
-                ? "z-0 opacity-100"
-                : "z-0 opacity-0"
+          className={`absolute inset-0 ${
+            !isMdUp ? "pointer-events-none -z-[1] opacity-0" : "z-0 opacity-100"
           }`}
+          style={{
+            backgroundImage: `url(${heroDesktopVideoPosters[currentSlide]})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
         >
           {heroDesktopVideos.map((src, i) => (
             <video
@@ -207,7 +208,9 @@ export function HeroSection() {
                 desktopVideoRefs.current[i] = el;
               }}
               className={`absolute inset-0 h-full w-full transform-gpu object-cover transition-opacity duration-700 ease-in-out ${
-                i === currentSlide ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none"
+                i === currentSlide && desktopVideosBuffered
+                  ? "opacity-100 z-[1]"
+                  : "opacity-0 z-0 pointer-events-none"
               }`}
               src={src}
               poster={heroDesktopVideoPosters[i]}
@@ -223,13 +226,14 @@ export function HeroSection() {
           ))}
         </div>
         <div
-          className={`absolute inset-0 transition-opacity duration-500 ease-out ${
-            isMdUp
-              ? "pointer-events-none -z-[1] opacity-0"
-              : mobileVideosBuffered
-                ? "z-0 opacity-100"
-                : "z-0 opacity-0"
+          className={`absolute inset-0 ${
+            isMdUp ? "pointer-events-none -z-[1] opacity-0" : "z-0 opacity-100"
           }`}
+          style={{
+            backgroundImage: `url(${heroMobileVideoPosters[currentSlide]})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
         >
           {heroMobileVideos.map((src, i) => (
             <video
@@ -238,7 +242,9 @@ export function HeroSection() {
                 mobileVideoRefs.current[i] = el;
               }}
               className={`absolute inset-0 h-full w-full transform-gpu object-cover transition-opacity duration-700 ease-in-out ${
-                i === currentSlide ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none"
+                i === currentSlide && mobileVideosBuffered
+                  ? "opacity-100 z-[1]"
+                  : "opacity-0 z-0 pointer-events-none"
               }`}
               src={src}
               poster={heroMobileVideoPosters[i]}
