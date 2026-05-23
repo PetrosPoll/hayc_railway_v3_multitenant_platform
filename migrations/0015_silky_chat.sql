@@ -1,0 +1,1 @@
+ALTER TABLE "get_started_submissions" ADD COLUMN "current_step" integer;

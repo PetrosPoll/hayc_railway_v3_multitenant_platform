@@ -2780,7 +2780,19 @@
         "error": "An error occurred. Please try again later."
     },
     "getStarted": {
+        "errors": {
+            "emailRequired": "Please enter your email address",
+            "nameRequired": "Please enter your full name",
+            "passwordRequired": "Please enter a password",
+            "passwordWeak": "Password does not meet the minimum requirements",
+            "privacyRequired": "Please accept the privacy policy to continue",
+            "vatRequired": "VAT number is required for invoices",
+            "addressRequired": "Please fill in all address fields for invoices",
+            "checkoutFailed": "Something went wrong",
+            "checkoutFailedDesc": "Failed to start checkout. Please try again."
+        },
         "cancelAriaLabel": "Cancel and go home",
+        "justBrowsing": "I'm just browsing",
         "exitModal": {
             "title": "Leave setup?",
             "description": "Your progress won't be saved. You'll need to start over if you come back.",
@@ -2872,7 +2884,8 @@
             "subtitleLoggedIn": "Choose your plan and continue — you'll confirm billing and details on the next step.",
             "selectedDesign": "Selected Design:",
             "designLabels": {
-                "auto": "Best match (auto)",
+                "auto": "We'll choose for you",
+                "autoSubtitle": "We'll pick the best match based on your answers.",
                 "cleanMinimal": "Clean & Minimal",
                 "boldModern": "Bold & Modern",
                 "warmOrganic": "Warm & Organic",
@@ -2880,18 +2893,33 @@
             },
             "walkthroughTitle": "A quick walkthrough of what happens next:",
             "readyIn15Days": "Ready in 15 days",
+            "whatsIncluded": "Your setup includes",
             "pagesIncluded": "Home, About, Services, Contact",
             "bookingIntegration": "Booking Integration",
             "basicSeoSetup": "Basic SEO setup",
             "customizeLater": "You'll be able to customise everything later",
             "createAccount": "Create your account",
             "createAccountLoggedIn": "Your account",
-            "signedInAs": "Signed in as {{email}}. Billing and invoice details are completed on the next step.",
-            "placeholders": {
-                "fullName": "Full Name",
-                "email": "you@company.com",
-                "subject": "Subject"
+            "signedInAsPrefix": "Signed in as",
+            "billingDetailsNote": "Billing and invoice details are completed on the next step.",
+            "documentType": {
+                "label": "Document Type",
+                "receipt": "Receipt (No VAT number needed)",
+                "invoice": "Invoice (I need VAT number)"
             },
+            "placeholders": {
+                "fullName": "Full name",
+                "email": "you@email.com",
+                "phoneOptional": "Phone (Optional)",
+                "password": "Password",
+                "vatNumber": "VAT Number",
+                "city": "City",
+                "street": "Street",
+                "streetNumber": "Number",
+                "postalCode": "Postal Code"
+            },
+            "privacyAcceptance": "I have read and accept the",
+            "privacyPolicyLink": "Privacy Policy",
             "choosePlan": "Choose your plan",
             "billing": {
                 "label": "Billing period",
@@ -2903,6 +2931,7 @@
             "perMonthAnnual": "/ per month (billed yearly)",
             "recommended": "Recommended",
             "setupFee": "Each plan requires + 99€ setup fee",
+            "processing": "Processing...",
             "continueWith": "Continue with {{plan}}",
             "visa": "VISA",
             "payLabel": "Pay",

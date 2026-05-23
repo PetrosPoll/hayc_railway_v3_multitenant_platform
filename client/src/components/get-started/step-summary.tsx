@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import {
@@ -7,6 +7,7 @@ import {
   type WizardValues,
 } from "@/pages/get-started";
 import { SUMMARY_SELECTED_DESIGN_I18N_KEY } from "@/lib/get-started-translations";
+import { ENVATO_TEMPLATES } from "@/data/envato-templates";
 import {
   FormControl,
   FormField,
@@ -15,11 +16,17 @@ import {
 import { cn } from "@/lib/utils";
 import {
   Check,
+  Eye,
+  EyeOff,
   FileText,
   LayoutGrid,
   Rocket,
-  SearchCheck,
 } from "lucide-react";
+import WalkthroughExplainer from "@/components/get-started/walkthrough-explainer";
+
+const ADDON_DISPLAY_NAMES: Record<string, string> = {
+  HDP: "Hayc Digital Products",
+};
 
 const PLAN_CONFIG: {
   id: (typeof PLANS)[number];
@@ -38,23 +45,80 @@ interface StepSummaryProps {
   onSubmit: () => void;
   /** When true, account fields are skipped (user came from session); pre-checkout will use the same session. */
   isLoggedIn?: boolean;
+  isSubmitting?: boolean;
 }
 
 export default function StepSummary({
   form,
-  onBack: _onBack,
+  onBack,
   onSubmit,
   isLoggedIn = false,
+  isSubmitting = false,
 }: StepSummaryProps) {
   const { t } = useTranslation();
+  const [showPassword, setShowPassword] = useState(false);
   const selectedDesignId = form.watch("selectedDesign");
   const selectedPlanId = form.watch("plan");
   const selectedBillingPeriod = form.watch("billingPeriod") ?? "monthly";
+  const fullName = form.watch("fullName");
+  const email = form.watch("email");
+  const password = form.watch("password") ?? "";
+  const documentType = form.watch("documentType");
+  const vatNumber = form.watch("vatNumber");
+  const city = form.watch("city");
+  const street = form.watch("street");
+  const streetNumber = form.watch("streetNumber");
+  const postalCode = form.watch("postalCode");
+  const privacyAccepted = form.watch("privacyAccepted");
+
+  const passwordRequirements = [
+    {
+      key: "length",
+      label: "At least 8 characters",
+      met: password.length >= 8,
+    },
+    {
+      key: "uppercase",
+      label: "At least 1 uppercase letter",
+      met: /[A-Z]/.test(password),
+    },
+    {
+      key: "number",
+      label: "At least 1 number",
+      met: /[0-9]/.test(password),
+    },
+    {
+      key: "special",
+      label: "At least 1 special character",
+      met: /[^A-Za-z0-9]/.test(password),
+    },
+  ];
+
+  const allRequirementsMet = passwordRequirements.every((r) => r.met);
+  const showRequirements = password.length > 0;
+
+  const canSubmit = isLoggedIn
+    ? true
+    : !!fullName?.trim() &&
+      !!email?.trim() &&
+      allRequirementsMet &&
+      privacyAccepted === true &&
+      (documentType !== "invoice" ||
+        (!!vatNumber?.trim() &&
+          !!city?.trim() &&
+          !!street?.trim() &&
+          !!streetNumber?.trim() &&
+          !!postalCode?.trim()));
 
   const designLabel =
     selectedDesignId && SUMMARY_SELECTED_DESIGN_I18N_KEY[selectedDesignId]
       ? t(SUMMARY_SELECTED_DESIGN_I18N_KEY[selectedDesignId])
       : t("getStarted.summary.designLabels.unknown");
+
+  const selectedTemplate =
+    selectedDesignId && selectedDesignId !== "auto"
+      ? ENVATO_TEMPLATES.find((t) => String(t.id) === selectedDesignId)
+      : null;
 
   const planLabelForCta =
     selectedPlanId && PLANS.includes(selectedPlanId)
@@ -76,7 +140,7 @@ export default function StepSummary({
       </div>
 
       {/* Two column cards — desktop: equal height (stretch to tallest) */}
-      <div className="w-full flex flex-col md:flex-row justify-start items-stretch gap-6">
+      <div className="w-full flex flex-col md:flex-row justify-start items-start gap-6">
         {/* LEFT CARD — summary */}
         <div className="w-full md:flex-1 md:min-h-0 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-6">
           {/* Selected design row */}
@@ -85,45 +149,73 @@ export default function StepSummary({
               <div className="text-white text-base md:text-2xl font-medium font-['Montserrat']">
                 {t("getStarted.summary.selectedDesign")}
               </div>
-              <div className="text-white text-sm md:text-lg font-medium font-['Montserrat']">
-                {designLabel}
-              </div>
+              {selectedDesignId === "auto" ? (
+                <div className="flex flex-col gap-1">
+                  <div className="text-white text-sm md:text-lg font-medium font-['Montserrat']">
+                    {t("getStarted.summary.designLabels.auto")}
+                  </div>
+                  <div className="text-white/60 text-xs md:text-sm font-normal font-['Montserrat']">
+                    {t("getStarted.summary.designLabels.autoSubtitle")}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-white text-sm md:text-lg font-medium font-['Montserrat']">
+                  {selectedTemplate ? selectedTemplate.name : designLabel}
+                </div>
+              )}
             </div>
-            <div className="w-20 h-14 md:flex-1 md:h-32 bg-neutral-700/30 rounded-[10px]" />
+            {selectedDesignId === "auto" ? (
+              <div className="w-20 h-14 md:flex-1 md:h-32 bg-[radial-gradient(ellipse_141.42%_151.02%_at_0%_0%,_rgba(237,76,20,0.21)_0%,_rgba(237,76,20,0.11)_67%)] rounded-[10px] flex items-center justify-center">
+                <svg className="w-8 h-8 opacity-60" viewBox="0 0 48 48" fill="none">
+                  <path d="M24 4 L26 22 L44 24 L26 26 L24 44 L22 26 L4 24 L22 22 Z" fill="white" opacity="0.9"/>
+                  <path d="M38 8 L39 14 L45 15 L39 16 L38 22 L37 16 L31 15 L37 14 Z" fill="white" opacity="0.7"/>
+                </svg>
+              </div>
+            ) : selectedTemplate ? (
+              <img
+                src={selectedTemplate.preview}
+                alt={selectedTemplate.name}
+                className="w-20 h-14 md:flex-1 md:h-32 rounded-[10px] object-cover object-top"
+              />
+            ) : (
+              <div className="w-20 h-14 md:flex-1 md:h-32 bg-neutral-700/30 rounded-[10px]" />
+            )}
           </div>
 
           {/* Walkthrough section */}
           <div className="flex flex-col gap-3">
-            <div className="hidden md:block text-white text-lg font-medium font-['Montserrat']">
-              {t("getStarted.summary.walkthroughTitle")}
+            <div className="hidden md:flex flex-col gap-4">
+              <div className="text-white text-lg font-medium font-['Montserrat']">
+                {t("getStarted.summary.walkthroughTitle")}
+              </div>
+              <WalkthroughExplainer />
             </div>
-            <div className="hidden md:block w-full h-72 bg-neutral-700/30 rounded-[10px]" />
 
             <div className="w-full p-3.5 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-neutral-500 flex flex-col gap-3">
               <div className="w-full pb-2.5 border-b border-neutral-500 flex items-center gap-3">
                 <Rocket className="w-4 h-4 md:w-5 md:h-5 text-[#ED4C14] flex-shrink-0" />
                 <span className="text-white text-sm md:text-lg font-bold font-['Montserrat']">
-                  {t("getStarted.summary.readyIn15Days")}
+                  {t("getStarted.summary.whatsIncluded")}
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <FileText className="w-4 h-4 md:w-5 md:h-5 text-white flex-shrink-0" />
                 <span className="text-white text-xs md:text-lg font-medium font-['Montserrat']">
-                  {t("getStarted.summary.pagesIncluded")}
+                  {(form.watch("suggestedStructure") ?? []).length > 0
+                    ? (form.watch("suggestedStructure") ?? []).join(", ")
+                    : t("getStarted.summary.pagesIncluded")}
                 </span>
               </div>
-              <div className="flex items-center gap-3">
-                <LayoutGrid className="w-4 h-4 md:w-5 md:h-5 text-white flex-shrink-0" />
-                <span className="text-white text-xs md:text-lg font-medium font-['Montserrat']">
-                  {t("getStarted.summary.bookingIntegration")}
-                </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <SearchCheck className="w-4 h-4 md:w-5 md:h-5 text-white flex-shrink-0" />
-                <span className="text-white text-xs md:text-lg font-medium font-['Montserrat']">
-                  {t("getStarted.summary.basicSeoSetup")}
-                </span>
-              </div>
+              {(form.watch("selectedAddons") ?? []).length > 0 && (
+                <div className="flex items-start gap-3">
+                  <LayoutGrid className="w-4 h-4 md:w-5 md:h-5 text-white flex-shrink-0 mt-0.5" />
+                  <span className="text-white text-xs md:text-lg font-medium font-['Montserrat']">
+                    {(form.watch("selectedAddons") ?? [])
+                      .map((a) => ADDON_DISPLAY_NAMES[a] ?? a)
+                      .join(", ")}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -141,11 +233,97 @@ export default function StepSummary({
                 : t("getStarted.summary.createAccount")}
             </div>
             {isLoggedIn ? (
-              <p className="text-white/80 text-sm font-normal font-['Montserrat'] leading-6">
-                {t("getStarted.summary.signedInAs", {
-                  email: form.watch("email") || "—",
-                })}
-              </p>
+              <div className="flex flex-col gap-3">
+                <p className="text-white/80 text-sm font-normal font-['Montserrat'] leading-6">
+                  {t("getStarted.summary.signedInAsPrefix")}{" "}
+                  <span className="text-[#ED4C14] font-medium">
+                    {form.watch("email") || "—"}
+                  </span>
+                </p>
+
+                {/* Document type */}
+                <FormField
+                  control={form.control}
+                  name="documentType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="text-white/80 text-sm font-medium font-['Montserrat'] mb-2">
+                        {t("getStarted.summary.documentType.label")}
+                      </div>
+                      <FormControl>
+                        <div className="flex flex-col gap-2">
+                          {(["receipt", "invoice"] as const).map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => field.onChange(type)}
+                              className={cn(
+                                "flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors cursor-pointer bg-transparent text-left",
+                                field.value === type ? "border-[#ED4C14]" : "border-neutral-500",
+                              )}
+                            >
+                              <div className={cn(
+                                "w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center",
+                                field.value === type ? "border-[#ED4C14]" : "border-white",
+                              )}>
+                                {field.value === type && (
+                                  <div className="w-2 h-2 rounded-full bg-[#ED4C14]" />
+                                )}
+                              </div>
+                              <span className="text-white text-sm font-['Montserrat']">
+                                {t(`getStarted.summary.documentType.${type}`)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Invoice fields — conditional */}
+                {form.watch("documentType") === "invoice" && (
+                  <div className="flex flex-col gap-3">
+                    <FormField
+                      control={form.control}
+                      name="vatNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <input
+                              {...field}
+                              value={field.value ?? ""}
+                              placeholder={t("getStarted.summary.placeholders.vatNumber")}
+                              className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["city", "street", "streetNumber", "postalCode"] as const).map((fieldName) => (
+                        <FormField
+                          key={fieldName}
+                          control={form.control}
+                          name={fieldName}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  placeholder={t(`getStarted.summary.placeholders.${fieldName}`)}
+                                  className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="flex flex-col gap-3">
                 <FormField
@@ -174,9 +352,7 @@ export default function StepSummary({
                           {...field}
                           value={field.value ?? ""}
                           type="email"
-                          placeholder={t(
-                            "getStarted.summary.placeholders.email",
-                          )}
+                          placeholder={t("getStarted.summary.placeholders.email")}
                           className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                         />
                       </FormControl>
@@ -185,19 +361,195 @@ export default function StepSummary({
                 />
                 <FormField
                   control={form.control}
-                  name="subject"
+                  name="phone"
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
                         <input
                           {...field}
                           value={field.value ?? ""}
-                          placeholder={t(
-                            "getStarted.summary.placeholders.subject",
-                          )}
+                          type="tel"
+                          placeholder={t("getStarted.summary.placeholders.phoneOptional")}
                           className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                         />
                       </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="documentType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="text-white/80 text-sm font-medium font-['Montserrat'] mb-2">
+                        {t("getStarted.summary.documentType.label")}
+                      </div>
+                      <FormControl>
+                        <div className="flex flex-col gap-2">
+                          {(["receipt", "invoice"] as const).map((type) => (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => field.onChange(type)}
+                              className={cn(
+                                "flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors cursor-pointer bg-transparent text-left",
+                                field.value === type ? "border-[#ED4C14]" : "border-neutral-500",
+                              )}
+                            >
+                              <div
+                                className={cn(
+                                  "w-4 h-4 rounded-full border flex-shrink-0 flex items-center justify-center",
+                                  field.value === type ? "border-[#ED4C14]" : "border-white",
+                                )}
+                              >
+                                {field.value === type && (
+                                  <div className="w-2 h-2 rounded-full bg-[#ED4C14]" />
+                                )}
+                              </div>
+                              <span className="text-white text-sm font-['Montserrat']">
+                                {t(`getStarted.summary.documentType.${type}`)}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {form.watch("documentType") === "invoice" && (
+                  <div className="flex flex-col gap-3">
+                    <FormField
+                      control={form.control}
+                      name="vatNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <input
+                              {...field}
+                              value={field.value ?? ""}
+                              placeholder={t("getStarted.summary.placeholders.vatNumber")}
+                              className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      {(["city", "street", "streetNumber", "postalCode"] as const).map((fieldName) => (
+                        <FormField
+                          key={fieldName}
+                          control={form.control}
+                          name={fieldName}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormControl>
+                                <input
+                                  {...field}
+                                  value={field.value ?? ""}
+                                  placeholder={t(`getStarted.summary.placeholders.${fieldName}`)}
+                                  className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <div className="relative">
+                          <input
+                            {...field}
+                            value={field.value ?? ""}
+                            type={showPassword ? "text" : "password"}
+                            placeholder={t("getStarted.summary.placeholders.password")}
+                            className="w-full px-4 py-3 pr-12 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors border-0 bg-transparent cursor-pointer p-1"
+                            tabIndex={-1}
+                          >
+                            {showPassword ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                {showRequirements && (
+                  <div className="flex flex-col gap-1.5 px-1">
+                    {passwordRequirements.map((req) => (
+                      <div key={req.key} className="flex items-center gap-2">
+                        <div
+                          className={cn(
+                            "w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 transition-colors",
+                            req.met ? "bg-[#37c24c]" : "bg-neutral-700",
+                          )}
+                        >
+                          {req.met && (
+                            <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                              <path
+                                d="M1 3L3 5L7 1"
+                                stroke="white"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          )}
+                        </div>
+                        <span
+                          className={cn(
+                            "text-xs font-normal font-['Montserrat'] transition-colors",
+                            req.met ? "text-[#37c24c]" : "text-white/50",
+                          )}
+                        >
+                          {req.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <FormField
+                  control={form.control}
+                  name="privacyAccepted"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-start gap-3">
+                        <button
+                          type="button"
+                          onClick={() => field.onChange(!field.value)}
+                          className={cn(
+                            "w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5",
+                            field.value ? "bg-[#ED4C14] border-[#ED4C14]" : "bg-transparent border-neutral-500",
+                          )}
+                        >
+                          {field.value && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                        </button>
+                        <span className="text-white/70 text-xs font-normal font-['Montserrat'] leading-5">
+                          {t("getStarted.summary.privacyAcceptance")}{" "}
+                          <a
+                            href="/privacy-policy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#ED4C14] underline"
+                          >
+                            {t("getStarted.summary.privacyPolicyLink")}
+                          </a>
+                        </span>
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -353,13 +705,25 @@ export default function StepSummary({
             <div className="flex flex-col gap-3">
               <button
                 type="button"
-                onClick={onSubmit}
-                className="w-full h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-center items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors"
+                onClick={onBack}
+                className="w-full h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-center items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
               >
                 <span className="text-white text-sm md:text-base font-semibold font-['Montserrat'] leading-5">
-                  {t("getStarted.summary.continueWith", {
-                    plan: planLabelForCta,
-                  })}
+                  {t("getStarted.navigation.back")}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={onSubmit}
+                disabled={isSubmitting || !canSubmit}
+                className="w-full h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-center items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <span className="text-white text-sm md:text-base font-semibold font-['Montserrat'] leading-5">
+                  {isSubmitting
+                    ? t("getStarted.summary.processing")
+                    : t("getStarted.summary.continueWith", {
+                        plan: planLabelForCta,
+                      })}
                 </span>
               </button>
 

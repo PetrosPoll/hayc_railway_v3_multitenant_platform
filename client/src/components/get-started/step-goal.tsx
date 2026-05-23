@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import {
@@ -13,7 +13,6 @@ import {
   FormItem,
 } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
-import { Check } from "lucide-react";
 
 interface StepGoalProps {
   form: UseFormReturn<WizardValues>;
@@ -23,6 +22,7 @@ interface StepGoalProps {
 
 export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
   const { t } = useTranslation();
+  const [imgLoaded, setImgLoaded] = useState(false);
   const goals = form.watch("goals") ?? [];
   const goalOther = form.watch("goalOtherDetails");
   const hasSomethingElse = goals.includes(GOAL_SOMETHING_ELSE);
@@ -55,7 +55,8 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
                   <div className="flex flex-col md:flex-wrap md:flex-row gap-3">
                     {GOALS.map((goalOption) => {
                       const selected = field.value ?? [];
-                      const isSelected = selected.includes(goalOption);
+                      const isSelected = goals.includes(goalOption);
+                      const isSomethingElse = goalOption === GOAL_SOMETHING_ELSE;
                       return (
                         <button
                           key={goalOption}
@@ -66,38 +67,44 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
                               : [...selected, goalOption];
                             field.onChange(next);
 
-                            if (
-                              goalOption === GOAL_SOMETHING_ELSE &&
-                              isSelected
-                            ) {
+                            if (isSomethingElse && isSelected) {
                               form.setValue("goalOtherDetails", "");
                             }
                           }}
                           className={cn(
-                            "px-3.5 py-2 rounded-[10px] outline outline-1 outline-offset-[-1px]",
-                            "flex justify-start items-center gap-3",
-                            "transition-colors cursor-pointer border-0",
-                            "bg-gradient-to-br from-neutral-700/30 to-neutral-700/20",
+                            "flex items-center gap-2 px-3 py-1.5 rounded-[39px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer",
                             isSelected
-                              ? "outline-[#ED4C14]"
-                              : "outline-white/30"
+                              ? "bg-[#ED4C14] border-[#ED4C14]"
+                              : "bg-transparent border-[#6a6a6a] hover:border-white/50",
                           )}
                         >
-                          <div
-                            className={cn(
-                              "w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0",
-                              isSelected
-                                ? "border-[#ED4C14] bg-[#ED4C14]/20"
-                                : "border-white"
-                            )}
-                          >
-                            {isSelected && (
-                              <Check
-                                className="w-3 h-3 text-[#ED4C14]"
-                                strokeWidth={3}
-                              />
-                            )}
-                          </div>
+                          {!isSomethingElse && (
+                            <div
+                              className={cn(
+                                "w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors",
+                                isSelected
+                                  ? "bg-white border-white"
+                                  : "bg-transparent border-white/50",
+                              )}
+                            >
+                              {isSelected && (
+                                <svg
+                                  width="8"
+                                  height="7"
+                                  viewBox="0 0 8 7"
+                                  fill="none"
+                                >
+                                  <path
+                                    d="M1 3.5L3 5.5L7 1"
+                                    stroke="#ED4C14"
+                                    strokeWidth="1.5"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+                          )}
                           <span className="text-white text-lg font-medium font-['Montserrat']">
                             {t(GOAL_I18N_KEY[goalOption])}
                           </span>
@@ -154,7 +161,15 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
         </div>
 
         {/* Right / bottom panel */}
-        <div className="flex-1 h-[323px] md:h-screen bg-[#111111] mt-12 md:mt-0" />
+        <div className="flex-1 h-[323px] md:h-screen bg-[#111111] mt-12 md:mt-0 overflow-hidden">
+          <img
+            src="https://res.cloudinary.com/dem12vqtl/image/upload/v1779357793/step_two_image_m5oomz.png"
+            alt=""
+            fetchPriority="high"
+            onLoad={() => setImgLoaded(true)}
+            className={`w-full h-full object-cover object-center transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          />
+        </div>
       </div>
     </div>
   );

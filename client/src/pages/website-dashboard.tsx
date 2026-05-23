@@ -4281,16 +4281,6 @@ export default function WebsiteDashboard() {
           <div className="flex flex-col min-h-screen">
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
               <SidebarTrigger />
-              <Button
-                type="button"
-                size="sm"
-                className="gap-2 shrink-0"
-                onClick={() => navigate("/get-started")}
-                data-testid="button-create-new-website-dashboard"
-              >
-                <Plus className="h-4 w-4" />
-                {t("dashboard.createNewWebsite") || "Start a new Idea"}
-              </Button>
             </header>
             <div className="flex-1 p-4 md:p-6">
               {renderBreadcrumbs()}

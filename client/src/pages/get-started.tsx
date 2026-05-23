@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/components/ui/authContext";
-import { X } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Form } from "@/components/ui/form";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,8 @@ import StepGoal from "@/components/get-started/step-goal";
 import StepRecommendation from "@/components/get-started/step-recommendation";
 import StepChooseDesign from "@/components/get-started/step-choose-design";
 import StepSummary from "@/components/get-started/step-summary";
+import { ENVATO_TEMPLATES } from "@/data/envato-templates";
+import { checkEmailExists } from "@/lib/api";
 // import { StepBusinessType } from "@/pages/get-started/steps/step-business-type";
 // import { StepGoal } from "@/pages/get-started/steps/step-goal";
 // import { StepRecommendation } from "@/pages/get-started/steps/step-recommendation";
@@ -67,21 +69,141 @@ const wizardSchema = z.object({
   selectedDesign: z.string().optional(),
   fullName: z.string().optional(),
   email: z.string().optional(),
-  subject: z.string().optional(),
+  phone: z.string().optional(),
+  password: z.string().optional(),
+  documentType: z.enum(["invoice", "receipt"]).optional().default("receipt"),
+  vatNumber: z.string().optional(),
+  city: z.string().optional(),
+  street: z.string().optional(),
+  streetNumber: z.string().optional(),
+  postalCode: z.string().optional(),
+  privacyAccepted: z.boolean().optional().default(false),
   plan: z.enum(PLANS).optional(),
   billingPeriod: z.enum(WIZARD_BILLING_PERIODS).optional(),
+  addOns: z.array(z.string()).optional(),
+  suggestedAddons: z.array(z.string()).optional(),
+  selectedAddons: z.array(z.string()).optional(),
+  suggestedStructure: z.array(z.string()).optional(),
 });
 
 export type WizardValues = z.infer<typeof wizardSchema>;
 
+const GOAL_PAGE_MAP: Record<string, string[]> = {
+  get_enquiries: ["Contact"],
+  book_appointments: ["Booking"],
+  sell_products: ["Products", "Pricing"],
+  showcase_work: ["Gallery"],
+  build_trust: ["Testimonials"],
+  share_information: ["Blog"],
+  something_else: [],
+};
+
+const BUSINESS_TYPE_PAGE_MAP: Record<string, string[]> = {
+  local_business: ["Home", "About", "Services", "Contact"],
+  service_business: ["Home", "About", "Services", "Contact"],
+  personal_brand: ["Home", "About", "Blog", "Contact"],
+  creative_business: ["Home", "About", "Gallery", "Contact"],
+  online_store: ["Home", "Products", "Pricing", "Contact"],
+  hospitality_travel: ["Home", "About", "Booking", "Contact", "Location"],
+  health_wellness: ["Home", "About", "Services", "Booking", "Contact"],
+  other: ["Home", "About", "Services", "Contact"],
+};
+
+const BUSINESS_TYPE_DISPLAY_MAP: Record<string, string> = {
+  "Local Business": "local_business",
+  "Service Business": "service_business",
+  "Personal Brand": "personal_brand",
+  "Creative Business": "creative_business",
+  "Online Store": "online_store",
+  "Hospitality/Travel": "hospitality_travel",
+  "Health/Wellness": "health_wellness",
+  "Other": "other",
+};
+
+const GOAL_DISPLAY_MAP: Record<string, string> = {
+  "Get more enquiries": "get_enquiries",
+  "Book more appointments": "book_appointments",
+  "Sell products online": "sell_products",
+  "Showcase my work": "showcase_work",
+  "Build trust in my business": "build_trust",
+  "Share information clearly": "share_information",
+  "Something else": "something_else",
+};
+
+function computeSuggestedStructure(
+  businessType: string | undefined,
+  goals: string[] | undefined,
+): string[] {
+  const pages = new Set<string>();
+
+  const btKey = BUSINESS_TYPE_DISPLAY_MAP[businessType ?? ""] ?? businessType ?? "";
+  (BUSINESS_TYPE_PAGE_MAP[btKey] ?? ["Home", "About", "Services", "Contact"]).forEach(
+    (p) => pages.add(p),
+  );
+
+  (goals ?? [])
+    .filter((g) => g !== "something_else" && g !== "Something else")
+    .forEach((goal) => {
+      const goalKey = GOAL_DISPLAY_MAP[goal] ?? goal;
+      (GOAL_PAGE_MAP[goalKey] ?? []).forEach((p) => pages.add(p));
+    });
+
+  return Array.from(pages);
+}
+
+const GOAL_ADDON_MAP: Record<string, string[]> = {
+  get_enquiries: [],
+  book_appointments: ["Booking Integration"],
+  sell_products: ["HDP"],
+  showcase_work: [],
+  build_trust: [],
+  share_information: [],
+  something_else: [],
+};
+
+const BUSINESS_TYPE_ADDON_MAP: Record<string, string[]> = {
+  local_business: ["Booking Integration"],
+  service_business: ["Booking Integration"],
+  personal_brand: [],
+  creative_business: ["HDP"],
+  online_store: ["HDP"],
+  hospitality_travel: ["Booking Integration"],
+  health_wellness: ["Booking Integration"],
+  other: [],
+};
+
+function computeSuggestedAddons(
+  businessType: string | undefined,
+  goals: string[] | undefined,
+): string[] {
+  const suggested = new Set<string>();
+
+  const btKey = BUSINESS_TYPE_DISPLAY_MAP[businessType ?? ""] ?? businessType ?? "";
+  (BUSINESS_TYPE_ADDON_MAP[btKey] ?? []).forEach((a) => suggested.add(a));
+
+  (goals ?? [])
+    .filter((g) => g !== "something_else" && g !== "Something else")
+    .forEach((goal) => {
+      const goalKey = GOAL_DISPLAY_MAP[goal] ?? goal;
+      (GOAL_ADDON_MAP[goalKey] ?? []).forEach((a) => suggested.add(a));
+    });
+
+  suggested.add("Booking Integration");
+
+  return Array.from(suggested);
+}
+
 export default function GetStarted() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [showExitModal, setShowExitModal] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user: sessionUser } = useAuth();
   const isLoggedIn = !!sessionUser;
+  const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   const form = useForm<WizardValues>({
     resolver: zodResolver(wizardSchema),
@@ -93,9 +215,21 @@ export default function GetStarted() {
       selectedDesign: undefined,
       fullName: "",
       email: "",
-      subject: "",
+      phone: "",
+      password: "",
+      documentType: "receipt",
+      vatNumber: "",
+      city: "",
+      street: "",
+      streetNumber: "",
+      postalCode: "",
+      privacyAccepted: false,
       plan: "essential",
       billingPeriod: "monthly",
+      addOns: [],
+      suggestedAddons: [],
+      selectedAddons: [],
+      suggestedStructure: [],
     },
   });
 
@@ -126,20 +260,191 @@ export default function GetStarted() {
     }
   }, [sessionUser, setValue]);
 
+  const persistPreCheckout = (patch: Partial<WizardValues> & Record<string, unknown>) => {
+    try {
+      const key = "hayc_gs_pre_checkout";
+      const existing = localStorage.getItem(key);
+      const current = existing ? JSON.parse(existing) : {};
+      localStorage.setItem(
+        key,
+        JSON.stringify({ ...current, ...patch }),
+      );
+    } catch (e) {
+      console.warn("Failed to persist pre-checkout data", e);
+    }
+  };
+
   const nextStep = () => {
+    const values = form.getValues();
+
+    if (currentStep === 1) {
+      persistPreCheckout({
+        businessType: values.businessType,
+        businessTypeOtherDetails: values.businessTypeOtherDetails,
+      });
+    } else if (currentStep === 2) {
+      persistPreCheckout({
+        goals: values.goals,
+        goalOtherDetails: values.goalOtherDetails,
+      });
+    } else if (currentStep === 3) {
+      const step3Values = form.getValues();
+
+      const suggestedStructure = computeSuggestedStructure(
+        step3Values.businessType,
+        step3Values.goals ?? [],
+      );
+
+      const currentSuggested = computeSuggestedAddons(
+        step3Values.businessType,
+        step3Values.goals ?? [],
+      );
+      const currentSelected = step3Values.selectedAddons ?? [];
+
+      const finalSelectedAddons = currentSelected.length > 0
+        ? currentSelected
+        : currentSuggested;
+
+      form.setValue("suggestedStructure", suggestedStructure);
+      form.setValue("suggestedAddons", currentSuggested);
+      form.setValue("selectedAddons", finalSelectedAddons);
+
+      persistPreCheckout({
+        suggestedStructure,
+        suggestedAddons: currentSuggested,
+        selectedAddons: finalSelectedAddons,
+      });
+    } else if (currentStep === 4) {
+      const selectedId = values.selectedDesign;
+      const template =
+        selectedId && selectedId !== "auto"
+          ? ENVATO_TEMPLATES.find((t) => String(t.id) === selectedId)
+          : null;
+
+      persistPreCheckout({
+        selectedDesign: selectedId,
+        selectedTemplateName: template?.name ?? null,
+        selectedTemplatePreview: template?.preview ?? null,
+      });
+    }
+
     setCurrentStep((s) => s + 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
   const prevStep = () => {
     setCurrentStep((s) => s - 1);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const onSubmit = (values: WizardValues) => {
+  const onSubmit = async (values: WizardValues) => {
     const plan = values.plan ?? "essential";
     const billingPeriod = values.billingPeriod ?? "monthly";
-    const isYearly = billingPeriod === "yearly";
-    navigate(`/pre-checkout/${plan}?isYearly=${isYearly}`);
+    const email = sessionUser?.email ?? values.email ?? "";
+    const fullName = sessionUser?.username ?? values.fullName ?? "";
+
+    if (!isLoggedIn) {
+      if (!email) {
+        toast({ title: t("getStarted.errors.emailRequired"), variant: "destructive" });
+        return;
+      }
+      if (!fullName) {
+        toast({ title: t("getStarted.errors.nameRequired"), variant: "destructive" });
+        return;
+      }
+      if (!values.password) {
+        toast({ title: t("getStarted.errors.passwordRequired"), variant: "destructive" });
+        return;
+      }
+      const pwReqs = [
+        values.password.length >= 8,
+        /[A-Z]/.test(values.password),
+        /[0-9]/.test(values.password),
+        /[^A-Za-z0-9]/.test(values.password),
+      ];
+      if (!pwReqs.every(Boolean)) {
+        toast({ title: t("getStarted.errors.passwordWeak"), variant: "destructive" });
+        return;
+      }
+      if (!values.privacyAccepted) {
+        toast({ title: t("getStarted.errors.privacyRequired"), variant: "destructive" });
+        return;
+      }
+      if (values.documentType === "invoice") {
+        if (!values.vatNumber?.trim()) {
+          toast({ title: t("getStarted.errors.vatRequired"), variant: "destructive" });
+          return;
+        }
+        if (!values.city?.trim() || !values.street?.trim() || !values.streetNumber?.trim() || !values.postalCode?.trim()) {
+          toast({ title: t("getStarted.errors.addressRequired"), variant: "destructive" });
+          return;
+        }
+      }
+
+      try {
+        const emailCheck = await checkEmailExists(email);
+        if (emailCheck.success && emailCheck.exists) {
+          toast({
+            title: "Account already exists",
+            description: "This email is registered. Sign in to continue, or use another email.",
+            variant: "destructive",
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn("Email check error:", e);
+      }
+    }
+
+    if (!values.privacyAccepted && !isLoggedIn) return;
+
+    persistPreCheckout({
+      plan: values.plan,
+      billingPeriod: values.billingPeriod,
+      fullName: values.fullName,
+      email: values.email,
+    });
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch("/public/get-started", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          fullName,
+          phone: values.phone || undefined,
+          password: !isLoggedIn ? values.password : undefined,
+          planId: plan,
+          billingPeriod,
+          invoiceType: values.documentType ?? "receipt",
+          vatNumber: values.documentType === "invoice" ? (values.vatNumber ?? "") : "",
+          city: values.documentType === "invoice" ? (values.city ?? "") : "",
+          street: values.documentType === "invoice" ? (values.street ?? "") : "",
+          streetNumber: values.documentType === "invoice" ? (values.streetNumber ?? "") : "",
+          postalCode: values.documentType === "invoice" ? (values.postalCode ?? "") : "",
+          addOns: values.addOns ?? [],
+          language: i18n.language,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to create checkout session");
+      const data = await response.json();
+      if (!data.url) throw new Error("No checkout URL received");
+      if (data.sessionId) {
+        localStorage.setItem("hayc_gs_session_id", data.sessionId);
+      }
+      window.location.href = data.url;
+    } catch (error) {
+      console.error("Get-started submit error:", error);
+      toast({
+        title: t("getStarted.errors.checkoutFailed"),
+        description: t("getStarted.errors.checkoutFailedDesc"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderStepContent = () => {
@@ -167,6 +472,7 @@ export default function GetStarted() {
       case 3:
         return (
           <StepRecommendation
+            form={form}
             onNext={nextStep}
             onBack={prevStep}
           />
@@ -186,6 +492,7 @@ export default function GetStarted() {
             onBack={prevStep}
             onSubmit={form.handleSubmit(onSubmit)}
             isLoggedIn={isLoggedIn}
+            isSubmitting={isSubmitting}
           />
         );
       default:
@@ -200,10 +507,11 @@ export default function GetStarted() {
         <button
           type="button"
           onClick={() => setShowExitModal(true)}
-          className="fixed top-6 right-6 z-50 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border-0 cursor-pointer flex items-center justify-center transition-colors"
-          aria-label={t("getStarted.cancelAriaLabel")}
+          className="fixed top-6 left-6 z-50 h-9 px-3 rounded-full bg-white/10 hover:bg-white/20 border-0 cursor-pointer flex items-center justify-center transition-colors"
         >
-          <X className="w-4 h-4 text-white/60" />
+          <span className="text-white/60 text-sm font-medium font-['Montserrat'] hover:text-white/90 transition-colors">
+            {t("getStarted.justBrowsing")}
+          </span>
         </button>
       )}
       <div className="min-h-screen bg-black">

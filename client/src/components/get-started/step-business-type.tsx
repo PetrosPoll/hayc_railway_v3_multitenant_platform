@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import {
@@ -26,6 +26,7 @@ export default function StepBusinessType({
   onBack,
 }: StepBusinessTypeProps) {
   const { t } = useTranslation();
+  const [imgLoaded, setImgLoaded] = useState(false);
   const businessType = form.watch("businessType");
   const otherDetails = form.watch("businessTypeOtherDetails");
   const canContinue =
@@ -75,26 +76,12 @@ export default function StepBusinessType({
                             }
                           }}
                           className={cn(
-                            "px-3.5 py-2 rounded-[10px] outline outline-1 outline-offset-[-1px]",
-                            "flex justify-start items-center gap-3",
-                            "transition-colors cursor-pointer border-0",
-                            "bg-gradient-to-br from-neutral-700/30 to-neutral-700/20",
+                            "flex items-center px-3 py-1.5 rounded-[39px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer",
                             isSelected
-                              ? "outline-[#ED4C14]"
-                              : "outline-white/30"
+                              ? "bg-[#ED4C14] border-[#ED4C14]"
+                              : "bg-transparent border-[#6a6a6a] hover:border-white/50",
                           )}
                         >
-                          {/* Radio circle */}
-                          <div
-                            className={cn(
-                              "w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0",
-                              isSelected ? "border-[#ED4C14]" : "border-white"
-                            )}
-                          >
-                            {isSelected && (
-                              <div className="w-2.5 h-2.5 rounded-full bg-[#ED4C14]" />
-                            )}
-                          </div>
                           <span className="text-white text-lg font-medium font-['Montserrat']">
                             {t(BUSINESS_TYPE_I18N_KEY[type])}
                           </span>
@@ -153,7 +140,15 @@ export default function StepBusinessType({
         </div>
 
         {/* Right / bottom panel */}
-        <div className="flex-1 h-[323px] md:h-screen bg-[#111111] mt-12 md:mt-0" />
+        <div className="flex-1 h-[323px] md:h-screen bg-[#111111] mt-12 md:mt-0 overflow-hidden">
+          <img
+            src="https://res.cloudinary.com/dem12vqtl/image/upload/v1779357729/step_one_image_b0damk.png"
+            alt=""
+            fetchPriority="high"
+            onLoad={() => setImgLoaded(true)}
+            className={`w-full h-full object-cover object-center transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
+          />
+        </div>
       </div>
     </div>
   );

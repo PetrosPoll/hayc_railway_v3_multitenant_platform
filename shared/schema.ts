@@ -463,6 +463,7 @@ export const getStartedSubmissions = pgTable("get_started_submissions", {
     () => websiteProgress.id
   ),
   websiteLanguage: text("website_language").notNull().default("en"),
+  currentStep: integer("current_step"),
 
   // --- Step 1: Business Type (single-select) ---
   businessType: text("business_type"),
@@ -477,7 +478,6 @@ export const getStartedSubmissions = pgTable("get_started_submissions", {
   websiteGoalOther: text("website_goal_other"),
 
   // --- Step 3: Suggested Setup (system-generated) ---
-  suggestedTemplate: text("suggested_template"),
   suggestedStructure: jsonb("suggested_structure"),
   suggestedAddons: jsonb("suggested_addons"),
 

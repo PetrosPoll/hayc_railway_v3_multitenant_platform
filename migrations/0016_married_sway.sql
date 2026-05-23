@@ -1,0 +1,1 @@
+ALTER TABLE "get_started_submissions" DROP COLUMN "suggested_template";

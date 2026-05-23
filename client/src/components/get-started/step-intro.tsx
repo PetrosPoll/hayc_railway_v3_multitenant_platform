@@ -13,9 +13,9 @@ export default function StepIntro({ onNext }: StepIntroProps) {
         Desktop: single row (flex-row), left content + right image side by side
         Mobile: single column (flex-col), content on top, image below
       */}
-      <div className="flex flex-col md:flex-row w-full md:pl-16 md:items-center md:gap-12">
-        {/* Left / top panel — content */}
-        <div className="flex-1 flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 min-h-screen md:min-h-0 md:justify-center">
+      <div className="flex flex-col md:flex-row w-full md:pl-16 md:items-stretch md:gap-6">
+        {/* Left / top panel — content (narrower on desktop so video column gets more space) */}
+        <div className="flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 w-full md:w-[34%] md:max-w-[500px] md:shrink-0 md:justify-center">
           {/* Headline + subtitle */}
           <div className="flex flex-col justify-start items-start gap-2">
             <div className="text-white text-3xl md:text-5xl font-semibold font-['Montserrat'] leading-10 md:leading-[70px]">
@@ -47,9 +47,19 @@ export default function StepIntro({ onNext }: StepIntroProps) {
           </div>
         </div>
 
-        {/* Right / bottom panel — image placeholder */}
-        {/* Desktop: tall side panel. Mobile: shorter image area below content */}
-        <div className="flex-1 h-[323px] md:h-screen bg-[#111111] mt-12 md:mt-0" />
+        {/* Right / bottom panel — logo animation (wider column on desktop) */}
+        <div className="w-full md:flex-1 md:min-w-0 h-[min(50vh,420px)] md:h-screen mt-12 md:mt-0 overflow-hidden bg-black">
+          <video
+            src="https://d8zdlelupx224.cloudfront.net/Logo_Animation_1_g2fcoo.mp4"
+            className="h-full w-full object-contain"
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-hidden="true"
+          />
+        </div>
       </div>
     </div>
   );

@@ -32,6 +32,7 @@ import {
   websiteChanges,
   websiteChangeLogs,
   onboardingFormResponses,
+  getStartedSubmissions,
   newsletterSubscribers as newsletterSubscribersTable,
   appSettings,
   emailTemplates,
@@ -2365,6 +2366,626 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const publicGetStartedLimiter = rateLimit({
+    windowMs: 30 * 60 * 1000,
+    max: 10,
+    message: "Too many requests from this IP, please try again later",
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.post("/public/get-started", publicGetStartedLimiter, async (req, res) => {
+    const schema = z.object({
+      email: z.string().email(),
+      fullName: z.string().min(2),
+      phone: z.string().optional(),
+      password: z.string().min(6).optional(),
+      planId: z.enum(["basic", "essential", "pro"]),
+      billingPeriod: z.enum(["monthly", "yearly"]),
+      invoiceType: z.enum(["invoice", "receipt"]).default("invoice"),
+      vatNumber: z.string().nullable().optional(),
+      city: z.string().nullable().optional(),
+      street: z.string().nullable().optional(),
+      streetNumber: z.string().nullable().optional(),
+      postalCode: z.string().nullable().optional(),
+      addOns: z.array(z.string()).optional(),
+      language: z.string().optional(),
+    });
+
+    try {
+      const body = schema.parse(req.body);
+
+      const { price, setupFee } = await verifyPriceCurrencies(
+        body.planId,
+        body.billingPeriod,
+      );
+
+      const existingUser = await storage.getUserByEmail(body.email);
+      const stripeCustomerId = existingUser?.stripeCustomerId;
+
+      const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+
+      lineItems.push({
+        price: setupFee.id,
+        quantity: 1,
+      });
+
+      lineItems.push({
+        price: price.id,
+        quantity: 1,
+      });
+
+      if (body.addOns && body.addOns.length > 0) {
+        console.log("📦 Processing add-ons:", body.addOns);
+        body.addOns.forEach((addonId) => {
+          const priceId = ADDON_PRICE_MAP[addonId];
+          console.log(`  - Add-on "${addonId}" -> Price ID: ${priceId}`);
+          if (priceId) {
+            lineItems.push({
+              price: priceId,
+              quantity: 1,
+            });
+          } else {
+            console.warn(`Unknown add-on ID: ${addonId}`);
+          }
+        });
+      }
+
+      console.log(
+        "🛒 Final line items being sent to Stripe:",
+        JSON.stringify(lineItems, null, 2),
+      );
+
+      const getStartedSessionId = crypto.randomUUID();
+
+      const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+        payment_method_types: ["card"],
+        line_items: lineItems,
+        mode: "subscription",
+        success_url: `${req.protocol}://${req.get("host")}/get-started/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${req.protocol}://${req.get("host")}/get-started`,
+        metadata: {
+          getStartedSessionId: getStartedSessionId,
+          username: body.fullName,
+          phone: body.phone || "",
+          planId: body.planId,
+          billingPeriod: body.billingPeriod,
+          password: body.password || "",
+          vatNumber: (body.vatNumber ?? "").trim(),
+          city: (body.city ?? "").trim(),
+          street: (body.street ?? "").trim(),
+          number: (body.streetNumber ?? "").trim(),
+          postalCode: (body.postalCode ?? "").trim(),
+          invoiceType: body.invoiceType || "invoice",
+          addOns: body.addOns ? JSON.stringify(body.addOns) : "",
+          language: body.language || "en",
+          isResume: "false",
+        },
+      };
+
+      if (stripeCustomerId) {
+        sessionConfig.customer = stripeCustomerId;
+      } else {
+        sessionConfig.customer_email = body.email;
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionConfig);
+
+      res.json({ url: session.url, sessionId: getStartedSessionId });
+    } catch (err) {
+      console.error("Get-started checkout error:", err);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.patch("/api/get-started/:sessionId", async (req, res) => {
+    const schema = z.object({
+      // Pre-checkout fields (steps 1–4, flushed from localStorage on onboarding mount)
+      businessType: z.string().optional(),
+      websiteGoals: z.array(z.string()).optional(),
+      websiteGoalOther: z.string().nullable().optional(),
+      suggestedStructure: z.array(z.string()).optional(),
+      suggestedAddons: z.array(z.string()).optional(),
+      selectedAddons: z.array(z.string()).optional(),
+      designDirection: z.string().optional(),
+      businessName: z.string().optional(),
+      businessDescription: z.string().nullable().optional(),
+      services: z.string().nullable().optional(),
+      hadWebsiteBefore: z
+        .enum(["yes_worked_well", "yes_no_results", "no_first_time"])
+        .nullable()
+        .optional(),
+      previousWebsitePlatform: z
+        .enum([
+          "wix",
+          "squarespace",
+          "wordpress",
+          "webflow",
+          "someone_built_it",
+          "other",
+        ])
+        .nullable()
+        .optional(),
+      selfDescription: z
+        .enum(["know_exactly", "rough_idea", "need_guidance"])
+        .nullable()
+        .optional(),
+      biggestConcerns: z.array(z.string()).optional(),
+      heardAboutUs: z.array(z.string()).optional(),
+      confirmedPages: z.array(z.string()).optional(),
+      pagesNotes: z.string().nullable().optional(),
+      websiteContent: z.string().nullable().optional(),
+      successVision: z.string().nullable().optional(),
+      mediaUrls: z
+        .array(
+          z.object({
+            url: z.string(),
+            name: z.string(),
+            publicId: z.string(),
+          }),
+        )
+        .optional(),
+      currentStep: z.number().int().min(6).max(9).optional(),
+    });
+
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const sessionId = req.params.sessionId;
+      const body = schema.parse(req.body);
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.sessionId, sessionId))
+        .then((rows) => rows[0]);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      if (submission.email !== req.user.email) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (submission.status === "completed") {
+        // Allow mediaUrls update even on completed submissions
+        if (body.mediaUrls === undefined) {
+          return res.status(400).json({ error: "Submission already completed" });
+        }
+      }
+
+      if (submission.status !== "paid" && submission.status !== "draft" && submission.status !== "completed") {
+        return res.status(400).json({ error: "Submission not editable" });
+      }
+
+      const updatePayload: Record<string, unknown> = {
+        // Only set status to draft if not already completed
+        ...(submission.status !== "completed" ? { status: "draft" } : {}),
+        updatedAt: new Date(),
+      };
+
+      if (body.businessType !== undefined) {
+        updatePayload.businessType = body.businessType;
+      }
+      if (body.websiteGoals !== undefined) {
+        updatePayload.websiteGoals = body.websiteGoals;
+      }
+      if (body.websiteGoalOther !== undefined) {
+        updatePayload.websiteGoalOther = body.websiteGoalOther;
+      }
+
+      if (body.suggestedStructure !== undefined) {
+        updatePayload.suggestedStructure = body.suggestedStructure;
+      }
+      if (body.suggestedAddons !== undefined) {
+        updatePayload.suggestedAddons = body.suggestedAddons;
+      }
+      if (body.selectedAddons !== undefined) {
+        updatePayload.selectedAddons = body.selectedAddons;
+      }
+      if (body.designDirection !== undefined) {
+        updatePayload.designDirection = body.designDirection;
+      }
+      if (body.businessName !== undefined) {
+        updatePayload.businessName = body.businessName;
+      }
+      if (body.businessDescription !== undefined) {
+        updatePayload.businessDescription = body.businessDescription;
+      }
+      if (body.services !== undefined) {
+        updatePayload.services = body.services;
+      }
+      if (body.hadWebsiteBefore !== undefined) {
+        updatePayload.hadWebsiteBefore = body.hadWebsiteBefore;
+      }
+      if (body.previousWebsitePlatform !== undefined) {
+        updatePayload.previousWebsitePlatform = body.previousWebsitePlatform;
+      }
+      if (body.selfDescription !== undefined) {
+        updatePayload.selfDescription = body.selfDescription;
+      }
+      if (body.biggestConcerns !== undefined) {
+        updatePayload.biggestConcerns = body.biggestConcerns;
+      }
+      if (body.heardAboutUs !== undefined) {
+        updatePayload.heardAboutUs = body.heardAboutUs;
+      }
+      if (body.confirmedPages !== undefined) {
+        updatePayload.confirmedPages = body.confirmedPages;
+      }
+      if (body.pagesNotes !== undefined) {
+        updatePayload.pagesNotes = body.pagesNotes;
+      }
+      if (body.websiteContent !== undefined) {
+        updatePayload.websiteContent = body.websiteContent;
+      }
+      if (body.successVision !== undefined) {
+        updatePayload.successVision = body.successVision;
+      }
+      if (body.mediaUrls !== undefined) {
+        updatePayload.mediaUrls = body.mediaUrls;
+      }
+      if (body.currentStep !== undefined) {
+        updatePayload.currentStep = body.currentStep;
+      }
+
+      await db
+        .update(getStartedSubmissions)
+        .set(updatePayload)
+        .where(eq(getStartedSubmissions.sessionId, sessionId));
+
+      res.json({ success: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res
+          .status(400)
+          .json({ error: "Invalid request data", details: err.errors });
+      }
+      console.error("Get-started PATCH error:", err);
+      res.status(500).json({ error: "Failed to save progress" });
+    }
+  });
+
+  // GET /api/get-started/pending — returns latest incomplete submission for logged-in user
+  app.get("/api/get-started/pending", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.user!.id);
+      if (!user?.email) return res.json({ submission: null });
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(
+          and(
+            eq(getStartedSubmissions.email, user.email),
+            or(
+              eq(getStartedSubmissions.status, "draft"),
+              eq(getStartedSubmissions.status, "paid"),
+            ),
+          ),
+        )
+        .orderBy(desc(getStartedSubmissions.updatedAt))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+
+      let resumePath = "/get-started/onboarding";
+      if (submission) {
+        switch (submission.currentStep) {
+          case 6:
+            resumePath = "/get-started/onboarding";
+            break;
+          case 7:
+            resumePath = "/get-started/onboarding/quick-questions";
+            break;
+          case 8:
+            resumePath = "/get-started/onboarding/website-structure";
+            break;
+          case 9:
+            resumePath = "/get-started/onboarding/content-media";
+            break;
+          default:
+            resumePath = "/get-started/onboarding";
+        }
+      }
+
+      return res.json({ submission, resumePath });
+    } catch (err) {
+      console.error("GET /api/get-started/pending error:", err);
+      return res.status(500).json({ error: "Failed to fetch pending submission" });
+    }
+  });
+
+  app.get("/api/get-started/:sessionId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const sessionId = req.params.sessionId;
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.sessionId, sessionId))
+        .then((rows) => rows[0]);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      if (submission.email !== req.user.email) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      res.json({ submission });
+    } catch (err) {
+      console.error("Get-started GET error:", err);
+      res.status(500).json({ error: "Failed to load submission" });
+    }
+  });
+
+  app.post("/api/get-started/:sessionId/complete", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const sessionId = req.params.sessionId;
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.sessionId, sessionId))
+        .then((rows) => rows[0]);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      if (submission.email !== req.user.email) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (submission.status === "completed") {
+        return res
+          .status(400)
+          .json({ error: "Submission already completed" });
+      }
+
+      if (submission.status !== "paid" && submission.status !== "draft") {
+        return res
+          .status(400)
+          .json({ error: "Submission not ready for completion" });
+      }
+
+      const { generateUniqueIdentifier } = await import("../shared/utils.js");
+      let domain = "";
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!isUnique && attempts < maxAttempts) {
+        domain = generateUniqueIdentifier();
+        const existing = await db
+          .select()
+          .from(websiteProgress)
+          .where(eq(websiteProgress.domain, domain))
+          .limit(1);
+        if (existing.length === 0) isUnique = true;
+        attempts++;
+      }
+
+      if (!isUnique) {
+        throw new Error("Failed to generate unique domain identifier");
+      }
+
+      const projectName =
+        submission.businessName || submission.fullName || "My Website";
+
+      const pendingWebsiteProgress = await db
+        .select()
+        .from(websiteProgress)
+        .where(
+          and(
+            eq(websiteProgress.userId, req.user.id),
+            like(websiteProgress.domain, "%.pending-onboarding"),
+          ),
+        )
+        .orderBy(desc(websiteProgress.createdAt))
+        .limit(1);
+
+      let websiteProgressEntry;
+
+      if (pendingWebsiteProgress.length > 0) {
+        const updatedResult = await db
+          .update(websiteProgress)
+          .set({
+            domain,
+            projectName,
+            websiteLanguage: submission.websiteLanguage || "en",
+            currentStage: 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(websiteProgress.id, pendingWebsiteProgress[0].id))
+          .returning();
+        websiteProgressEntry = updatedResult[0];
+      } else {
+        const insertResult = await db
+          .insert(websiteProgress)
+          .values({
+            userId: req.user.id,
+            domain,
+            projectName,
+            websiteLanguage: submission.websiteLanguage || "en",
+            currentStage: 1,
+          })
+          .returning();
+        websiteProgressEntry = insertResult[0];
+
+        await storage.createSystemTagsForWebsite(websiteProgressEntry.id);
+
+        await db
+          .update(subscriptionsTable)
+          .set({ websiteProgressId: websiteProgressEntry.id })
+          .where(
+            and(
+              eq(subscriptionsTable.userId, req.user.id),
+              eq(subscriptionsTable.productType, "plan"),
+              eq(subscriptionsTable.status, "active"),
+              isNull(subscriptionsTable.websiteProgressId),
+            ),
+          );
+      }
+
+      const defaultStages = [
+        {
+          title: "Welcome & Project Setup",
+          description:
+            "Welcome to hayc! We're setting up your website project and preparing everything based on your onboarding form.",
+        },
+        {
+          title: "Content Review & Organization",
+          description:
+            "We're reviewing the information, text, and materials you provided to structure your website effectively.",
+        },
+        {
+          title: "Design & Website Creation",
+          description:
+            "Our team is building your website's layout and design according to your preferences and chosen template.",
+        },
+        {
+          title: "Content & Media Integration",
+          description:
+            "We're adding your business content, photos, and other media to bring your website to life.",
+        },
+        {
+          title: "Connections & Integrations",
+          description:
+            "We're connecting your website with essential tools — domain, email, analytics, social media, newsletter, and other integrations.",
+        },
+        {
+          title: "Responsive Optimization & Final Checks",
+          description:
+            "We ensure your website looks and works perfectly on all devices (mobile, tablet, and desktop) and perform the final quality review.",
+        },
+        {
+          title: "Website Launch",
+          description:
+            "Your website is now live! We activate ongoing support and monthly updates to keep everything running smoothly.",
+        },
+      ];
+
+      for (let i = 0; i < defaultStages.length; i++) {
+        await db.insert(websiteStages).values({
+          websiteProgressId: websiteProgressEntry.id,
+          stageNumber: i + 1,
+          title: defaultStages[i].title,
+          description: defaultStages[i].description,
+          status: i === 0 ? "in-progress" : "pending",
+        });
+      }
+
+      const submissionId = `ONBOARD_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      await db
+        .update(getStartedSubmissions)
+        .set({
+          status: "completed",
+          submissionId,
+          websiteProgressId: websiteProgressEntry.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(getStartedSubmissions.sessionId, sessionId));
+
+      res.json({
+        success: true,
+        submissionId,
+        websiteProgressId: websiteProgressEntry.id,
+        domain,
+      });
+
+      setImmediate(async () => {
+        const preferredLanguage = getPreferredLanguage(req);
+        const submittedAt = new Date().toLocaleString();
+        const contactName = submission.fullName || submission.email;
+        const businessName = submission.businessName || "";
+
+        try {
+          const userEmailHtml = loadTemplate(
+            "onboarding-form-confirmation.html",
+            {
+              contactName,
+              businessName,
+              email: submission.email,
+              domain,
+              submissionId,
+              submittedAt,
+            },
+            preferredLanguage,
+          );
+          await Promise.race([
+            sendSystemEmail({
+              from: process.env.EMAIL_FROM || "",
+              to: submission.email,
+              replyTo: "support@hayc.gr",
+              subject: "🎉 Your website project has been created - hayc",
+              html: userEmailHtml,
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Email timeout")), 10000),
+            ),
+          ]);
+        } catch (emailError) {
+          console.error(
+            "Failed to send user confirmation email:",
+            emailError,
+          );
+        }
+
+        try {
+          const dashboardUrl = `${process.env.VITE_APP_URL || "https://hayc.gr"}/admin`;
+          const adminEmailHtml = loadTemplate(
+            "admin-onboarding-form-notification.html",
+            {
+              fullName: contactName,
+              businessName,
+              email: submission.email,
+              submittedAt,
+              dashboardUrl,
+            },
+            "en",
+          );
+          await Promise.race([
+            sendSystemEmail({
+              from: process.env.EMAIL_FROM || "",
+              to: "development@hayc.gr",
+              subject: `🚀 New Website Project Created - ${businessName}`,
+              html: adminEmailHtml,
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Email timeout")), 10000),
+            ),
+          ]);
+        } catch (emailError) {
+          console.error(
+            "Failed to send admin notification email:",
+            emailError,
+          );
+        }
+      });
+    } catch (err) {
+      console.error("Get-started complete error:", err);
+      res.status(500).json({ error: "Failed to complete submission" });
+    }
+  });
+
   // Check if user has saved payment method
   app.get("/api/check-saved-payment-method", async (req, res) => {
     try {
@@ -3060,9 +3681,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   password: await hashPassword(session.metadata.password || ""),
                   language: session.metadata.language || "en",
                 });
-              } catch (userCreateError) {
-                console.error('❌ Failed to create user:', userCreateError);
-                throw userCreateError;
+              } catch (userCreateError: any) {
+                // If duplicate email (Stripe webhook retry), fall back to existing user
+                const isDuplicateEmail =
+                  userCreateError?.cause?.code === '23505' ||
+                  userCreateError?.message?.includes('duplicate key') ||
+                  userCreateError?.message?.includes('users_email_unique');
+
+                if (isDuplicateEmail) {
+                  console.log('ℹ️ User already exists (webhook retry), falling back to existing user');
+                  user = await storage.getUserByEmail(customerEmail);
+                  if (!user) {
+                    console.error('❌ Could not find user after duplicate email error');
+                    throw userCreateError;
+                  }
+                  // Update stripeCustomerId if missing
+                  if (!user.stripeCustomerId) {
+                    user = await storage.updateUser(user.id, {
+                      stripeCustomerId: session.customer as string,
+                      role: UserRole.SUBSCRIBER,
+                    });
+                  }
+                } else {
+                  console.error('❌ Failed to create user:', userCreateError);
+                  throw userCreateError;
+                }
               }
 
               // Send registration welcome email for new users (fire-and-forget)
@@ -3260,6 +3903,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
 
+            }
+
+            // New get-started flow: create get_started_submissions row on confirmed payment
+            if (session.metadata?.getStartedSessionId) {
+              try {
+                await db.insert(getStartedSubmissions).values({
+                  sessionId: session.metadata.getStartedSessionId,
+                  status: "paid",
+                  checkoutSessionId: session.id,
+                  email: customerEmail,
+                  fullName: session.metadata.username || null,
+                  contactPhone: session.metadata.phone || null,
+                  selectedPlan: session.metadata.planId || null,
+                  billingPeriod: session.metadata.billingPeriod || null,
+                  documentType: session.metadata.invoiceType || null,
+                  vatNumber: session.metadata.vatNumber || null,
+                  city: session.metadata.city || null,
+                  street: session.metadata.street || null,
+                  streetNumber: session.metadata.number || null,
+                  postalCode: session.metadata.postalCode || null,
+                  selectedAddons: session.metadata.addOns
+                    ? JSON.parse(session.metadata.addOns)
+                    : [],
+                  websiteLanguage: session.metadata.language || "en",
+                });
+                console.log(
+                  "✅ Created get_started_submissions row for session:",
+                  session.metadata.getStartedSessionId,
+                );
+              } catch (getStartedError) {
+                // Log but do not fail the webhook — subscription was already created successfully
+                console.error(
+                  "❌ Failed to create get_started_submissions row:",
+                  getStartedError,
+                );
+              }
             }
 
             // Copy invoice VAT from Stripe session metadata to users.vat_number (subscription row also stores it).
@@ -4233,6 +4912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: session.customer_details?.email,
         status: session.payment_status === "paid" ? "complete" : "pending",
         subscriptionId: localSubscriptionId,
+        metadata: session.metadata ?? {},
       };
       
       console.log('📤 [SESSION] Returning session data:', {

@@ -2,6 +2,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -15,6 +21,17 @@ import { Loader2, Plus, ExternalLink, Gift, Star, CreditCard, BarChart3, Mail, A
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
+
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  local_business: "Local Business",
+  service_business: "Service Business",
+  personal_brand: "Personal Brand",
+  creative_business: "Creative Business",
+  online_store: "Online Store",
+  hospitality_travel: "Hospitality & Travel",
+  health_wellness: "Health & Wellness",
+  other: "New Website",
+};
 import { BOOKING_APP_BASE_URL } from "@/lib/utils";
 
 type Website = {
@@ -101,6 +118,19 @@ export default function WebsitesList() {
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
+
+  const { data: pendingData } = useQuery({
+    queryKey: ["/api/get-started/pending"],
+    queryFn: async () => {
+      const res = await fetch("/api/get-started/pending", { credentials: "include" });
+      if (!res.ok) return { submission: null };
+      return res.json();
+    },
+    staleTime: 0,
+  });
+
+  const pendingSubmission = pendingData?.submission ?? null;
+  const resumePath = pendingData?.resumePath ?? "/get-started/onboarding";
 
   // Refetch websites when navigating to dashboard route
   useEffect(() => {
@@ -303,17 +333,31 @@ export default function WebsitesList() {
                 {t("dashboard.websitesDescription") || "Manage your website projects"}
               </p>
             </div>
-            <Button
-              onClick={() => navigate("/get-started")}
-              className="flex items-center gap-2"
-              data-testid="button-create-website"
-            >
-              <Plus className="h-4 w-4" />
-              {t("dashboard.createNewWebsite") || "Start a new Idea"}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={pendingSubmission ? "cursor-not-allowed" : undefined}>
+                    <Button
+                      onClick={() => navigate("/get-started")}
+                      className="flex items-center gap-2"
+                      data-testid="button-create-website"
+                      disabled={!!pendingSubmission}
+                    >
+                      <Plus className="h-4 w-4" />
+                      {t("dashboard.createNewWebsite") || "Start a new Idea"}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {pendingSubmission && (
+                  <TooltipContent>
+                    <p>You have a draft website in progress. Complete it before starting a new one.</p>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
-          {!sortedWebsites || sortedWebsites.length === 0 ? (
+          {(!sortedWebsites || sortedWebsites.length === 0) && !pendingSubmission ? (
             <Card className="p-12" data-testid="card-empty-state">
               <div className="text-center">
                 {hasActiveSubscriptions ? (
@@ -384,11 +428,11 @@ export default function WebsitesList() {
                     variant={onboardingFilter === "draft" ? "default" : "outline"}
                     size="sm"
                     className="shrink-0"
-                    disabled={!hasDraftSites}
+                    disabled={!hasDraftSites && !pendingSubmission}
                     onClick={() => setOnboardingFilter("draft")}
                     data-testid="filter-draft"
                   >
-                    {t("dashboard.filterDraftWithCount", { count: draftCount })}
+                    {t("dashboard.filterDraftWithCount", { count: draftCount + (pendingSubmission ? 1 : 0) })}
                   </Button>
                   <Select
                     value={sortBy}
@@ -415,6 +459,110 @@ export default function WebsitesList() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Pending get-started submission card */}
+                {pendingSubmission && onboardingFilter === "draft" && (
+                  <Card
+                    className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-orange-200 dark:border-orange-700"
+                    onClick={() =>
+                      navigate(`${resumePath}?s=${pendingSubmission.sessionId}`, {
+                        state: { submission: pendingSubmission },
+                      })
+                    }
+                    data-testid="card-pending-get-started"
+                  >
+                    <CardContent className="p-6">
+                      {import.meta.env.MODE === "development" && pendingSubmission.id != null && (
+                        <div
+                          className="mb-3 text-xs font-mono text-muted-foreground"
+                          data-testid="dev-pending-submission-id"
+                        >
+                          ID: {pendingSubmission.id}
+                        </div>
+                      )}
+                      <div className="flex flex-col sm:flex-row gap-6">
+                        {/* Left - Image Preview */}
+                        <div className="w-full sm:w-48 shrink-0">
+                          <div className="aspect-video bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg border border-slate-200 overflow-hidden relative">
+                            <div className="absolute top-0 left-0 right-0 h-6 bg-slate-200 flex items-center px-2 gap-1 z-10">
+                              <div className="flex gap-1">
+                                <div className="w-2 h-2 rounded-full bg-red-400" />
+                                <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                                <div className="w-2 h-2 rounded-full bg-green-400" />
+                              </div>
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center pt-6">
+                              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                                <rect
+                                  x="2"
+                                  y="4"
+                                  width="28"
+                                  height="20"
+                                  rx="3"
+                                  stroke="#ED4C14"
+                                  strokeWidth="1.5"
+                                  strokeDasharray="3 2"
+                                />
+                                <path
+                                  d="M8 28h16M16 24v4"
+                                  stroke="#ED4C14"
+                                  strokeWidth="1.5"
+                                  strokeLinecap="round"
+                                />
+                                <circle
+                                  cx="16"
+                                  cy="14"
+                                  r="4"
+                                  stroke="#ED4C14"
+                                  strokeWidth="1.5"
+                                  strokeDasharray="2 2"
+                                />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Right - Website Info */}
+                        <div className="flex-1 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <h3 className="text-xl font-semibold" data-testid="text-pending-submission-name">
+                                {pendingSubmission.businessName ||
+                                  BUSINESS_TYPE_LABELS[pendingSubmission.businessType ?? ""] ||
+                                  "New Website"}
+                              </h3>
+                              <Badge
+                                className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border border-orange-200 dark:border-orange-800 hover:bg-orange-100"
+                                data-testid="badge-pending-draft"
+                              >
+                                Draft
+                              </Badge>
+                            </div>
+
+                            <p className="text-sm text-muted-foreground">
+                              Complete your setup to launch your website
+                            </p>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <Button
+                              className="bg-[#ED4C14] hover:bg-[#d44310] text-white border-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`${resumePath}?s=${pendingSubmission.sessionId}`, {
+                                  state: { submission: pendingSubmission },
+                                });
+                              }}
+                              data-testid="button-continue-get-started-setup"
+                            >
+                              Continue setup →
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {filteredWebsites.length === 0 ? (
                   <Card className="p-12" data-testid="card-filter-empty">

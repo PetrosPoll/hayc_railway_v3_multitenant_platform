@@ -17,6 +17,11 @@ import { initializeUTMCapture } from "./lib/utm";
 // Page imports
 import Onboarding from "./pages/onboarding";
 import GetStarted from "./pages/get-started";
+import GetStartedSuccess from "./pages/get-started-success";
+import GetStartedOnboarding from "./pages/get-started-onboarding";
+import GetStartedQuickQuestions from "./pages/get-started-quick-questions";
+import GetStartedWebsiteStructure from "./pages/get-started-website-structure";
+import GetStartedContentMedia from "./pages/get-started-content-media";
 import OnboardingLogoSuccess from "./pages/onboarding-logo-success";
 import Contact from "./pages/contact";
 import About from "./pages/about";
@@ -76,6 +81,10 @@ function ConditionalFooter() {
     location.pathname === '/profile' ||
     location.pathname === '/onboarding' ||
     location.pathname === '/get-started' ||
+    location.pathname === '/get-started/onboarding' ||
+    location.pathname === '/get-started/onboarding/quick-questions' ||
+    location.pathname === '/get-started/onboarding/website-structure' ||
+    location.pathname === '/get-started/onboarding/content-media' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
     location.pathname === '/reviews-program' ||
@@ -97,6 +106,10 @@ function ConditionalNavMenu() {
   if (
     location.pathname === '/onboarding' ||
     location.pathname === '/get-started' ||
+    location.pathname === '/get-started/onboarding' ||
+    location.pathname === '/get-started/onboarding/quick-questions' ||
+    location.pathname === '/get-started/onboarding/website-structure' ||
+    location.pathname === '/get-started/onboarding/content-media' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
     location.pathname.startsWith('/dashboard/website/') ||
@@ -143,6 +156,27 @@ function AppContent() {
           <Route path="/about" element={<PublicOnlyRoute><About /></PublicOnlyRoute>} />
           <Route path="/success" element={<Success />} />
           <Route path="/get-started" element={<GetStarted />} />
+          <Route path="/get-started/success" element={<GetStartedSuccess />} />
+          <Route path="/get-started/onboarding" element={
+            <ProtectedRoute>
+              <GetStartedOnboarding />
+            </ProtectedRoute>
+          } />
+          <Route path="/get-started/onboarding/quick-questions" element={
+            <ProtectedRoute>
+              <GetStartedQuickQuestions />
+            </ProtectedRoute>
+          } />
+          <Route path="/get-started/onboarding/website-structure" element={
+            <ProtectedRoute>
+              <GetStartedWebsiteStructure />
+            </ProtectedRoute>
+          } />
+          <Route path="/get-started/onboarding/content-media" element={
+            <ProtectedRoute>
+              <GetStartedContentMedia />
+            </ProtectedRoute>
+          } />
           <Route path="/pre-checkout/:planId" element={<PreCheckout />} />
           <Route path="/templates" element={<PublicOnlyRoute><Templates /></PublicOnlyRoute>} />
           <Route path="/pricing" element={<PublicOnlyRoute><Pricing /></PublicOnlyRoute>} />
