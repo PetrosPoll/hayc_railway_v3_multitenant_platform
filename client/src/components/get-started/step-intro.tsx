@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useTranslation } from "react-i18next";
 
 interface StepIntroProps {
@@ -18,12 +18,12 @@ export default function StepIntro({ onNext }: StepIntroProps) {
         <div className="flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 w-full md:w-[34%] md:max-w-[500px] md:shrink-0 md:justify-center">
           {/* Headline + subtitle */}
           <div className="flex flex-col justify-start items-start gap-2">
-            <div className="text-white text-3xl md:text-5xl font-semibold font-['Montserrat'] leading-10 md:leading-[70px]">
+            <div className="text-white text-3xl md:text-5xl font-semibold font-brand leading-10 md:leading-[70px]">
               {t("getStarted.intro.headlineLine1")}
               <br />
               {t("getStarted.intro.headlineLine2")}
             </div>
-            <div className="text-white text-lg font-medium font-['Montserrat']">
+            <div className="text-white text-lg font-medium font-brand">
               {t("getStarted.intro.subtextLine1")}
               <br />
               {t("getStarted.intro.subtextLine2")}
@@ -32,7 +32,7 @@ export default function StepIntro({ onNext }: StepIntroProps) {
 
           {/* Secondary text + CTA */}
           <div className="w-full md:w-96 flex flex-col justify-start items-start gap-6">
-            <div className="text-white text-lg font-medium font-['Montserrat']">
+            <div className="text-white text-lg font-medium font-brand">
               {t("getStarted.intro.secondary")}
             </div>
             <button
@@ -40,7 +40,7 @@ export default function StepIntro({ onNext }: StepIntroProps) {
               onClick={onNext}
               className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors"
             >
-              <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+              <span className="text-white text-base font-semibold font-brand leading-5">
                 {t("getStarted.intro.cta")}
               </span>
             </button>
@@ -64,3 +64,4 @@ export default function StepIntro({ onNext }: StepIntroProps) {
     </div>
   );
 }
+

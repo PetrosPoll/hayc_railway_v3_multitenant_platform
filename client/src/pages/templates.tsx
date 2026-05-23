@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import type { Template } from "@shared/schema";
 import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
@@ -103,7 +103,7 @@ export default function Templates() {
           sizes="(max-width: 767px) 100vw, 100vw"
           alt=""
           aria-hidden="true"
-          fetchPriority="high"
+          fetchpriority="high"
           className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setBgLoaded(true)}
         />
@@ -112,11 +112,11 @@ export default function Templates() {
         <div className="w-full flex flex-col justify-center items-center gap-12">
           {/* Title */}
           <div className="w-full flex flex-col justify-start items-center gap-3">
-            <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
+            <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-brand" style={{ maxWidth: "768px" }}>
               <span className="text-white">{t("templates.page.titlePrefix")} </span>
               <span className="text-[#ED4C14]">{t("templates.page.titleHighlight")}</span>
             </h1>
-            <p className="w-full max-w-[768px] text-center text-white text-lg font-medium font-['Montserrat']">
+            <p className="w-full max-w-[768px] text-center text-white text-lg font-medium font-brand">
               {t("templates.page.subtitle")}
             </p>
           </div>
@@ -127,7 +127,7 @@ export default function Templates() {
             <input
               type="text"
               placeholder={t("templates.page.searchPlaceholder")}
-              className="flex-1 bg-transparent text-white text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-white/50 outline-none"
+              className="flex-1 bg-transparent text-white text-sm font-normal font-brand leading-5 placeholder:text-white/50 outline-none"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -144,7 +144,7 @@ export default function Templates() {
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
             onClick={() => setIndustryOpen((o) => !o)}
           >
-            <span className="text-white text-lg font-medium font-['Montserrat']">
+            <span className="text-white text-lg font-medium font-brand">
               {selectedIndustry
                 ? t(`templates.page.industries.${selectedIndustry}`)
                 : t("templates.page.industry")}
@@ -158,7 +158,7 @@ export default function Templates() {
                 <button
                   key={i}
                   type="button"
-                  className={`w-full p-3.5 text-left text-white text-lg font-medium font-['Montserrat'] hover:bg-black/50 transition-colors ${
+                  className={`w-full p-3.5 text-left text-white text-lg font-medium font-brand hover:bg-black/50 transition-colors ${
                     selectedIndustry === industry.key ? "bg-black/50" : ""
                   }`}
                   onClick={() => {
@@ -192,11 +192,11 @@ export default function Templates() {
                 <div className="absolute inset-0 rounded-[10px] bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 outline outline-1 outline-white/30">
                     <Eye className="w-4 h-4 text-white" />
-                    <span className="text-white text-sm font-medium font-['Montserrat']">{t("templates.page.preview")}</span>
+                    <span className="text-white text-sm font-medium font-brand">{t("templates.page.preview")}</span>
                   </div>
                 </div>
               </div>
-              <span className="text-white text-lg font-medium font-['Montserrat']">
+              <span className="text-white text-lg font-medium font-brand">
                 {template.name}
               </span>
             </div>
@@ -231,13 +231,13 @@ export default function Templates() {
               }`}
               onClick={() => setCurrentPage(page)}
             >
-              <span className="text-white text-lg font-medium font-['Montserrat']">{page}</span>
+              <span className="text-white text-lg font-medium font-brand">{page}</span>
             </button>
           ))}
 
           {lastVisiblePage < totalPages - 1 && (
             <button type="button" className="w-10 p-2.5 rounded-lg flex justify-center items-center">
-              <span className="text-white text-lg font-medium font-['Montserrat']">...</span>
+              <span className="text-white text-lg font-medium font-brand">...</span>
             </button>
           )}
           {lastVisiblePage < totalPages && (
@@ -246,7 +246,7 @@ export default function Templates() {
               className="w-10 p-2.5 rounded-lg flex justify-center items-center hover:bg-white/10 transition-colors"
               onClick={goToLast}
             >
-              <span className="text-white text-lg font-medium font-['Montserrat']">{totalPages}</span>
+              <span className="text-white text-lg font-medium font-brand">{totalPages}</span>
             </button>
           )}
 
@@ -281,3 +281,4 @@ export default function Templates() {
     </div>
   );
 }
+

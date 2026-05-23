@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import type { WizardValues } from "@/pages/get-started";
@@ -136,15 +136,9 @@ function computeSuggestedAddons(
   return Array.from(suggested);
 }
 
-const BUSINESS_TYPE_TITLES: Record<string, { title: string; subtitle: string }> = {
-  "Local Business":     { title: "Local business website", subtitle: "A clean, strategic starting point built to attract local customers and drive foot traffic." },
-  "Service Business":   { title: "Service-based website", subtitle: "A clean, strategic starting point shaped around your business goals." },
-  "Personal Brand":     { title: "Personal brand website", subtitle: "A strong online presence that puts you front and centre and builds lasting trust." },
-  "Creative Business":  { title: "Creative portfolio website", subtitle: "A visually-driven space to showcase your work and attract the right clients." },
-  "Online Store":       { title: "E-commerce website", subtitle: "A conversion-focused setup ready to sell your products online from day one." },
-  "Hospitality/Travel": { title: "Hospitality website", subtitle: "An inviting online experience that gets visitors excited to book with you." },
-  "Health/Wellness":    { title: "Health & wellness website", subtitle: "A warm, trustworthy space that helps patients and clients find and book your services." },
-  "Other":              { title: "Custom website", subtitle: "A flexible starting point tailored to your unique business needs." },
+const ADDON_KEY_MAP: Record<string, string> = {
+  "Booking Integration": "bookingIntegration",
+  "HDP": "hdp",
 };
 
 interface StepRecommendationProps {
@@ -156,7 +150,7 @@ interface StepRecommendationProps {
 function StructurePill({ label }: { label: string }) {
   return (
     <div className="px-2.5 py-1 bg-white/5 rounded-md border border-white/15 flex justify-start items-center cursor-default">
-      <span className="text-white/70 text-base md:text-lg font-normal md:font-medium font-['Montserrat'] leading-6">
+      <span className="text-white/70 text-base md:text-lg font-normal md:font-medium font-brand leading-6">
         {label}
       </span>
     </div>
@@ -177,7 +171,7 @@ function Pill({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-[39px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer",
+        "flex items-center gap-2 px-3 py-1.5 rounded-[39px] text-white text-lg font-medium font-brand border transition-colors cursor-pointer",
         selected
           ? "bg-[#ED4C14] border-[#ED4C14]"
           : "bg-transparent border-[#6a6a6a] hover:border-white/50",
@@ -203,7 +197,7 @@ function Pill({
           </svg>
         )}
       </div>
-      <span className="text-white text-lg font-medium font-['Montserrat']">
+      <span className="text-white text-lg font-medium font-brand">
         {label}
       </span>
     </button>
@@ -221,23 +215,39 @@ export default function StepRecommendation({
   const goals = form.watch("goals");
   const suggestedStructure = computeSuggestedStructure(businessType, goals ?? []);
 
-  const titleConfig = BUSINESS_TYPE_TITLES[businessType ?? ""] ?? {
-    title: "Your website",
-    subtitle: "A clean, strategic starting point shaped around your business goals.",
+  const btKey = BUSINESS_TYPE_DISPLAY_MAP[businessType ?? ""] ?? businessType ?? "default";
+  const titleConfig = {
+    title: t(`getStarted.recommendation.businessTypes.${btKey}.title`, {
+      defaultValue: t("getStarted.recommendation.businessTypes.default.title"),
+    }),
+    subtitle: t(`getStarted.recommendation.businessTypes.${btKey}.subtitle`, {
+      defaultValue: t("getStarted.recommendation.businessTypes.default.subtitle"),
+    }),
+  };
+
+  const getPageLabel = (page: string): string => {
+    const result = t(`getStarted.websiteStructure.pages.${page}`);
+    return result.startsWith("getStarted.") ? page : result;
+  };
+
+  const getAddonLabel = (value: string): string => {
+    const key = ADDON_KEY_MAP[value];
+    if (!key) return value;
+    return t(`getStarted.recommendation.addons.${key}`);
   };
 
   const suggestedAddonValues = computeSuggestedAddons(businessType, goals ?? []);
 
   const rawSelectedAddons = form.watch("selectedAddons");
-  const selectedAddons = rawSelectedAddons && rawSelectedAddons.length > 0
+  const selectedAddons = rawSelectedAddons !== undefined
     ? rawSelectedAddons
     : suggestedAddonValues;
 
   const toggleAddon = (value: string) => {
     form.setValue("suggestedAddons", suggestedAddonValues);
 
-    const current = form.getValues("selectedAddons") ?? [];
-    const base = current.length > 0 ? current : suggestedAddonValues;
+    const current = form.getValues("selectedAddons");
+    const base = current !== undefined ? current : suggestedAddonValues;
     const updated = base.includes(value)
       ? base.filter((v) => v !== value)
       : [...base, value];
@@ -251,7 +261,7 @@ export default function StepRecommendation({
         onClick={onBack}
         className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
       >
-        <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+        <span className="text-white text-base font-semibold font-brand leading-5">
           {t("getStarted.navigation.back")}
         </span>
       </button>
@@ -260,7 +270,7 @@ export default function StepRecommendation({
         onClick={onNext}
         className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors"
       >
-        <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+        <span className="text-white text-base font-semibold font-brand leading-5">
           {t("getStarted.navigation.continueSetup")}
         </span>
       </button>
@@ -272,27 +282,27 @@ export default function StepRecommendation({
       <div className="flex flex-col md:flex-row w-full md:pl-16 md:items-center md:gap-12">
         <div className="flex-1 flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 min-h-0 md:justify-center">
           <div className="flex flex-col gap-3">
-            <div className="text-white text-sm md:text-base font-normal font-['Montserrat'] leading-5 md:leading-6">
+            <div className="text-white text-sm md:text-base font-normal font-brand leading-5 md:leading-6">
               {t("getStarted.recommendation.eyebrow")}
             </div>
-            <div className="text-white text-2xl md:text-4xl font-semibold font-['Montserrat'] md:font-semibold">
+            <div className="text-white text-2xl md:text-4xl font-semibold font-brand md:font-semibold">
               {t("getStarted.recommendation.title")}
             </div>
-            <div className="text-white text-lg font-medium font-['Montserrat']">
+            <div className="text-white text-lg font-medium font-brand">
               {t("getStarted.recommendation.subtitle")}
             </div>
           </div>
 
           <div className="w-full flex flex-col gap-8 md:gap-6">
             <div className="w-full pb-8 md:pb-6 border-b border-blue-50/40 flex flex-col gap-4 md:gap-3">
-              <div className="text-white text-xl md:text-2xl font-medium font-['Montserrat'] leading-7">
+              <div className="text-white text-xl md:text-2xl font-medium font-brand leading-7">
                 {t("getStarted.recommendation.structureTitle")}
               </div>
               <div className="flex flex-wrap gap-1 md:gap-3">
                 {suggestedStructure.map((page) => (
                   <StructurePill
                     key={page}
-                    label={page}
+                    label={getPageLabel(page)}
                   />
                 ))}
               </div>
@@ -300,25 +310,25 @@ export default function StepRecommendation({
 
             <div className="flex flex-col gap-4 md:gap-3 pt-2 md:pt-0">
               <div className="flex flex-col gap-1">
-                <div className="text-white text-xl md:text-2xl font-medium font-['Montserrat'] leading-7">
+                <div className="text-white text-xl md:text-2xl font-medium font-brand leading-7">
                   {t("getStarted.recommendation.addonsTitle")}
                 </div>
-                <div className="text-white/60 text-sm font-normal font-['Montserrat']">
-                  Select the add-ons you want included. You can change these later.
+                <div className="text-white/60 text-sm font-normal font-brand">
+                  {t("getStarted.recommendation.addonsSubtitle")}
                 </div>
               </div>
               <div className="flex flex-wrap gap-2 md:gap-3">
                 {ALL_ADDONS.map((addon) => (
                   <Pill
                     key={addon.key}
-                    label={addon.label}
+                    label={getAddonLabel(addon.value)}
                     selected={selectedAddons.includes(addon.value)}
                     onClick={() => toggleAddon(addon.value)}
                   />
                 ))}
               </div>
-              <p className="text-white/40 text-xs font-normal font-['Montserrat'] leading-5">
-                * Add-ons are paid extras on top of your plan. Pricing details will be shared separately.
+              <p className="text-white/40 text-xs font-normal font-brand leading-5">
+                {t("getStarted.recommendation.addonsNote")}
               </p>
             </div>
           </div>
@@ -332,17 +342,17 @@ export default function StepRecommendation({
 
             {/* Dynamic title */}
             <div className="flex flex-col gap-2">
-              <h2 className="text-white text-2xl md:text-3xl font-semibold font-['Montserrat'] leading-tight">
+              <h2 className="text-white text-2xl md:text-3xl font-semibold font-brand leading-tight">
                 {titleConfig.title}
               </h2>
-              <p className="text-white/60 text-sm font-normal font-['Montserrat'] leading-6">
+              <p className="text-white/60 text-sm font-normal font-brand leading-6">
                 {titleConfig.subtitle}
               </p>
             </div>
 
             {/* Eyebrow */}
-            <span className="text-[#ED4C14] text-xs font-semibold tracking-[0.1em] font-['Montserrat'] uppercase">
-              Recommended Setup
+            <span className="text-[#ED4C14] text-xs font-semibold tracking-[0.1em] font-brand uppercase">
+              {t("getStarted.recommendation.panel.eyebrow")}
             </span>
 
             {/* Website wireframe mockup */}
@@ -362,15 +372,15 @@ export default function StepRecommendation({
                   {suggestedStructure.slice(0, 5).map((page) => (
                     <span
                       key={page}
-                      className="text-[10px] font-medium font-['Montserrat'] text-[#333] whitespace-nowrap first:text-[#F07848] first:border-b first:border-[#F07848]"
+                      className="text-[10px] font-medium font-brand text-[#333] whitespace-nowrap first:text-[#F07848] first:border-b first:border-[#F07848]"
                     >
-                      {page}
+                      {getPageLabel(page)}
                     </span>
                   ))}
                 </div>
                 <div className="h-5 px-2 rounded bg-[#1a1a1a] flex items-center flex-shrink-0">
-                  <span className="text-white text-[8px] font-medium font-['Montserrat']">
-                    Contact us
+                  <span className="text-white text-[8px] font-medium font-brand">
+                    {t("getStarted.recommendation.panel.contactButton")}
                   </span>
                 </div>
               </div>
@@ -383,7 +393,7 @@ export default function StepRecommendation({
                   <div className="h-1.5 w-full rounded bg-[#e8e2da]" />
                   <div className="h-1.5 w-5/6 rounded bg-[#e8e2da]" />
                   <div className="mt-1 h-5 w-20 rounded bg-[#1a1a1a] flex items-center justify-center">
-                    <span className="text-white text-[7px] font-medium font-['Montserrat']">Book a call</span>
+                    <span className="text-white text-[7px] font-medium font-brand">{t("getStarted.recommendation.panel.bookButton")}</span>
                   </div>
                 </div>
                 <div className="w-20 h-16 rounded bg-[#e8e2da] flex items-center justify-center flex-shrink-0">
@@ -419,8 +429,8 @@ export default function StepRecommendation({
                     <rect x="1" y="1" width="12" height="12" rx="2" stroke="#ED4C14" strokeWidth="1.5"/>
                     <path d="M4 4h6M4 7h6M4 10h4" stroke="#ED4C14" strokeWidth="1.2" strokeLinecap="round"/>
                   </svg>
-                  <span className="text-[#ED4C14] text-[9px] font-semibold tracking-[0.08em] font-['Montserrat'] uppercase">
-                    Recommended Pages
+                  <span className="text-[#ED4C14] text-[9px] font-semibold tracking-[0.08em] font-brand uppercase">
+                    {t("getStarted.recommendation.panel.pagesCard.title")}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -430,12 +440,12 @@ export default function StepRecommendation({
                         <circle cx="6" cy="6" r="5.5" stroke="#ED4C14" strokeWidth="1"/>
                         <path d="M3.5 6L5.5 8L8.5 4" stroke="#ED4C14" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                      <span className="text-white text-[11px] font-medium font-['Montserrat']">{page}</span>
+                      <span className="text-white text-[11px] font-medium font-brand">{getPageLabel(page)}</span>
                     </div>
                   ))}
                   {suggestedStructure.length > 5 && (
-                    <span className="text-white/40 text-[10px] font-['Montserrat']">
-                      +{suggestedStructure.length - 5} more
+                    <span className="text-white/40 text-[10px] font-brand">
+                      {t("getStarted.recommendation.panel.pagesCard.more", { count: suggestedStructure.length - 5 })}
                     </span>
                   )}
                 </div>
@@ -447,18 +457,18 @@ export default function StepRecommendation({
                   <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                     <path d="M7 1L8.5 5.5H13L9.5 8L11 12.5L7 10L3 12.5L4.5 8L1 5.5H5.5L7 1Z" stroke="#ED4C14" strokeWidth="1.2" strokeLinejoin="round"/>
                   </svg>
-                  <span className="text-[#ED4C14] text-[9px] font-semibold tracking-[0.08em] font-['Montserrat'] uppercase">
-                    Included Add-ons
+                  <span className="text-[#ED4C14] text-[9px] font-semibold tracking-[0.08em] font-brand uppercase">
+                    {t("getStarted.recommendation.panel.addonsCard.title")}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  {(selectedAddons.length > 0 ? selectedAddons : suggestedAddonValues).map((addon) => (
+                  {selectedAddons.map((addon) => (
                     <div key={addon} className="flex items-center gap-2">
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                         <circle cx="6" cy="6" r="5.5" stroke="#ED4C14" strokeWidth="1"/>
                         <path d="M3.5 6L5.5 8L8.5 4" stroke="#ED4C14" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
-                      <span className="text-white text-[11px] font-medium font-['Montserrat']">{addon}</span>
+                      <span className="text-white text-[11px] font-medium font-brand">{getAddonLabel(addon)}</span>
                     </div>
                   ))}
                 </div>
@@ -466,8 +476,8 @@ export default function StepRecommendation({
             </div>
 
             {/* Footer note */}
-            <p className="text-white/40 text-xs font-normal font-['Montserrat']">
-              You'll be able to choose your preferred design in the next step.
+            <p className="text-white/40 text-xs font-normal font-brand">
+              {t("getStarted.recommendation.panel.footer")}
             </p>
           </div>
         </div>
@@ -479,3 +489,4 @@ export default function StepRecommendation({
     </div>
   );
 }
+

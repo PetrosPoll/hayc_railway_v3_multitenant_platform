@@ -1,47 +1,44 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/ui/authContext";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
-const HAD_WEBSITE_OPTIONS = [
-  { value: "yes_worked_well", label: "Yes and it worked well" },
-  { value: "yes_no_results", label: "Yes, but it didn't bring results" },
-  { value: "no_first_time", label: "No, this is my first one" },
+const HAD_WEBSITE_VALUES = [
+  "yes_worked_well",
+  "yes_no_results",
+  "no_first_time",
 ] as const;
 
-const PLATFORM_OPTIONS = [
-  { value: "wix", label: "Wix" },
-  { value: "squarespace", label: "Squarespace" },
-  { value: "wordpress", label: "WordPress" },
-  { value: "webflow", label: "Webflow" },
-  { value: "someone_built_it", label: "Someone built it for me" },
-  { value: "other", label: "Other" },
+const PLATFORM_VALUES = [
+  "wix",
+  "squarespace",
+  "wordpress",
+  "webflow",
+  "someone_built_it",
+  "other",
 ] as const;
 
 const TRACKER_ITEMS = [
   {
     number: 1,
-    title: "Business details",
-    subtitle: "Name and short description",
+    key: "businessDetails",
     icon: "https://res.cloudinary.com/dem12vqtl/image/upload/v1779286699/building_lyqioo.svg",
   },
   {
     number: 2,
-    title: "Services",
-    subtitle: "What your business offers",
+    key: "services",
     icon: "https://res.cloudinary.com/dem12vqtl/image/upload/v1779286706/briefcase_ljddhi.svg",
   },
   {
     number: 3,
-    title: "Previous website",
-    subtitle: "What worked, what didn't, where it was built",
+    key: "previousWebsite",
     icon: "https://res.cloudinary.com/dem12vqtl/image/upload/v1779286700/cmd-icon_vunwc0.svg",
   },
   {
     number: 4,
-    title: "Next step",
-    subtitle: "We review your answers and create the first draft",
+    key: "nextStep",
     icon: "https://res.cloudinary.com/dem12vqtl/image/upload/v1779286701/right-up-arrow_ylqa9n.svg",
   },
 ];
@@ -56,16 +53,17 @@ const BADGE_ICONS = {
   next: "https://res.cloudinary.com/dem12vqtl/image/upload/v1779286706/right-arrow_zkh4dv.svg",
 };
 
-const BADGE_CONFIG: Record<BadgeStatus, { label: string; bg: string; textColor: string }> = {
-  in_progress: { label: "In progress", bg: "#fef0e3", textColor: "#ED4C14" },
-  waiting: { label: "Waiting for input", bg: "#f4efea", textColor: "#000000" },
-  optional: { label: "Optional", bg: "#f4efea", textColor: "#000000" },
-  completed: { label: "Completed", bg: "#ED4C14", textColor: "#ffffff" },
-  next: { label: "Next", bg: "#fef0e3", textColor: "#ED4C14" },
+const BADGE_STYLE: Record<BadgeStatus, { bg: string; textColor: string }> = {
+  in_progress: { bg: "#fef0e3", textColor: "#ED4C14" },
+  waiting: { bg: "#f4efea", textColor: "#000000" },
+  optional: { bg: "#f4efea", textColor: "#000000" },
+  completed: { bg: "#ED4C14", textColor: "#ffffff" },
+  next: { bg: "#fef0e3", textColor: "#ED4C14" },
 };
 
 function TrackerBadge({ status }: { status: BadgeStatus }) {
-  const { label, bg, textColor } = BADGE_CONFIG[status];
+  const { t } = useTranslation();
+  const { bg, textColor } = BADGE_STYLE[status];
   const icon = BADGE_ICONS[status];
   const isNext = status === "next";
 
@@ -76,10 +74,10 @@ function TrackerBadge({ status }: { status: BadgeStatus }) {
     >
       {!isNext && <img src={icon} alt="" className="w-[15px] h-[15px]" />}
       <span
-        className="text-xs font-medium font-['Montserrat'] leading-[22px] whitespace-nowrap"
+        className="text-xs font-medium font-brand leading-[22px] whitespace-nowrap"
         style={{ color: textColor }}
       >
-        {label}
+        {t(`getStarted.onboarding.tracker.badges.${status}`)}
       </span>
       {isNext && <img src={icon} alt="" className="w-[15px] h-[15px]" />}
     </div>
@@ -92,6 +90,7 @@ export default function GetStartedOnboarding() {
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const isMock = import.meta.env.DEV && searchParams.get("mock") === "true";
   const mockSessionId = "mock-session-id-dev";
@@ -167,7 +166,6 @@ export default function GetStartedOnboarding() {
         payload.websiteGoalOther = preCheckout.goalOtherDetails;
       }
 
-
       if (preCheckout.suggestedStructure) {
         payload.suggestedStructure = preCheckout.suggestedStructure;
       }
@@ -205,7 +203,7 @@ export default function GetStartedOnboarding() {
   if (!isMock && !user) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-white font-['Montserrat']">Loading...</p>
+        <p className="text-white font-brand">{t("getStarted.onboarding.loading")}</p>
       </div>
     );
   }
@@ -236,23 +234,23 @@ export default function GetStartedOnboarding() {
 
   const handleContinue = async () => {
     if (!businessName.trim()) {
-      toast({ title: "Please enter your business name", variant: "destructive" });
+      toast({ title: t("getStarted.onboarding.errors.businessNameRequired"), variant: "destructive" });
       return;
     }
     if (!businessDescription.trim()) {
-      toast({ title: "Please enter a short description of your business", variant: "destructive" });
+      toast({ title: t("getStarted.onboarding.errors.descriptionRequired"), variant: "destructive" });
       return;
     }
     if (!services.trim()) {
-      toast({ title: "Please add your services", variant: "destructive" });
+      toast({ title: t("getStarted.onboarding.errors.servicesRequired"), variant: "destructive" });
       return;
     }
     if (!hadWebsite) {
-      toast({ title: "Please select your website history", variant: "destructive" });
+      toast({ title: t("getStarted.onboarding.errors.websiteHistoryRequired"), variant: "destructive" });
       return;
     }
     if (showPlatform && !platform) {
-      toast({ title: "Please select where your previous website was built", variant: "destructive" });
+      toast({ title: t("getStarted.onboarding.errors.platformRequired"), variant: "destructive" });
       return;
     }
 
@@ -282,7 +280,7 @@ export default function GetStartedOnboarding() {
       navigate(`/get-started/onboarding/quick-questions?s=${sessionId}`);
     } catch (err) {
       console.error(err);
-      toast({ title: "Failed to save. Please try again.", variant: "destructive" });
+      toast({ title: t("getStarted.onboarding.errors.saveFailed"), variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -321,95 +319,95 @@ export default function GetStartedOnboarding() {
     <div className="min-h-screen bg-black flex">
       <div className="flex-1 flex flex-col justify-between px-[70px] py-[50px] gap-12">
         <div className="flex flex-col gap-3">
-          <h1 className="text-white text-4xl font-semibold font-['Montserrat']">
-            Add your services
+          <h1 className="text-white text-4xl font-semibold font-brand">
+            {t("getStarted.onboarding.title")}
           </h1>
-          <p className="text-white text-lg font-medium font-['Montserrat']">
-            Tell us what your business offers.
+          <p className="text-white text-lg font-medium font-brand">
+            {t("getStarted.onboarding.subtitle")}
           </p>
         </div>
 
         <div className="flex flex-col gap-[18px]">
           <div className="flex flex-col gap-1">
-            <label className="text-[#eff6ff] text-base leading-[160%] font-['Montserrat']">
-              Business name
+            <label className="text-[#eff6ff] text-base leading-[160%] font-brand">
+              {t("getStarted.onboarding.labels.businessName")}
             </label>
             <input
               value={businessName}
               onChange={(e) => setBusinessName(e.target.value)}
-              placeholder="Business name"
-              className="w-full px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-['Montserrat'] placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
+              placeholder={t("getStarted.onboarding.placeholders.businessName")}
+              className="w-full px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-brand placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[#eff6ff] text-base leading-[160%] font-['Montserrat']">
-              Short Description
+            <label className="text-[#eff6ff] text-base leading-[160%] font-brand">
+              {t("getStarted.onboarding.labels.shortDescription")}
             </label>
             <input
               value={businessDescription}
               onChange={(e) => setBusinessDescription(e.target.value)}
-              placeholder="Write a short description of your business"
-              className="w-full px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-['Montserrat'] placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
+              placeholder={t("getStarted.onboarding.placeholders.shortDescription")}
+              className="w-full px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-brand placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-[#eff6ff] text-base leading-[160%] font-['Montserrat']">
-              Add your Services
+            <label className="text-[#eff6ff] text-base leading-[160%] font-brand">
+              {t("getStarted.onboarding.labels.addServices")}
             </label>
             <input
               value={services}
               onChange={(e) => setServices(e.target.value)}
-              placeholder="Services"
-              className="w-full px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-['Montserrat'] placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
+              placeholder={t("getStarted.onboarding.placeholders.services")}
+              className="w-full px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-brand placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
             />
           </div>
 
           <div className="flex flex-col gap-3">
-            <label className="text-[#eff6ff] text-base leading-[160%] font-['Montserrat']">
-              Have you had a website before?
+            <label className="text-[#eff6ff] text-base leading-[160%] font-brand">
+              {t("getStarted.onboarding.labels.hadWebsite")}
             </label>
             <div className="flex flex-col gap-2">
-              {HAD_WEBSITE_OPTIONS.map((opt) => (
+              {HAD_WEBSITE_VALUES.map((value) => (
                 <button
-                  key={opt.value}
+                  key={value}
                   type="button"
                   onClick={() => {
-                    setHadWebsite(opt.value);
-                    if (opt.value === "no_first_time") setPlatform(null);
+                    setHadWebsite(value);
+                    if (value === "no_first_time") setPlatform(null);
                   }}
                   className={cn(
-                    "w-fit px-3 py-1.5 rounded-[10px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer",
-                    hadWebsite === opt.value
+                    "w-fit px-3 py-1.5 rounded-[10px] text-white text-lg font-medium font-brand border transition-colors cursor-pointer",
+                    hadWebsite === value
                       ? "bg-[#ED4C14] border-[#ED4C14]"
                       : "bg-transparent border-[#6a6a6a] hover:border-white/50",
                   )}
                 >
-                  {opt.label}
+                  {t(`getStarted.onboarding.hadWebsiteOptions.${value}`)}
                 </button>
               ))}
             </div>
 
             {showPlatform && (
               <div className="rounded-[15px] bg-[#141414] border border-[#2a2a2a] p-[15px] flex flex-col gap-3">
-                <label className="text-[#eff6ff] text-base leading-[160%] font-['Montserrat']">
-                  Where was it built?
+                <label className="text-[#eff6ff] text-base leading-[160%] font-brand">
+                  {t("getStarted.onboarding.labels.whereBuilt")}
                 </label>
                 <div className="flex flex-wrap gap-3">
-                  {PLATFORM_OPTIONS.map((opt) => (
+                  {PLATFORM_VALUES.map((value) => (
                     <button
-                      key={opt.value}
+                      key={value}
                       type="button"
-                      onClick={() => setPlatform(opt.value)}
+                      onClick={() => setPlatform(value)}
                       className={cn(
-                        "px-[15px] py-2 rounded-[39px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer",
-                        platform === opt.value
+                        "px-[15px] py-2 rounded-[39px] text-white text-lg font-medium font-brand border transition-colors cursor-pointer",
+                        platform === value
                           ? "bg-[#ED4C14] border-[#ED4C14]"
                           : "bg-transparent border-[#6a6a6a] hover:border-white/50",
                       )}
                     >
-                      {opt.label}
+                      {t(`getStarted.onboarding.platformOptions.${value}`)}
                     </button>
                   ))}
                 </div>
@@ -423,17 +421,17 @@ export default function GetStartedOnboarding() {
             type="button"
             onClick={handleContinue}
             disabled={isSubmitting}
-            className="w-1/3 h-11 px-5 bg-[#ED4C14] rounded-[10px] flex items-center justify-center text-white text-base font-semibold font-['Montserrat'] leading-5 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-1/3 h-11 px-5 bg-[#ED4C14] rounded-[10px] flex items-center justify-center text-white text-base font-semibold font-brand leading-5 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? "Saving..." : "Continue"}
+            {isSubmitting ? t("getStarted.onboarding.buttons.saving") : t("getStarted.onboarding.buttons.continue")}
           </button>
           <button
             type="button"
             onClick={handleSaveLater}
             className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
           >
-            <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
-              Complete later
+            <span className="text-white text-base font-semibold font-brand leading-5">
+              {t("getStarted.onboarding.buttons.completeLater")}
             </span>
           </button>
         </div>
@@ -442,15 +440,15 @@ export default function GetStartedOnboarding() {
       <div className="w-[661px] min-h-screen bg-[#fcf6ee] flex items-center justify-center p-[10px]">
         <div className="w-[565px] rounded-[20px] bg-[#fefaf7] border border-[#f6efe8] shadow-[0_0_12px_#e0dbd4] p-[25px] flex flex-col gap-12">
           <div className="flex flex-col gap-6 px-5">
-            <span className="text-[#ED4C14] text-sm font-semibold tracking-[0.02em] font-['Montserrat'] uppercase">
-              Website Setup
+            <span className="text-[#ED4C14] text-sm font-semibold tracking-[0.02em] font-brand uppercase">
+              {t("getStarted.onboarding.tracker.eyebrow")}
             </span>
             <div className="flex flex-col gap-3">
-              <h2 className="text-black text-2xl font-medium font-['Montserrat']">
-                Your website content blueprint
+              <h2 className="text-black text-2xl font-medium font-brand">
+                {t("getStarted.onboarding.tracker.title")}
               </h2>
-              <p className="text-black text-base leading-[160%] font-['Montserrat']">
-                We'll use these details to shape your first website draft
+              <p className="text-black text-base leading-[160%] font-brand">
+                {t("getStarted.onboarding.tracker.subtitle")}
               </p>
             </div>
           </div>
@@ -468,21 +466,21 @@ export default function GetStartedOnboarding() {
               >
                 <div className="flex items-center gap-6">
                   <div className="w-[37px] h-[41px] rounded-lg bg-[#f6efe8] flex items-center justify-center flex-shrink-0">
-                    <span className="text-black text-2xl font-medium font-['Montserrat']">
+                    <span className="text-black text-2xl font-medium font-brand">
                       {item.number}
                     </span>
                   </div>
                   <img
                     src={item.icon}
-                    alt={item.title}
+                    alt={t(`getStarted.onboarding.tracker.items.${item.key}.title`)}
                     className="w-[37px] h-[37px] flex-shrink-0"
                   />
                   <div className="flex flex-col gap-1 text-left">
-                    <span className="text-black text-sm font-semibold font-['Montserrat']">
-                      {item.title}
+                    <span className="text-black text-sm font-semibold font-brand">
+                      {t(`getStarted.onboarding.tracker.items.${item.key}.title`)}
                     </span>
-                    <span className="text-black text-sm font-normal leading-[22px] font-['Montserrat']">
-                      {item.subtitle}
+                    <span className="text-black text-sm font-normal leading-[22px] font-brand">
+                      {t(`getStarted.onboarding.tracker.items.${item.key}.subtitle`)}
                     </span>
                   </div>
                 </div>
@@ -499,8 +497,8 @@ export default function GetStartedOnboarding() {
               alt="check"
               className="w-5 h-5 flex-shrink-0"
             />
-            <p className="text-black text-sm leading-[22px] font-['Montserrat']">
-              Your final website will be tailored to your brand, content and selected setup
+            <p className="text-black text-sm leading-[22px] font-brand">
+              {t("getStarted.onboarding.tracker.footer")}
             </p>
           </div>
         </div>
@@ -508,3 +506,4 @@ export default function GetStartedOnboarding() {
     </div>
   );
 }
+

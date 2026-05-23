@@ -1,4 +1,4 @@
-import {
+﻿import {
   useCallback,
   useEffect,
   useRef,
@@ -170,15 +170,15 @@ function TestimonialCard({
           )}
           <div className="flex min-w-0 w-44 flex-col justify-center gap-3">
             <div className="flex flex-col">
-              <span className="text-[#ED4C14] font-['Montserrat'] text-xl font-medium leading-7 md:text-2xl">
+              <span className="text-[#ED4C14] font-brand text-xl font-medium leading-7 md:text-2xl">
                 {t(item.nameKey)}
               </span>
-              <span className="font-['Montserrat'] text-base font-normal leading-5 text-slate-50 md:text-lg md:font-medium">
+              <span className="font-brand text-base font-normal leading-5 text-slate-50 md:text-lg md:font-medium">
                 {t(item.titleKey)}
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-['Inter'] text-lg font-medium text-slate-100 md:font-['Montserrat'] md:text-slate-50">
+              <span className="font-['Inter'] text-lg font-medium text-slate-100 md:font-brand md:text-slate-50">
                 {item.rating}
               </span>
               <StarRating
@@ -191,7 +191,7 @@ function TestimonialCard({
         </div>
         <p
           className={cn(
-            "min-h-0 text-slate-50 font-['Montserrat'] text-base font-normal leading-5 md:leading-6",
+            "min-h-0 text-slate-50 font-brand text-base font-normal leading-5 md:leading-6",
             isFront
               ? "flex-1 overflow-y-auto [scrollbar-gutter:stable] [scrollbar-width:thin] md:flex-none md:overflow-visible md:[scrollbar-gutter:auto]"
               : "line-clamp-[7] overflow-hidden opacity-95 md:line-clamp-3",
@@ -208,7 +208,7 @@ function TestimonialCard({
             window.location.href = item.projectUrl;
           }}
         >
-          <span className="font-['Montserrat'] text-base font-semibold leading-5 text-zinc-950 md:text-blue-950">{t(altKeys.seeProject)}</span>
+          <span className="font-brand text-base font-semibold leading-5 text-zinc-950 md:text-blue-950">{t(altKeys.seeProject)}</span>
           <ArrowRight className="size-4 shrink-0 text-zinc-950 md:text-blue-950" aria-hidden />
         </button>
       ) : (
@@ -298,11 +298,11 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
       <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row justify-start md:justify-between items-start gap-12">
         <div className="w-full md:w-auto flex flex-col justify-center items-start gap-6">
         <div className="flex flex-col justify-start items-start gap-3">
-          <h2 className="text-3xl md:text-5xl font-semibold font-['Montserrat'] leading-10 md:leading-[70px]">
+          <h2 className="text-3xl md:text-5xl font-semibold font-brand leading-10 md:leading-[70px]">
             <span className="text-[#ED4C14]">{t("home.testimonialsSection.titleHighlight")}</span>
             <span className="text-white"> {t("home.testimonialsSection.titleSuffix")}</span>
           </h2>
-          <p className="text-white text-base font-normal font-['Montserrat'] leading-5 md:leading-6">
+          <p className="text-white text-base font-normal font-brand leading-5 md:leading-6">
             {t("home.testimonialsSection.subtitle")}
           </p>
         </div>
@@ -312,10 +312,10 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/testimonials_facebook.svg" alt={t("home.testimonialsSection.platforms.facebook.alt")} loading="lazy" className="w-4 h-4" />
-                <span className="text-blue-400 text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.facebook.name")}</span>
+                <span className="text-blue-400 text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.facebook.name")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-white text-lg font-medium font-['Montserrat']">5.0</span>
+                <span className="text-white text-lg font-medium font-brand">5.0</span>
                 <StarRating
                   rating={5}
                   fullStarAlt={t("home.testimonialsSection.fullStarAlt")}
@@ -323,9 +323,9 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
                 />
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-white text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.common.basedOn")}</span>
-                <span className="text-white text-lg font-medium font-['Montserrat']">5</span>
-                <span className="text-white text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.common.reviews")}</span>
+                <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.basedOn")}</span>
+                <span className="text-white text-lg font-medium font-brand">5</span>
+                <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.reviews")}</span>
               </div>
             </div>
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} loading="lazy" className="w-6 h-6 opacity-80" />
@@ -335,10 +335,10 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
             <div className="flex flex-col gap-2">
               <div className="flex items-center gap-2">
                 <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/testimonials_trustpilot.svg" alt={t("home.testimonialsSection.platforms.trustpilot.alt")} loading="lazy" className="w-4 h-4" />
-                <span className="text-green-400 text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.trustpilot.name")}</span>
+                <span className="text-green-400 text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.trustpilot.name")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-white text-lg font-medium font-['Montserrat']">4.4</span>
+                <span className="text-white text-lg font-medium font-brand">4.4</span>
                 <StarRating
                   rating={4.4}
                   fullStarAlt={t("home.testimonialsSection.fullStarAlt")}
@@ -346,9 +346,9 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
                 />
               </div>
               <div className="flex items-center gap-1">
-                <span className="text-white text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.common.basedOn")}</span>
-                <span className="text-white text-lg font-medium font-['Montserrat']">5</span>
-                <span className="text-white text-lg font-medium font-['Montserrat']">{t("home.testimonialsSection.platforms.common.reviews")}</span>
+                <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.basedOn")}</span>
+                <span className="text-white text-lg font-medium font-brand">5</span>
+                <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.reviews")}</span>
               </div>
             </div>
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} loading="lazy" className="w-6 h-6 opacity-80" />
@@ -428,4 +428,5 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
     </section>
   );
 }
+
 

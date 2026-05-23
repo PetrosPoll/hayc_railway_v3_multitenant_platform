@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+﻿import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 export function Footer() {
@@ -99,7 +99,7 @@ export function Footer() {
                 </g>
               </svg>
             </Link>
-            <p className="text-white text-base font-normal font-['Montserrat'] leading-6 mt-2">
+            <p className="text-white text-base font-normal font-brand leading-6 mt-2">
               {t("footer.descriptionLine1")}
               <br />
               {t("footer.descriptionLine2")}
@@ -120,9 +120,9 @@ export function Footer() {
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
           <p className="text-white text-base font-bold font-['Inter'] leading-7">{t("footer.quickLinks")}</p>
           <div className="flex flex-col justify-start items-start gap-3">
-            <Link to="/about" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.about")}</Link>
-            <Link to="/templates" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.templates")}</Link>
-            <Link to="/contact" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.contact")}</Link>
+            <Link to="/about" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.about")}</Link>
+            <Link to="/templates" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.templates")}</Link>
+            <Link to="/contact" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.contact")}</Link>
           </div>
         </div>
 
@@ -130,9 +130,9 @@ export function Footer() {
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
           <p className="text-white text-base font-bold font-['Inter'] leading-7">{t("footer.legal")}</p>
           <div className="flex flex-col justify-start items-start gap-3">
-            <Link to="/terms-of-service" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.termsOfService")}</Link>
-            <Link to="/privacy-policy" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.privacyPolicy")}</Link>
-            <Link to="/cookie-policy" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.cookiePolicy")}</Link>
+            <Link to="/terms-of-service" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.termsOfService")}</Link>
+            <Link to="/privacy-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.privacyPolicy")}</Link>
+            <Link to="/cookie-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.cookiePolicy")}</Link>
           </div>
         </div>
 
@@ -141,7 +141,7 @@ export function Footer() {
           <p className="text-white text-lg font-bold font-['Inter'] leading-7">{t("footer.contactUs")}</p>
           <div className="flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/mail_icon.svg" alt={t("footer.emailAlt")} loading="lazy" className="w-5 h-5" />
-            <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-['Montserrat'] leading-6 hover:opacity-70 transition-opacity">
+            <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">
               info@hayc.gr
             </a>
           </div>
@@ -156,3 +156,4 @@ export function Footer() {
     </footer>
   );
 }
+

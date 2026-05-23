@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
@@ -190,7 +190,7 @@ export function WhyUsSection() {
                 className="min-h-screen flex flex-col justify-center 
                    items-start gap-12 py-24"
               >
-                <h2 className="text-5xl font-semibold font-['Montserrat'] 
+                <h2 className="text-5xl font-semibold font-brand 
                        leading-[70px]">
                   <span style={{ color: section.highlightColor }}>
                     {section.titleHighlight}
@@ -201,7 +201,7 @@ export function WhyUsSection() {
                 </h2>
                 {section.description && (
                   <p
-                    className="w-80 text-base font-normal font-['Montserrat'] 
+                    className="w-80 text-base font-normal font-brand 
                        leading-6"
                     style={{ color: section.descColor }}
                   >
@@ -214,7 +214,7 @@ export function WhyUsSection() {
                      justify-start items-center gap-4 transition-opacity"
                   onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
                 >
-                  <span className="text-base font-semibold font-['Montserrat'] 
+                  <span className="text-base font-semibold font-brand 
                            leading-5">
                     {t("home.hero.cta")}
                   </span>
@@ -232,7 +232,7 @@ export function WhyUsSection() {
             key={i}
             className="flex flex-col justify-start items-start gap-12 py-12"
           >
-            <h2 className="text-3xl font-semibold font-['Montserrat'] leading-10">
+            <h2 className="text-3xl font-semibold font-brand leading-10">
               <span style={{ color: section.highlightColor }}>
                 {section.titleHighlight}
               </span>
@@ -242,7 +242,7 @@ export function WhyUsSection() {
             </h2>
             {section.description && (
               <p
-                className="text-base font-normal font-['Montserrat'] leading-5"
+                className="text-base font-normal font-brand leading-5"
                 style={{ color: section.descColor }}
               >
                 {section.description}
@@ -254,7 +254,7 @@ export function WhyUsSection() {
                            justify-start items-center gap-4 transition-opacity"
               onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
             >
-              <span className="text-base font-semibold font-['Montserrat'] leading-5">
+              <span className="text-base font-semibold font-brand leading-5">
                 {t("home.hero.cta")}
               </span>
               <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
@@ -276,3 +276,4 @@ export function WhyUsSection() {
     </div>
   );
 }
+

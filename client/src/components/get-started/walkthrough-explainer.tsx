@@ -1,4 +1,7 @@
+﻿import { useTranslation } from "react-i18next";
+
 export default function WalkthroughExplainer() {
+  const { t } = useTranslation();
   return (
     <div className="w-full rounded-[10px] bg-gradient-to-br from-neutral-900 to-neutral-800 border border-white/5 p-6 flex flex-col gap-6 overflow-hidden relative">
 
@@ -24,11 +27,11 @@ export default function WalkthroughExplainer() {
             <div className="w-0.5 h-8 bg-gradient-to-b from-[#ED4C14] to-white/10" />
           </div>
           <div className="flex flex-col gap-1 pt-2">
-            <span className="text-white text-sm font-semibold font-['Montserrat']">
-              Payment confirmed
+            <span className="text-white text-sm font-semibold font-brand">
+              {t("getStarted.summary.walkthrough.step1.title")}
             </span>
-            <span className="text-white/50 text-xs font-normal font-['Montserrat'] leading-5">
-              Secure checkout via Stripe. Your account is created instantly.
+            <span className="text-white/50 text-xs font-normal font-brand leading-5">
+              {t("getStarted.summary.walkthrough.step1.subtitle")}
             </span>
           </div>
         </div>
@@ -47,11 +50,11 @@ export default function WalkthroughExplainer() {
             <div className="w-0.5 h-8 bg-gradient-to-b from-white/20 to-white/5" />
           </div>
           <div className="flex flex-col gap-1 pt-2">
-            <span className="text-white text-sm font-semibold font-['Montserrat']">
-              Quick setup (you're doing it now)
+            <span className="text-white text-sm font-semibold font-brand">
+              {t("getStarted.summary.walkthrough.step2.title")}
             </span>
-            <span className="text-white/50 text-xs font-normal font-['Montserrat'] leading-5">
-              Tell us about your business, pages, and content. Takes about 5 minutes.
+            <span className="text-white/50 text-xs font-normal font-brand leading-5">
+              {t("getStarted.summary.walkthrough.step2.subtitle")}
             </span>
           </div>
         </div>
@@ -72,11 +75,11 @@ export default function WalkthroughExplainer() {
             <div className="w-0.5 h-8 bg-gradient-to-b from-white/10 to-transparent" />
           </div>
           <div className="flex flex-col gap-1 pt-2">
-            <span className="text-white text-sm font-semibold font-['Montserrat']">
-              We design & build
+            <span className="text-white text-sm font-semibold font-brand">
+              {t("getStarted.summary.walkthrough.step3.title")}
             </span>
-            <span className="text-white/50 text-xs font-normal font-['Montserrat'] leading-5">
-              Our team creates your website based on your answers and selected template.
+            <span className="text-white/50 text-xs font-normal font-brand leading-5">
+              {t("getStarted.summary.walkthrough.step3.subtitle")}
             </span>
           </div>
         </div>
@@ -95,11 +98,11 @@ export default function WalkthroughExplainer() {
             </div>
           </div>
           <div className="flex flex-col gap-1 pt-2">
-            <span className="text-white text-sm font-semibold font-['Montserrat']">
-              Your website is live in 15 days
+            <span className="text-white text-sm font-semibold font-brand">
+              {t("getStarted.summary.walkthrough.step4.title")}
             </span>
-            <span className="text-white/50 text-xs font-normal font-['Montserrat'] leading-5">
-              You review, we refine. Your site goes live on your domain.
+            <span className="text-white/50 text-xs font-normal font-brand leading-5">
+              {t("getStarted.summary.walkthrough.step4.subtitle")}
             </span>
           </div>
         </div>
@@ -108,3 +111,4 @@ export default function WalkthroughExplainer() {
     </div>
   );
 }
+

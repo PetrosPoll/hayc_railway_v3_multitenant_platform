@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+﻿import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import type { WizardValues } from "@/pages/get-started";
@@ -122,10 +122,10 @@ export default function StepChooseDesign({
   return (
     <div className="w-full min-h-screen bg-black flex flex-col justify-center items-center px-4 md:px-16 py-12 gap-6">
       <div className="w-full flex flex-col items-center gap-3">
-        <div className="w-full text-center text-white text-2xl md:text-4xl font-semibold font-['Montserrat']">
+        <div className="w-full text-center text-white text-2xl md:text-4xl font-semibold font-brand">
           {t("getStarted.chooseDesign.title")}
         </div>
-        <div className="w-full text-center text-white text-base md:text-lg font-normal md:font-medium font-['Montserrat'] leading-5">
+        <div className="w-full text-center text-white text-base md:text-lg font-normal md:font-medium font-brand leading-5">
           {t("getStarted.chooseDesign.subtitle")}
         </div>
       </div>
@@ -152,7 +152,7 @@ export default function StepChooseDesign({
                 className="w-full h-full object-cover object-top"
               />
               <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-between">
-                <span className="text-white text-base font-semibold font-['Montserrat']">
+                <span className="text-white text-base font-semibold font-brand">
                   {template.name}
                 </span>
                 {isSelected && (
@@ -193,10 +193,10 @@ export default function StepChooseDesign({
               opacity="0.7"
             />
           </svg>
-          <div className="text-white text-lg font-medium font-['Montserrat']">
+          <div className="text-white text-lg font-medium font-brand">
             {t("getStarted.chooseDesign.chooseForMe")}
           </div>
-          <div className="text-white text-base font-normal font-['Montserrat'] leading-6">
+          <div className="text-white text-base font-normal font-brand leading-6">
             {t("getStarted.chooseDesign.chooseForMeSubtitle")}
           </div>
         </button>
@@ -208,7 +208,7 @@ export default function StepChooseDesign({
           onClick={onBack}
           className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
         >
-          <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+          <span className="text-white text-base font-semibold font-brand leading-5">
             {t("getStarted.navigation.back")}
           </span>
         </button>
@@ -218,7 +218,7 @@ export default function StepChooseDesign({
           disabled={!selectedDesign}
           className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+          <span className="text-white text-base font-semibold font-brand leading-5">
             {t("getStarted.navigation.next")}
           </span>
         </button>
@@ -226,3 +226,4 @@ export default function StepChooseDesign({
     </div>
   );
 }
+

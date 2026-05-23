@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+﻿import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowRight } from "lucide-react";
 
@@ -78,7 +78,7 @@ export function AddonsSection() {
               <span className="text-[#ED4C14]">grow</span>
               <span className="text-white"> with you.</span>
             </h2>
-            <p className="text-white text-base font-normal font-['Montserrat'] leading-5 md:leading-6 max-w-full md:max-w-lg">
+            <p className="text-white text-base font-normal font-brand leading-5 md:leading-6 max-w-full md:max-w-lg">
               {t("home.addonsSection.description")}
             </p>
           </div>
@@ -100,7 +100,7 @@ export function AddonsSection() {
                     {isOpen && (
                       <ArrowRight className="w-5 h-5 text-[#ED4C14] flex-shrink-0" />
                     )}
-                    <span className={`font-['Montserrat'] font-medium ${
+                    <span className={`font-brand font-medium ${
                       isOpen
                         ? "text-2xl text-white"
                         : "text-xl md:text-2xl text-white/50 leading-7"
@@ -112,15 +112,15 @@ export function AddonsSection() {
                   {isOpen && (
                     <div className="flex flex-col gap-3">
                       <div className="pl-8">
-                        <p className="text-white text-base font-normal font-['Montserrat'] leading-5">
+                        <p className="text-white text-base font-normal font-brand leading-5">
                           {t(cat.descriptionKey)}
                         </p>
                       </div>
                       <div className="pl-8 flex flex-col md:flex-row items-start md:items-center gap-2 flex-wrap">
-                        <span className="text-white text-sm font-semibold font-['Montserrat'] tracking-tight">{t("home.addonsSection.addonsLabel")}</span>
+                        <span className="text-white text-sm font-semibold font-brand tracking-tight">{t("home.addonsSection.addonsLabel")}</span>
                         <div className="flex flex-col md:flex-row gap-1 md:gap-2.5">
                           {cat.addonKeys.map((addonKey, j) => (
-                            <span key={j} className="text-indigo-300 text-sm font-medium font-['Montserrat']">
+                            <span key={j} className="text-indigo-300 text-sm font-medium font-brand">
                               {t(addonKey)}
                             </span>
                           ))}
@@ -177,3 +177,4 @@ export function AddonsSection() {
     </section>
   );
 }
+

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 
 type FaqItem = {
   question: string;
@@ -41,12 +41,12 @@ export function FaqSection({ className = "bg-black" }: FaqSectionProps) {
     <section className={`w-full ${className}`}>
       <div className="max-w-screen-xl mx-auto px-4 py-[50px] flex flex-col gap-12">
         <div className="w-full flex flex-col items-start">
-          <h2 className="text-3xl lg:text-5xl font-semibold font-['Montserrat'] lg:leading-[70px] leading-10">
+          <h2 className="text-3xl lg:text-5xl font-semibold font-brand lg:leading-[70px] leading-10">
             <span className="text-white">Imagine Wix, </span>
             <span className="text-[#ED4C14]">without the DIY</span>
             <span className="text-white">.</span>
           </h2>
-          <p className="text-base font-normal font-['Montserrat'] leading-6 text-white mt-2">
+          <p className="text-base font-normal font-brand leading-6 text-white mt-2">
             That's what HAYC is. We build it. You use it. No stress, no setup, just results.
           </p>
         </div>
@@ -59,7 +59,7 @@ export function FaqSection({ className = "bg-black" }: FaqSectionProps) {
               onClick={() => toggleFaq(i)}
             >
               <div className="flex justify-between items-center gap-4">
-                <p className="text-xl font-medium font-['Montserrat'] leading-7 text-white flex-1">
+                <p className="text-xl font-medium font-brand leading-7 text-white flex-1">
                   {faq.question}
                 </p>
                 <img
@@ -71,7 +71,7 @@ export function FaqSection({ className = "bg-black" }: FaqSectionProps) {
               </div>
 
               {openFaq === i && faq.answer && (
-                <p className="text-base font-normal font-['Montserrat'] leading-5 text-white">
+                <p className="text-base font-normal font-brand leading-5 text-white">
                   {faq.answer}
                 </p>
               )}
@@ -82,4 +82,5 @@ export function FaqSection({ className = "bg-black" }: FaqSectionProps) {
     </section>
   );
 }
+
 

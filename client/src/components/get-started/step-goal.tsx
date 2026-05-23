@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import {
@@ -37,10 +37,10 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
         <div className="flex-1 flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 min-h-screen md:min-h-0 md:justify-center">
           {/* Headline block */}
           <div className="flex flex-col gap-3">
-            <div className="text-white text-2xl md:text-4xl font-semibold font-['Montserrat'] md:font-semibold">
+            <div className="text-white text-2xl md:text-4xl font-semibold font-brand md:font-semibold">
               {t("getStarted.goal.title")}
             </div>
-            <div className="text-white text-lg font-medium font-['Montserrat']">
+            <div className="text-white text-lg font-medium font-brand">
               {t("getStarted.goal.subtitle")}
             </div>
           </div>
@@ -72,7 +72,7 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
                             }
                           }}
                           className={cn(
-                            "flex items-center gap-2 px-3 py-1.5 rounded-[39px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer",
+                            "flex items-center gap-2 px-3 py-1.5 rounded-[39px] text-white text-lg font-medium font-brand border transition-colors cursor-pointer",
                             isSelected
                               ? "bg-[#ED4C14] border-[#ED4C14]"
                               : "bg-transparent border-[#6a6a6a] hover:border-white/50",
@@ -105,7 +105,7 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
                               )}
                             </div>
                           )}
-                          <span className="text-white text-lg font-medium font-['Montserrat']">
+                          <span className="text-white text-lg font-medium font-brand">
                             {t(GOAL_I18N_KEY[goalOption])}
                           </span>
                         </button>
@@ -128,7 +128,7 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
                       {...field}
                       value={field.value ?? ""}
                       placeholder={t("getStarted.goal.otherPlaceholder")}
-                      className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                      className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                     />
                   </FormControl>
                 </FormItem>
@@ -142,7 +142,7 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
               onClick={onBack}
               className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
             >
-              <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+              <span className="text-white text-base font-semibold font-brand leading-5">
                 {t("getStarted.navigation.back")}
               </span>
             </button>
@@ -153,7 +153,7 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
               disabled={!canContinue}
               className="h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-start items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
+              <span className="text-white text-base font-semibold font-brand leading-5">
                 {t("getStarted.navigation.next")}
               </span>
             </button>
@@ -165,7 +165,7 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
           <img
             src="https://res.cloudinary.com/dem12vqtl/image/upload/v1779357793/step_two_image_m5oomz.png"
             alt=""
-            fetchPriority="high"
+            fetchpriority="high"
             onLoad={() => setImgLoaded(true)}
             className={`w-full h-full object-cover object-center transition-opacity duration-300 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
           />
@@ -174,3 +174,5 @@ export default function StepGoal({ form, onNext, onBack }: StepGoalProps) {
     </div>
   );
 }
+
+

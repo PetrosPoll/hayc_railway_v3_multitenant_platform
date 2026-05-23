@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+﻿import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
@@ -264,16 +264,16 @@ export function HeroSection() {
       <div className="absolute inset-0 bg-black/50 z-10" />
 
       <div className="relative z-20 w-full flex flex-col items-center text-center px-4 pt-0 md:pt-[24vh] min-h-[calc(100vh-180px)] md:min-h-0 justify-center">
-        <h1 className="text-4xl md:text-6xl font-semibold font-['Montserrat'] text-white max-w-4xl mb-4 md:mb-6 leading-tight">
+        <h1 className="text-4xl md:text-6xl font-semibold font-brand text-white max-w-4xl mb-4 md:mb-6 leading-tight">
           A <span className="text-[#ED4C14]">website</span> that works as hard as your business.
         </h1>
 
-        <p className="text-base md:text-2xl font-normal md:font-medium font-['Montserrat'] text-white mb-6 md:mb-8 leading-5">
+        <p className="text-base md:text-2xl font-normal md:font-medium font-brand text-white mb-6 md:mb-8 leading-5">
           {t("home.hero.subtitle")}
         </p>
 
         <Button
-          className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] text-base font-semibold font-['Montserrat'] leading-5 border-0 group mb-3"
+          className="h-11 px-5 py-3.5 bg-[#ED4C14] hover:opacity-80 text-[#EFF6FF] rounded-[10px] text-base font-semibold font-brand leading-5 border-0 group mb-3"
           onClick={() => navigate(GET_STARTED_DEFAULT_PATH)}
         >
           {t("home.hero.cta")}
@@ -281,8 +281,8 @@ export function HeroSection() {
         </Button>
 
         <div className="flex flex-col items-center gap-1.5 mb-6">
-          <p className="text-sm font-normal font-['Montserrat'] text-slate-100">Simple process. Strong results.</p>
-          <p className="text-sm font-normal font-['Montserrat'] text-slate-100">30-day money-back guarantee</p>
+          <p className="text-sm font-normal font-brand text-slate-100">Simple process. Strong results.</p>
+          <p className="text-sm font-normal font-brand text-slate-100">30-day money-back guarantee</p>
         </div>
 
         <div className="hidden md:flex gap-2 mt-2">
@@ -416,3 +416,4 @@ export function HeroSection() {
     </section>
   );
 }
+

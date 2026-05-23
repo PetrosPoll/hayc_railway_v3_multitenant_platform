@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -110,17 +110,17 @@ export default function ContactPage() {
           sizes="(max-width: 767px) 100vw, 100vw"
           alt=""
           aria-hidden="true"
-          fetchPriority="high"
+          fetchpriority="high"
           className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setBgLoaded(true)}
         />
       {/* Contact Page Header */}
       <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-3">
-        <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-['Montserrat']" style={{ maxWidth: "768px" }}>
+        <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-brand" style={{ maxWidth: "768px" }}>
           <span className="text-white">Talk to </span>
           <span className="text-[#ED4C14]">HAYC</span>
         </h1>
-        <p className="text-center text-white text-lg font-medium font-['Montserrat'] w-full">
+        <p className="text-center text-white text-lg font-medium font-brand w-full">
           Tell us what you need and we&apos;ll help you choose the best path to launch.
         </p>
       </section>
@@ -129,21 +129,21 @@ export default function ContactPage() {
       <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col lg:flex-row justify-start items-start gap-6">
         {/* Left — Contact Information card */}
         <div className="w-full lg:w-96 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12 flex-shrink-0">
-          <span className="text-white text-xl lg:text-2xl font-medium font-['Montserrat'] leading-7">Contact Information</span>
+          <span className="text-white text-xl lg:text-2xl font-medium font-brand leading-7">Contact Information</span>
 
           <div className="w-48 flex flex-col justify-start items-start gap-6">
             <div className="flex items-center gap-6">
               <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/mail_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
-              <span className="text-white text-lg font-medium font-['Montserrat']">info@hayc.gr</span>
+              <span className="text-white text-lg font-medium font-brand">info@hayc.gr</span>
             </div>
             <div className="flex items-center gap-6">
               <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/map_pin_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
-              <span className="text-white text-lg font-medium font-['Montserrat']">Athens, Greece</span>
+              <span className="text-white text-lg font-medium font-brand">Athens, Greece</span>
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-slate-100 text-lg font-medium font-['Montserrat']">Find us on Social Media</span>
+            <span className="text-slate-100 text-lg font-medium font-brand">Find us on Social Media</span>
             <div className="flex items-center gap-6">
               <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
                 <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/insta_icon.svg" alt="Instagram" loading="lazy" className="w-6 h-6" />
@@ -160,7 +160,7 @@ export default function ContactPage() {
 
         {/* Right — Send us a message card */}
         <div className="w-full flex-1 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12">
-          <span className="text-white text-xl lg:text-2xl font-medium font-['Montserrat'] leading-7">Send us a message</span>
+          <span className="text-white text-xl lg:text-2xl font-medium font-brand leading-7">Send us a message</span>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-full flex flex-col gap-8">
@@ -171,12 +171,12 @@ export default function ContactPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem className="w-full flex flex-col gap-1.5">
-                      <FormLabel className="text-slate-100 text-base font-normal font-['Montserrat'] leading-6">Full Name</FormLabel>
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">Full Name</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
                           placeholder="Full Name"
-                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
+                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
                           {...field}
                         />
                       </FormControl>
@@ -191,12 +191,12 @@ export default function ContactPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem className="w-full flex flex-col gap-1.5">
-                      <FormLabel className="text-slate-100 text-base font-normal font-['Montserrat'] leading-6">Email</FormLabel>
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">Email</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
                           placeholder="you@company.com"
-                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
+                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
                           {...field}
                         />
                       </FormControl>
@@ -211,12 +211,12 @@ export default function ContactPage() {
                   name="subject"
                   render={({ field }) => (
                     <FormItem className="w-full flex flex-col gap-1.5">
-                      <FormLabel className="text-slate-100 text-base font-normal font-['Montserrat'] leading-6">Subject</FormLabel>
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">Subject</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
                           placeholder="Subject"
-                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
+                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
                           {...field}
                         />
                       </FormControl>
@@ -231,11 +231,11 @@ export default function ContactPage() {
                   name="message"
                   render={({ field }) => (
                     <FormItem className="w-full flex flex-col gap-1.5">
-                      <FormLabel className="text-slate-100 text-base font-normal font-['Montserrat'] leading-6">Message</FormLabel>
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">Message</FormLabel>
                       <FormControl>
                         <Textarea
                           rows={6}
-                          className="w-full px-3.5 py-2.5 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
+                          className="w-full px-3.5 py-2.5 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
                           {...field}
                         />
                       </FormControl>
@@ -250,7 +250,7 @@ export default function ContactPage() {
                     type="checkbox"
                     className="w-5 h-5 rounded-full border border-neutral-500 bg-transparent accent-[#ED4C14] cursor-pointer"
                   />
-                  <span className="text-slate-100 text-sm font-normal font-['Montserrat'] leading-5">
+                  <span className="text-slate-100 text-sm font-normal font-brand leading-5">
                     You agree to our friendly privacy policy.
                   </span>
                 </div>
@@ -277,7 +277,7 @@ export default function ContactPage() {
               <Button
                 type="submit"
                 disabled={isSubmitting || !turnstileToken}
-                className="w-full px-5 py-3 bg-[#ED4C14] rounded-lg shadow-[0px_1px_2px_0px_rgba(10,13,18,0.05)] flex justify-center items-center gap-2 hover:opacity-80 transition-opacity text-slate-100 text-base font-semibold font-['Montserrat'] leading-5 border-0"
+                className="w-full px-5 py-3 bg-[#ED4C14] rounded-lg shadow-[0px_1px_2px_0px_rgba(10,13,18,0.05)] flex justify-center items-center gap-2 hover:opacity-80 transition-opacity text-slate-100 text-base font-semibold font-brand leading-5 border-0"
                 data-testid="button-submit"
               >
                 {isSubmitting ? t("contact.form.sending") : "Send message"}
@@ -290,3 +290,5 @@ export default function ContactPage() {
     </div>
   );
 }
+
+

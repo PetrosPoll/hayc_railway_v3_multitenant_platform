@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
@@ -132,7 +132,7 @@ export default function PricingPage() {
           sizes="(max-width: 767px) 100vw, 100vw"
           alt=""
           aria-hidden="true"
-          fetchPriority="high"
+          fetchpriority="high"
           className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setBgLoaded(true)}
         />
@@ -141,21 +141,21 @@ export default function PricingPage() {
           <section className="relative w-full px-4 py-[50px] lg:px-16 lg:py-16 flex flex-col items-center gap-3">
             {/* Badge */}
         <div className="px-3 py-1.5 bg-gradient-to-br from-blue-50/0 to-blue-50/5 rounded-full outline outline-1 outline-offset-[-1px] outline-slate-100/50 flex justify-center items-center gap-2.5">
-          <span className="text-center text-[#EFF6FF] text-sm font-normal font-['Montserrat'] leading-5">
+          <span className="text-center text-[#EFF6FF] text-sm font-normal font-brand leading-5">
             Bring your business to the best scale
           </span>
         </div>
 
         {/* Headline */}
         <h2
-          className="text-center text-[#EFF6FF] text-3xl leading-10 lg:text-5xl lg:leading-tight font-semibold font-['Montserrat']"
+          className="text-center text-[#EFF6FF] text-3xl leading-10 lg:text-5xl lg:leading-tight font-semibold font-brand"
           style={{ maxWidth: "766px" }}
         >
           Get the Best Pricing and Elevate Your Business
         </h2>
 
         {/* Subtext */}
-        <p className="text-center text-[#EFF6FF] text-base font-normal font-['Montserrat'] leading-5" style={{ maxWidth: "601px" }}>
+        <p className="text-center text-[#EFF6FF] text-base font-normal font-brand leading-5" style={{ maxWidth: "601px" }}>
           Select the plan that fits your needs. We created each one with you and your business in mind, to be the perfect fit.
         </p>
           </section>
@@ -173,7 +173,7 @@ export default function PricingPage() {
           }`}
         >
           <span
-            className={`text-base font-semibold font-['Montserrat'] leading-5 ${
+            className={`text-base font-semibold font-brand leading-5 ${
               billing === "monthly" ? "text-black" : "text-[#EFF6FF]"
             }`}
           >
@@ -190,7 +190,7 @@ export default function PricingPage() {
           }`}
         >
           <span
-            className={`text-base font-semibold font-['Montserrat'] leading-5 ${
+            className={`text-base font-semibold font-brand leading-5 ${
               billing === "annually" ? "text-black" : "text-[#EFF6FF]"
             }`}
           >
@@ -215,22 +215,22 @@ export default function PricingPage() {
               <div className="w-full flex flex-col gap-10">
                 <div className="w-full flex flex-col gap-8">
                   <div className="flex flex-col gap-1">
-                    <span className="text-white text-2xl font-medium font-['Montserrat']">{plan.name}</span>
-                    <span className="text-white text-sm font-semibold font-['Montserrat'] tracking-tight">
+                    <span className="text-white text-2xl font-medium font-brand">{plan.name}</span>
+                    <span className="text-white text-sm font-semibold font-brand tracking-tight">
                       {plan.tagline}
                     </span>
                   </div>
                   <div className="w-full flex items-center gap-1.5">
                     <div className="flex-1 flex flex-col">
                       <div className="flex items-end gap-1.5">
-                        <span className="text-white text-5xl font-semibold font-['Montserrat'] leading-[70px]">
+                        <span className="text-white text-5xl font-semibold font-brand leading-[70px]">
                           {billing === "monthly" ? plan.monthlyPrice : plan.annualPrice}
                         </span>
-                        <span className="text-white/80 text-sm font-normal font-['Montserrat'] leading-5 mb-3">
+                        <span className="text-white/80 text-sm font-normal font-brand leading-5 mb-3">
                           / per month
                         </span>
                       </div>
-                      <span className="text-blue-400 text-sm font-normal font-['Montserrat'] leading-5">
+                      <span className="text-blue-400 text-sm font-normal font-brand leading-5">
                         Save 20% annually
                       </span>
                     </div>
@@ -242,12 +242,12 @@ export default function PricingPage() {
 
                 {/* Features */}
                 <div className="flex flex-col gap-4">
-                  <span className="text-white text-base font-normal font-['Montserrat'] leading-6">What you will get</span>
+                  <span className="text-white text-base font-normal font-brand leading-6">What you will get</span>
                   <div className="flex flex-col gap-4">
                     {plan.features.map((feature, j) => (
                       <div key={j} className="flex items-center gap-2">
                         <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/tick.svg" alt="check" loading="lazy" className="w-4 h-4 flex-shrink-0" />
-                        <span className="text-white/80 text-sm font-normal font-['Montserrat'] leading-5">{feature}</span>
+                        <span className="text-white/80 text-sm font-normal font-brand leading-5">{feature}</span>
                       </div>
                     ))}
                   </div>
@@ -271,9 +271,9 @@ export default function PricingPage() {
                     )
                   }
                 >
-                  <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">Get Started</span>
+                  <span className="text-white text-base font-semibold font-brand leading-5">Get Started</span>
                 </button>
-                <p className="text-center text-white/80 text-sm font-normal font-['Montserrat'] leading-5">
+                <p className="text-center text-white/80 text-sm font-normal font-brand leading-5">
                   Each plan requires + 99€ setup fee
                 </p>
               </div>
@@ -283,24 +283,24 @@ export default function PricingPage() {
 
         {/* All Plans Include bar */}
         <div className="w-full p-6 bg-gradient-to-bl from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-blue-50/20 flex flex-col lg:flex-row justify-start lg:justify-between items-start lg:items-center gap-3 overflow-hidden">
-          <span className="text-white text-2xl font-medium font-['Montserrat']">All Plans Include:</span>
+          <span className="text-white text-2xl font-medium font-brand">All Plans Include:</span>
           <div className="w-full lg:w-auto flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/card-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
-            <span className="text-white text-base font-normal font-['Montserrat'] leading-6">
+            <span className="text-white text-base font-normal font-brand leading-6">
               0% transaction fees on digital products
             </span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/driver.svg" alt="" loading="lazy" className="w-6 h-6" />
-            <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Hosting</span>
+            <span className="text-white text-base font-normal font-brand leading-6">Hosting</span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/wrench.svg" alt="" loading="lazy" className="w-6 h-6" />
-            <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Ongoing Maintenance</span>
+            <span className="text-white text-base font-normal font-brand leading-6">Ongoing Maintenance</span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/shield-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
-            <span className="text-white text-base font-normal font-['Montserrat'] leading-6">Secure &amp; fast performance</span>
+            <span className="text-white text-base font-normal font-brand leading-6">Secure &amp; fast performance</span>
           </div>
         </div>
       </div>
@@ -324,7 +324,7 @@ export default function PricingPage() {
               type="button"
               className="px-6 py-3.5 bg-[#EFF6FF] rounded-lg flex justify-center items-center"
             >
-              <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
+              <span className="text-center text-[#0C275F] text-base font-semibold font-brand leading-5">
                 Compare plans
               </span>
             </button>
@@ -337,7 +337,7 @@ export default function PricingPage() {
                   <button
                     type="button"
                     onClick={() => setMobileComparisonPlan("basic")}
-                    className={`text-lg font-['Montserrat'] ${
+                    className={`text-lg font-brand ${
                       mobileComparisonPlan === "basic" ? "text-white font-bold" : "text-neutral-500 font-medium"
                     }`}
                   >
@@ -346,7 +346,7 @@ export default function PricingPage() {
                   <button
                     type="button"
                     onClick={() => setMobileComparisonPlan("essential")}
-                    className={`text-lg font-['Montserrat'] ${
+                    className={`text-lg font-brand ${
                       mobileComparisonPlan === "essential" ? "text-white font-bold" : "text-neutral-500 font-medium"
                     }`}
                   >
@@ -355,21 +355,21 @@ export default function PricingPage() {
                   <button
                     type="button"
                     onClick={() => setMobileComparisonPlan("pro")}
-                    className={`text-lg font-['Montserrat'] ${
+                    className={`text-lg font-brand ${
                       mobileComparisonPlan === "pro" ? "text-white font-bold" : "text-neutral-500 font-medium"
                     }`}
                   >
                     Pro
                   </button>
                 </div>
-                <span className="text-white text-base font-normal font-['Montserrat'] leading-5">{mobileComparisonPrice}</span>
+                <span className="text-white text-base font-normal font-brand leading-5">{mobileComparisonPrice}</span>
               </div>
               <div className="w-full flex justify-between items-start">
                 <div className="flex-1 flex flex-col">
                   {comparisonRows.map((row, i) => (
                     <div key={i} className="h-36 px-3.5 py-6 border-t border-zinc-800 flex flex-col justify-center items-start">
-                      <span className="text-white text-base font-bold font-['Montserrat'] leading-5">{row.feature}</span>
-                      <span className="text-white text-sm font-normal font-['Montserrat'] leading-5">{row.description}</span>
+                      <span className="text-white text-base font-bold font-brand leading-5">{row.feature}</span>
+                      <span className="text-white text-sm font-normal font-brand leading-5">{row.description}</span>
                     </div>
                   ))}
                 </div>
@@ -379,7 +379,7 @@ export default function PricingPage() {
                       key={i}
                       className="h-36 px-5 py-6 border-l border-t border-zinc-800 flex flex-col justify-center items-center gap-2.5"
                     >
-                      <span className="text-center text-white text-base font-normal font-['Montserrat'] leading-5">
+                      <span className="text-center text-white text-base font-normal font-brand leading-5">
                         {row[mobileComparisonPlan]}
                       </span>
                     </div>
@@ -393,12 +393,12 @@ export default function PricingPage() {
               {/* Features column */}
               <div className="w-72 flex flex-col flex-shrink-0">
                 <div className="p-5 border-r border-zinc-800 flex items-center gap-2.5">
-                  <span className="text-white text-lg font-bold font-['Montserrat']">Features</span>
+                  <span className="text-white text-lg font-bold font-brand">Features</span>
                 </div>
                 {comparisonRows.map((row, i) => (
                   <div key={i} className="h-36 px-5 py-6 border-t border-b border-zinc-800 flex flex-col justify-center items-start">
-                    <span className="text-white text-base font-bold font-['Montserrat'] leading-6">{row.feature}</span>
-                    <span className="text-white text-sm font-normal font-['Montserrat'] leading-5">{row.description}</span>
+                    <span className="text-white text-base font-bold font-brand leading-6">{row.feature}</span>
+                    <span className="text-white text-sm font-normal font-brand leading-5">{row.description}</span>
                   </div>
                 ))}
               </div>
@@ -406,12 +406,12 @@ export default function PricingPage() {
               {/* Basic column */}
               <div className="flex-1 flex flex-col">
                 <div className="p-5 border-r border-zinc-800 flex justify-between items-end">
-                  <span className="text-white text-lg font-bold font-['Montserrat']">Basic</span>
-                  <span className="text-white text-sm font-normal font-['Montserrat'] leading-5">34€</span>
+                  <span className="text-white text-lg font-bold font-brand">Basic</span>
+                  <span className="text-white text-sm font-normal font-brand leading-5">34€</span>
                 </div>
                 {comparisonRows.map((row, i) => (
                   <div key={i} className="h-36 px-5 py-6 outline outline-1 outline-offset-[-1px] outline-zinc-800 flex flex-col justify-center items-center gap-2.5">
-                    <span className="text-center text-white text-base font-normal font-['Montserrat'] leading-6">{row.basic}</span>
+                    <span className="text-center text-white text-base font-normal font-brand leading-6">{row.basic}</span>
                   </div>
                 ))}
               </div>
@@ -419,12 +419,12 @@ export default function PricingPage() {
               {/* Essential column */}
               <div className="flex-1 flex flex-col">
                 <div className="p-5 border-r border-zinc-800 flex justify-between items-end">
-                  <span className="text-white text-lg font-bold font-['Montserrat']">Essential</span>
-                  <span className="text-white text-sm font-normal font-['Montserrat'] leading-5">39€</span>
+                  <span className="text-white text-lg font-bold font-brand">Essential</span>
+                  <span className="text-white text-sm font-normal font-brand leading-5">39€</span>
                 </div>
                 {comparisonRows.map((row, i) => (
                   <div key={i} className="h-36 px-5 py-6 outline outline-1 outline-offset-[-1px] outline-zinc-800 flex flex-col justify-center items-center gap-2.5">
-                    <span className="text-center text-white text-base font-normal font-['Montserrat'] leading-6">{row.essential}</span>
+                    <span className="text-center text-white text-base font-normal font-brand leading-6">{row.essential}</span>
                   </div>
                 ))}
               </div>
@@ -432,12 +432,12 @@ export default function PricingPage() {
               {/* Pro column */}
               <div className="flex-1 flex flex-col">
                 <div className="p-5 flex justify-between items-end">
-                  <span className="text-white text-lg font-bold font-['Montserrat']">Pro</span>
-                  <span className="text-white text-sm font-normal font-['Montserrat'] leading-5">200€</span>
+                  <span className="text-white text-lg font-bold font-brand">Pro</span>
+                  <span className="text-white text-sm font-normal font-brand leading-5">200€</span>
                 </div>
                 {comparisonRows.map((row, i) => (
                   <div key={i} className="h-36 px-5 py-6 border-l border-t border-b border-zinc-800 flex flex-col justify-center items-center gap-2.5">
-                    <span className="text-center text-white text-base font-normal font-['Montserrat'] leading-6">{row.pro}</span>
+                    <span className="text-center text-white text-base font-normal font-brand leading-6">{row.pro}</span>
                   </div>
                 ))}
               </div>
@@ -457,3 +457,5 @@ export default function PricingPage() {
     </div>
   );
 }
+
+

@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+﻿import { useRef, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
@@ -164,7 +164,7 @@ export function HowWeWorkSection() {
               textAlign: "right",
             }}
           >
-            <h2 className="text-3xl font-semibold font-['Montserrat'] text-right">
+            <h2 className="text-3xl font-semibold font-brand text-right">
               <span className="text-white">A process created around </span>
               <span className="text-[#ED4C14]">you.</span>
             </h2>
@@ -190,10 +190,10 @@ export function HowWeWorkSection() {
               className="step-content-enter"
               style={{ display: "flex", flexDirection: "column", gap: "12px" }}
             >
-              <h3 className="text-white text-xl font-semibold font-['Montserrat'] leading-tight">
+              <h3 className="text-white text-xl font-semibold font-brand leading-tight">
                 {STEPS[activeStep].title}
               </h3>
-              <p className="text-white/70 text-sm font-['Montserrat'] leading-relaxed">
+              <p className="text-white/70 text-sm font-brand leading-relaxed">
                 {STEPS[activeStep].description}
               </p>
               <button
@@ -202,7 +202,7 @@ export function HowWeWorkSection() {
                 className="h-10 px-4 bg-[#ED4C14] rounded-[10px] inline-flex
                            items-center gap-4 border-0 cursor-pointer w-fit mt-2"
               >
-                <span className="text-[#EFF6FF] text-sm font-semibold font-['Montserrat']">
+                <span className="text-[#EFF6FF] text-sm font-semibold font-brand">
                   Get Started
                 </span>
                 <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
@@ -241,7 +241,7 @@ export function HowWeWorkSection() {
           }}
         >
           <h2
-            className="pointer-events-auto m-0 font-semibold font-['Montserrat']"
+            className="pointer-events-auto m-0 font-semibold font-brand"
             style={{
               fontSize: "clamp(1.25rem, 2.5vw + 0.5rem, 48px)",
               lineHeight: "1.15",
@@ -489,3 +489,4 @@ export function HowWeWorkSection() {
     </>
   );
 }
+

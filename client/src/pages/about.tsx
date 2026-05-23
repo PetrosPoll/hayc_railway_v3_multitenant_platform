@@ -1,4 +1,4 @@
-
+﻿
 import React, { useRef, useEffect, useState } from "react";
 import { ArrowRight, Code, PiggyBank, Shield } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -72,11 +72,11 @@ export default function AboutPage() {
               {/* Content */}
               <div className="w-full lg:w-[736px] flex flex-col justify-center items-center gap-12">
                 <div className="flex flex-col justify-start items-end gap-3">
-                  <h1 className="text-center text-3xl lg:text-6xl leading-10 lg:leading-tight font-semibold font-['Montserrat']">
+                  <h1 className="text-center text-3xl lg:text-6xl leading-10 lg:leading-tight font-semibold font-brand">
                     <span className="text-[#ED4C14]">Helping businesses</span>
                     <span className="text-white"> get successfully online.</span>
                   </h1>
-                  <p className="text-center text-white text-base lg:text-lg font-normal lg:font-medium leading-5 lg:leading-normal font-['Montserrat']">
+                  <p className="text-center text-white text-base lg:text-lg font-normal lg:font-medium leading-5 lg:leading-normal font-brand">
                     HAYC isn't a DIY website builder. It's a website creation service. Choose a template, and we take care of build, hosting, and ongoing updates.
                   </p>
                 </div>
@@ -87,7 +87,7 @@ export default function AboutPage() {
                     className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
                     onClick={() => navigate("/templates")}
                   >
-                    <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
+                    <span className="text-center text-[#0C275F] text-base font-semibold font-brand leading-5">
                       Explore Templates
                     </span>
                     <ArrowRight className="h-4 w-4 text-[#0C275F]" />
@@ -96,7 +96,7 @@ export default function AboutPage() {
                     className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
                     onClick={() => navigate("/contact")}
                   >
-                    <span className="text-center text-[#0C275F] text-base font-semibold font-['Montserrat'] leading-5">
+                    <span className="text-center text-[#0C275F] text-base font-semibold font-brand leading-5">
                       Contact us
                     </span>
                     <ArrowRight className="h-4 w-4 text-[#0C275F]" />
@@ -110,12 +110,12 @@ export default function AboutPage() {
       {/* Mission Section */}
       <section className="w-full bg-black">
         <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row px-4 lg:px-16 py-12 lg:py-24 gap-6 lg:gap-20">
-          <div className="text-[#ED4C14] text-lg font-medium font-['Montserrat'] text-left lg:text-right lg:w-32 lg:flex-shrink-0">
+          <div className="text-[#ED4C14] text-lg font-medium font-brand text-left lg:text-right lg:w-32 lg:flex-shrink-0">
             OUR MISSION
           </div>
           <div
             ref={missionRef}
-            className="text-3xl lg:text-5xl font-semibold font-['Montserrat'] leading-10 lg:leading-[70px] flex-1"
+            className="text-3xl lg:text-5xl font-semibold font-brand leading-10 lg:leading-[70px] flex-1"
           >
             {(() => {
               const allWords = "To launch professional websites in days, then keep them evolving with ongoing support and new features.".split(" ");
@@ -131,7 +131,7 @@ export default function AboutPage() {
                 return (
                   <span
                     key={i}
-                    className="text-3xl lg:text-5xl font-semibold font-['Montserrat'] leading-10 lg:leading-[70px] text-white transition-opacity duration-200"
+                    className="text-3xl lg:text-5xl font-semibold font-brand leading-10 lg:leading-[70px] text-white transition-opacity duration-200"
                     style={{ opacity }}
                   >
                     {word}{" "}
@@ -149,7 +149,7 @@ export default function AboutPage() {
           ref={visionRef}
           className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row px-4 lg:px-16 py-12 lg:py-24 gap-6 lg:gap-20"
         >
-          <div className="text-[#ED4C14] text-lg font-medium font-['Montserrat'] text-left lg:text-right lg:w-32 lg:flex-shrink-0">
+          <div className="text-[#ED4C14] text-lg font-medium font-brand text-left lg:text-right lg:w-32 lg:flex-shrink-0">
             OUR VISION
           </div>
           <div className="self-stretch">
@@ -169,7 +169,7 @@ export default function AboutPage() {
                 return (
                   <span
                     key={i}
-                    className="text-3xl font-semibold font-['Montserrat'] leading-10 text-white transition-opacity duration-200"
+                    className="text-3xl font-semibold font-brand leading-10 text-white transition-opacity duration-200"
                     style={{ opacity }}
                   >
                     {word}{" "}
@@ -203,7 +203,7 @@ export default function AboutPage() {
           sizes="(max-width: 767px) 100vw, 100vw"
           alt=""
           aria-hidden="true"
-          fetchPriority="high"
+          fetchpriority="high"
           className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setBgLoaded(true)}
         />
@@ -216,16 +216,16 @@ export default function AboutPage() {
           <section className="relative w-full">
             <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row justify-center items-center px-4 lg:px-16 py-24 gap-20 lg:gap-48">
           <div className="flex-1 flex flex-col justify-center items-center">
-            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-['Montserrat']">99%</span>
-            <span className="text-center text-white text-lg font-medium font-['Montserrat']">uptime guarantee</span>
+            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">99%</span>
+            <span className="text-center text-white text-lg font-medium font-brand">uptime guarantee</span>
           </div>
           <div className="flex-1 flex flex-col justify-center items-center">
-            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-['Montserrat']">Save 20%</span>
-            <span className="text-center text-white text-lg font-medium font-['Montserrat']">on annual plans</span>
+            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">Save 20%</span>
+            <span className="text-center text-white text-lg font-medium font-brand">on annual plans</span>
           </div>
           <div className="flex-1 flex flex-col justify-center items-center">
-            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-['Montserrat']">30-day</span>
-            <span className="text-center text-white text-lg font-medium font-['Montserrat']">money-back guarantee</span>
+            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">30-day</span>
+            <span className="text-center text-white text-lg font-medium font-brand">money-back guarantee</span>
           </div>
             </div>
           </section>
@@ -234,12 +234,12 @@ export default function AboutPage() {
             <div className="w-full max-w-7xl mx-auto px-4 lg:px-16 py-12 lg:py-24 flex flex-col justify-start items-start gap-2.5">
           {/* Header */}
           <div className="w-full py-12 flex flex-col lg:flex-row justify-start items-start gap-6 lg:gap-20">
-            <div className="text-left lg:text-right lg:w-36 lg:flex-shrink-0 text-[#ED4C14] text-lg font-medium font-['Montserrat']">
+            <div className="text-left lg:text-right lg:w-36 lg:flex-shrink-0 text-[#ED4C14] text-lg font-medium font-brand">
               OUR PROCESS
             </div>
             <div
               ref={processRef}
-              className="flex-1 text-3xl lg:text-5xl font-semibold font-['Montserrat'] leading-10 lg:leading-[70px]"
+              className="flex-1 text-3xl lg:text-5xl font-semibold font-brand leading-10 lg:leading-[70px]"
             >
               {(() => {
                 const allWords = "We created our process to feel effortless and help every business get the website it deserves with ease.".split(" ");
@@ -255,7 +255,7 @@ export default function AboutPage() {
                   return (
                     <span
                       key={i}
-                      className="text-3xl lg:text-5xl font-semibold font-['Montserrat'] leading-10 lg:leading-[70px] text-white transition-opacity duration-200"
+                      className="text-3xl lg:text-5xl font-semibold font-brand leading-10 lg:leading-[70px] text-white transition-opacity duration-200"
                       style={{ opacity }}
                     >
                       {word}{" "}
@@ -281,15 +281,15 @@ export default function AboutPage() {
                   }`}
                   style={{ flexShrink: isOpen ? 1 : 0 }}
                 >
-                  <span className={`text-2xl font-medium font-['Montserrat'] transition-colors duration-300 ${isOpen ? "text-white" : "text-white/30"}`}>
+                  <span className={`text-2xl font-medium font-brand transition-colors duration-300 ${isOpen ? "text-white" : "text-white/30"}`}>
                     {step.num}
                   </span>
                   <div className="flex-1 flex flex-col justify-start items-start">
-                    <span className={`text-2xl lg:text-4xl font-semibold font-['Montserrat'] transition-colors duration-300 ${isOpen ? "text-white" : "text-white/30"}`}>
+                    <span className={`text-2xl lg:text-4xl font-semibold font-brand transition-colors duration-300 ${isOpen ? "text-white" : "text-white/30"}`}>
                       {step.title}
                     </span>
                     <span
-                      className={`text-white text-2xl font-medium font-['Montserrat'] mt-auto overflow-hidden transition-all duration-400 ease-out ${
+                      className={`text-white text-2xl font-medium font-brand mt-auto overflow-hidden transition-all duration-400 ease-out ${
                         isOpen ? "max-h-24 opacity-100 translate-y-0" : "max-h-0 opacity-0 translate-y-2"
                       }`}
                     >
@@ -333,3 +333,5 @@ export default function AboutPage() {
     </div>
   );
 }
+
+

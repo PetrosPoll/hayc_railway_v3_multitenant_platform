@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import {
@@ -24,8 +24,9 @@ import {
 } from "lucide-react";
 import WalkthroughExplainer from "@/components/get-started/walkthrough-explainer";
 
-const ADDON_DISPLAY_NAMES: Record<string, string> = {
-  HDP: "Hayc Digital Products",
+const ADDON_I18N_KEY_MAP: Record<string, string> = {
+  "Booking Integration": "bookingIntegration",
+  "HDP": "hdp",
 };
 
 const PLAN_CONFIG: {
@@ -57,6 +58,16 @@ export default function StepSummary({
 }: StepSummaryProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
+
+  const getPageLabel = (page: string): string => {
+    const result = t(`getStarted.websiteStructure.pages.${page}`);
+    return result.startsWith("getStarted.") ? page : result;
+  };
+
+  const getAddonLabel = (value: string): string => {
+    const key = ADDON_I18N_KEY_MAP[value];
+    return key ? t(`getStarted.recommendation.addons.${key}`) : value;
+  };
   const selectedDesignId = form.watch("selectedDesign");
   const selectedPlanId = form.watch("plan");
   const selectedBillingPeriod = form.watch("billingPeriod") ?? "monthly";
@@ -72,26 +83,10 @@ export default function StepSummary({
   const privacyAccepted = form.watch("privacyAccepted");
 
   const passwordRequirements = [
-    {
-      key: "length",
-      label: "At least 8 characters",
-      met: password.length >= 8,
-    },
-    {
-      key: "uppercase",
-      label: "At least 1 uppercase letter",
-      met: /[A-Z]/.test(password),
-    },
-    {
-      key: "number",
-      label: "At least 1 number",
-      met: /[0-9]/.test(password),
-    },
-    {
-      key: "special",
-      label: "At least 1 special character",
-      met: /[^A-Za-z0-9]/.test(password),
-    },
+    { key: "length",    label: t("getStarted.summary.passwordRequirements.length"),    met: password.length >= 8 },
+    { key: "uppercase", label: t("getStarted.summary.passwordRequirements.uppercase"), met: /[A-Z]/.test(password) },
+    { key: "number",    label: t("getStarted.summary.passwordRequirements.number"),    met: /[0-9]/.test(password) },
+    { key: "special",   label: t("getStarted.summary.passwordRequirements.special"),   met: /[^A-Za-z0-9]/.test(password) },
   ];
 
   const allRequirementsMet = passwordRequirements.every((r) => r.met);
@@ -129,10 +124,10 @@ export default function StepSummary({
     <div className="w-full min-h-screen bg-black px-4 md:px-16 py-8 md:py-12 flex flex-col justify-center items-center gap-6 overflow-hidden">
       {/* Header */}
       <div className="w-full md:w-[638px] flex flex-col items-center gap-3">
-        <div className="w-full text-center text-white text-2xl md:text-4xl font-semibold font-['Montserrat']">
+        <div className="w-full text-center text-white text-2xl md:text-4xl font-semibold font-brand">
           {t("getStarted.summary.title")}
         </div>
-        <div className="w-full text-center text-white text-sm md:text-lg font-medium font-['Montserrat']">
+        <div className="w-full text-center text-white text-sm md:text-lg font-medium font-brand">
           {isLoggedIn
             ? t("getStarted.summary.subtitleLoggedIn")
             : t("getStarted.summary.subtitle")}
@@ -146,20 +141,20 @@ export default function StepSummary({
           {/* Selected design row */}
           <div className="flex justify-start items-start gap-3">
             <div className="flex-1 flex flex-col gap-2 md:gap-3">
-              <div className="text-white text-base md:text-2xl font-medium font-['Montserrat']">
+              <div className="text-white text-base md:text-2xl font-medium font-brand">
                 {t("getStarted.summary.selectedDesign")}
               </div>
               {selectedDesignId === "auto" ? (
                 <div className="flex flex-col gap-1">
-                  <div className="text-white text-sm md:text-lg font-medium font-['Montserrat']">
+                  <div className="text-white text-sm md:text-lg font-medium font-brand">
                     {t("getStarted.summary.designLabels.auto")}
                   </div>
-                  <div className="text-white/60 text-xs md:text-sm font-normal font-['Montserrat']">
+                  <div className="text-white/60 text-xs md:text-sm font-normal font-brand">
                     {t("getStarted.summary.designLabels.autoSubtitle")}
                   </div>
                 </div>
               ) : (
-                <div className="text-white text-sm md:text-lg font-medium font-['Montserrat']">
+                <div className="text-white text-sm md:text-lg font-medium font-brand">
                   {selectedTemplate ? selectedTemplate.name : designLabel}
                 </div>
               )}
@@ -185,7 +180,7 @@ export default function StepSummary({
           {/* Walkthrough section */}
           <div className="flex flex-col gap-3">
             <div className="hidden md:flex flex-col gap-4">
-              <div className="text-white text-lg font-medium font-['Montserrat']">
+              <div className="text-white text-lg font-medium font-brand">
                 {t("getStarted.summary.walkthroughTitle")}
               </div>
               <WalkthroughExplainer />
@@ -194,24 +189,24 @@ export default function StepSummary({
             <div className="w-full p-3.5 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-neutral-500 flex flex-col gap-3">
               <div className="w-full pb-2.5 border-b border-neutral-500 flex items-center gap-3">
                 <Rocket className="w-4 h-4 md:w-5 md:h-5 text-[#ED4C14] flex-shrink-0" />
-                <span className="text-white text-sm md:text-lg font-bold font-['Montserrat']">
+                <span className="text-white text-sm md:text-lg font-bold font-brand">
                   {t("getStarted.summary.whatsIncluded")}
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <FileText className="w-4 h-4 md:w-5 md:h-5 text-white flex-shrink-0" />
-                <span className="text-white text-xs md:text-lg font-medium font-['Montserrat']">
+                <span className="text-white text-xs md:text-lg font-medium font-brand">
                   {(form.watch("suggestedStructure") ?? []).length > 0
-                    ? (form.watch("suggestedStructure") ?? []).join(", ")
+                    ? (form.watch("suggestedStructure") ?? []).map(getPageLabel).join(", ")
                     : t("getStarted.summary.pagesIncluded")}
                 </span>
               </div>
               {(form.watch("selectedAddons") ?? []).length > 0 && (
                 <div className="flex items-start gap-3">
                   <LayoutGrid className="w-4 h-4 md:w-5 md:h-5 text-white flex-shrink-0 mt-0.5" />
-                  <span className="text-white text-xs md:text-lg font-medium font-['Montserrat']">
+                  <span className="text-white text-xs md:text-lg font-medium font-brand">
                     {(form.watch("selectedAddons") ?? [])
-                      .map((a) => ADDON_DISPLAY_NAMES[a] ?? a)
+                      .map(getAddonLabel)
                       .join(", ")}
                   </span>
                 </div>
@@ -219,7 +214,7 @@ export default function StepSummary({
             </div>
           </div>
 
-          <div className="text-white text-xs md:text-base font-normal font-['Montserrat'] leading-6">
+          <div className="text-white text-xs md:text-base font-normal font-brand leading-6">
             {t("getStarted.summary.customizeLater")}
           </div>
         </div>
@@ -227,14 +222,14 @@ export default function StepSummary({
         {/* RIGHT CARD — account + plan */}
         <div className="w-full md:flex-1 md:min-h-0 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-8 md:gap-24">
           <div className="flex flex-col gap-6">
-            <div className="text-white text-base md:text-2xl font-medium font-['Montserrat']">
+            <div className="text-white text-base md:text-2xl font-medium font-brand">
               {isLoggedIn
                 ? t("getStarted.summary.createAccountLoggedIn")
                 : t("getStarted.summary.createAccount")}
             </div>
             {isLoggedIn ? (
               <div className="flex flex-col gap-3">
-                <p className="text-white/80 text-sm font-normal font-['Montserrat'] leading-6">
+                <p className="text-white/80 text-sm font-normal font-brand leading-6">
                   {t("getStarted.summary.signedInAsPrefix")}{" "}
                   <span className="text-[#ED4C14] font-medium">
                     {form.watch("email") || "—"}
@@ -247,7 +242,7 @@ export default function StepSummary({
                   name="documentType"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="text-white/80 text-sm font-medium font-['Montserrat'] mb-2">
+                      <div className="text-white/80 text-sm font-medium font-brand mb-2">
                         {t("getStarted.summary.documentType.label")}
                       </div>
                       <FormControl>
@@ -270,7 +265,7 @@ export default function StepSummary({
                                   <div className="w-2 h-2 rounded-full bg-[#ED4C14]" />
                                 )}
                               </div>
-                              <span className="text-white text-sm font-['Montserrat']">
+                              <span className="text-white text-sm font-brand">
                                 {t(`getStarted.summary.documentType.${type}`)}
                               </span>
                             </button>
@@ -294,7 +289,7 @@ export default function StepSummary({
                               {...field}
                               value={field.value ?? ""}
                               placeholder={t("getStarted.summary.placeholders.vatNumber")}
-                              className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                              className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                             />
                           </FormControl>
                         </FormItem>
@@ -313,7 +308,7 @@ export default function StepSummary({
                                   {...field}
                                   value={field.value ?? ""}
                                   placeholder={t(`getStarted.summary.placeholders.${fieldName}`)}
-                                  className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                                  className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                                 />
                               </FormControl>
                             </FormItem>
@@ -336,7 +331,7 @@ export default function StepSummary({
                           {...field}
                           value={field.value ?? ""}
                           placeholder={t("getStarted.summary.placeholders.fullName")}
-                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                         />
                       </FormControl>
                     </FormItem>
@@ -353,7 +348,7 @@ export default function StepSummary({
                           value={field.value ?? ""}
                           type="email"
                           placeholder={t("getStarted.summary.placeholders.email")}
-                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                         />
                       </FormControl>
                     </FormItem>
@@ -370,7 +365,7 @@ export default function StepSummary({
                           value={field.value ?? ""}
                           type="tel"
                           placeholder={t("getStarted.summary.placeholders.phoneOptional")}
-                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                          className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                         />
                       </FormControl>
                     </FormItem>
@@ -381,7 +376,7 @@ export default function StepSummary({
                   name="documentType"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="text-white/80 text-sm font-medium font-['Montserrat'] mb-2">
+                      <div className="text-white/80 text-sm font-medium font-brand mb-2">
                         {t("getStarted.summary.documentType.label")}
                       </div>
                       <FormControl>
@@ -406,7 +401,7 @@ export default function StepSummary({
                                   <div className="w-2 h-2 rounded-full bg-[#ED4C14]" />
                                 )}
                               </div>
-                              <span className="text-white text-sm font-['Montserrat']">
+                              <span className="text-white text-sm font-brand">
                                 {t(`getStarted.summary.documentType.${type}`)}
                               </span>
                             </button>
@@ -428,7 +423,7 @@ export default function StepSummary({
                               {...field}
                               value={field.value ?? ""}
                               placeholder={t("getStarted.summary.placeholders.vatNumber")}
-                              className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                              className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                             />
                           </FormControl>
                         </FormItem>
@@ -447,7 +442,7 @@ export default function StepSummary({
                                   {...field}
                                   value={field.value ?? ""}
                                   placeholder={t(`getStarted.summary.placeholders.${fieldName}`)}
-                                  className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                                  className="w-full px-4 py-3 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                                 />
                               </FormControl>
                             </FormItem>
@@ -469,7 +464,7 @@ export default function StepSummary({
                             value={field.value ?? ""}
                             type={showPassword ? "text" : "password"}
                             placeholder={t("getStarted.summary.placeholders.password")}
-                            className="w-full px-4 py-3 pr-12 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-['Montserrat'] leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
+                            className="w-full px-4 py-3 pr-12 rounded-lg bg-transparent outline outline-1 outline-offset-[-1px] outline-neutral-500 text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-400 focus:outline-[#ED4C14] focus:ring-0 border-0"
                           />
                           <button
                             type="button"
@@ -512,7 +507,7 @@ export default function StepSummary({
                         </div>
                         <span
                           className={cn(
-                            "text-xs font-normal font-['Montserrat'] transition-colors",
+                            "text-xs font-normal font-brand transition-colors",
                             req.met ? "text-[#37c24c]" : "text-white/50",
                           )}
                         >
@@ -538,7 +533,7 @@ export default function StepSummary({
                         >
                           {field.value && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                         </button>
-                        <span className="text-white/70 text-xs font-normal font-['Montserrat'] leading-5">
+                        <span className="text-white/70 text-xs font-normal font-brand leading-5">
                           {t("getStarted.summary.privacyAcceptance")}{" "}
                           <a
                             href="/privacy-policy"
@@ -558,7 +553,7 @@ export default function StepSummary({
           </div>
 
           <div className="flex flex-col gap-6">
-            <div className="text-white text-base md:text-2xl font-medium font-['Montserrat']">
+            <div className="text-white text-base md:text-2xl font-medium font-brand">
               {t("getStarted.summary.choosePlan")}
             </div>
             <div className="flex flex-col gap-3">
@@ -569,7 +564,7 @@ export default function StepSummary({
                   const current = field.value ?? "monthly";
                   return (
                     <FormItem className="w-full">
-                      <div className="text-white text-sm font-medium font-['Montserrat'] mb-2">
+                      <div className="text-white text-sm font-medium font-brand mb-2">
                         {t("getStarted.summary.billing.label")}
                       </div>
                       <FormControl>
@@ -583,7 +578,7 @@ export default function StepSummary({
                                 onClick={() => field.onChange(period)}
                                 className={cn(
                                   "px-3.5 py-2 rounded-[10px] outline outline-1 outline-offset-[-1px]",
-                                  "text-white text-sm font-semibold font-['Montserrat']",
+                                  "text-white text-sm font-semibold font-brand",
                                   "transition-colors cursor-pointer border-0",
                                   "bg-gradient-to-br from-neutral-700/30 to-neutral-700/20",
                                   isSel
@@ -602,7 +597,7 @@ export default function StepSummary({
                         </div>
                       </FormControl>
                       {current === "yearly" && (
-                        <p className="mt-2 text-white/60 text-xs font-normal font-['Montserrat'] leading-snug">
+                        <p className="mt-2 text-white/60 text-xs font-normal font-brand leading-snug">
                           {t("getStarted.summary.billing.yearlyExplanation")}
                         </p>
                       )}
@@ -658,16 +653,16 @@ export default function StepSummary({
                               <div className="flex-1 flex justify-between items-center">
                                 <div className="flex flex-col gap-1 items-start">
                                   <div className="flex items-end gap-1.5">
-                                    <span className="text-white text-sm md:text-lg font-medium font-['Montserrat']">
+                                    <span className="text-white text-sm md:text-lg font-medium font-brand">
                                       {t(
                                         `getStarted.summary.plans.${plan.id}.label`,
                                       )}{" "}
                                       -
                                     </span>
-                                    <span className="text-white text-sm md:text-base font-normal font-['Montserrat'] leading-6">
+                                    <span className="text-white text-sm md:text-base font-normal font-brand leading-6">
                                       {displayPrice}€
                                     </span>
-                                    <span className="hidden md:inline text-white/80 text-sm font-normal font-['Montserrat'] leading-5">
+                                    <span className="hidden md:inline text-white/80 text-sm font-normal font-brand leading-5">
                                       {selectedBillingPeriod === "yearly"
                                         ? t(
                                             "getStarted.summary.perMonthAnnual",
@@ -675,7 +670,7 @@ export default function StepSummary({
                                         : t("getStarted.summary.perMonth")}
                                     </span>
                                   </div>
-                                  <div className="text-white/50 text-xs md:text-sm font-normal font-['Montserrat'] tracking-tight">
+                                  <div className="text-white/50 text-xs md:text-sm font-normal font-brand tracking-tight">
                                     {t(
                                       `getStarted.summary.plans.${plan.id}.description`,
                                     )}
@@ -683,7 +678,7 @@ export default function StepSummary({
                                 </div>
                                 {plan.recommended && (
                                   <div className="px-2 py-[5px] bg-[#ED4C14] rounded-[5px] outline outline-1 outline-offset-[-1px] outline-white/10 flex items-center">
-                                    <span className="text-white text-sm font-medium font-['Montserrat']">
+                                    <span className="text-white text-sm font-medium font-brand">
                                       {t("getStarted.summary.recommended")}
                                     </span>
                                   </div>
@@ -697,7 +692,7 @@ export default function StepSummary({
                   </FormItem>
                 )}
               />
-              <div className="text-white/80 text-xs md:text-sm font-normal font-['Montserrat'] leading-5 text-center">
+              <div className="text-white/80 text-xs md:text-sm font-normal font-brand leading-5 text-center">
                 {t("getStarted.summary.setupFee")}
               </div>
             </div>
@@ -708,7 +703,7 @@ export default function StepSummary({
                 onClick={onBack}
                 className="w-full h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-center items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
               >
-                <span className="text-white text-sm md:text-base font-semibold font-['Montserrat'] leading-5">
+                <span className="text-white text-sm md:text-base font-semibold font-brand leading-5">
                   {t("getStarted.navigation.back")}
                 </span>
               </button>
@@ -718,7 +713,7 @@ export default function StepSummary({
                 disabled={isSubmitting || !canSubmit}
                 className="w-full h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-center items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span className="text-white text-sm md:text-base font-semibold font-['Montserrat'] leading-5">
+                <span className="text-white text-sm md:text-base font-semibold font-brand leading-5">
                   {isSubmitting
                     ? t("getStarted.summary.processing")
                     : t("getStarted.summary.continueWith", {
@@ -729,18 +724,18 @@ export default function StepSummary({
 
               <div className="flex justify-center items-center gap-6">
                 <div className="w-9 h-6 bg-zinc-900 rounded border border-neutral-500 flex items-center justify-center">
-                  <span className="text-white/60 text-xs font-['Montserrat']">
+                  <span className="text-white/60 text-xs font-brand">
                     {t("getStarted.summary.visa")}
                   </span>
                 </div>
                 <div className="w-9 h-6 bg-zinc-900 rounded border border-neutral-500 flex items-center justify-center">
-                  <span className="text-white/60 text-xs font-['Montserrat']">
+                  <span className="text-white/60 text-xs font-brand">
                     {t("getStarted.summary.payLabel")}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 text-white/60" />
-                  <span className="text-white/80 text-xs font-normal font-['Montserrat']">
+                  <span className="text-white/80 text-xs font-normal font-brand">
                     {t("getStarted.summary.cancelAnytime")}
                   </span>
                 </div>
@@ -752,3 +747,4 @@ export default function StepSummary({
     </div>
   );
 }
+

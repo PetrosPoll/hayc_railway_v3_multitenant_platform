@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
@@ -54,18 +54,18 @@ export function TemplatesSection() {
         <div className="hidden md:block w-full px-16">
           <div className="w-full max-w-7xl mx-auto flex justify-start items-center gap-48">
             <div className="flex-1">
-              <span className="text-[#EFF6FF] text-5xl font-semibold font-['Montserrat'] leading-[70px]">{t("home.templatesSection.titlePrefix")} </span>
-              <span className="text-[#ED4C14] text-5xl font-semibold font-['Montserrat'] leading-[70px]">{t("home.templatesSection.titleHighlight")}</span>
+              <span className="text-[#EFF6FF] text-5xl font-semibold font-brand leading-[70px]">{t("home.templatesSection.titlePrefix")} </span>
+              <span className="text-[#ED4C14] text-5xl font-semibold font-brand leading-[70px]">{t("home.templatesSection.titleHighlight")}</span>
             </div>
             <div className="flex-1 flex flex-col justify-start items-start gap-6">
-              <p className="text-[#EFF6FF] text-base font-normal font-['Montserrat'] leading-6">
+              <p className="text-[#EFF6FF] text-base font-normal font-brand leading-6">
                 {t("home.templatesSection.description")}
               </p>
               <button
                 className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
                 onClick={() => navigate("/templates")}
               >
-                <span className="text-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
+                <span className="text-center text-blue-950 text-base font-semibold font-brand leading-5">
                   {t("nav.templates")}
                 </span>
                 <ArrowRight className="h-4 w-4 text-blue-950" />
@@ -78,18 +78,18 @@ export function TemplatesSection() {
         <div className="md:hidden flex w-full flex-col items-stretch justify-start gap-12">
           <div className="flex w-full flex-col items-start justify-start gap-3 self-stretch px-4">
             <div className="self-stretch justify-start">
-              <span className="text-white text-3xl font-semibold font-['Montserrat'] leading-10">Templates that already look </span>
-              <span className="text-[#ED4C14] text-3xl font-semibold font-['Montserrat'] leading-10">like you.</span>
+              <span className="text-white text-3xl font-semibold font-brand leading-10">Templates that already look </span>
+              <span className="text-[#ED4C14] text-3xl font-semibold font-brand leading-10">like you.</span>
             </div>
             <div className="self-stretch flex flex-col justify-start items-start gap-6">
-              <div className="self-stretch justify-start text-white text-base font-normal font-['Montserrat'] leading-5">
+              <div className="self-stretch justify-start text-white text-base font-normal font-brand leading-5">
                 {t("home.templatesSection.description")}
               </div>
               <button
                 className="h-11 px-5 py-3.5 bg-[#A0BAF3] rounded-[10px] inline-flex justify-start items-center gap-4 hover:opacity-80 transition-opacity"
                 onClick={() => navigate("/templates")}
               >
-                <span className="text-center text-blue-950 text-base font-semibold font-['Montserrat'] leading-5">
+                <span className="text-center text-blue-950 text-base font-semibold font-brand leading-5">
                   {t("nav.templates")}
                 </span>
                 <ArrowRight className="h-4 w-4 text-blue-950" />
@@ -180,3 +180,4 @@ export function TemplatesSection() {
     </>
   );
 }
+

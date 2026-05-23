@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/ui/authContext";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 
 const ALL_PAGES = [
@@ -48,6 +49,7 @@ export default function GetStartedWebsiteStructure() {
   const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const isMock = import.meta.env.DEV && searchParams.get("mock") === "true";
   const mockSessionId = "mock-session-id-dev";
@@ -134,7 +136,6 @@ export default function GetStartedWebsiteStructure() {
         const structure = data?.submission?.suggestedStructure;
         const confirmed = data?.submission?.confirmedPages;
 
-        // selectedPlan from the submission is the authoritative source
         const plan = data?.submission?.selectedPlan;
         if (plan) {
           setUserPlan(plan);
@@ -145,9 +146,6 @@ export default function GetStartedWebsiteStructure() {
           const trimmed = structure.slice(0, planLimit);
           setRecommendedPages(trimmed);
 
-          // Confirmed pages (user's manual selections) take priority over the
-          // suggested structure. Only fall back to suggestedStructure if the
-          // user has never explicitly confirmed a page selection.
           if (Array.isArray(confirmed) && confirmed.length > 0) {
             setSelectedPages(confirmed);
           } else {
@@ -166,17 +164,29 @@ export default function GetStartedWebsiteStructure() {
   if (!isMock && !user) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-white font-['Montserrat']">Loading...</p>
+        <p className="text-white font-brand">{t("getStarted.websiteStructure.loading")}</p>
       </div>
     );
   }
+
+  const planDisplayName = userPlan
+    ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1)
+    : t("getStarted.websiteStructure.pageLimit.current");
+
+  const getPageLabel = (page: string): string => {
+    if (!ALL_PAGES.includes(page)) return page;
+    return t(`getStarted.websiteStructure.pages.${page}`);
+  };
 
   const togglePage = (page: string) => {
     const isCurrentlySelected = selectedPages.includes(page);
     if (!isCurrentlySelected && isAtLimit) {
       toast({
-        title: `Page limit reached`,
-        description: `Your ${userPlan ?? "current"} plan allows up to ${pageLimit} pages.`,
+        title: t("getStarted.websiteStructure.errors.pageLimitReached"),
+        description: t("getStarted.websiteStructure.errors.pageLimitDesc", {
+          plan: planDisplayName,
+          limit: pageLimit,
+        }),
         variant: "destructive",
       });
       return;
@@ -193,17 +203,20 @@ export default function GetStartedWebsiteStructure() {
     if (!trimmed) return;
     const trimmedLower = trimmed.toLowerCase();
     if (selectedPages.some((p) => p.toLowerCase() === trimmedLower)) {
-      toast({ title: "This page is already in your selection.", variant: "destructive" });
+      toast({ title: t("getStarted.websiteStructure.errors.pageAlreadySelected"), variant: "destructive" });
       return;
     }
     if (ALL_PAGES.some((p) => p.toLowerCase() === trimmedLower)) {
-      toast({ title: "This page is available in the list above — select it from there.", variant: "destructive" });
+      toast({ title: t("getStarted.websiteStructure.errors.pageAvailableAbove"), variant: "destructive" });
       return;
     }
     if (isAtLimit) {
       toast({
-        title: `Page limit reached`,
-        description: `Your ${userPlan ?? "current"} plan allows up to ${pageLimit} pages.`,
+        title: t("getStarted.websiteStructure.errors.pageLimitReached"),
+        description: t("getStarted.websiteStructure.errors.pageLimitDesc", {
+          plan: planDisplayName,
+          limit: pageLimit,
+        }),
         variant: "destructive",
       });
       return;
@@ -218,7 +231,7 @@ export default function GetStartedWebsiteStructure() {
   const handleContinue = async () => {
     if (selectedPages.length === 0) {
       toast({
-        title: "Please select at least one page",
+        title: t("getStarted.websiteStructure.errors.selectAtLeastOne"),
         variant: "destructive",
       });
       return;
@@ -247,7 +260,7 @@ export default function GetStartedWebsiteStructure() {
       navigate(`/get-started/onboarding/content-media?s=${sessionId}`);
     } catch (err) {
       console.error(err);
-      toast({ title: "Failed to save. Please try again.", variant: "destructive" });
+      toast({ title: t("getStarted.websiteStructure.errors.saveFailed"), variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
@@ -283,32 +296,35 @@ export default function GetStartedWebsiteStructure() {
     <div className="min-h-screen bg-black flex">
       <div className="flex-1 flex flex-col px-[70px] py-[50px] gap-8">
         <div className="flex flex-col gap-3">
-          <h1 className="text-white text-4xl font-semibold font-['Montserrat']">
-            Confirm your website structure
+          <h1 className="text-white text-4xl font-semibold font-brand">
+            {t("getStarted.websiteStructure.title")}
           </h1>
-          <p className="text-white text-base leading-[160%] font-['Montserrat']">
-            We've suggested a starting structure based on your answers. You can adjust it before we begin.
+          <p className="text-white text-base leading-[160%] font-brand">
+            {t("getStarted.websiteStructure.subtitle")}
           </p>
         </div>
 
         <div className="flex flex-col">
           <div className="flex flex-col gap-3 border-b border-[#6a6a6a] py-6">
             <div className="flex flex-col gap-1">
-              <p className="text-[#eff6ff] text-lg font-medium font-['Montserrat']">
-                Recommended pages
+              <p className="text-[#eff6ff] text-lg font-medium font-brand">
+                {t("getStarted.websiteStructure.sections.recommendedPages.title")}
               </p>
-              <p className="text-[#eff6ff] text-base leading-[160%] font-['Montserrat']">
-                These pages are included in your suggested setup.
+              <p className="text-[#eff6ff] text-base leading-[160%] font-brand">
+                {t("getStarted.websiteStructure.sections.recommendedPages.subtitle")}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <span className={cn(
-                "text-sm font-medium font-['Montserrat']",
+                "text-sm font-medium font-brand",
                 isAtLimit ? "text-[#ED4C14]" : "text-white/50"
               )}>
                 {isAtLimit
-                  ? `Limit reached based on ${userPlan ? userPlan.charAt(0).toUpperCase() + userPlan.slice(1) : "current"} plan`
-                  : `${selectedPages.length} / ${pageLimit} pages`}
+                  ? t("getStarted.websiteStructure.pageLimit.reached", { plan: planDisplayName })
+                  : t("getStarted.websiteStructure.pageLimit.counter", {
+                      selected: selectedPages.length,
+                      limit: pageLimit,
+                    })}
               </span>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -320,7 +336,7 @@ export default function GetStartedWebsiteStructure() {
                     type="button"
                     onClick={() => togglePage(page)}
                     className={cn(
-                      "flex items-center gap-2 px-[15px] py-2 rounded-[39px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer",
+                      "flex items-center gap-2 px-[15px] py-2 rounded-[39px] text-white text-lg font-medium font-brand border transition-colors cursor-pointer",
                       isSelected
                         ? "bg-[#ED4C14] border-[#ED4C14]"
                         : "bg-transparent border-[#6a6a6a] hover:border-white/50",
@@ -346,7 +362,7 @@ export default function GetStartedWebsiteStructure() {
                         </svg>
                       )}
                     </div>
-                    {page}
+                    {getPageLabel(page)}
                   </button>
                 );
               })}
@@ -355,11 +371,11 @@ export default function GetStartedWebsiteStructure() {
 
           <div className="flex flex-col gap-3 border-b border-[#6a6a6a] py-6">
             <div className="flex flex-col gap-1">
-              <p className="text-[#eff6ff] text-lg font-medium font-['Montserrat']">
-                Add more pages
+              <p className="text-[#eff6ff] text-lg font-medium font-brand">
+                {t("getStarted.websiteStructure.sections.addMorePages.title")}
               </p>
-              <p className="text-[#eff6ff] text-base leading-[160%] font-['Montserrat']">
-                Need more pages? Select any extra pages you'd like us to include or review.
+              <p className="text-[#eff6ff] text-base leading-[160%] font-brand">
+                {t("getStarted.websiteStructure.sections.addMorePages.subtitle")}
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -371,7 +387,7 @@ export default function GetStartedWebsiteStructure() {
                     type="button"
                     onClick={() => togglePage(page)}
                     className={cn(
-                      "flex items-center gap-2 px-[15px] py-2 rounded-[39px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer",
+                      "flex items-center gap-2 px-[15px] py-2 rounded-[39px] text-white text-lg font-medium font-brand border transition-colors cursor-pointer",
                       isSelected
                         ? "bg-[#ED4C14] border-[#ED4C14]"
                         : isAtLimit
@@ -399,7 +415,7 @@ export default function GetStartedWebsiteStructure() {
                         </svg>
                       )}
                     </div>
-                    {page}
+                    {getPageLabel(page)}
                   </button>
                 );
               })}
@@ -408,11 +424,11 @@ export default function GetStartedWebsiteStructure() {
 
           <div className="flex flex-col gap-3 border-b border-[#6a6a6a] py-6">
             <div className="flex flex-col gap-1">
-              <p className="text-[#eff6ff] text-lg font-medium font-['Montserrat']">
-                Add a custom page
+              <p className="text-[#eff6ff] text-lg font-medium font-brand">
+                {t("getStarted.websiteStructure.sections.addCustomPage.title")}
               </p>
-              <p className="text-[#eff6ff] text-base leading-[160%] font-['Montserrat']">
-                Don't see the page you need? Type it below and add it.
+              <p className="text-[#eff6ff] text-base leading-[160%] font-brand">
+                {t("getStarted.websiteStructure.sections.addCustomPage.subtitle")}
               </p>
             </div>
             <div className="flex gap-3">
@@ -420,16 +436,16 @@ export default function GetStartedWebsiteStructure() {
                 value={customPageInput}
                 onChange={(e) => setCustomPageInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomPage(); } }}
-                placeholder="e.g. Portfolio, Events, Press..."
-                className="flex-1 px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-['Montserrat'] placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
+                placeholder={t("getStarted.websiteStructure.sections.addCustomPage.placeholder")}
+                className="flex-1 px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-brand placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
               />
               <button
                 type="button"
                 onClick={addCustomPage}
                 disabled={!customPageInput.trim() || isAtLimit}
-                className="h-11 px-5 bg-[#ED4C14] rounded-[10px] text-white text-sm font-semibold font-['Montserrat'] border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
+                className="h-11 px-5 bg-[#ED4C14] rounded-[10px] text-white text-sm font-semibold font-brand border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
               >
-                Add
+                {t("getStarted.websiteStructure.sections.addCustomPage.addButton")}
               </button>
             </div>
             {selectedPages.filter(p => !ALL_PAGES.includes(p)).length > 0 && (
@@ -441,7 +457,7 @@ export default function GetStartedWebsiteStructure() {
                       key={page}
                       type="button"
                       onClick={() => togglePage(page)}
-                      className="flex items-center gap-2 px-[15px] py-2 rounded-[39px] text-white text-lg font-medium font-['Montserrat'] border transition-colors cursor-pointer bg-[#ED4C14] border-[#ED4C14]"
+                      className="flex items-center gap-2 px-[15px] py-2 rounded-[39px] text-white text-lg font-medium font-brand border transition-colors cursor-pointer bg-[#ED4C14] border-[#ED4C14]"
                     >
                       <div className="w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center bg-white border-white">
                         <svg width="8" height="7" viewBox="0 0 8 7" fill="none">
@@ -463,18 +479,18 @@ export default function GetStartedWebsiteStructure() {
 
           <div className="flex flex-col gap-3 py-6">
             <div className="flex flex-col gap-1">
-              <p className="text-[#eff6ff] text-lg font-medium font-['Montserrat']">
-                Anything we should know about these pages? (optional)
+              <p className="text-[#eff6ff] text-lg font-medium font-brand">
+                {t("getStarted.websiteStructure.sections.notes.title")}
               </p>
             </div>
             <input
               value={pagesNotes}
               onChange={(e) => setPagesNotes(e.target.value)}
-              placeholder="e.g. I need a separate page for each service."
-              className="w-full px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-['Montserrat'] placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
+              placeholder={t("getStarted.websiteStructure.sections.notes.placeholder")}
+              className="w-full px-4 py-3 rounded-lg bg-transparent border border-[#6a6a6a] text-[#f2f6fa] text-sm font-brand placeholder:text-[#6a6a6a] focus:outline-none focus:border-[#ED4C14]"
             />
-            <p className="text-[#f2f6fa] text-base leading-[160%] font-['Montserrat']">
-              Optional, but helpful if your website needs a specific structure.
+            <p className="text-[#f2f6fa] text-base leading-[160%] font-brand">
+              {t("getStarted.websiteStructure.sections.notes.helper")}
             </p>
           </div>
 
@@ -483,17 +499,17 @@ export default function GetStartedWebsiteStructure() {
               type="button"
               onClick={handleContinue}
               disabled={isSubmitting || selectedPages.length === 0}
-              className="w-1/3 h-11 px-5 bg-[#ED4C14] rounded-[10px] flex items-center justify-center text-white text-base font-semibold font-['Montserrat'] leading-5 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="w-1/3 h-11 px-5 bg-[#ED4C14] rounded-[10px] flex items-center justify-center text-white text-base font-semibold font-brand leading-5 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? "Saving..." : "Continue"}
+              {isSubmitting ? t("getStarted.websiteStructure.buttons.saving") : t("getStarted.websiteStructure.buttons.continue")}
             </button>
             <button
               type="button"
               onClick={handleSaveLater}
               className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
             >
-              <span className="text-white text-base font-semibold font-['Montserrat'] leading-5">
-                Complete later
+              <span className="text-white text-base font-semibold font-brand leading-5">
+                {t("getStarted.websiteStructure.buttons.completeLater")}
               </span>
             </button>
           </div>
@@ -502,18 +518,20 @@ export default function GetStartedWebsiteStructure() {
 
       <div className="w-[661px] min-h-screen bg-[#fcf6ee] flex flex-col items-center justify-center px-[46px] py-[10px] gap-12">
         <div className="w-full px-5 flex flex-col gap-3">
-          <h2 className="text-black text-2xl font-medium font-['Montserrat']">
-            Your website map
+          <h2 className="text-black text-2xl font-medium font-brand">
+            {t("getStarted.websiteStructure.panel.title")}
           </h2>
-          <p className="text-black text-base leading-[160%] font-['Montserrat']">
-            A simple view of the pages we'll prepare for your website.
+          <p className="text-black text-base leading-[160%] font-brand">
+            {t("getStarted.websiteStructure.panel.subtitle")}
           </p>
         </div>
 
         <div className="w-[565px] rounded-[20px] bg-[#fefaf7] border border-[#f6efe8] shadow-[0_0_12px_#e0dbd4] p-[25px] flex flex-col items-center gap-0 overflow-hidden">
           <div className="w-[223px] h-[90px] rounded-[10px] bg-[#fefaf7] border border-[#f6efe8] shadow-[0_3px_8px_#e0dbd4] flex items-center justify-center gap-6 flex-shrink-0">
             <img src={WEBSITE_ICON} alt="" className="w-[26px] h-[26px]" />
-            <span className="text-black text-base font-semibold font-['Montserrat']">Website</span>
+            <span className="text-black text-base font-semibold font-brand">
+              {t("getStarted.websiteStructure.panel.websiteLabel")}
+            </span>
           </div>
 
           {(() => {
@@ -556,8 +574,8 @@ export default function GetStartedWebsiteStructure() {
                               className="max-h-[38px] max-w-[38px] object-contain"
                             />
                           </div>
-                          <span className="mt-auto text-center text-black text-sm font-semibold font-['Montserrat'] leading-tight">
-                            {page}
+                          <span className="mt-auto text-center text-black text-sm font-semibold font-brand leading-tight">
+                            {getPageLabel(page)}
                           </span>
                         </div>
                       </div>
@@ -571,7 +589,7 @@ export default function GetStartedWebsiteStructure() {
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium font-['Montserrat'] border border-[#e0dbd4] bg-transparent text-black disabled:opacity-30 cursor-pointer hover:border-[#ED4C14] transition-colors"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium font-brand border border-[#e0dbd4] bg-transparent text-black disabled:opacity-30 cursor-pointer hover:border-[#ED4C14] transition-colors"
                     >
                       ‹
                     </button>
@@ -582,7 +600,7 @@ export default function GetStartedWebsiteStructure() {
                         type="button"
                         onClick={() => setCurrentPage(page)}
                         className={cn(
-                          "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium font-['Montserrat'] border transition-colors cursor-pointer",
+                          "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium font-brand border transition-colors cursor-pointer",
                           currentPage === page
                             ? "bg-[#ED4C14] border-[#ED4C14] text-white"
                             : "bg-transparent border-[#e0dbd4] text-black hover:border-[#ED4C14]",
@@ -596,7 +614,7 @@ export default function GetStartedWebsiteStructure() {
                       type="button"
                       onClick={() => setCurrentPage((p) => Math.min(totalPaginationPages, p + 1))}
                       disabled={currentPage === totalPaginationPages}
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium font-['Montserrat'] border border-[#e0dbd4] bg-transparent text-black disabled:opacity-30 cursor-pointer hover:border-[#ED4C14] transition-colors"
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium font-brand border border-[#e0dbd4] bg-transparent text-black disabled:opacity-30 cursor-pointer hover:border-[#ED4C14] transition-colors"
                     >
                       ›
                     </button>
@@ -616,11 +634,11 @@ export default function GetStartedWebsiteStructure() {
             />
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-black text-lg font-medium font-['Montserrat']">
-              {totalPages} pages selected
+            <span className="text-black text-lg font-medium font-brand">
+              {t("getStarted.websiteStructure.panel.pagesSelected", { count: totalPages })}
             </span>
-            <span className="text-black text-sm leading-[22px] font-['Montserrat']">
-              You can add or remove pages before we begin.
+            <span className="text-black text-sm leading-[22px] font-brand">
+              {t("getStarted.websiteStructure.panel.pagesSelectedHelper")}
             </span>
           </div>
         </div>
@@ -644,3 +662,4 @@ export default function GetStartedWebsiteStructure() {
     </div>
   );
 }
+

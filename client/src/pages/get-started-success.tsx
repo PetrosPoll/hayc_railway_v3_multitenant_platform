@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, Navigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export default function GetStartedSuccess() {
@@ -68,7 +67,18 @@ export default function GetStartedSuccess() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+        <svg
+          width="52"
+          height="52"
+          viewBox="0 0 24.24 23.468"
+          fill="none"
+          style={{ animation: "pulse 1.5s ease-in-out infinite" }}
+        >
+          <path
+            d="M9.327,0l.059,7.248L2.852,3.327,0,8.2l6.476,3.563L0,15.267,2.852,20.14l6.534-3.92-.059,7.248h5.584l-.119-7.189,6.536,3.861,2.91-4.873-6.474-3.5L24.238,8.2l-2.91-4.873L14.792,7.248,14.911,0Z"
+            fill="#ED4C14"
+          />
+        </svg>
       </div>
     );
   }

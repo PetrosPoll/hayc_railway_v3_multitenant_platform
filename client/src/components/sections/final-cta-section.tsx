@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+﻿import { ArrowRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { GET_STARTED_DEFAULT_PATH } from "@/lib/get-started-default-path";
@@ -28,7 +28,7 @@ export function FinalCtaSection() {
         aria-hidden
       />
       <div className="relative z-10 w-96 h-80 px-4 inline-flex flex-col justify-center items-center gap-6 md:w-auto md:h-auto md:px-0 md:gap-24">
-        <h2 className="self-stretch text-center text-4xl md:text-6xl font-semibold font-['Montserrat'] leading-tight md:leading-normal" style={{ maxWidth: "863px" }}>
+        <h2 className="self-stretch text-center text-4xl md:text-6xl font-semibold font-brand leading-tight md:leading-normal" style={{ maxWidth: "863px" }}>
           <span className="text-[#ED4C14]">{t("home.finalCtaSection.titleHighlight")}</span>
           <span className="text-slate-100"> {t("home.finalCtaSection.titleSuffix")}</span>
         </h2>
@@ -38,7 +38,7 @@ export function FinalCtaSection() {
             navigate(GET_STARTED_DEFAULT_PATH);
           }}
         >
-          <span className="text-center text-[#EFF6FF] text-base font-semibold font-['Montserrat'] leading-5">
+          <span className="text-center text-[#EFF6FF] text-base font-semibold font-brand leading-5">
             {t("home.finalCtaSection.button")}
           </span>
           <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
@@ -47,4 +47,5 @@ export function FinalCtaSection() {
     </section>
   );
 }
+
 

@@ -2858,8 +2858,62 @@
             },
             "addons": {
                 "bookingIntegration": "Booking Integration",
+                "hdp": "Hayc Digital Products",
                 "basicSeo": "Basic SEO",
                 "analytics": "Analytics"
+            },
+            "addonsSubtitle": "Select the add-ons you want included. You can change these later.",
+            "addonsNote": "* Add-ons are paid extras on top of your plan. Pricing details will be shared separately.",
+            "panel": {
+                "eyebrow": "Recommended Setup",
+                "contactButton": "Contact us",
+                "bookButton": "Book a call",
+                "pagesCard": {
+                    "title": "Recommended Pages",
+                    "more": "+{{count}} more"
+                },
+                "addonsCard": {
+                    "title": "Included Add-ons"
+                },
+                "footer": "You'll be able to choose your preferred design in the next step."
+            },
+            "businessTypes": {
+                "default": {
+                    "title": "Your website",
+                    "subtitle": "A clean, strategic starting point shaped around your business goals."
+                },
+                "local_business": {
+                    "title": "Local business website",
+                    "subtitle": "A clean, strategic starting point built to attract local customers and drive foot traffic."
+                },
+                "service_business": {
+                    "title": "Service-based website",
+                    "subtitle": "A clean, strategic starting point shaped around your business goals."
+                },
+                "personal_brand": {
+                    "title": "Personal brand website",
+                    "subtitle": "A strong online presence that puts you front and centre and builds lasting trust."
+                },
+                "creative_business": {
+                    "title": "Creative portfolio website",
+                    "subtitle": "A visually-driven space to showcase your work and attract the right clients."
+                },
+                "online_store": {
+                    "title": "E-commerce website",
+                    "subtitle": "A conversion-focused setup ready to sell your products online from day one."
+                },
+                "hospitality_travel": {
+                    "title": "Hospitality website",
+                    "subtitle": "An inviting online experience that gets visitors excited to book with you."
+                },
+                "health_wellness": {
+                    "title": "Health & wellness website",
+                    "subtitle": "A warm, trustworthy space that helps patients and clients find and book your services."
+                },
+                "other": {
+                    "title": "Custom website",
+                    "subtitle": "A flexible starting point tailored to your unique business needs."
+                }
             },
             "template": {
                 "name": "Clean Service",
@@ -2892,6 +2946,30 @@
                 "unknown": "—"
             },
             "walkthroughTitle": "A quick walkthrough of what happens next:",
+            "walkthrough": {
+                "step1": {
+                    "title": "Payment confirmed",
+                    "subtitle": "Secure checkout via Stripe. Your account is created instantly."
+                },
+                "step2": {
+                    "title": "Quick setup (you're doing it now)",
+                    "subtitle": "Tell us about your business, pages, and content. Takes about 5 minutes."
+                },
+                "step3": {
+                    "title": "We design & build",
+                    "subtitle": "Our team creates your website based on your answers and selected template."
+                },
+                "step4": {
+                    "title": "Your website is live in 15 days",
+                    "subtitle": "You review, we refine. Your site goes live on your domain."
+                }
+            },
+            "passwordRequirements": {
+                "length": "At least 8 characters",
+                "uppercase": "At least 1 uppercase letter",
+                "number": "At least 1 number",
+                "special": "At least 1 special character"
+            },
             "readyIn15Days": "Ready in 15 days",
             "whatsIncluded": "Your setup includes",
             "pagesIncluded": "Home, About, Services, Contact",
@@ -2949,6 +3027,292 @@
                     "label": "Pro",
                     "description": "For teams that want a partner."
                 }
+            }
+        },
+        "onboarding": {
+            "title": "Add your services",
+            "subtitle": "Tell us what your business offers.",
+            "loading": "Loading...",
+            "labels": {
+                "businessName": "Business name",
+                "shortDescription": "Short Description",
+                "addServices": "Add your Services",
+                "hadWebsite": "Have you had a website before?",
+                "whereBuilt": "Where was it built?"
+            },
+            "placeholders": {
+                "businessName": "Business name",
+                "shortDescription": "Write a short description of your business",
+                "services": "Services"
+            },
+            "hadWebsiteOptions": {
+                "yes_worked_well": "Yes and it worked well",
+                "yes_no_results": "Yes, but it didn't bring results",
+                "no_first_time": "No, this is my first one"
+            },
+            "platformOptions": {
+                "wix": "Wix",
+                "squarespace": "Squarespace",
+                "wordpress": "WordPress",
+                "webflow": "Webflow",
+                "someone_built_it": "Someone built it for me",
+                "other": "Other"
+            },
+            "tracker": {
+                "eyebrow": "Website Setup",
+                "title": "Your website content blueprint",
+                "subtitle": "We'll use these details to shape your first website draft",
+                "footer": "Your final website will be tailored to your brand, content and selected setup",
+                "items": {
+                    "businessDetails": {
+                        "title": "Business details",
+                        "subtitle": "Name and short description"
+                    },
+                    "services": {
+                        "title": "Services",
+                        "subtitle": "What your business offers"
+                    },
+                    "previousWebsite": {
+                        "title": "Previous website",
+                        "subtitle": "What worked, what didn't, where it was built"
+                    },
+                    "nextStep": {
+                        "title": "Next step",
+                        "subtitle": "We review your answers and create the first draft"
+                    }
+                },
+                "badges": {
+                    "in_progress": "In progress",
+                    "waiting": "Waiting for input",
+                    "optional": "Optional",
+                    "completed": "Completed",
+                    "next": "Next"
+                }
+            },
+            "buttons": {
+                "saving": "Saving...",
+                "continue": "Continue",
+                "completeLater": "Complete later"
+            },
+            "errors": {
+                "businessNameRequired": "Please enter your business name",
+                "descriptionRequired": "Please enter a short description of your business",
+                "servicesRequired": "Please add your services",
+                "websiteHistoryRequired": "Please select your website history",
+                "platformRequired": "Please select where your previous website was built",
+                "saveFailed": "Failed to save. Please try again."
+            }
+        },
+        "quickQuestions": {
+            "title": "Just a few quick questions",
+            "subtitle": "Helps us personalise your experience. Takes 30 seconds.",
+            "loading": "Loading...",
+            "sections": {
+                "selfDescription": "How would you describe yourself going into this?",
+                "biggestConcern": "What's your biggest concern about this process?",
+                "heardAbout": "How did you hear about us?"
+            },
+            "selfDescriptionOptions": {
+                "know_exactly": "I know exactly what I want",
+                "rough_idea": "I have a rough idea",
+                "need_guidance": "I need guidance, I'm not sure yet"
+            },
+            "concernOptions": {
+                "getting_done_fast": "Getting it done fast",
+                "making_it_look_right": "Making it look right",
+                "technical_side": "The technical side",
+                "bringing_clients": "Knowing it will actually bring me clients",
+                "the_cost": "The cost"
+            },
+            "heardAboutOptions": {
+                "instagram": "Instagram",
+                "tiktok": "TikTok",
+                "youtube": "YouTube",
+                "google": "Google",
+                "referral": "Referral from someone",
+                "other": "Other"
+            },
+            "panel": {
+                "eyebrow": "Website Setup",
+                "title": "Your guided setup",
+                "subtitle": "Your answers help us shape the next steps around you",
+                "steps": {
+                    "step1": {
+                        "title": "Understand your direction",
+                        "subtitle": "We learn how clear your vision is."
+                    },
+                    "step2": {
+                        "title": "Spot your main priority",
+                        "subtitle": "We focus on what matters most."
+                    },
+                    "step3": {
+                        "title": "Shape the next steps",
+                        "subtitle": "We tailor the process around your answers."
+                    }
+                },
+                "footer": "This helps us guide your setup without slowing you down"
+            },
+            "buttons": {
+                "saving": "Saving...",
+                "next": "Next",
+                "completeLater": "Complete later"
+            },
+            "errors": {
+                "selfDescriptionRequired": "Please describe yourself going into this",
+                "concernRequired": "Please select at least one concern",
+                "saveFailed": "Failed to save. Please try again."
+            }
+        },
+        "websiteStructure": {
+            "title": "Confirm your website structure",
+            "subtitle": "We've suggested a starting structure based on your answers. You can adjust it before we begin.",
+            "loading": "Loading...",
+            "sections": {
+                "recommendedPages": {
+                    "title": "Recommended pages",
+                    "subtitle": "These pages are included in your suggested setup."
+                },
+                "addMorePages": {
+                    "title": "Add more pages",
+                    "subtitle": "Need more pages? Select any extra pages you'd like us to include or review."
+                },
+                "addCustomPage": {
+                    "title": "Add a custom page",
+                    "subtitle": "Don't see the page you need? Type it below and add it.",
+                    "placeholder": "e.g. Portfolio, Events, Press...",
+                    "addButton": "Add"
+                },
+                "notes": {
+                    "title": "Anything we should know about these pages? (optional)",
+                    "placeholder": "e.g. I need a separate page for each service.",
+                    "helper": "Optional, but helpful if your website needs a specific structure."
+                }
+            },
+            "pageLimit": {
+                "reached": "Limit reached based on {{plan}} plan",
+                "current": "current",
+                "counter": "{{selected}} / {{limit}} pages"
+            },
+            "panel": {
+                "title": "Your website map",
+                "subtitle": "A simple view of the pages we'll prepare for your website.",
+                "websiteLabel": "Website",
+                "pagesSelected": "{{count}} pages selected",
+                "pagesSelectedHelper": "You can add or remove pages before we begin."
+            },
+            "buttons": {
+                "saving": "Saving...",
+                "continue": "Continue",
+                "completeLater": "Complete later"
+            },
+            "errors": {
+                "pageLimitReached": "Page limit reached",
+                "pageLimitDesc": "Your {{plan}} plan allows up to {{limit}} pages.",
+                "pageAlreadySelected": "This page is already in your selection.",
+                "pageAvailableAbove": "This page is available in the list above — select it from there.",
+                "selectAtLeastOne": "Please select at least one page",
+                "saveFailed": "Failed to save. Please try again."
+            },
+            "pages": {
+                "Home": "Home",
+                "About": "About",
+                "Services": "Services",
+                "Contact": "Contact",
+                "Booking": "Booking",
+                "Gallery": "Gallery",
+                "Products": "Products",
+                "Pricing": "Pricing",
+                "FAQ": "FAQ",
+                "Testimonials": "Testimonials",
+                "Blog": "Blog",
+                "Team": "Team",
+                "Location": "Location",
+                "Portfolio": "Portfolio",
+                "Press": "Press",
+                "Events": "Events",
+                "Careers": "Careers",
+                "Partners": "Partners",
+                "Reviews": "Reviews"
+            }
+        },
+        "contentMedia": {
+            "title": "Content & Media",
+            "subtitle": "Share the content, images and details we'll use to build your website.",
+            "loading": "Loading...",
+            "sections": {
+                "websiteContent": {
+                    "title": "Website Content",
+                    "subtitle": "Add any text you already have, or tell us if you need help.",
+                    "placeholder": "Paste your text, page notes, service descriptions or anything you want us to include."
+                },
+                "successVision": {
+                    "title": "Success Vision",
+                    "optional": "(optional)",
+                    "subtitle": "In one sentence, what does success look like for you 6 months after your website launches?",
+                    "placeholder": "e.g. I want to be getting 5 new enquiries a week through my website",
+                    "helper": "This helps us understand your real goal. There's no wrong answer."
+                },
+                "media": {
+                    "title": "Photos & brand assets",
+                    "subtitle": "Upload your logo, photos or any files you want us to use.",
+                    "dragDrop": "Drag & drop files here",
+                    "or": "or",
+                    "browseComputer": "Browse Computer",
+                    "fileTypes": "Images, PDF, DOCX, TXT, RTF, XLSX, CSV, ZIP — max 25 MB each",
+                    "addMoreLater": "You can also add more files later from your dashboard."
+                }
+            },
+            "contentKit": {
+                "title": "Your content kit",
+                "websiteContent": {
+                    "label": "Website content",
+                    "description": "Added from your notes"
+                },
+                "photosAssets": {
+                    "label": "Photos & assets",
+                    "description": "Logo, photos, brand files"
+                },
+                "successVision": {
+                    "label": "Success vision",
+                    "description": "Your 6-month goal"
+                },
+                "status": {
+                    "added": "Added",
+                    "waiting": "Waiting for files",
+                    "optional": "Optional"
+                }
+            },
+            "buttons": {
+                "submitting": "Submitting...",
+                "uploading": "Uploading & submitting...",
+                "submit": "Submit Setup",
+                "completeLater": "Complete later"
+            },
+            "leaveWarning": {
+                "title": "Files won't be saved",
+                "description": "You have files ready to upload. If you leave now, they won't be saved. To save your files, complete and submit this step.",
+                "stayAndComplete": "Stay and complete",
+                "leaveAnyway": "Leave anyway"
+            },
+            "uploadOverlay": {
+                "uploading": "Uploading files & submitting…",
+                "submitting": "Submitting…",
+                "pleaseWait": "This may take a moment. Please don't close this page."
+            },
+            "errors": {
+                "contentRequired": "Please add your website content before submitting",
+                "fileRequired": "Please upload at least one file before submitting",
+                "fileBlocked": "{{count}} file blocked",
+                "filesBlocked": "{{count}} files blocked",
+                "fileBlockedDesc": "This file type is not permitted for security reasons.",
+                "fileTooLarge": "{{count}} file too large",
+                "filesTooLarge": "{{count}} files too large",
+                "fileTooLargeDesc": "Each file must be under 25 MB.",
+                "fileNotAccepted": "{{count}} file not accepted",
+                "filesNotAccepted": "{{count}} files not accepted",
+                "fileNotAcceptedDesc": "Accepted: images, PDF, DOCX, TXT, RTF, XLSX, CSV, ZIP.",
+                "submitFailed": "Failed to submit. Please try again.",
+                "mockComplete": "Mock mode — setup complete!"
             }
         }
     }
