@@ -1,9 +1,20 @@
-﻿import { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/components/ui/authContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import {
+  Image, ShoppingBag, Tag, HelpCircle, MessageSquare,
+  BookOpen, Users, MapPin, Briefcase, Newspaper,
+  CalendarDays, GraduationCap, Handshake, Star, AlertCircle,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const ALL_PAGES = [
   "Home", "About", "Services", "Contact", "Booking",
@@ -14,7 +25,7 @@ const ALL_PAGES = [
 
 const CLOUDINARY_BASE = "https://res.cloudinary.com/dem12vqtl/image/upload";
 
-const PAGE_ICONS: Record<string, string> = {
+const PAGE_IMG_ICONS: Record<string, string> = {
   Home: `${CLOUDINARY_BASE}/home_orange_kalaqd.svg`,
   About: `${CLOUDINARY_BASE}/user_orange_otyn6n.svg`,
   Services: `${CLOUDINARY_BASE}/star_emtpy_orange_zuudng.svg`,
@@ -22,12 +33,36 @@ const PAGE_ICONS: Record<string, string> = {
   Booking: `${CLOUDINARY_BASE}/calendar_orange_yt37oa.svg`,
 };
 
+const PAGE_LUCIDE_ICONS: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
+  Gallery: Image,
+  Products: ShoppingBag,
+  Pricing: Tag,
+  FAQ: HelpCircle,
+  Testimonials: MessageSquare,
+  Blog: BookOpen,
+  Team: Users,
+  Location: MapPin,
+  Portfolio: Briefcase,
+  Press: Newspaper,
+  Events: CalendarDays,
+  Careers: GraduationCap,
+  Partners: Handshake,
+  Reviews: Star,
+};
+
 const WEBSITE_ICON = `${CLOUDINARY_BASE}/cmd-icon_vunwc0.svg`;
-const DEFAULT_PAGE_ICON = `${CLOUDINARY_BASE}/doc_orange_iyyo0u.svg`;
 const PAGES_SELECTED_ICON = `${CLOUDINARY_BASE}/doc_orange_iyyo0u.svg`;
 
-function getPageIconUrl(page: string): string {
-  return PAGE_ICONS[page] ?? DEFAULT_PAGE_ICON;
+function PageIcon({ page, className }: { page: string; className?: string }) {
+  const imgSrc = PAGE_IMG_ICONS[page];
+  if (imgSrc) {
+    return <img src={imgSrc} alt="" className={className} />;
+  }
+  const LucideIcon = PAGE_LUCIDE_ICONS[page];
+  if (LucideIcon) {
+    return <LucideIcon className={cn("text-[#ED4C14]", className)} strokeWidth={1.25} />;
+  }
+  return <img src={`${CLOUDINARY_BASE}/doc_orange_iyyo0u.svg`} alt="" className={className} />;
 }
 
 const DOC_ICON_CLASS = "w-[38px] h-[38px]";
@@ -70,7 +105,17 @@ export default function GetStartedWebsiteStructure() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [userPlan, setUserPlan] = useState<string | null>(null);
-  const PAGES_PER_PAGE = 4;
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  const PAGES_PER_PAGE = isMobile ? 3 : 4;
+
+  useEffect(() => {
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setCurrentPage(1);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   useEffect(() => {
     const s = location.state?.submission;
@@ -228,12 +273,18 @@ export default function GetStartedWebsiteStructure() {
   const confirmedPages = selectedPages;
   const totalPages = confirmedPages.length;
 
+  const [missingFields, setMissingFields] = useState<string[]>([]);
+
+  const getMissingFieldLabels = (): string[] => {
+    const missing: string[] = [];
+    if (selectedPages.length === 0) missing.push(t("getStarted.websiteStructure.errors.selectAtLeastOne"));
+    return missing;
+  };
+
   const handleContinue = async () => {
-    if (selectedPages.length === 0) {
-      toast({
-        title: t("getStarted.websiteStructure.errors.selectAtLeastOne"),
-        variant: "destructive",
-      });
+    const missing = getMissingFieldLabels();
+    if (missing.length > 0) {
+      setMissingFields(missing);
       return;
     }
 
@@ -293,10 +344,10 @@ export default function GetStartedWebsiteStructure() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex">
-      <div className="flex-1 flex flex-col px-[70px] py-[50px] gap-8">
+    <div className="min-h-screen bg-black flex flex-col md:flex-row overflow-x-hidden">
+      <div className="flex-1 flex flex-col px-4 md:px-[70px] py-8 md:py-[50px] gap-6 md:gap-8">
         <div className="flex flex-col gap-3">
-          <h1 className="text-white text-4xl font-semibold font-brand">
+          <h1 className="text-white text-2xl md:text-4xl font-semibold font-brand">
             {t("getStarted.websiteStructure.title")}
           </h1>
           <p className="text-white text-base leading-[160%] font-brand">
@@ -494,19 +545,19 @@ export default function GetStartedWebsiteStructure() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
             <button
               type="button"
               onClick={handleContinue}
-              disabled={isSubmitting || selectedPages.length === 0}
-              className="w-1/3 h-11 px-5 bg-[#ED4C14] rounded-[10px] flex items-center justify-center text-white text-base font-semibold font-brand leading-5 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+              className="w-full md:w-1/3 h-11 px-5 bg-[#ED4C14] rounded-[10px] flex items-center justify-center text-white text-base font-semibold font-brand leading-5 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSubmitting ? t("getStarted.websiteStructure.buttons.saving") : t("getStarted.websiteStructure.buttons.continue")}
             </button>
             <button
               type="button"
               onClick={handleSaveLater}
-              className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
+              className="w-full md:w-auto h-11 px-5 rounded-[10px] flex items-center justify-center border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
             >
               <span className="text-white text-base font-semibold font-brand leading-5">
                 {t("getStarted.websiteStructure.buttons.completeLater")}
@@ -516,7 +567,33 @@ export default function GetStartedWebsiteStructure() {
         </div>
       </div>
 
-      <div className="w-[661px] min-h-screen bg-[#fcf6ee] flex flex-col items-center justify-center px-[46px] py-[10px] gap-12">
+      <Dialog open={missingFields.length > 0} onOpenChange={(open) => { if (!open) setMissingFields([]); }}>
+        <DialogContent className="bg-zinc-900 border border-zinc-700 text-white max-w-sm">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="flex items-center gap-2 text-white font-brand">
+              <AlertCircle className="w-5 h-5 text-[#ED4C14] flex-shrink-0" />
+              {t("getStarted.summary.missingFieldsTitle", "Please fill in the required fields")}
+            </DialogTitle>
+          </DialogHeader>
+          <ul className="flex flex-col gap-2 mt-2">
+            {missingFields.map((label) => (
+              <li key={label} className="flex items-center gap-2 text-sm font-brand text-white/80">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#ED4C14] flex-shrink-0" />
+                {label}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => setMissingFields([])}
+            className="mt-4 w-full h-10 bg-[#ED4C14] rounded-[10px] text-white text-sm font-semibold font-brand border-0 cursor-pointer hover:bg-[#d44310] transition-colors"
+          >
+            {t("getStarted.summary.missingFieldsDismiss", "Got it")}
+          </button>
+        </DialogContent>
+      </Dialog>
+
+      <div className="flex w-full md:w-[661px] md:min-h-screen bg-[#fcf6ee] flex-col items-center justify-center px-4 md:px-[46px] py-8 md:py-[10px] gap-8 md:gap-12">
         <div className="w-full px-5 flex flex-col gap-3">
           <h2 className="text-black text-2xl font-medium font-brand">
             {t("getStarted.websiteStructure.panel.title")}
@@ -526,7 +603,7 @@ export default function GetStartedWebsiteStructure() {
           </p>
         </div>
 
-        <div className="w-[565px] rounded-[20px] bg-[#fefaf7] border border-[#f6efe8] shadow-[0_0_12px_#e0dbd4] p-[25px] flex flex-col items-center gap-0 overflow-hidden">
+        <div className="w-full md:w-[565px] rounded-[20px] bg-[#fefaf7] border border-[#f6efe8] shadow-[0_0_12px_#e0dbd4] p-4 md:p-[25px] flex flex-col items-center gap-0 overflow-hidden">
           <div className="w-[223px] h-[90px] rounded-[10px] bg-[#fefaf7] border border-[#f6efe8] shadow-[0_3px_8px_#e0dbd4] flex items-center justify-center gap-6 flex-shrink-0">
             <img src={WEBSITE_ICON} alt="" className="w-[26px] h-[26px]" />
             <span className="text-black text-base font-semibold font-brand">
@@ -568,11 +645,7 @@ export default function GetStartedWebsiteStructure() {
                         <div className="w-px h-8 bg-[#e0dbd4]" />
                         <div className="h-[120px] w-[113px] rounded-[10px] bg-[#fefaf7] border border-[#f6efe8] shadow-[0_3px_8px_#e0dbd4] flex flex-col items-center px-2 pt-5 pb-4">
                           <div className="h-[38px] w-[38px] flex items-center justify-center flex-shrink-0">
-                            <img
-                              src={getPageIconUrl(page)}
-                              alt=""
-                              className="max-h-[38px] max-w-[38px] object-contain"
-                            />
+                            <PageIcon page={page} className="max-h-[38px] max-w-[38px] w-[28px] h-[28px] object-contain" />
                           </div>
                           <span className="mt-auto text-center text-black text-sm font-semibold font-brand leading-tight">
                             {getPageLabel(page)}

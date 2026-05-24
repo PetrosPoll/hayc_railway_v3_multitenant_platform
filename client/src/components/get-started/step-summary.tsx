@@ -144,7 +144,7 @@ export default function StepSummary({
       : t("getStarted.summary.plans.essential.label");
 
   return (
-    <div className="w-full min-h-screen bg-black px-4 md:px-16 py-8 md:py-12 flex flex-col justify-center items-center gap-6 overflow-hidden">
+    <div className="w-full min-h-screen bg-black px-4 md:px-16 pt-16 pb-8 md:py-12 flex flex-col justify-center items-center gap-6 overflow-hidden">
       {/* Header */}
       <div className="w-full md:w-[638px] flex flex-col items-center gap-3">
         <div className="w-full text-center text-white text-2xl md:text-4xl font-semibold font-brand">
@@ -202,7 +202,7 @@ export default function StepSummary({
 
           {/* Walkthrough section */}
           <div className="flex flex-col gap-3">
-            <div className="hidden md:flex flex-col gap-4">
+            <div className="flex flex-col gap-4">
               <div className="text-white text-lg font-medium font-brand">
                 {t("getStarted.summary.walkthroughTitle")}
               </div>
@@ -777,7 +777,7 @@ export default function StepSummary({
 
       <Dialog open={missingFields.length > 0} onOpenChange={(open) => { if (!open) setMissingFields([]); }}>
         <DialogContent className="bg-zinc-900 border border-zinc-700 text-white max-w-sm">
-          <DialogHeader>
+          <DialogHeader className="pr-8 sm:pr-4">
             <DialogTitle className="flex items-center gap-2 text-white font-brand">
               <AlertCircle className="w-5 h-5 text-[#ED4C14] flex-shrink-0" />
               {t("getStarted.summary.missingFieldsTitle", "Please fill in the required fields")}

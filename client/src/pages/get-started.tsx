@@ -501,7 +501,7 @@ export default function GetStarted() {
       <button
         type="button"
         onClick={() => setShowExitModal(true)}
-        className="fixed top-6 left-6 z-50 h-9 px-3 rounded-full bg-white/10 hover:bg-white/20 border-0 cursor-pointer flex items-center justify-center transition-colors"
+        className="fixed top-4 right-4 md:top-6 md:left-4 md:right-auto z-50 h-9 px-3 rounded-full bg-white/10 hover:bg-white/20 border-0 cursor-pointer flex items-center justify-center transition-colors"
       >
         <span className="text-white/60 text-sm font-medium font-brand hover:text-white/90 transition-colors">
           {t("getStarted.justBrowsing")}
@@ -520,7 +520,7 @@ export default function GetStarted() {
           className="bg-[#111111] border border-zinc-800 text-white font-brand max-w-md rounded-2xl sm:rounded-lg"
           closeBtnClassName="border-white/30 bg-white/15 text-white shadow-md hover:bg-white/25 hover:text-white hover:opacity-100 focus-visible:ring-[#ED4C14]/60 focus-visible:ring-offset-[#111111]"
         >
-          <DialogHeader className="gap-3 text-center sm:text-left pt-8 sm:pt-2 pr-14 sm:pr-4">
+          <DialogHeader className="gap-3 text-center pt-2 pr-14">
             <DialogTitle className="text-white text-xl font-semibold font-brand">
               {t("getStarted.exitModal.title")}
             </DialogTitle>
@@ -528,11 +528,11 @@ export default function GetStarted() {
               {t("getStarted.exitModal.description")}
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="flex flex-row gap-3 justify-end pt-2">
+          <DialogFooter className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={() => setShowExitModal(false)}
-              className="h-10 px-5 rounded-[10px] border border-white/30 bg-transparent text-white text-sm font-semibold font-brand cursor-pointer hover:bg-white/10 transition-colors"
+              className="h-11 w-full sm:w-auto px-5 rounded-[10px] border border-white/30 bg-transparent text-white text-sm font-semibold font-brand cursor-pointer hover:bg-white/10 transition-colors"
             >
               {t("getStarted.exitModal.keepGoing")}
             </button>
@@ -542,7 +542,7 @@ export default function GetStarted() {
                 setShowExitModal(false);
                 navigate(isLoggedIn ? "/dashboard" : "/");
               }}
-              className="h-10 px-5 rounded-[10px] bg-[#ED4C14] border-0 text-white text-sm font-semibold font-brand cursor-pointer hover:bg-[#d44310] transition-colors"
+              className="h-11 w-full sm:w-auto px-5 rounded-[10px] bg-[#ED4C14] border-0 text-white text-sm font-semibold font-brand cursor-pointer hover:bg-[#d44310] transition-colors"
             >
               {t("getStarted.exitModal.leaveAnyway")}
             </button>

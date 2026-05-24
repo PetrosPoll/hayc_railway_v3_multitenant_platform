@@ -4,6 +4,13 @@ import { useAuth } from "@/components/ui/authContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
+import { AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type KitStatus = "added" | "waiting" | "optional";
 
@@ -196,16 +203,19 @@ export default function GetStartedContentMedia() {
     handleFiles(e.dataTransfer.files);
   };
 
-  const canSubmit = websiteContent.trim().length > 0 && stagedFiles.length > 0;
+  const [missingFields, setMissingFields] = useState<string[]>([]);
+
+  const getMissingFieldLabels = (): string[] => {
+    const missing: string[] = [];
+    if (!websiteContent.trim()) missing.push(t("getStarted.contentMedia.sections.websiteContent.title"));
+    if (stagedFiles.length === 0) missing.push(t("getStarted.contentMedia.sections.media.title"));
+    return missing;
+  };
 
   const handleSubmit = async () => {
-    if (!websiteContent.trim()) {
-      toast({ title: t("getStarted.contentMedia.errors.contentRequired"), variant: "destructive" });
-      return;
-    }
-
-    if (stagedFiles.length === 0) {
-      toast({ title: t("getStarted.contentMedia.errors.fileRequired"), variant: "destructive" });
+    const missing = getMissingFieldLabels();
+    if (missing.length > 0) {
+      setMissingFields(missing);
       return;
     }
 
@@ -368,9 +378,9 @@ export default function GetStartedContentMedia() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex flex-col px-[70px] py-[50px] gap-8">
+    <div className="min-h-screen bg-black flex flex-col px-4 md:px-[70px] py-8 md:py-[50px] gap-6 md:gap-8">
       <div className="flex flex-col gap-3">
-        <h1 className="text-white text-4xl font-semibold font-brand">
+        <h1 className="text-white text-2xl md:text-4xl font-semibold font-brand">
           {t("getStarted.contentMedia.title")}
         </h1>
         <p className="text-white text-base leading-[160%] font-brand">
@@ -378,7 +388,7 @@ export default function GetStartedContentMedia() {
         </p>
       </div>
 
-      <div className="flex gap-12 flex-1">
+      <div className="flex flex-col md:flex-row gap-8 md:gap-12 flex-1">
         <div className="flex-1 flex flex-col justify-between gap-8">
           <div className="flex flex-col">
             <div className="flex flex-col gap-3 border-b border-[#6a6a6a] pb-6">
@@ -424,12 +434,12 @@ export default function GetStartedContentMedia() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || !canSubmit}
-              className="w-1/3 h-11 px-5 bg-[#ED4C14] rounded-[10px] flex items-center justify-center text-white text-base font-semibold font-brand leading-5 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              disabled={isSubmitting}
+              className="w-full md:w-1/3 h-11 px-5 bg-[#ED4C14] rounded-[10px] flex items-center justify-center text-white text-base font-semibold font-brand leading-5 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {isSubmitting
                 ? stagedFiles.length > 0
@@ -440,7 +450,7 @@ export default function GetStartedContentMedia() {
             <button
               type="button"
               onClick={handleSaveLater}
-              className="h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-start items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
+              className="w-full md:w-auto h-11 px-5 rounded-[10px] flex items-center justify-center border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
             >
               <span className="text-white text-base font-semibold font-brand leading-5">
                 {t("getStarted.contentMedia.buttons.completeLater")}
@@ -656,6 +666,32 @@ export default function GetStartedContentMedia() {
           </div>
         </div>
       )}
+
+      <Dialog open={missingFields.length > 0} onOpenChange={(open) => { if (!open) setMissingFields([]); }}>
+        <DialogContent className="bg-zinc-900 border border-zinc-700 text-white max-w-sm">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="flex items-center gap-2 text-white font-brand">
+              <AlertCircle className="w-5 h-5 text-[#ED4C14] flex-shrink-0" />
+              {t("getStarted.summary.missingFieldsTitle", "Please fill in the required fields")}
+            </DialogTitle>
+          </DialogHeader>
+          <ul className="flex flex-col gap-2 mt-2">
+            {missingFields.map((label) => (
+              <li key={label} className="flex items-center gap-2 text-sm font-brand text-white/80">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#ED4C14] flex-shrink-0" />
+                {label}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => setMissingFields([])}
+            className="mt-4 w-full h-10 bg-[#ED4C14] rounded-[10px] text-white text-sm font-semibold font-brand border-0 cursor-pointer hover:bg-[#d44310] transition-colors"
+          >
+            {t("getStarted.summary.missingFieldsDismiss", "Got it")}
+          </button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

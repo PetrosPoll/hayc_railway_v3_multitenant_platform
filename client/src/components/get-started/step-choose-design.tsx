@@ -120,7 +120,7 @@ export default function StepChooseDesign({
   }, [businessType, goals, seed]);
 
   return (
-    <div className="w-full min-h-screen bg-black flex flex-col justify-center items-center px-4 md:px-16 py-12 gap-6">
+    <div className="w-full min-h-screen bg-black flex flex-col justify-center items-center px-4 md:px-16 pt-24 pb-12 md:py-12 gap-6">
       <div className="w-full flex flex-col items-center gap-3">
         <div className="w-full text-center text-white text-2xl md:text-4xl font-semibold font-brand">
           {t("getStarted.chooseDesign.title")}

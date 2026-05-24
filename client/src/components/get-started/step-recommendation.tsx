@@ -280,7 +280,7 @@ export default function StepRecommendation({
   return (
     <div className="w-full min-h-screen bg-black overflow-hidden px-4 md:px-0 box-border">
       <div className="flex flex-col md:flex-row w-full md:pl-16 md:items-center md:gap-12">
-        <div className="flex-1 flex flex-col justify-start items-start gap-12 pt-16 md:pt-0 md:py-16 min-h-0 md:justify-center">
+        <div className="flex-1 flex flex-col justify-start items-start gap-6 md:gap-12 pt-16 md:pt-0 md:py-16 min-h-0 md:justify-center">
           <div className="flex flex-col gap-3">
             <div className="text-white text-sm md:text-base font-normal font-brand leading-5 md:leading-6">
               {t("getStarted.recommendation.eyebrow")}
@@ -337,8 +337,8 @@ export default function StepRecommendation({
         </div>
 
         {/* Right panel — website preview + pages + addons */}
-        <div className="flex-1 h-[323px] md:h-screen bg-[#111111] mt-12 md:mt-0 max-md:-mx-4 max-md:w-[calc(100%+2rem)] shrink-0 overflow-hidden">
-          <div className="h-full w-full flex flex-col justify-center gap-6 py-8 md:py-16 px-4 md:px-10">
+        <div className="flex-1 md:h-screen bg-[#111111] mt-8 md:mt-0 max-md:-mx-4 max-md:w-[calc(100%+2rem)] shrink-0 overflow-hidden">
+          <div className="w-full flex flex-col gap-6 py-8 md:py-16 px-4 md:px-10 md:h-full md:justify-center">
 
             {/* Dynamic title */}
             <div className="flex flex-col gap-2">
