@@ -668,7 +668,7 @@ export default function GetStartedContentMedia() {
       )}
 
       <Dialog open={missingFields.length > 0} onOpenChange={(open) => { if (!open) setMissingFields([]); }}>
-        <DialogContent className="bg-zinc-900 border border-zinc-700 text-white max-w-sm">
+        <DialogContent className="bg-zinc-900 border border-zinc-700 text-white max-w-sm rounded-2xl sm:rounded-lg">
           <DialogHeader className="pr-8">
             <DialogTitle className="flex items-center gap-2 text-white font-brand">
               <AlertCircle className="w-5 h-5 text-[#ED4C14] flex-shrink-0" />
