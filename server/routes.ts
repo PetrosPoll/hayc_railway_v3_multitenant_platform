@@ -13745,6 +13745,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Get get_started_submissions data for new-flow websites
+      const websiteIds = websites.map(w => w.id);
+      const getStartedRows = websiteIds.length > 0
+        ? await db
+            .select({
+              websiteProgressId: getStartedSubmissions.websiteProgressId,
+              status: getStartedSubmissions.status,
+              designDirection: getStartedSubmissions.designDirection,
+            })
+            .from(getStartedSubmissions)
+            .where(inArray(getStartedSubmissions.websiteProgressId, websiteIds))
+        : [];
+
+      const getStartedMap = new Map<number, { status: string; designDirection: string | null }>();
+      for (const row of getStartedRows) {
+        if (row.websiteProgressId !== null) {
+          getStartedMap.set(row.websiteProgressId, {
+            status: row.status,
+            designDirection: row.designDirection ?? null,
+          });
+        }
+      }
+
       // Get stages and subscription status for each website
       const websitesWithStages = await Promise.all(
         websites.map(async (website) => {
@@ -13782,13 +13805,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .limit(1)
             .then(rows => rows[0] || null);
 
-          return { 
-            ...website, 
+          const gs = getStartedMap.get(website.id);
+
+          // selectedTemplateId: old-flow from onboardingFormResponses, new-flow from designDirection
+          const selectedTemplateId =
+            templateIdMap.get(website.id) ??
+            (gs?.designDirection && gs.designDirection !== "auto"
+              ? (parseInt(gs.designDirection, 10) || null)
+              : null);
+
+          // onboardingStatus: old-flow from onboardingFormResponses, new-flow from get_started_submissions
+          const onboardingStatus = statusMap.get(website.id) ?? gs?.status ?? null;
+
+          return {
+            ...website,
             stages,
             subscriptionStatus: subscription?.status || null,
             subscriptionTier: subscription?.tier || null,
-            selectedTemplateId: templateIdMap.get(website.id) || null,
-            onboardingStatus: statusMap.get(website.id) || null
+            selectedTemplateId,
+            onboardingStatus,
           };
         }),
       );
@@ -13860,7 +13895,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(websiteStages.websiteProgressId, website.id))
         .orderBy(websiteStages.stageNumber);
 
-      res.json({ ...website, stages });
+      // Get selectedTemplateId and onboardingStatus from old-flow (onboardingFormResponses)
+      const onboardingRow = await db
+        .select({
+          selectedTemplateId: onboardingFormResponses.selectedTemplateId,
+          status: onboardingFormResponses.status,
+        })
+        .from(onboardingFormResponses)
+        .where(eq(onboardingFormResponses.websiteProgressId, websiteId))
+        .orderBy(desc(onboardingFormResponses.id))
+        .limit(1)
+        .then(rows => rows[0] ?? null);
+
+      // Get data from new-flow (get_started_submissions)
+      const gsRow = await db
+        .select({
+          status: getStartedSubmissions.status,
+          designDirection: getStartedSubmissions.designDirection,
+        })
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.websiteProgressId, websiteId))
+        .limit(1)
+        .then(rows => rows[0] ?? null);
+
+      const selectedTemplateId =
+        onboardingRow?.selectedTemplateId ??
+        (gsRow?.designDirection && gsRow.designDirection !== "auto"
+          ? (parseInt(gsRow.designDirection, 10) || null)
+          : null);
+
+      const onboardingStatus = onboardingRow?.status ?? gsRow?.status ?? null;
+
+      res.json({
+        ...website,
+        stages,
+        selectedTemplateId,
+        onboardingStatus,
+      });
     } catch (err) {
       console.error("Error fetching website:", err);
       res.status(500).json({ error: "Failed to fetch website" });

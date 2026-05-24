@@ -13,8 +13,15 @@ import {
   FormField,
   FormItem,
 } from "@/components/ui/form";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
+  AlertCircle,
   Check,
   Eye,
   EyeOff,
@@ -58,6 +65,7 @@ export default function StepSummary({
 }: StepSummaryProps) {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
+  const [missingFields, setMissingFields] = useState<string[]>([]);
 
   const getPageLabel = (page: string): string => {
     const result = t(`getStarted.websiteStructure.pages.${page}`);
@@ -92,18 +100,33 @@ export default function StepSummary({
   const allRequirementsMet = passwordRequirements.every((r) => r.met);
   const showRequirements = password.length > 0;
 
-  const canSubmit = isLoggedIn
-    ? true
-    : !!fullName?.trim() &&
-      !!email?.trim() &&
-      allRequirementsMet &&
-      privacyAccepted === true &&
-      (documentType !== "invoice" ||
-        (!!vatNumber?.trim() &&
-          !!city?.trim() &&
-          !!street?.trim() &&
-          !!streetNumber?.trim() &&
-          !!postalCode?.trim()));
+  const getMissingFieldLabels = (): string[] => {
+    if (isLoggedIn) {
+      if (documentType === "invoice") {
+        const missing: string[] = [];
+        if (!vatNumber?.trim()) missing.push(t("getStarted.summary.placeholders.vatNumber"));
+        if (!city?.trim()) missing.push(t("getStarted.summary.placeholders.city"));
+        if (!street?.trim()) missing.push(t("getStarted.summary.placeholders.street"));
+        if (!streetNumber?.trim()) missing.push(t("getStarted.summary.placeholders.streetNumber"));
+        if (!postalCode?.trim()) missing.push(t("getStarted.summary.placeholders.postalCode"));
+        return missing;
+      }
+      return [];
+    }
+    const missing: string[] = [];
+    if (!fullName?.trim()) missing.push(t("getStarted.summary.placeholders.fullName"));
+    if (!email?.trim()) missing.push(t("getStarted.summary.placeholders.email"));
+    if (!allRequirementsMet) missing.push(t("getStarted.summary.placeholders.password"));
+    if (!privacyAccepted) missing.push(t("getStarted.summary.privacyPolicyLink"));
+    if (documentType === "invoice") {
+      if (!vatNumber?.trim()) missing.push(t("getStarted.summary.placeholders.vatNumber"));
+      if (!city?.trim()) missing.push(t("getStarted.summary.placeholders.city"));
+      if (!street?.trim()) missing.push(t("getStarted.summary.placeholders.street"));
+      if (!streetNumber?.trim()) missing.push(t("getStarted.summary.placeholders.streetNumber"));
+      if (!postalCode?.trim()) missing.push(t("getStarted.summary.placeholders.postalCode"));
+    }
+    return missing;
+  };
 
   const designLabel =
     selectedDesignId && SUMMARY_SELECTED_DESIGN_I18N_KEY[selectedDesignId]
@@ -709,8 +732,15 @@ export default function StepSummary({
               </button>
               <button
                 type="button"
-                onClick={onSubmit}
-                disabled={isSubmitting || !canSubmit}
+                onClick={() => {
+                  const missing = getMissingFieldLabels();
+                  if (missing.length > 0) {
+                    setMissingFields(missing);
+                  } else {
+                    onSubmit();
+                  }
+                }}
+                disabled={isSubmitting}
                 className="w-full h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-center items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <span className="text-white text-sm md:text-base font-semibold font-brand leading-5">
@@ -744,6 +774,32 @@ export default function StepSummary({
           </div>
         </div>
       </div>
+
+      <Dialog open={missingFields.length > 0} onOpenChange={(open) => { if (!open) setMissingFields([]); }}>
+        <DialogContent className="bg-zinc-900 border border-zinc-700 text-white max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-white font-brand">
+              <AlertCircle className="w-5 h-5 text-[#ED4C14] flex-shrink-0" />
+              {t("getStarted.summary.missingFieldsTitle", "Please fill in the required fields")}
+            </DialogTitle>
+          </DialogHeader>
+          <ul className="flex flex-col gap-2 mt-2">
+            {missingFields.map((label) => (
+              <li key={label} className="flex items-center gap-2 text-sm font-brand text-white/80">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#ED4C14] flex-shrink-0" />
+                {label}
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => setMissingFields([])}
+            className="mt-4 w-full h-10 bg-[#ED4C14] rounded-[10px] text-white text-sm font-semibold font-brand border-0 cursor-pointer hover:bg-[#d44310] transition-colors"
+          >
+            {t("getStarted.summary.missingFieldsDismiss", "Got it")}
+          </button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

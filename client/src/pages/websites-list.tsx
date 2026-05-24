@@ -69,18 +69,10 @@ type UserResponse = {
 function isCompletedFilter(website: Website): boolean {
   return (
     website.onboardingStatus === "completed" ||
-    (website.onboardingStatus === null &&
-      !website.domain.endsWith(".pending-onboarding"))
+    website.onboardingStatus === null
   );
 }
 
-/** Draft / in-progress onboarding: saved draft or not yet submitted (pending domain). */
-function isDraftFilter(website: Website): boolean {
-  return (
-    website.onboardingStatus === "draft" ||
-    website.domain.endsWith(".pending-onboarding")
-  );
-}
 
 function timestampMs(iso: string | null | undefined): number {
   if (!iso) return 0;
@@ -147,34 +139,7 @@ export default function WebsitesList() {
     // Add extra defensive checks
     if (!websites || !Array.isArray(websites)) return [];
 
-    // Filter to only show websites with onboardingStatus of 'draft' or 'completed'
-    // Also include pending onboarding websites (domain ends with .pending-onboarding) - these don't have onboardingStatus yet
-    // Also include legacy websites (null onboardingStatus with real domain) - created before onboarding form system
-    const filteredWebsites = websites.filter((website) => {
-      // Pending onboarding websites (new subscriptions) - identified by domain ending with .pending-onboarding
-      // This is the only reliable indicator of a new pending onboarding website
-      const isPendingOnboarding = website.domain.endsWith('.pending-onboarding');
-      
-      // Only show if:
-      // 1. It's a pending onboarding website (domain ends with .pending-onboarding), OR
-      // 2. It has explicit onboardingStatus of 'draft' or 'completed', OR
-      // 3. It's a legacy website (null onboardingStatus with a real domain - not .pending-onboarding)
-      if (isPendingOnboarding) {
-        return true;
-      }
-      
-      // Show draft or completed onboarding forms
-      if (website.onboardingStatus === 'draft' || website.onboardingStatus === 'completed') {
-        return true;
-      }
-      
-      // Legacy websites: null onboardingStatus with a real domain (created before onboarding form system)
-      if (website.onboardingStatus === null && !website.domain.endsWith('.pending-onboarding')) {
-        return true;
-      }
-      
-      return false;
-    });
+    const filteredWebsites = websites.filter(isCompletedFilter);
 
     const tiebreaker = (a: Website, b: Website): number => {
       const aActive = a.subscriptionStatus?.toLowerCase() === "active";
@@ -208,17 +173,8 @@ export default function WebsitesList() {
     () => sortedWebsites.some(isCompletedFilter),
     [sortedWebsites],
   );
-  const hasDraftSites = useMemo(
-    () => sortedWebsites.some(isDraftFilter),
-    [sortedWebsites],
-  );
-
   const completedCount = useMemo(
     () => sortedWebsites.filter(isCompletedFilter).length,
-    [sortedWebsites],
-  );
-  const draftCount = useMemo(
-    () => sortedWebsites.filter(isDraftFilter).length,
     [sortedWebsites],
   );
 
@@ -227,7 +183,7 @@ export default function WebsitesList() {
     const byTab =
       onboardingFilter === "completed"
         ? sortedWebsites.filter(isCompletedFilter)
-        : sortedWebsites.filter(isDraftFilter);
+        : [];
     if (!q) return byTab;
     return byTab.filter((w) =>
       (w.projectName ?? "").toLowerCase().includes(q),
@@ -237,8 +193,8 @@ export default function WebsitesList() {
   const hasItemsInCurrentTab = useMemo(() => {
     return onboardingFilter === "completed"
       ? sortedWebsites.some(isCompletedFilter)
-      : sortedWebsites.some(isDraftFilter);
-  }, [sortedWebsites, onboardingFilter]);
+      : !!pendingSubmission;
+  }, [sortedWebsites, onboardingFilter, pendingSubmission]);
 
   if (isLoading || isLoadingUser) {
     return (
@@ -369,7 +325,7 @@ export default function WebsitesList() {
                       {t("dashboard.noWebsitesMessage")}
                     </p>
                     <Button
-                      onClick={() => navigate("/onboarding")}
+                      onClick={() => navigate("/get-started")}
                       className="flex items-center gap-2 mx-auto"
                       data-testid="button-complete-onboarding"
                     >
@@ -401,7 +357,7 @@ export default function WebsitesList() {
             <div className="grid grid-cols-12 gap-6">
               <div className="col-span-12 lg:col-span-9 space-y-4">
                 <div
-                  className="flex flex-row flex-nowrap items-center gap-2 w-full min-w-0 overflow-x-auto py-1.5 -my-1.5 px-0.5 -mx-0.5"
+                  className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center w-full"
                   data-testid="websites-list-toolbar"
                 >
                   <Input
@@ -409,55 +365,57 @@ export default function WebsitesList() {
                     value={projectSearch}
                     onChange={(e) => setProjectSearch(e.target.value)}
                     placeholder={t("dashboard.websitesSearchPlaceholder")}
-                    className="h-9 flex-1 min-w-[7rem] max-w-none"
+                    className="h-9 w-full sm:flex-1 sm:min-w-[7rem]"
                     data-testid="websites-search-project"
                   />
-                  <Button
-                    type="button"
-                    variant={onboardingFilter === "completed" ? "default" : "outline"}
-                    size="sm"
-                    className="shrink-0"
-                    disabled={!hasCompletedSites}
-                    onClick={() => setOnboardingFilter("completed")}
-                    data-testid="filter-completed"
-                  >
-                    {t("dashboard.filterCompletedWithCount", { count: completedCount })}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={onboardingFilter === "draft" ? "default" : "outline"}
-                    size="sm"
-                    className="shrink-0"
-                    disabled={!hasDraftSites && !pendingSubmission}
-                    onClick={() => setOnboardingFilter("draft")}
-                    data-testid="filter-draft"
-                  >
-                    {t("dashboard.filterDraftWithCount", { count: draftCount + (pendingSubmission ? 1 : 0) })}
-                  </Button>
-                  <Select
-                    value={sortBy}
-                    onValueChange={(v) =>
-                      setSortBy(v as "lastUpdated" | "firstCreated" | "lastCreated")
-                    }
-                  >
-                    <SelectTrigger
-                      className="h-9 w-[min(13rem,40vw)] shrink-0"
-                      data-testid="websites-sort"
+                  <div className="flex flex-row flex-wrap items-center gap-2">
+                    <Button
+                      type="button"
+                      variant={onboardingFilter === "completed" ? "default" : "outline"}
+                      size="sm"
+                      className="shrink-0 text-xs sm:text-sm"
+                      disabled={!hasCompletedSites}
+                      onClick={() => setOnboardingFilter("completed")}
+                      data-testid="filter-completed"
                     >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="lastUpdated">
-                        {t("dashboard.websitesSortLastUpdated")}
-                      </SelectItem>
-                      <SelectItem value="firstCreated">
-                        {t("dashboard.websitesSortFirstCreated")}
-                      </SelectItem>
-                      <SelectItem value="lastCreated">
-                        {t("dashboard.websitesSortLastCreated")}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                      {t("dashboard.filterCompletedWithCount", { count: completedCount })}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={onboardingFilter === "draft" ? "default" : "outline"}
+                      size="sm"
+                      className="shrink-0 text-xs sm:text-sm"
+                      disabled={!pendingSubmission}
+                      onClick={() => setOnboardingFilter("draft")}
+                      data-testid="filter-draft"
+                    >
+                      {t("dashboard.filterDraftWithCount", { count: pendingSubmission ? 1 : 0 })}
+                    </Button>
+                    <Select
+                      value={sortBy}
+                      onValueChange={(v) =>
+                        setSortBy(v as "lastUpdated" | "firstCreated" | "lastCreated")
+                      }
+                    >
+                      <SelectTrigger
+                        className="h-9 w-[10rem] sm:w-[min(13rem,40vw)] shrink-0"
+                        data-testid="websites-sort"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="lastUpdated">
+                          {t("dashboard.websitesSortLastUpdated")}
+                        </SelectItem>
+                        <SelectItem value="firstCreated">
+                          {t("dashboard.websitesSortFirstCreated")}
+                        </SelectItem>
+                        <SelectItem value="lastCreated">
+                          {t("dashboard.websitesSortLastCreated")}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 {/* Pending get-started submission card */}
@@ -529,18 +487,18 @@ export default function WebsitesList() {
                               <h3 className="text-xl font-semibold" data-testid="text-pending-submission-name">
                                 {pendingSubmission.businessName ||
                                   BUSINESS_TYPE_LABELS[pendingSubmission.businessType ?? ""] ||
-                                  "New Website"}
+                                  t("dashboard.pendingSubmissionNewWebsite")}
                               </h3>
                               <Badge
                                 className="bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400 border border-orange-200 dark:border-orange-800 hover:bg-orange-100"
                                 data-testid="badge-pending-draft"
                               >
-                                Draft
+                                {t("dashboard.pendingSubmissionDraftBadge")}
                               </Badge>
                             </div>
 
                             <p className="text-sm text-muted-foreground">
-                              Complete your setup to launch your website
+                              {t("dashboard.pendingSubmissionCompleteSetup")}
                             </p>
                           </div>
 
@@ -555,7 +513,7 @@ export default function WebsitesList() {
                               }}
                               data-testid="button-continue-get-started-setup"
                             >
-                              Continue setup →
+                              {t("dashboard.pendingSubmissionContinueSetup")}
                             </Button>
                           </div>
                         </div>
@@ -564,7 +522,7 @@ export default function WebsitesList() {
                   </Card>
                 )}
 
-                {filteredWebsites.length === 0 ? (
+                {filteredWebsites.length === 0 && !(onboardingFilter === "draft" && pendingSubmission) ? (
                   <Card className="p-12" data-testid="card-filter-empty">
                     <div className="text-center text-muted-foreground">
                       {projectSearch.trim() && hasItemsInCurrentTab
@@ -576,22 +534,15 @@ export default function WebsitesList() {
                   </Card>
                 ) : (
                   filteredWebsites.map((website) => {
-                  const isPendingOnboarding = website.currentStage === 0 || website.domain.endsWith('.pending-onboarding');
-                  // Only show draft if onboardingStatus is explicitly 'draft'
-                  // Websites without onboardingStatus (null/undefined) will show normal view
-                  const isDraft = website.onboardingStatus === 'draft';
+                  const isPendingOnboarding = website.currentStage === 0;
 
                   return (
                     <Card
                       key={website.id}
                       className={`cursor-pointer hover:shadow-lg transition-shadow ${
-                        isPendingOnboarding 
-                          ? 'border-2 border-blue-300 bg-blue-50' 
-                          : isDraft 
-                          ? 'border-2 border-orange-300 bg-orange-50' 
-                          : ''
+                        isPendingOnboarding ? 'border-2 border-blue-300 bg-blue-50' : ''
                       }`}
-                      onClick={() => !isPendingOnboarding && !isDraft && navigate(`/dashboard/website/${website.id}`)}
+                      onClick={() => !isPendingOnboarding && navigate(`/dashboard/website/${website.id}`)}
                       data-testid={`card-website-${website.id}`}
                     >
                       <CardContent className="p-6">
@@ -625,47 +576,13 @@ export default function WebsitesList() {
                             <Button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate("/onboarding");
+                                navigate("/get-started/onboarding");
                               }}
                               className="mt-4"
                               data-testid={`button-complete-onboarding-${website.id}`}
                             >
                               <Plus className="h-4 w-4 mr-2" />
                               {t("dashboard.completeOnboarding") || "Complete Onboarding"}
-                            </Button>
-                          </div>
-                        ) : isDraft ? (
-                          // Draft Onboarding View
-                          <div className="flex flex-col items-center justify-center text-center py-8 space-y-4">
-                            <div className="bg-orange-100 rounded-full p-4">
-                              <AlertCircle className="h-8 w-8 text-orange-600" />
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-semibold mb-2" data-testid={`text-draft-${website.id}`}>
-                                {t("dashboard.draftOnboarding") || "Draft Onboarding"}
-                              </h3>
-                              <p className="text-muted-foreground mb-1">
-                                {t("dashboard.continueOnboardingMessage") || "You have a saved draft. Continue where you left off to complete your website setup."}
-                              </p>
-                              {website.subscriptionTier && (
-                                <Badge className="mt-2" variant="outline" data-testid={`badge-tier-draft-${website.id}`}>
-                                  {t("dashboard.planSuffix", {
-                                    tier:
-                                      website.subscriptionTier.charAt(0).toUpperCase() +
-                                      website.subscriptionTier.slice(1),
-                                  })}
-                                </Badge>
-                              )}
-                            </div>
-                            <Button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/onboarding?websiteProgressId=${website.id}`);
-                              }}
-                              className="mt-4"
-                              data-testid={`button-continue-onboarding-${website.id}`}
-                            >
-                              {t("dashboard.continueOnboarding") || "Continue Onboarding"}
                             </Button>
                           </div>
                         ) : (

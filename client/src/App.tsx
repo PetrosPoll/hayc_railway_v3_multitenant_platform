@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n';
@@ -15,20 +15,17 @@ import { queryClient } from "./lib/queryClient";
 import { initializeUTMCapture } from "./lib/utm";
 
 // Page imports
-import Onboarding from "./pages/onboarding";
 import GetStarted from "./pages/get-started";
 import GetStartedSuccess from "./pages/get-started-success";
 import GetStartedOnboarding from "./pages/get-started-onboarding";
 import GetStartedQuickQuestions from "./pages/get-started-quick-questions";
 import GetStartedWebsiteStructure from "./pages/get-started-website-structure";
 import GetStartedContentMedia from "./pages/get-started-content-media";
-import OnboardingLogoSuccess from "./pages/onboarding-logo-success";
 import Contact from "./pages/contact";
 import About from "./pages/about";
 import Templates from "./pages/templates";
 import Pricing from "./pages/pricing";
 import TemplateDetail from "./pages/template-detail";
-import PreCheckout from "./pages/pre-checkout";
 import UpgradeConfirmation from "./pages/upgrade-confirmation";
 import Success from "./pages/success";
 import WebsiteCreation from "./pages/website-creation";
@@ -79,7 +76,6 @@ function ConditionalFooter() {
 
   if (
     location.pathname === '/profile' ||
-    location.pathname === '/onboarding' ||
     location.pathname === '/get-started' ||
     location.pathname === '/get-started/onboarding' ||
     location.pathname === '/get-started/onboarding/quick-questions' ||
@@ -104,7 +100,6 @@ function ConditionalNavMenu() {
 
   // Hide navigation for onboarding, website-creation landing pages, website dashboard pages, and email builder
   if (
-    location.pathname === '/onboarding' ||
     location.pathname === '/get-started' ||
     location.pathname === '/get-started/onboarding' ||
     location.pathname === '/get-started/onboarding/quick-questions' ||
@@ -177,7 +172,7 @@ function AppContent() {
               <GetStartedContentMedia />
             </ProtectedRoute>
           } />
-          <Route path="/pre-checkout/:planId" element={<PreCheckout />} />
+          <Route path="/pre-checkout/:planId" element={<Navigate to="/get-started" replace />} />
           <Route path="/templates" element={<PublicOnlyRoute><Templates /></PublicOnlyRoute>} />
           <Route path="/pricing" element={<PublicOnlyRoute><Pricing /></PublicOnlyRoute>} />
           <Route path="/templates/:id" element={<PublicOnlyRoute><TemplateDetail /></PublicOnlyRoute>} />
@@ -262,16 +257,8 @@ function AppContent() {
               <UpgradeConfirmation />
             </ProtectedRoute>
           } />
-          <Route path="/onboarding" element={
-            <ProtectedRoute>
-              <Onboarding />
-            </ProtectedRoute>
-          } />
-          <Route path="/onboarding-logo-success" element={
-            <ProtectedRoute>
-              <OnboardingLogoSuccess />
-            </ProtectedRoute>
-          } />
+          <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/onboarding-logo-success" element={<Navigate to="/dashboard" replace />} />
           <Route path="/cancel-subscription-feedback" element={
             <ProtectedRoute>
               <CancelSubscriptionFeedback />

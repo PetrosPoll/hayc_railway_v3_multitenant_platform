@@ -272,9 +272,8 @@ function PreCheckoutPage({
           const emailCheck = await checkEmailExists(formData.email);
           if (emailCheck.success && emailCheck.exists) {
             toast({
-              title: "Account already exists",
-              description:
-                "This email is registered. Sign in to continue, or use another email for a new account.",
+              title: "Unable to continue",
+              description: "If you have an existing account, please sign in. Otherwise, try a different email.",
               variant: "destructive",
             });
             setLoading(false);

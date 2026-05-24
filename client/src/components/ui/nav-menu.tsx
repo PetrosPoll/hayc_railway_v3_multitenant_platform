@@ -445,9 +445,9 @@ export function NavMenu() {
                 type="button"
                 className="w-11 h-11 px-2.5 pt-2.5 pb-1.5 flex flex-col justify-center items-center gap-1.5"
               >
-                <span className="w-full border-t-2 border-[#EFF6FF]" />
-                <span className="w-full border-t-2 border-[#EFF6FF]" />
-                <span className="w-full border-t-2 border-[#EFF6FF]" />
+                <span className={`w-full border-t-2 ${isLoggedOut ? "border-white" : "border-[#182B53]"}`} />
+                <span className={`w-full border-t-2 ${isLoggedOut ? "border-white" : "border-[#182B53]"}`} />
+                <span className={`w-full border-t-2 ${isLoggedOut ? "border-white" : "border-[#182B53]"}`} />
               </button>
             </SheetTrigger>
             <SheetContent

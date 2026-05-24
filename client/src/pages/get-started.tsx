@@ -384,8 +384,8 @@ export default function GetStarted() {
         const emailCheck = await checkEmailExists(email);
         if (emailCheck.success && emailCheck.exists) {
           toast({
-            title: "Account already exists",
-            description: "This email is registered. Sign in to continue, or use another email.",
+            title: "Unable to continue",
+            description: "If you have an existing account, please sign in. Otherwise, try a different email.",
             variant: "destructive",
           });
           return;

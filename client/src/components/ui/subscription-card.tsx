@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 interface SubscriptionCardProps {
   plan: (typeof subscriptionPlans)[keyof typeof subscriptionPlans];
-  /** If omitted, navigates to `/pre-checkout/:planId` (same flow as home). */
+  /** If omitted, navigates to `/get-started`. */
   onSubscribe?: () => void;
   loading?: boolean;
   isCurrentPlan?: boolean;
@@ -217,7 +217,7 @@ export function SubscriptionCard({
                 onSubscribe();
                 return;
               }
-              navigate(`/pre-checkout/${plan.id}?isYearly=${isYearly}`);
+              navigate('/get-started');
             }}
             disabled={loading}
           >

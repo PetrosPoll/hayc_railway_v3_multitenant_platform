@@ -42,17 +42,7 @@ export default function Success() {
             credentials: 'include'
           });
 
-          // Redirect to onboarding with subscription ID if available
-          const subscriptionParam = sessionData.subscriptionId 
-            ? `?subscriptionId=${sessionData.subscriptionId}` 
-            : '';
-          
-          console.log('🔵 [SUCCESS PAGE] Redirecting to onboarding:', {
-            subscriptionId: sessionData.subscriptionId,
-            url: `/onboarding${subscriptionParam}`
-          });
-          
-          navigate(`/onboarding${subscriptionParam}`);
+          navigate('/dashboard');
         } else {
           setErrorKey("payment.paymentNotCompleted");
           setLoading(false);
