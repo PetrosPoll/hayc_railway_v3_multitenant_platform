@@ -249,10 +249,10 @@ class WrappApiService {
    */
   async createInvoice(input: CreateInvoiceInput): Promise<any> {
     try {
-      // Calculate amounts (0% VAT rate)
-      const totalAmount = Number((input.amount / 100).toFixed(2));  // Convert cents to euros
-      const netAmount = totalAmount;  // No VAT, net equals total
-      const vatAmount = 0;  // 0% VAT rate
+      // Calculate amounts (24% VAT rate). input.amount is the gross total in cents.
+      const totalAmount = Number((input.amount / 100).toFixed(2));
+      const netAmount = Number((totalAmount / 1.24).toFixed(2));
+      const vatAmount = Number((totalAmount - netAmount).toFixed(2));
 
       console.log('[Wrapp] Creating invoice:', { amount: totalAmount, net: netAmount, vat: vatAmount });
 
@@ -315,8 +315,7 @@ class WrappApiService {
             quantity_type: 1,
             unit_price: netAmount,
             net_total_price: netAmount,
-            vat_rate: 0, // Change this to 24 when time comes
-            vat_exemption_code: 15,
+            vat_rate: 24,
             vat_total: vatAmount,
             subtotal: netAmount,
             classification_category: "category1_3",
