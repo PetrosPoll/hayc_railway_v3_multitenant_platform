@@ -196,6 +196,17 @@ export default function WebsitesList() {
       : !!pendingSubmission;
   }, [sortedWebsites, onboardingFilter, pendingSubmission]);
 
+  const draftMatchesSearch = useMemo(() => {
+    const q = projectSearch.trim().toLowerCase();
+    if (!q) return true;
+    const name = (
+      pendingSubmission?.businessName ||
+      BUSINESS_TYPE_LABELS[pendingSubmission?.businessType ?? ""] ||
+      ""
+    ).toLowerCase();
+    return name.includes(q);
+  }, [pendingSubmission, projectSearch]);
+
   if (isLoading || isLoadingUser) {
     return (
       <div className="min-h-[calc(100vh-4rem)] pt-16 flex items-center justify-center">
@@ -419,7 +430,7 @@ export default function WebsitesList() {
                 </div>
 
                 {/* Pending get-started submission card */}
-                {pendingSubmission && onboardingFilter === "draft" && (
+                {pendingSubmission && onboardingFilter === "draft" && draftMatchesSearch && (
                   <Card
                     className="cursor-pointer hover:shadow-lg transition-shadow border-2 border-orange-200 dark:border-orange-700"
                     onClick={() =>
@@ -522,7 +533,7 @@ export default function WebsitesList() {
                   </Card>
                 )}
 
-                {filteredWebsites.length === 0 && !(onboardingFilter === "draft" && pendingSubmission) ? (
+                {filteredWebsites.length === 0 && !(onboardingFilter === "draft" && pendingSubmission && draftMatchesSearch) ? (
                   <Card className="p-12" data-testid="card-filter-empty">
                     <div className="text-center text-muted-foreground">
                       {projectSearch.trim() && hasItemsInCurrentTab

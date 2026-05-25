@@ -515,7 +515,7 @@ export default function GetStarted() {
         </Form>
       </div>
 
-      <Dialog open={showExitModal} onOpenChange={setShowExitModal}>
+      <Dialog open={showExitModal} onOpenChange={(open) => { if (!open) setShowExitModal(false); }}>
         <DialogContent
           className="bg-[#111111] border border-zinc-800 text-white font-brand max-w-md rounded-2xl sm:rounded-lg"
           closeBtnClassName="border-white/30 bg-white/15 text-white shadow-md hover:bg-white/25 hover:text-white hover:opacity-100 focus-visible:ring-[#ED4C14]/60 focus-visible:ring-offset-[#111111]"
@@ -538,10 +538,7 @@ export default function GetStarted() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                setShowExitModal(false);
-                navigate(isLoggedIn ? "/dashboard" : "/");
-              }}
+              onClick={() => navigate(isLoggedIn ? "/dashboard" : "/")}
               className="h-11 w-full sm:w-auto px-5 rounded-[10px] bg-[#ED4C14] border-0 text-white text-sm font-semibold font-brand cursor-pointer hover:bg-[#d44310] transition-colors"
             >
               {t("getStarted.exitModal.leaveAnyway")}
