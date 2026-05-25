@@ -1,11 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, CheckCircle, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -66,100 +64,92 @@ export default function ForgotPassword() {
 
   if (emailSent) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-muted/30">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              {t("forgotPassword.emailSentTitle")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
+      <div className="flex items-center justify-center min-h-screen bg-black">
+        <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-lg p-8 backdrop-blur-sm mx-4">
+          <h2 className="text-xl font-semibold text-white font-brand flex items-center gap-2 mb-6">
+            <CheckCircle className="h-5 w-5 text-green-400" />
+            {t("forgotPassword.emailSentTitle")}
+          </h2>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-lg">
+              <CheckCircle className="h-4 w-4 text-green-400 mt-0.5 flex-shrink-0" />
+              <p className="text-white/80 text-sm font-brand">
                 {t("forgotPassword.emailSentMessage", { email })}
-              </AlertDescription>
-            </Alert>
+              </p>
+            </div>
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-white/50 font-brand">
                 {t("forgotPassword.noEmailReceived")}
               </p>
-              <Button 
-                variant="outline"
-                onClick={() => setEmailSent(false)} 
-                className="w-full"
+              <button
+                onClick={() => setEmailSent(false)}
+                className="w-full py-2.5 px-4 rounded-lg border border-white/20 text-white/80 hover:bg-white/10 hover:text-white transition-colors font-brand text-sm"
               >
                 {t("forgotPassword.sendAnother")}
-              </Button>
-              <Button 
-                variant="ghost"
-                onClick={() => navigate("/auth")} 
-                className="w-full"
+              </button>
+              <button
+                onClick={() => navigate("/auth")}
+                className="w-full py-2.5 px-4 rounded-lg text-white/60 hover:text-white transition-colors font-brand text-sm flex items-center justify-center gap-2"
               >
-                <ArrowLeft className="mr-2 h-4 w-4" />
+                <ArrowLeft className="h-4 w-4" />
                 {t("forgotPassword.backToLogin")}
-              </Button>
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-muted/30">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{t("forgotPassword.title")}</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            {t("forgotPassword.description")}
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">{t("forgotPassword.emailLabel")}</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder={t("forgotPassword.emailPlaceholder")}
-                required
-                data-testid="input-email"
-              />
-            </div>
+    <div className="flex items-center justify-center min-h-screen bg-black">
+      <div className="w-full max-w-md bg-white/5 border border-white/10 rounded-lg p-8 backdrop-blur-sm mx-4">
+        <h2 className="text-xl font-semibold text-white font-brand mb-1">{t("forgotPassword.title")}</h2>
+        <p className="text-sm text-white/50 font-brand mb-6">
+          {t("forgotPassword.description")}
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-white/80 font-brand">{t("forgotPassword.emailLabel")}</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t("forgotPassword.emailPlaceholder")}
+              required
+              data-testid="input-email"
+              className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus-visible:ring-white/30"
+            />
+          </div>
 
-            <Button 
-              type="submit" 
-              className="w-full"
-              disabled={isSubmitting}
-              data-testid="button-send-reset-link"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("forgotPassword.sending")}
-                </>
-              ) : (
-                t("forgotPassword.sendButton")
-              )}
-            </Button>
+          <Button
+            type="submit"
+            className="w-full bg-white text-black hover:bg-white/90 font-brand"
+            disabled={isSubmitting}
+            data-testid="button-send-reset-link"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {t("forgotPassword.sending")}
+              </>
+            ) : (
+              t("forgotPassword.sendButton")
+            )}
+          </Button>
 
-            <Button 
-              type="button"
-              variant="ghost"
-              onClick={() => navigate("/auth")} 
-              className="w-full"
-              data-testid="button-back-to-login"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {t("forgotPassword.backToLogin")}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+          <button
+            type="button"
+            onClick={() => navigate("/auth")}
+            className="w-full py-2.5 px-4 rounded-lg text-white/60 hover:text-white transition-colors font-brand text-sm flex items-center justify-center gap-2"
+            data-testid="button-back-to-login"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t("forgotPassword.backToLogin")}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
