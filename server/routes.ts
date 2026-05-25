@@ -13811,7 +13811,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const selectedTemplateId =
             templateIdMap.get(website.id) ??
             (gs?.designDirection && gs.designDirection !== "auto"
-              ? (parseInt(gs.designDirection, 10) || null)
+              ? (gs.designDirection && /^\d+$/.test(gs.designDirection) ? parseInt(gs.designDirection, 10) : null)
               : null);
 
           // onboardingStatus: old-flow from onboardingFormResponses, new-flow from get_started_submissions
@@ -13921,7 +13921,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const selectedTemplateId =
         onboardingRow?.selectedTemplateId ??
         (gsRow?.designDirection && gsRow.designDirection !== "auto"
-          ? (parseInt(gsRow.designDirection, 10) || null)
+          ? (gsRow.designDirection && /^\d+$/.test(gsRow.designDirection) ? parseInt(gsRow.designDirection, 10) : null)
           : null);
 
       const onboardingStatus = onboardingRow?.status ?? gsRow?.status ?? null;
@@ -14497,6 +14497,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching onboarding form response:", err);
       res.status(500).json({ error: "Failed to fetch onboarding form response" });
+    }
+  });
+
+  // List all get-started submissions (Admin only)
+  app.get("/api/admin/get-started-submissions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const status = req.query.status as string | undefined;
+      const websiteProgressId = req.query.websiteProgressId
+        ? parseInt(req.query.websiteProgressId as string)
+        : undefined;
+      const page = parseInt((req.query.page as string) ?? "1");
+      const limit = 20;
+      const offset = (page - 1) * limit;
+
+      const baseCondition =
+        status && websiteProgressId
+          ? and(eq(getStartedSubmissions.status, status), eq(getStartedSubmissions.websiteProgressId, websiteProgressId))
+          : status
+          ? eq(getStartedSubmissions.status, status)
+          : websiteProgressId
+          ? eq(getStartedSubmissions.websiteProgressId, websiteProgressId)
+          : undefined;
+
+      const submissions = await db
+        .select({
+          id: getStartedSubmissions.id,
+          sessionId: getStartedSubmissions.sessionId,
+          submissionId: getStartedSubmissions.submissionId,
+          status: getStartedSubmissions.status,
+          email: getStartedSubmissions.email,
+          fullName: getStartedSubmissions.fullName,
+          selectedPlan: getStartedSubmissions.selectedPlan,
+          billingPeriod: getStartedSubmissions.billingPeriod,
+          businessType: getStartedSubmissions.businessType,
+          currentStep: getStartedSubmissions.currentStep,
+          websiteProgressId: getStartedSubmissions.websiteProgressId,
+          createdAt: getStartedSubmissions.createdAt,
+          updatedAt: getStartedSubmissions.updatedAt,
+        })
+        .from(getStartedSubmissions)
+        .where(baseCondition)
+        .orderBy(desc(getStartedSubmissions.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      const totalCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(getStartedSubmissions)
+        .where(baseCondition)
+        .then((rows) => Number(rows[0]?.count ?? 0));
+
+      return res.json({
+        submissions,
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          pages: Math.ceil(totalCount / limit),
+        },
+      });
+    } catch (err) {
+      console.error("GET /api/admin/get-started-submissions error:", err);
+      return res.status(500).json({ error: "Failed to fetch submissions" });
+    }
+  });
+
+  // Get single get-started submission by ID (Admin only)
+  app.get("/api/admin/get-started-submissions/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.id, id))
+        .then((rows) => rows[0] ?? null);
+
+      if (!submission) return res.status(404).json({ error: "Submission not found" });
+
+      return res.json({ submission });
+    } catch (err) {
+      console.error("GET /api/admin/get-started-submissions/:id error:", err);
+      return res.status(500).json({ error: "Failed to fetch submission" });
     }
   });
 

@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { OnboardingFormResponse } from "@shared/schema"
+import { SubmissionDetailDialog } from "@/components/ui/admin-get-started-submissions"
 import { ENVATO_TEMPLATES } from "@/data/envato-templates"
 import { formatOnboardingValue } from "@/lib/onboarding-formatters"
 
@@ -80,6 +81,7 @@ function WebsiteProgressRowActions({
   website,
   canManageWebsites,
   onOpenOnboarding,
+  onOpenGetStartedForm,
   onOpenAnalyticsDialog,
   onOpenNewsletterDialog,
   onRequestDelete,
@@ -90,6 +92,7 @@ function WebsiteProgressRowActions({
   website: Website
   canManageWebsites?: boolean
   onOpenOnboarding: () => void
+  onOpenGetStartedForm?: () => void
   onOpenAnalyticsDialog: () => void
   onOpenNewsletterDialog: () => void
   onRequestDelete: () => void
@@ -130,6 +133,12 @@ function WebsiteProgressRowActions({
           <FileText className="h-4 w-4" />
           View onboarding form
         </DropdownMenuItem>
+        {onOpenGetStartedForm && (
+          <DropdownMenuItem onSelect={onOpenGetStartedForm}>
+            <FileText className="h-4 w-4" />
+            View get-started form
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           onSelect={() => onOpenAnalyticsDialog()}
           data-testid={`menu-view-analytics-${website.id}`}
@@ -859,6 +868,8 @@ export function AdminWebsiteProgress() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<number | null>(null)
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false)
+  const [gsWebsiteProgressId, setGsWebsiteProgressId] = useState<number | null>(null)
+  const [isGsDialogOpen, setIsGsDialogOpen] = useState(false)
   const [editingDomainId, setEditingDomainId] = useState<number | null>(null)
   const [editedDomainValue, setEditedDomainValue] = useState("")
   const [editingSiteId, setEditingSiteId] = useState<number | null>(null)
@@ -948,6 +959,21 @@ export function AdminWebsiteProgress() {
     },
     enabled: !!selectedWebsiteId && isOnboardingDialogOpen,
   })
+
+  const { data: gsSubmissionResponse } = useQuery({
+    queryKey: ["/api/admin/get-started-submissions", "by-website", gsWebsiteProgressId],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/get-started-submissions?websiteProgressId=${gsWebsiteProgressId}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!gsWebsiteProgressId && isGsDialogOpen,
+  });
+
+  const gsSubmission = gsSubmissionResponse?.submissions?.[0] ?? null;
 
   const createWebsiteMutation = useMutation({
     mutationFn: async ({ userId, domain, currentStage, stages }: { userId: number, domain: string, currentStage: number, stages: string[] }) => {
@@ -1507,6 +1533,10 @@ export function AdminWebsiteProgress() {
                       onOpenOnboarding={() => {
                         setSelectedWebsiteId(website.id);
                         setIsOnboardingDialogOpen(true);
+                      }}
+                      onOpenGetStartedForm={() => {
+                        setGsWebsiteProgressId(website.id);
+                        setIsGsDialogOpen(true);
                       }}
                       onOpenAnalyticsDialog={() =>
                         setIntegrationCodeDialog({
@@ -2272,6 +2302,13 @@ export function AdminWebsiteProgress() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Get Started Form Dialog */}
+      <SubmissionDetailDialog
+        submissionId={gsSubmission?.id ?? null}
+        open={isGsDialogOpen}
+        onClose={() => setIsGsDialogOpen(false)}
+      />
 
       {/* Onboarding Form Response Dialog */}
       <Dialog open={isOnboardingDialogOpen} onOpenChange={setIsOnboardingDialogOpen}>
