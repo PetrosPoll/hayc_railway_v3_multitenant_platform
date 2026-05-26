@@ -1,9 +1,68 @@
-﻿import { Link } from "react-router-dom";
+﻿import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+
+function NewsletterForm({ className }: { className?: string }) {
+  const { t } = useTranslation();
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error" | "invalid">("idle");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setStatus("invalid");
+      return;
+    }
+    setStatus("loading");
+    try {
+      const res = await fetch("/api/hayc/newsletter-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setStatus(res.ok ? "success" : "error");
+    } catch {
+      setStatus("error");
+    }
+  }
+
+  const message =
+    status === "success" ? t("footer.newsletter.success") :
+    status === "error" ? t("footer.newsletter.error") :
+    status === "invalid" ? t("footer.newsletter.invalidEmail") : null;
+
+  return (
+    <form onSubmit={handleSubmit} className={className}>
+      <div className="flex gap-2 w-full">
+        <input
+          type="email"
+          value={email}
+          onChange={e => { setEmail(e.target.value); if (status !== "idle" && status !== "loading") setStatus("idle"); }}
+          placeholder={t("footer.newsletter.placeholder")}
+          disabled={status === "loading" || status === "success"}
+          className="flex-1 min-w-0 px-4 py-2.5 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm placeholder-zinc-500 focus:outline-none focus:border-zinc-500 disabled:opacity-50"
+        />
+        <button
+          type="submit"
+          disabled={status === "loading" || status === "success"}
+          className="px-4 py-2.5 bg-[#ED4C14] rounded-lg text-white text-sm font-semibold font-brand hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
+        >
+          {status === "loading" ? t("footer.newsletter.subscribing") : t("footer.newsletter.button")}
+        </button>
+      </div>
+      {message && (
+        <p className={`mt-2 text-sm ${status === "success" ? "text-green-400" : "text-red-400"}`}>
+          {message}
+        </p>
+      )}
+    </form>
+  );
+}
 
 export function Footer() {
   const { t } = useTranslation();
-  
+
   return (
     <footer className="w-full bg-black flex flex-col items-center">
       {/* Mobile footer */}
@@ -29,7 +88,7 @@ export function Footer() {
                   </g>
                 </svg>
               </Link>
-              <div className="self-stretch text-white text-base font-normal font-['Inter'] leading-6">
+              <div className="self-stretch text-white text-base font-normal font-brand leading-6">
                 {t("footer.descriptionLine1")}<br />{t("footer.descriptionLine2")}
               </div>
             </div>
@@ -43,38 +102,51 @@ export function Footer() {
             </div>
           </div>
           <div className="self-stretch flex flex-col justify-start items-start gap-3">
-            <div className="self-stretch text-white text-base font-bold font-['Inter'] leading-7">{t("footer.quickLinks")}</div>
+            <div className="self-stretch text-white text-base font-bold font-brand leading-7">{t("footer.quickLinks")}</div>
             <div className="flex flex-col justify-start items-start gap-3">
-              <Link to="/about" className="text-white text-base font-normal font-['Inter'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.about")}</Link>
-              <Link to="/templates" className="text-white text-base font-normal font-['Inter'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.templates")}</Link>
-              <Link to="/contact" className="text-white text-base font-normal font-['Inter'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.contact")}</Link>
+              <Link to="/about" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.about")}</Link>
+              <Link to="/templates" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.templates")}</Link>
+              <Link to="/contact" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.contact")}</Link>
             </div>
           </div>
           <div className="self-stretch flex flex-col justify-start items-start gap-3">
-            <div className="self-stretch text-white text-base font-bold font-['Inter'] leading-7">{t("footer.legal")}</div>
+            <div className="self-stretch text-white text-base font-bold font-brand leading-7">{t("footer.legal")}</div>
             <div className="self-stretch flex flex-col justify-start items-start gap-3">
-              <Link to="/terms-of-service" className="text-white text-base font-normal font-['Inter'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.termsOfService")}</Link>
-              <Link to="/privacy-policy" className="text-white text-base font-normal font-['Inter'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.privacyPolicy")}</Link>
-              <Link to="/cookie-policy" className="text-white text-base font-normal font-['Inter'] leading-6 hover:opacity-70 transition-opacity">{t("footer.links.cookiePolicy")}</Link>
+              <Link to="/terms-of-service" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.termsOfService")}</Link>
+              <Link to="/privacy-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.privacyPolicy")}</Link>
+              <Link to="/cookie-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.cookiePolicy")}</Link>
             </div>
           </div>
           <div className="self-stretch flex flex-col justify-start items-start gap-3">
-            <div className="self-stretch text-white text-lg font-bold font-['Inter'] leading-7">{t("footer.contactUs")}</div>
+            <div className="self-stretch text-white text-lg font-bold font-brand leading-7">{t("footer.contactUs")}</div>
             <div className="self-stretch inline-flex justify-start items-center gap-2">
               <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/mail_icon.svg" alt={t("footer.emailAlt")} loading="lazy" className="w-5 h-5" />
-              <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-['Inter'] leading-6 hover:opacity-70 transition-opacity">
+              <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">
                 info@hayc.gr
               </a>
             </div>
           </div>
+          <div className="self-stretch flex flex-col justify-start items-start gap-3">
+            <div className="self-stretch text-white text-base font-bold font-brand leading-7">{t("footer.newsletter.title")}</div>
+            <p className="self-stretch text-zinc-400 text-sm font-normal font-brand leading-5">{t("footer.newsletter.description")}</p>
+            <NewsletterForm className="self-stretch" />
+          </div>
         </div>
-        <div className="self-stretch text-center text-white text-base font-normal font-['Inter'] leading-6">
+        <div className="self-stretch text-center text-white text-base font-normal font-brand leading-6">
           {t("footer.copyright")}
         </div>
       </div>
 
       {/* Desktop footer */}
       <div className="hidden md:flex w-full px-16 py-12 flex-col items-center gap-12">
+      {/* Newsletter strip */}
+      <div className="w-full pb-12 border-b border-zinc-800 flex justify-between items-center gap-12">
+        <div className="flex flex-col gap-1">
+          <p className="text-white text-xl font-bold font-brand leading-7">{t("footer.newsletter.title")}</p>
+          <p className="text-zinc-400 text-sm font-normal font-brand leading-5">{t("footer.newsletter.description")}</p>
+        </div>
+        <NewsletterForm className="w-full max-w-md" />
+      </div>
       {/* Main footer grid */}
       <div className="w-full py-12 border-b border-zinc-800 flex justify-center items-start gap-24">
         {/* Col 1 — Logo + description + socials */}
@@ -118,7 +190,7 @@ export function Footer() {
 
         {/* Col 2 — Quick Links */}
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
-          <p className="text-white text-base font-bold font-['Inter'] leading-7">{t("footer.quickLinks")}</p>
+          <p className="text-white text-base font-bold font-brand leading-7">{t("footer.quickLinks")}</p>
           <div className="flex flex-col justify-start items-start gap-3">
             <Link to="/about" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.about")}</Link>
             <Link to="/templates" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.templates")}</Link>
@@ -128,7 +200,7 @@ export function Footer() {
 
         {/* Col 3 — Legal */}
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
-          <p className="text-white text-base font-bold font-['Inter'] leading-7">{t("footer.legal")}</p>
+          <p className="text-white text-base font-bold font-brand leading-7">{t("footer.legal")}</p>
           <div className="flex flex-col justify-start items-start gap-3">
             <Link to="/terms-of-service" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.termsOfService")}</Link>
             <Link to="/privacy-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.privacyPolicy")}</Link>
@@ -138,7 +210,7 @@ export function Footer() {
 
         {/* Col 4 — Contact Us */}
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
-          <p className="text-white text-lg font-bold font-['Inter'] leading-7">{t("footer.contactUs")}</p>
+          <p className="text-white text-lg font-bold font-brand leading-7">{t("footer.contactUs")}</p>
           <div className="flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/mail_icon.svg" alt={t("footer.emailAlt")} loading="lazy" className="w-5 h-5" />
             <a href="mailto:info@hayc.gr" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">
@@ -149,7 +221,7 @@ export function Footer() {
       </div>
 
       {/* Copyright */}
-      <p className="text-white text-base font-normal font-['Inter'] leading-6 text-center">
+      <p className="text-white text-base font-normal font-brand leading-6 text-center">
         {t("footer.copyright")}
       </p>
       </div>

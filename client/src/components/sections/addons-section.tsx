@@ -72,11 +72,11 @@ export function AddonsSection() {
         <div className="w-full md:flex-1 flex flex-col justify-start items-start gap-12 relative z-10 md:max-w-2xl">
           <div className="flex flex-col justify-start items-start gap-6">
             <h2 className="text-3xl md:text-5xl font-semibold font-['Inter'] leading-10 md:leading-normal">
-              <span className="text-white">Your </span>
-              <span className="text-[#ED4C14]">website<br /></span>
-              <span className="text-white">can </span>
-              <span className="text-[#ED4C14]">grow</span>
-              <span className="text-white"> with you.</span>
+              <span className="text-white">{t("home.addonsSection.titlePrefix")} </span>
+              <span className="text-[#ED4C14]">{t("home.addonsSection.titleWebsite")}<br /></span>
+              <span className="text-white">{t("home.addonsSection.titleMiddle")} </span>
+              <span className="text-[#ED4C14]">{t("home.addonsSection.titleHighlight")}</span>
+              <span className="text-white">{t("home.addonsSection.titleSuffix")}</span>
             </h2>
             <p className="text-white text-base font-normal font-brand leading-5 md:leading-6 max-w-full md:max-w-lg">
               {t("home.addonsSection.description")}

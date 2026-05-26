@@ -1,4 +1,5 @@
 ﻿import { useRef, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 
@@ -7,32 +8,6 @@ const GET_STARTED_DEFAULT_PATH = "/get-started";
 // Figma frame dimensions — used for scaling
 const FRAME_W = 1200;
 const FRAME_H = 800;
-
-const STEPS = [
-  {
-    number: "01",
-    title: "Create your account and choose your template",
-    description: "Subscribe in seconds and start your journey with us.",
-  },
-  {
-    number: "02",
-    title: "Tell us what you need",
-    description:
-      "Choose your template, define your business, and select your features.",
-  },
-  {
-    number: "03",
-    title: "We build your website, fast",
-    description:
-      "Our team gets to work based on your selected template and tools. We will also reach out to fine-tune the details.",
-  },
-  {
-    number: "04",
-    title: "Stay in control",
-    description:
-      "See your website come to life step by step. From progress tracking to performance data and future upgrades. It's all in one place.",
-  },
-] as const;
 
 // Wheel: 8 visual slots at 45deg (01–04 duplicated). Logical steps stay 4; rotate -45deg per step.
 const WHEEL_SLOTS = 8;
@@ -60,7 +35,31 @@ const mobileStepStyles = `
 `;
 
 export function HowWeWorkSection() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const STEPS = [
+    {
+      number: "01",
+      title: t("home.howWeWork.step1.title"),
+      description: t("home.howWeWork.step1.description"),
+    },
+    {
+      number: "02",
+      title: t("home.howWeWork.step2.title"),
+      description: t("home.howWeWork.step2.description"),
+    },
+    {
+      number: "03",
+      title: t("home.howWeWork.step3.title"),
+      description: t("home.howWeWork.step3.description"),
+    },
+    {
+      number: "04",
+      title: t("home.howWeWork.step4.title"),
+      description: t("home.howWeWork.step4.description"),
+    },
+  ] as const;
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [wheelProgress, setWheelProgress] = useState(0);
@@ -165,8 +164,8 @@ export function HowWeWorkSection() {
             }}
           >
             <h2 className="text-3xl font-semibold font-brand text-right">
-              <span className="text-white">A process created around </span>
-              <span className="text-[#ED4C14]">you.</span>
+              <span className="text-white">{t("home.howWeWork.titlePrefix")} </span>
+              <span className="text-[#ED4C14]">{t("home.howWeWork.titleHighlight")}</span>
             </h2>
           </div>
 
@@ -178,7 +177,7 @@ export function HowWeWorkSection() {
               style={{
                 fontSize: "140px",
                 fontWeight: 600,
-                fontFamily: "Montserrat",
+                fontFamily: "Manrope",
                 lineHeight: 1,
                 color: "#ED4C14",
               }}
@@ -203,7 +202,7 @@ export function HowWeWorkSection() {
                            items-center gap-4 border-0 cursor-pointer w-fit mt-2"
               >
                 <span className="text-[#EFF6FF] text-sm font-semibold font-brand">
-                  Get Started
+                  {t("home.hero.cta")}
                 </span>
                 <ArrowRight className="h-4 w-4 text-[#EFF6FF]" />
               </button>
@@ -248,8 +247,8 @@ export function HowWeWorkSection() {
               fontWeight: 600,
             }}
           >
-            <span style={{ color: "white" }}>A process created around </span>
-            <span style={{ color: "#ED4C14" }}>you.</span>
+            <span style={{ color: "white" }}>{t("home.howWeWork.titlePrefix")} </span>
+            <span style={{ color: "#ED4C14" }}>{t("home.howWeWork.titleHighlight")}</span>
           </h2>
         </div>
 
@@ -382,7 +381,7 @@ export function HowWeWorkSection() {
                         style={{
                           fontSize: "176px",
                           fontWeight: 600,
-                          fontFamily: "Montserrat",
+                          fontFamily: "Manrope",
                           lineHeight: "1",
                           color: isActive ? "#ED4C14" : "#27272a",
                           transition: "color 0.5s ease",
@@ -425,7 +424,7 @@ export function HowWeWorkSection() {
                                 color: "white",
                                 fontSize: "28px",
                                 fontWeight: 600,
-                                fontFamily: "Montserrat",
+                                fontFamily: "Manrope",
                                 lineHeight: "1.2",
                               }}
                             >
@@ -435,7 +434,7 @@ export function HowWeWorkSection() {
                               style={{
                                 color: "rgba(255,255,255,0.7)",
                                 fontSize: "14px",
-                                fontFamily: "Montserrat",
+                                fontFamily: "Manrope",
                                 lineHeight: "22px",
                               }}
                             >
@@ -466,10 +465,10 @@ export function HowWeWorkSection() {
                                 color: "#EFF6FF",
                                 fontSize: "14px",
                                 fontWeight: 600,
-                                fontFamily: "Montserrat",
+                                fontFamily: "Manrope",
                               }}
                             >
-                              Get Started
+                              {t("home.hero.cta")}
                             </span>
                             <ArrowRight
                               style={{ width: "14px", height: "14px", color: "#EFF6FF" }}

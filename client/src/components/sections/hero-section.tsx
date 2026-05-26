@@ -265,7 +265,9 @@ export function HeroSection() {
 
       <div className="relative z-20 w-full flex flex-col items-center text-center px-4 pt-0 md:pt-[24vh] min-h-[calc(100vh-180px)] md:min-h-0 justify-center">
         <h1 className="text-4xl md:text-6xl font-semibold font-brand text-white max-w-4xl mb-4 md:mb-6 leading-tight">
-          A <span className="text-[#ED4C14]">website</span> that works as hard as your business.
+          {t("home.hero.titlePrefix")}{" "}
+          <span className="text-[#ED4C14]">{t("home.hero.titleHighlight")}</span>{" "}
+          {t("home.hero.titleBeforeBreak")}
         </h1>
 
         <p className="text-base md:text-2xl font-normal md:font-medium font-brand text-white mb-6 md:mb-8 leading-5">
@@ -281,8 +283,8 @@ export function HeroSection() {
         </Button>
 
         <div className="flex flex-col items-center gap-1.5 mb-6">
-          <p className="text-sm font-normal font-brand text-slate-100">Simple process. Strong results.</p>
-          <p className="text-sm font-normal font-brand text-slate-100">30-day money-back guarantee</p>
+          <p className="text-sm font-normal font-brand text-slate-100">{t("home.hero.socialProof.line1")}</p>
+          <p className="text-sm font-normal font-brand text-slate-100">{t("home.hero.socialProof.line2")}</p>
         </div>
 
         <div className="hidden md:flex gap-2 mt-2">

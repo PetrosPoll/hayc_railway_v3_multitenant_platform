@@ -77,6 +77,7 @@ const wizardSchema = z.object({
   streetNumber: z.string().optional(),
   postalCode: z.string().optional(),
   privacyAccepted: z.boolean().optional().default(false),
+  newsletterOptIn: z.boolean().optional().default(false),
   plan: z.enum(PLANS).optional(),
   billingPeriod: z.enum(WIZARD_BILLING_PERIODS).optional(),
   addOns: z.array(z.string()).optional(),
@@ -223,6 +224,7 @@ export default function GetStarted() {
       streetNumber: "",
       postalCode: "",
       privacyAccepted: false,
+      newsletterOptIn: false,
       plan: "essential",
       billingPeriod: "monthly",
       addOns: [],
@@ -403,6 +405,14 @@ export default function GetStarted() {
       fullName: values.fullName,
       email: values.email,
     });
+
+    if (values.newsletterOptIn && email) {
+      fetch("/api/hayc/newsletter-subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      }).catch(() => {});
+    }
 
     setIsSubmitting(true);
     try {

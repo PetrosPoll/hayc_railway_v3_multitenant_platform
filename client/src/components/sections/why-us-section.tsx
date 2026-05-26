@@ -102,8 +102,8 @@ export function WhyUsSection() {
 
   const WHY_US_SECTIONS = [
     {
-      titleHighlight: "Built for founders ",
-      titleSuffix: "who want it done right, without doing it all.",
+      titleHighlight: t("home.whyUs.section1.titleHighlight"),
+      titleSuffix: t("home.whyUs.section1.titleSuffix"),
       description: null,
       highlightColor: "#ED4C14",
       suffixColor: "#FFFFFF",

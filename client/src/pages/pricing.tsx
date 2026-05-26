@@ -1,9 +1,11 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
 
 export default function PricingPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [bgLoaded, setBgLoaded] = useState(false);
   const [billing, setBilling] = useState<"monthly" | "annually">("monthly");
@@ -12,50 +14,50 @@ export default function PricingPage() {
   const plans = [
     {
       tier: "basic" as const,
-      name: "Basic",
-      tagline: "For getting online fast.",
+      name: t("pricing.plans.basic.name"),
+      tagline: t("pricing.plans.basic.tagline"),
       monthlyPrice: "34€",
       annualPrice: "27€",
       features: [
-        "Up to 3 pages",
-        "1 content update / month",
-        "SEO (essential)",
-        "Newsletter: 1,000 emails / month",
-        "Email Support (GR/EN)",
+        t("pricing.plans.basic.features.0"),
+        t("pricing.plans.basic.features.1"),
+        t("pricing.plans.basic.features.2"),
+        t("pricing.plans.basic.features.3"),
+        t("pricing.plans.basic.features.4"),
       ],
       highlighted: false,
     },
     {
       tier: "essential" as const,
-      name: "Essential",
-      tagline: "For growing businesses.",
+      name: t("pricing.plans.essential.name"),
+      tagline: t("pricing.plans.essential.tagline"),
       monthlyPrice: "39€",
       annualPrice: "31€",
       features: [
-        "Up to 10 pages",
-        "2 content updates / month",
-        "Analytics (Basic)",
-        "SEO (Advanced)",
-        "Newsletter: 3,000 emails / month",
-        "Email Support (GR/EN)",
+        t("pricing.plans.essential.features.0"),
+        t("pricing.plans.essential.features.1"),
+        t("pricing.plans.essential.features.2"),
+        t("pricing.plans.essential.features.3"),
+        t("pricing.plans.essential.features.4"),
+        t("pricing.plans.essential.features.5"),
       ],
       highlighted: true,
     },
     {
       tier: "pro" as const,
-      name: "Pro",
-      tagline: "For teams that want a partner.",
+      name: t("pricing.plans.pro.name"),
+      tagline: t("pricing.plans.pro.tagline"),
       monthlyPrice: "200€",
       annualPrice: "160€",
       features: [
-        "Up to 50 pages",
-        "5 content changes / month",
-        "Analytics (Advanced)",
-        "SEO (Premium) + Competitor research",
-        "Newsletter: 10,000 emails / month",
-        "Phone Support (business hours)",
-        "Monthly Strategy Call",
-        "All add-ons included",
+        t("pricing.plans.pro.features.0"),
+        t("pricing.plans.pro.features.1"),
+        t("pricing.plans.pro.features.2"),
+        t("pricing.plans.pro.features.3"),
+        t("pricing.plans.pro.features.4"),
+        t("pricing.plans.pro.features.5"),
+        t("pricing.plans.pro.features.6"),
+        t("pricing.plans.pro.features.7"),
       ],
       highlighted: false,
     },
@@ -63,60 +65,60 @@ export default function PricingPage() {
 
   const comparisonRows = [
     {
-      feature: "Pages",
-      description: "The number of pages included in your website",
-      basic: "Up to 3",
-      essential: "Up to 10",
-      pro: "Up to 50",
+      feature: t("pricing.comparison.pages.feature"),
+      description: t("pricing.comparison.pages.description"),
+      basic: t("pricing.comparison.pages.basic"),
+      essential: t("pricing.comparison.pages.essential"),
+      pro: t("pricing.comparison.pages.pro"),
     },
     {
-      feature: "Content updates / month",
-      description: "Monthly edits to keep your content fresh",
-      basic: "1",
-      essential: "2",
-      pro: "5",
+      feature: t("pricing.comparison.contentUpdates.feature"),
+      description: t("pricing.comparison.contentUpdates.description"),
+      basic: t("pricing.comparison.contentUpdates.basic"),
+      essential: t("pricing.comparison.contentUpdates.essential"),
+      pro: t("pricing.comparison.contentUpdates.pro"),
     },
     {
-      feature: "Delivery",
-      description: "How fast we complete your requested updates",
-      basic: "up to 10 business days",
-      essential: "up to 10 business days",
-      pro: "Priority (3 - 5 business days)",
+      feature: t("pricing.comparison.delivery.feature"),
+      description: t("pricing.comparison.delivery.description"),
+      basic: t("pricing.comparison.delivery.basic"),
+      essential: t("pricing.comparison.delivery.essential"),
+      pro: t("pricing.comparison.delivery.pro"),
     },
     {
-      feature: "SEO",
-      description: "On-page optimization to help you show up on Google",
-      basic: "-",
-      essential: "Advanced",
-      pro: "Premium",
+      feature: t("pricing.comparison.seo.feature"),
+      description: t("pricing.comparison.seo.description"),
+      basic: t("pricing.comparison.seo.basic"),
+      essential: t("pricing.comparison.seo.essential"),
+      pro: t("pricing.comparison.seo.pro"),
     },
     {
-      feature: "Email Marketing (emails / month)",
-      description: "Newsletter sending limits included in your plan.",
-      basic: "Essential",
-      essential: "Basic",
-      pro: "Advanced",
+      feature: t("pricing.comparison.emailMarketing.feature"),
+      description: t("pricing.comparison.emailMarketing.description"),
+      basic: t("pricing.comparison.emailMarketing.basic"),
+      essential: t("pricing.comparison.emailMarketing.essential"),
+      pro: t("pricing.comparison.emailMarketing.pro"),
     },
     {
-      feature: "Analytics",
-      description: "Traffic insights to understand what's working",
-      basic: "1,000",
-      essential: "3,000",
-      pro: "10,000",
+      feature: t("pricing.comparison.analytics.feature"),
+      description: t("pricing.comparison.analytics.description"),
+      basic: t("pricing.comparison.analytics.basic"),
+      essential: t("pricing.comparison.analytics.essential"),
+      pro: t("pricing.comparison.analytics.pro"),
     },
     {
-      feature: "Add-ons",
-      description: "Extra features you can add anytime.",
-      basic: "By Email (GR/EN)",
-      essential: "By Email (GR/EN)",
-      pro: "Email + Phone",
+      feature: t("pricing.comparison.addons.feature"),
+      description: t("pricing.comparison.addons.description"),
+      basic: t("pricing.comparison.addons.basic"),
+      essential: t("pricing.comparison.addons.essential"),
+      pro: t("pricing.comparison.addons.pro"),
     },
     {
-      feature: "Support",
-      description: "Help when you need it, in Greek and English.",
-      basic: "+10€ / month each",
-      essential: "+10€ / month each",
-      pro: "Included",
+      feature: t("pricing.comparison.support.feature"),
+      description: t("pricing.comparison.support.description"),
+      basic: t("pricing.comparison.support.basic"),
+      essential: t("pricing.comparison.support.essential"),
+      pro: t("pricing.comparison.support.pro"),
     },
   ];
 
@@ -132,7 +134,7 @@ export default function PricingPage() {
           sizes="(max-width: 767px) 100vw, 100vw"
           alt=""
           aria-hidden="true"
-          fetchpriority="high"
+          fetchPriority="high"
           className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
           onLoad={() => setBgLoaded(true)}
         />
@@ -142,7 +144,7 @@ export default function PricingPage() {
             {/* Badge */}
         <div className="px-3 py-1.5 bg-gradient-to-br from-blue-50/0 to-blue-50/5 rounded-full outline outline-1 outline-offset-[-1px] outline-slate-100/50 flex justify-center items-center gap-2.5">
           <span className="text-center text-[#EFF6FF] text-sm font-normal font-brand leading-5">
-            Bring your business to the best scale
+            {t("pricing.badge")}
           </span>
         </div>
 
@@ -151,12 +153,12 @@ export default function PricingPage() {
           className="text-center text-[#EFF6FF] text-3xl leading-10 lg:text-5xl lg:leading-tight font-semibold font-brand"
           style={{ maxWidth: "766px" }}
         >
-          Get the Best Pricing and Elevate Your Business
+          {t("pricing.headline")}
         </h2>
 
         {/* Subtext */}
         <p className="text-center text-[#EFF6FF] text-base font-normal font-brand leading-5" style={{ maxWidth: "601px" }}>
-          Select the plan that fits your needs. We created each one with you and your business in mind, to be the perfect fit.
+          {t("pricing.subtitle")}
         </p>
           </section>
 
@@ -177,7 +179,7 @@ export default function PricingPage() {
               billing === "monthly" ? "text-black" : "text-[#EFF6FF]"
             }`}
           >
-            Monthly
+            {t("pricing.billing.monthly")}
           </span>
         </button>
         <button
@@ -194,7 +196,7 @@ export default function PricingPage() {
               billing === "annually" ? "text-black" : "text-[#EFF6FF]"
             }`}
           >
-            Annually
+            {t("pricing.billing.annually")}
           </span>
         </button>
       </div>
@@ -227,11 +229,11 @@ export default function PricingPage() {
                           {billing === "monthly" ? plan.monthlyPrice : plan.annualPrice}
                         </span>
                         <span className="text-white/80 text-sm font-normal font-brand leading-5 mb-3">
-                          / per month
+                          {t("pricing.perMonth")}
                         </span>
                       </div>
                       <span className="text-blue-400 text-sm font-normal font-brand leading-5">
-                        Save 20% annually
+                        {t("pricing.saveAnnually")}
                       </span>
                     </div>
                   </div>
@@ -242,7 +244,7 @@ export default function PricingPage() {
 
                 {/* Features */}
                 <div className="flex flex-col gap-4">
-                  <span className="text-white text-base font-normal font-brand leading-6">What you will get</span>
+                  <span className="text-white text-base font-normal font-brand leading-6">{t("pricing.whatYouGet")}</span>
                   <div className="flex flex-col gap-4">
                     {plan.features.map((feature, j) => (
                       <div key={j} className="flex items-center gap-2">
@@ -271,10 +273,10 @@ export default function PricingPage() {
                     )
                   }
                 >
-                  <span className="text-white text-base font-semibold font-brand leading-5">Get Started</span>
+                  <span className="text-white text-base font-semibold font-brand leading-5">{t("pricing.getStarted")}</span>
                 </button>
                 <p className="text-center text-white/80 text-sm font-normal font-brand leading-5">
-                  Each plan requires + 99€ setup fee
+                  {t("pricing.setupFee")}
                 </p>
               </div>
             </div>
@@ -283,24 +285,24 @@ export default function PricingPage() {
 
         {/* All Plans Include bar */}
         <div className="w-full p-6 bg-gradient-to-bl from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-blue-50/20 flex flex-col lg:flex-row justify-start lg:justify-between items-start lg:items-center gap-3 overflow-hidden">
-          <span className="text-white text-2xl font-medium font-brand">All Plans Include:</span>
+          <span className="text-white text-2xl font-medium font-brand">{t("pricing.allPlansInclude")}</span>
           <div className="w-full lg:w-auto flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/card-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
             <span className="text-white text-base font-normal font-brand leading-6">
-              0% transaction fees on digital products
+              {t("pricing.includes.transactions")}
             </span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/driver.svg" alt="" loading="lazy" className="w-6 h-6" />
-            <span className="text-white text-base font-normal font-brand leading-6">Hosting</span>
+            <span className="text-white text-base font-normal font-brand leading-6">{t("pricing.includes.hosting")}</span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/wrench.svg" alt="" loading="lazy" className="w-6 h-6" />
-            <span className="text-white text-base font-normal font-brand leading-6">Ongoing Maintenance</span>
+            <span className="text-white text-base font-normal font-brand leading-6">{t("pricing.includes.maintenance")}</span>
           </div>
           <div className="w-full lg:w-auto flex items-center gap-2">
             <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/shield-tick.svg" alt="" loading="lazy" className="w-6 h-6" />
-            <span className="text-white text-base font-normal font-brand leading-6">Secure &amp; fast performance</span>
+            <span className="text-white text-base font-normal font-brand leading-6">{t("pricing.includes.security")}</span>
           </div>
         </div>
       </div>
@@ -325,7 +327,7 @@ export default function PricingPage() {
               className="px-6 py-3.5 bg-[#EFF6FF] rounded-lg flex justify-center items-center"
             >
               <span className="text-center text-[#0C275F] text-base font-semibold font-brand leading-5">
-                Compare plans
+                {t("pricing.comparePlans")}
               </span>
             </button>
 
@@ -341,7 +343,7 @@ export default function PricingPage() {
                       mobileComparisonPlan === "basic" ? "text-white font-bold" : "text-neutral-500 font-medium"
                     }`}
                   >
-                    Basic
+                    {t("pricing.plans.basic.name")}
                   </button>
                   <button
                     type="button"
@@ -350,7 +352,7 @@ export default function PricingPage() {
                       mobileComparisonPlan === "essential" ? "text-white font-bold" : "text-neutral-500 font-medium"
                     }`}
                   >
-                    Essential
+                    {t("pricing.plans.essential.name")}
                   </button>
                   <button
                     type="button"
@@ -359,7 +361,7 @@ export default function PricingPage() {
                       mobileComparisonPlan === "pro" ? "text-white font-bold" : "text-neutral-500 font-medium"
                     }`}
                   >
-                    Pro
+                    {t("pricing.plans.pro.name")}
                   </button>
                 </div>
                 <span className="text-white text-base font-normal font-brand leading-5">{mobileComparisonPrice}</span>
@@ -393,7 +395,7 @@ export default function PricingPage() {
               {/* Features column */}
               <div className="w-72 flex flex-col flex-shrink-0">
                 <div className="p-5 border-r border-zinc-800 flex items-center gap-2.5">
-                  <span className="text-white text-lg font-bold font-brand">Features</span>
+                  <span className="text-white text-lg font-bold font-brand">{t("pricing.comparison.featuresHeader")}</span>
                 </div>
                 {comparisonRows.map((row, i) => (
                   <div key={i} className="h-36 px-5 py-6 border-t border-b border-zinc-800 flex flex-col justify-center items-start">
@@ -406,7 +408,7 @@ export default function PricingPage() {
               {/* Basic column */}
               <div className="flex-1 flex flex-col">
                 <div className="p-5 border-r border-zinc-800 flex justify-between items-end">
-                  <span className="text-white text-lg font-bold font-brand">Basic</span>
+                  <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.basic.name")}</span>
                   <span className="text-white text-sm font-normal font-brand leading-5">34€</span>
                 </div>
                 {comparisonRows.map((row, i) => (
@@ -419,7 +421,7 @@ export default function PricingPage() {
               {/* Essential column */}
               <div className="flex-1 flex flex-col">
                 <div className="p-5 border-r border-zinc-800 flex justify-between items-end">
-                  <span className="text-white text-lg font-bold font-brand">Essential</span>
+                  <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.essential.name")}</span>
                   <span className="text-white text-sm font-normal font-brand leading-5">39€</span>
                 </div>
                 {comparisonRows.map((row, i) => (
@@ -432,7 +434,7 @@ export default function PricingPage() {
               {/* Pro column */}
               <div className="flex-1 flex flex-col">
                 <div className="p-5 flex justify-between items-end">
-                  <span className="text-white text-lg font-bold font-brand">Pro</span>
+                  <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.pro.name")}</span>
                   <span className="text-white text-sm font-normal font-brand leading-5">200€</span>
                 </div>
                 {comparisonRows.map((row, i) => (
@@ -457,5 +459,3 @@ export default function PricingPage() {
     </div>
   );
 }
-
-

@@ -20651,6 +20651,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Rate limiter for Hayc own newsletter — tighter than the tenant one
+  const haycNewsletterLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: "Too many subscription requests from this IP, please try again later",
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Public endpoint for the Hayc main-website footer newsletter sign-up.
+  // Stores submissions in admin_contacts (Hayc's own list, not a tenant's).
+  app.post("/api/hayc/newsletter-subscribe", haycNewsletterLimiter, async (req, res) => {
+    try {
+      // Honeypot — bots fill hidden fields, real users don't
+      if (req.body?._hp) {
+        return res.status(200).json({ success: true });
+      }
+
+      const { email, firstName, lastName } = req.body as {
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+      };
+
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // Silent success on duplicate to prevent email enumeration
+      const existing = await db
+        .select({ id: adminContacts.id })
+        .from(adminContacts)
+        .where(eq(adminContacts.email, normalizedEmail))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return res.status(200).json({ success: true });
+      }
+
+      await db.insert(adminContacts).values({
+        email: normalizedEmail,
+        firstName: firstName?.trim() || null,
+        lastName: lastName?.trim() || null,
+        status: "subscribed",
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error("[hayc/newsletter-subscribe] error:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   function escapeHtml(s: string): string {
     return s
       .replace(/&/g, "&amp;")
@@ -22025,7 +22085,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     logoUrl: z.string(),
     primaryColor: z.string(),
     primaryForeground: z.string(),
-    fontFamily: z.enum(["Inter", "Roboto", "Lato", "Montserrat", "Playfair Display", "Poppins"]),
+    fontFamily: z.enum(["Inter", "Roboto", "Lato", "Playfair Display", "Poppins"]),
     borderRadius: z.enum(["0px", "4px", "8px", "16px", "9999px"]),
   });
 

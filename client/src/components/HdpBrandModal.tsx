@@ -9,7 +9,7 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
-export type HdpFontFamily = "Inter" | "Roboto" | "Lato" | "Montserrat" | "Playfair Display" | "Poppins";
+export type HdpFontFamily = "Inter" | "Roboto" | "Lato" | "Playfair Display" | "Poppins";
 export type HdpBorderRadius = "0px" | "4px" | "8px" | "16px" | "9999px";
 
 interface HdpBrandModalProps {
@@ -29,7 +29,7 @@ interface HdpBrandFormState {
   borderRadius: HdpBorderRadius;
 }
 
-const FONT_FAMILIES: HdpFontFamily[] = ["Inter", "Roboto", "Lato", "Montserrat", "Playfair Display", "Poppins"];
+const FONT_FAMILIES: HdpFontFamily[] = ["Inter", "Roboto", "Lato", "Playfair Display", "Poppins"];
 const BORDER_RADII: Array<{ value: HdpBorderRadius; labelKey: string }> = [
   { value: "0px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.none" },
   { value: "4px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.small" },

@@ -21,10 +21,10 @@ export default function AboutPage() {
   const [processProgress, setProcessProgress] = useState(0);
 
   const processSteps = [
-    { num: "01", title: "Pick a Template", description: "Subscribe in seconds and get started." },
-    { num: "02", title: "Share your needs", description: "Tell us about your business and what you need." },
-    { num: "03", title: "We launch fast", description: "We build and launch your website in days." },
-    { num: "04", title: "Stay in control", description: "Manage your site and grow through your dashboard." },
+    { num: "01", title: t("about.process.steps.0.title"), description: t("about.process.steps.0.description") },
+    { num: "02", title: t("about.process.steps.1.title"), description: t("about.process.steps.1.description") },
+    { num: "03", title: t("about.process.steps.2.title"), description: t("about.process.steps.2.description") },
+    { num: "04", title: t("about.process.steps.3.title"), description: t("about.process.steps.3.description") },
   ];
 
   useEffect(() => {
@@ -73,11 +73,11 @@ export default function AboutPage() {
               <div className="w-full lg:w-[736px] flex flex-col justify-center items-center gap-12">
                 <div className="flex flex-col justify-start items-end gap-3">
                   <h1 className="text-center text-3xl lg:text-6xl leading-10 lg:leading-tight font-semibold font-brand">
-                    <span className="text-[#ED4C14]">Helping businesses</span>
-                    <span className="text-white"> get successfully online.</span>
+                    <span className="text-[#ED4C14]">{t("about.hero.titleHighlight")}</span>
+                    <span className="text-white"> {t("about.hero.titleSuffix")}</span>
                   </h1>
                   <p className="text-center text-white text-base lg:text-lg font-normal lg:font-medium leading-5 lg:leading-normal font-brand">
-                    HAYC isn't a DIY website builder. It's a website creation service. Choose a template, and we take care of build, hosting, and ongoing updates.
+                    {t("about.hero.subtitle")}
                   </p>
                 </div>
 
@@ -88,7 +88,7 @@ export default function AboutPage() {
                     onClick={() => navigate("/templates")}
                   >
                     <span className="text-center text-[#0C275F] text-base font-semibold font-brand leading-5">
-                      Explore Templates
+                      {t("about.hero.exploreTemplates")}
                     </span>
                     <ArrowRight className="h-4 w-4 text-[#0C275F]" />
                   </button>
@@ -97,7 +97,7 @@ export default function AboutPage() {
                     onClick={() => navigate("/contact")}
                   >
                     <span className="text-center text-[#0C275F] text-base font-semibold font-brand leading-5">
-                      Contact us
+                      {t("about.hero.contactUs")}
                     </span>
                     <ArrowRight className="h-4 w-4 text-[#0C275F]" />
                   </button>
@@ -111,14 +111,14 @@ export default function AboutPage() {
       <section className="w-full bg-black">
         <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row px-4 lg:px-16 py-12 lg:py-24 gap-6 lg:gap-20">
           <div className="text-[#ED4C14] text-lg font-medium font-brand text-left lg:text-right lg:w-32 lg:flex-shrink-0">
-            OUR MISSION
+            {t("about.mission.label")}
           </div>
           <div
             ref={missionRef}
             className="text-3xl lg:text-5xl font-semibold font-brand leading-10 lg:leading-[70px] flex-1"
           >
             {(() => {
-              const allWords = "To launch professional websites in days, then keep them evolving with ongoing support and new features.".split(" ");
+              const allWords = t("about.mission.text").split(" ");
               const totalWords = allWords.length;
 
               return allWords.map((word, i) => {
@@ -150,13 +150,11 @@ export default function AboutPage() {
           className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row px-4 lg:px-16 py-12 lg:py-24 gap-6 lg:gap-20"
         >
           <div className="text-[#ED4C14] text-lg font-medium font-brand text-left lg:text-right lg:w-32 lg:flex-shrink-0">
-            OUR VISION
+            {t("about.vision.label")}
           </div>
           <div className="self-stretch">
             {(() => {
-              const whiteWords = "A world where every small business can have a modern, reliable".split(" ");
-              const fadedWords = "website without needing a team, tools, or tech stress.".split(" ");
-              const allWords = [...whiteWords, ...fadedWords];
+              const allWords = t("about.vision.text").split(" ");
               const totalWords = allWords.length;
 
               return allWords.map((word, i) => {
@@ -216,16 +214,16 @@ export default function AboutPage() {
           <section className="relative w-full">
             <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row justify-center items-center px-4 lg:px-16 py-24 gap-20 lg:gap-48">
           <div className="flex-1 flex flex-col justify-center items-center">
-            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">99%</span>
-            <span className="text-center text-white text-lg font-medium font-brand">uptime guarantee</span>
+            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">{t("about.stats.uptime.value")}</span>
+            <span className="text-center text-white text-lg font-medium font-brand">{t("about.stats.uptime.label")}</span>
           </div>
           <div className="flex-1 flex flex-col justify-center items-center">
-            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">Save 20%</span>
-            <span className="text-center text-white text-lg font-medium font-brand">on annual plans</span>
+            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">{t("about.stats.savings.value")}</span>
+            <span className="text-center text-white text-lg font-medium font-brand">{t("about.stats.savings.label")}</span>
           </div>
           <div className="flex-1 flex flex-col justify-center items-center">
-            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">30-day</span>
-            <span className="text-center text-white text-lg font-medium font-brand">money-back guarantee</span>
+            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">{t("about.stats.moneyBack.value")}</span>
+            <span className="text-center text-white text-lg font-medium font-brand">{t("about.stats.moneyBack.label")}</span>
           </div>
             </div>
           </section>
@@ -235,14 +233,14 @@ export default function AboutPage() {
           {/* Header */}
           <div className="w-full py-12 flex flex-col lg:flex-row justify-start items-start gap-6 lg:gap-20">
             <div className="text-left lg:text-right lg:w-36 lg:flex-shrink-0 text-[#ED4C14] text-lg font-medium font-brand">
-              OUR PROCESS
+              {t("about.process.label")}
             </div>
             <div
               ref={processRef}
               className="flex-1 text-3xl lg:text-5xl font-semibold font-brand leading-10 lg:leading-[70px]"
             >
               {(() => {
-                const allWords = "We created our process to feel effortless and help every business get the website it deserves with ease.".split(" ");
+                const allWords = t("about.process.intro").split(" ");
                 const totalWords = allWords.length;
 
                 return allWords.map((word, i) => {

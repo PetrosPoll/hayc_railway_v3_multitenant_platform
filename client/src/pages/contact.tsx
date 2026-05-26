@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Mail } from "lucide-react";
+import { Mail, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { getStoredUTMParams } from "@/lib/utm";
@@ -30,6 +31,7 @@ type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 export default function ContactPage() {
   const [bgLoaded, setBgLoaded] = useState(false);
+  const [privacyChecked, setPrivacyChecked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>("");
   const turnstileRef = useRef<any>(null);
@@ -49,8 +51,8 @@ export default function ContactPage() {
   const onSubmit = async (data: ContactFormValues) => {
     if (!turnstileToken) {
       toast({
-        title: "Error",
-        description: "Please complete the security verification",
+        title: t("contact.page.toast.errorTitle"),
+        description: t("contact.page.toast.turnstileError"),
         variant: "destructive",
       });
       return;
@@ -77,7 +79,7 @@ export default function ContactPage() {
       }
 
       toast({
-        title: "Success",
+        title: t("contact.page.toast.successTitle"),
         description: t("contact.form.success"),
       });
 
@@ -117,11 +119,11 @@ export default function ContactPage() {
       {/* Contact Page Header */}
       <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-3">
         <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-brand" style={{ maxWidth: "768px" }}>
-          <span className="text-white">Talk to </span>
-          <span className="text-[#ED4C14]">HAYC</span>
+          <span className="text-white">{t("contact.page.titlePrefix")} </span>
+          <span className="text-[#ED4C14]">{t("contact.page.titleHighlight")}</span>
         </h1>
         <p className="text-center text-white text-lg font-medium font-brand w-full">
-          Tell us what you need and we&apos;ll help you choose the best path to launch.
+          {t("contact.page.subtitle")}
         </p>
       </section>
 
@@ -129,7 +131,7 @@ export default function ContactPage() {
       <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col lg:flex-row justify-start items-start gap-6">
         {/* Left — Contact Information card */}
         <div className="w-full lg:w-96 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12 flex-shrink-0">
-          <span className="text-white text-xl lg:text-2xl font-medium font-brand leading-7">Contact Information</span>
+          <span className="text-white text-xl lg:text-2xl font-medium font-brand leading-7">{t("contact.page.info.title")}</span>
 
           <div className="w-48 flex flex-col justify-start items-start gap-6">
             <div className="flex items-center gap-6">
@@ -143,7 +145,7 @@ export default function ContactPage() {
           </div>
 
           <div className="flex flex-col gap-2">
-            <span className="text-slate-100 text-lg font-medium font-brand">Find us on Social Media</span>
+            <span className="text-slate-100 text-lg font-medium font-brand">{t("contact.page.info.socialTitle")}</span>
             <div className="flex items-center gap-6">
               <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
                 <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/insta_icon.svg" alt="Instagram" loading="lazy" className="w-6 h-6" />
@@ -160,7 +162,7 @@ export default function ContactPage() {
 
         {/* Right — Send us a message card */}
         <div className="w-full flex-1 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12">
-          <span className="text-white text-xl lg:text-2xl font-medium font-brand leading-7">Send us a message</span>
+          <span className="text-white text-xl lg:text-2xl font-medium font-brand leading-7">{t("contact.page.form.title")}</span>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="w-full flex flex-col gap-8">
@@ -171,11 +173,11 @@ export default function ContactPage() {
                   name="name"
                   render={({ field }) => (
                     <FormItem className="w-full flex flex-col gap-1.5">
-                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">Full Name</FormLabel>
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">{t("contact.page.form.fullName")}</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
-                          placeholder="Full Name"
+                          placeholder={t("contact.page.form.fullNamePlaceholder")}
                           className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
                           {...field}
                         />
@@ -191,7 +193,7 @@ export default function ContactPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem className="w-full flex flex-col gap-1.5">
-                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">Email</FormLabel>
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">{t("contact.page.form.email")}</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
@@ -211,11 +213,11 @@ export default function ContactPage() {
                   name="subject"
                   render={({ field }) => (
                     <FormItem className="w-full flex flex-col gap-1.5">
-                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">Subject</FormLabel>
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">{t("contact.page.form.subject")}</FormLabel>
                       <FormControl>
                         <Input
                           type="text"
-                          placeholder="Subject"
+                          placeholder={t("contact.page.form.subjectPlaceholder")}
                           className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
                           {...field}
                         />
@@ -231,7 +233,7 @@ export default function ContactPage() {
                   name="message"
                   render={({ field }) => (
                     <FormItem className="w-full flex flex-col gap-1.5">
-                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">Message</FormLabel>
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">{t("contact.page.form.message")}</FormLabel>
                       <FormControl>
                         <Textarea
                           rows={6}
@@ -245,13 +247,19 @@ export default function ContactPage() {
                 />
 
                 {/* Privacy checkbox */}
-                <div className="w-full max-w-80 flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    className="w-5 h-5 rounded-full border border-neutral-500 bg-transparent accent-[#ED4C14] cursor-pointer"
-                  />
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPrivacyChecked((v) => !v)}
+                    className={cn(
+                      "w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5",
+                      privacyChecked ? "bg-[#ED4C14] border-[#ED4C14]" : "bg-transparent border-neutral-500"
+                    )}
+                  >
+                    {privacyChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                  </button>
                   <span className="text-slate-100 text-sm font-normal font-brand leading-5">
-                    You agree to our friendly privacy policy.
+                    {t("contact.page.form.privacyPolicy")}
                   </span>
                 </div>
               </div>
@@ -264,8 +272,8 @@ export default function ContactPage() {
                   onError={() => {
                     setTurnstileToken("");
                     toast({
-                      title: "Error",
-                      description: "Security verification failed. Please try again.",
+                      title: t("contact.page.toast.errorTitle"),
+                      description: t("contact.page.toast.turnstileFailed"),
                       variant: "destructive",
                     });
                   }}
@@ -280,7 +288,7 @@ export default function ContactPage() {
                 className="w-full px-5 py-3 bg-[#ED4C14] rounded-lg shadow-[0px_1px_2px_0px_rgba(10,13,18,0.05)] flex justify-center items-center gap-2 hover:opacity-80 transition-opacity text-slate-100 text-base font-semibold font-brand leading-5 border-0"
                 data-testid="button-submit"
               >
-                {isSubmitting ? t("contact.form.sending") : "Send message"}
+                {isSubmitting ? t("contact.form.sending") : t("contact.page.form.submit")}
               </Button>
             </form>
           </Form>
