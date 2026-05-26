@@ -178,7 +178,7 @@ function TestimonialCard({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="font-['Inter'] text-lg font-medium text-slate-100 md:font-brand md:text-slate-50">
+              <span className="font-brand text-lg font-medium text-slate-100 md:text-slate-50">
                 {item.rating}
               </span>
               <StarRating
@@ -328,7 +328,9 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
                 <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.reviews")}</span>
               </div>
             </div>
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} loading="lazy" className="w-6 h-6 opacity-80" />
+            <a href="https://www.facebook.com/haycWebsites/" target="_blank" rel="noopener noreferrer">
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} loading="lazy" className="w-6 h-6 opacity-80 hover:opacity-100 transition-opacity" />
+            </a>
           </div>
 
           <div className="w-full p-6 bg-[#404040]/20 rounded-[20px] outline outline-1 outline-zinc-800 flex justify-between items-start">
@@ -351,7 +353,9 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
                 <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.reviews")}</span>
               </div>
             </div>
-            <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} loading="lazy" className="w-6 h-6 opacity-80" />
+            <a href="https://www.trustpilot.com/review/hayc.gr" target="_blank" rel="noopener noreferrer">
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/testimonials_export.svg" alt={t("home.testimonialsSection.platforms.common.externalLinkAlt")} loading="lazy" className="w-6 h-6 opacity-80 hover:opacity-100 transition-opacity" />
+            </a>
           </div>
         </div>
         </div>

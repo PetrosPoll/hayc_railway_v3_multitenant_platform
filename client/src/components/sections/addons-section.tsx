@@ -71,7 +71,7 @@ export function AddonsSection() {
         {/* Left content */}
         <div className="w-full md:flex-1 flex flex-col justify-start items-start gap-12 relative z-10 md:max-w-2xl">
           <div className="flex flex-col justify-start items-start gap-6">
-            <h2 className="text-3xl md:text-5xl font-semibold font-['Inter'] leading-10 md:leading-normal">
+            <h2 className="text-3xl md:text-5xl font-semibold font-brand leading-10 md:leading-normal">
               <span className="text-white">{t("home.addonsSection.titlePrefix")} </span>
               <span className="text-[#ED4C14]">{t("home.addonsSection.titleWebsite")}<br /></span>
               <span className="text-white">{t("home.addonsSection.titleMiddle")} </span>
