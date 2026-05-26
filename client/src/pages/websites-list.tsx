@@ -291,7 +291,7 @@ export default function WebsitesList() {
     <div className="min-h-[calc(100vh-4rem)] pt-28 pb-12">
       <div className="container mx-auto px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
             <div>
               <h1 className="text-3xl font-bold" data-testid="heading-my-websites">
                 {t("dashboard.myWebsites") || "My Websites"}
@@ -379,7 +379,7 @@ export default function WebsitesList() {
                     className="h-9 w-full sm:flex-1 sm:min-w-[7rem]"
                     data-testid="websites-search-project"
                   />
-                  <div className="flex flex-row flex-wrap items-center gap-2">
+                  <div className="flex flex-row flex-nowrap items-center gap-2">
                     <Button
                       type="button"
                       variant={onboardingFilter === "completed" ? "default" : "outline"}
@@ -409,7 +409,7 @@ export default function WebsitesList() {
                       }
                     >
                       <SelectTrigger
-                        className="h-9 w-[10rem] sm:w-[min(13rem,40vw)] shrink-0"
+                        className="h-9 flex-1 min-w-0 sm:flex-none sm:w-[min(13rem,40vw)]"
                         data-testid="websites-sort"
                       >
                         <SelectValue />

@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Plus, Edit3, Trash2, Tag as TagIcon, Upload, X, Download, Loader2, Search, Filter } from "lucide-react";
+import { Users, Plus, Edit3, Trash2, Tag as TagIcon, Upload, X, Download, Loader2, Search, Filter, Eye } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -62,6 +62,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
   const disabled = planSubscription?.status !== "active";
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editDialogMode, setEditDialogMode] = useState<"view" | "edit">("view");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkTagsDialog, setShowBulkTagsDialog] = useState(false);
@@ -247,8 +248,9 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
     createContactMutation.mutate(data);
   };
 
-  const handleEditContact = (contact: any) => {
+  const handleEditContact = (contact: any, mode: "view" | "edit" = "view") => {
     setEditingContact(contact);
+    setEditDialogMode(mode);
     form.reset({
       first_name: contact.firstName || "",
       last_name: contact.lastName || "",
@@ -260,7 +262,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
   };
 
   const handleUpdateContact = (data: ContactFormData) => {
-    if (!editingContact) return;
+    if (!editingContact || editDialogMode !== "edit") return;
     updateContactMutation.mutate({ ...data, id: editingContact.id });
   };
 
@@ -978,9 +980,9 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
 
   return (
     <div className={`space-y-6 ${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}`}>
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2">
               <Users className="w-5 h-5" />
               {t("newsletter.contacts")} ({contacts.length})
@@ -1132,7 +1134,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
           ) : (
             <>
               {selectedContacts.length > 0 && (
-                <div className="mb-4 flex items-center justify-between p-3 bg-muted/50 rounded-md">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 p-3 bg-muted/50 rounded-md">
                   <div className="flex items-center gap-4">
                     <span className="text-sm text-muted-foreground">
                       {selectedContacts.length} {selectedContacts.length === 1 ? t("newsletter.contactSelected") : t("newsletter.contactsSelected")}
@@ -1187,12 +1189,43 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                   </div>
                 </div>
               )}
-              <div className="overflow-x-auto">
+              {/* Mobile list — email + 3 icon buttons */}
+              <div className="sm:hidden divide-y">
+                {paginatedContacts.map((contact) => (
+                  <div key={contact.id} className="flex items-center gap-2 py-3" data-testid={`row-contact-${contact.id}`}>
+                    <Checkbox
+                      className="shrink-0"
+                      checked={selectedContacts.includes(contact.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedContacts((prev) => [...prev, contact.id]);
+                        } else {
+                          setSelectedContacts((prev) => prev.filter((id) => id !== contact.id));
+                        }
+                      }}
+                    />
+                    <p className="flex-1 min-w-0 truncate text-sm">{contact.email}</p>
+                    <div className="flex items-center shrink-0">
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleEditContact(contact, "view")}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleEditContact(contact, "edit")} data-testid={`button-edit-contact-${contact.id}`}>
+                        <Edit3 className="h-4 w-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-800" onClick={() => handleDeleteContact(contact.id)} data-testid={`button-delete-contact-${contact.id}`}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop table */}
+              <div className="hidden sm:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">
-                    </TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                     <TableHead>{t("newsletter.firstName") || "First Name"}</TableHead>
                     <TableHead>{t("newsletter.lastName") || "Last Name"}</TableHead>
                     <TableHead>Email</TableHead>
@@ -1230,7 +1263,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                               </Badge>
                             ))
                           ) : (
-                            <span className="text-xs text-muted-foreground">No tags</span>
+                            <span className="text-xs text-muted-foreground">—</span>
                           )}
                         </div>
                       </TableCell>
@@ -1244,8 +1277,8 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                                 : "secondary"
                           }
                         >
-                          {contact.status === "active" 
-                            ? t("newsletter.statusActive") 
+                          {contact.status === "active"
+                            ? t("newsletter.statusActive")
                             : contact.status === "confirmed"
                               ? t("newsletter.statusConfirmed")
                               : contact.status === "unsubscribed"
@@ -1263,7 +1296,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() => handleEditContact(contact)}
+                            onClick={() => handleEditContact(contact, "edit")}
                             className="h-8 w-8"
                             data-testid={`button-edit-contact-${contact.id}`}
                           >
@@ -1284,7 +1317,8 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                   ))}
                 </TableBody>
               </Table>
-              <div className="mt-4 flex justify-between">
+              </div>
+              <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground whitespace-nowrap">{t("newsletter.rowsPerPage")}</span>
                   <Select
@@ -1302,7 +1336,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                     </SelectContent>
                   </Select>
                 </div>
-                <Pagination className="ml-auto !mx-0 !w-auto !justify-end">
+                <Pagination className="!mx-0 !w-full !justify-start sm:!w-auto sm:!justify-end sm:ml-auto">
                   <PaginationContent>
                     <PaginationItem>
                       <PaginationPrevious
@@ -1342,7 +1376,6 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                   </PaginationContent>
                 </Pagination>
               </div>
-            </div>
             </>
           )}
         </CardContent>
@@ -1619,18 +1652,21 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
         setShowEditDialog(open);
         if (!open) {
           setEditingContact(null);
+          setEditDialogMode("view");
           form.reset();
         }
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{t("newsletter.editContact")}</DialogTitle>
+            <DialogTitle>
+              {editDialogMode === "view" ? t("newsletter.viewContact") : t("newsletter.editContact")}
+            </DialogTitle>
             <DialogDescription>
               {t("newsletter.editContactDescription")}
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdateContact)} className="space-y-4">
+            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
               <FormField
                 control={form.control}
                 name="first_name"
@@ -1638,7 +1674,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                   <FormItem>
                     <FormLabel>{t("newsletter.firstName") || "First Name"} {t("newsletter.optional")}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="John" />
+                      <Input {...field} placeholder="John" disabled={editDialogMode === "view"} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1652,7 +1688,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                   <FormItem>
                     <FormLabel>{t("newsletter.lastName") || "Last Name"} {t("newsletter.optional")}</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Doe" />
+                      <Input {...field} placeholder="Doe" disabled={editDialogMode === "view"} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1666,7 +1702,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                   <FormItem>
                     <FormLabel>Email *</FormLabel>
                     <FormControl>
-                      <Input {...field} type="email" placeholder="john@example.com" />
+                      <Input {...field} type="email" placeholder="john@example.com" disabled={editDialogMode === "view"} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1679,7 +1715,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={editDialogMode === "view"}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select status" />
@@ -1720,6 +1756,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                                   <FormControl>
                                     <Checkbox
                                       checked={field.value?.includes(tag.id)}
+                                      disabled={editDialogMode === "view"}
                                       onCheckedChange={(checked) => {
                                         const currentValue = field.value || [];
                                         if (checked) {
@@ -1752,9 +1789,19 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
                   {t("newsletter.cancel")}
                 </Button>
-                <Button type="submit" disabled={updateContactMutation.isPending}>
-                  {updateContactMutation.isPending ? t("newsletter.updating") : t("newsletter.updateContact")}
-                </Button>
+                {editDialogMode === "view" ? (
+                  <Button type="button" onClick={() => setEditDialogMode("edit")}>
+                    {t("newsletter.editContact")}
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    disabled={updateContactMutation.isPending}
+                    onClick={() => form.handleSubmit(handleUpdateContact)()}
+                  >
+                    {updateContactMutation.isPending ? t("newsletter.updating") : t("newsletter.saveChanges")}
+                  </Button>
+                )}
               </div>
             </form>
           </Form>

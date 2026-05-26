@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/ui/authContext";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { OnboardingFormResponse, RolePermissions } from "@shared/schema";
 import { formatOnboardingValue, getFieldLabel } from "@/lib/onboarding-formatters";
 import { formatGsValue } from "@/lib/get-started-formatters";
@@ -414,11 +415,21 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
                           {stage.waiting_info}
                         </p>
                         <Button
-                          onClick={() => {
-                            if (typeof window !== 'undefined' && (window as any).cloudinary) {
+                          onClick={async () => {
+                            try {
+                              await loadCloudinaryWidget();
+                            } catch {
+                              toast({
+                                title: t("websiteProgress.uploadServiceUnavailable") || "Upload Service Unavailable",
+                                description: t("websiteProgress.uploadServiceDescription") || "Please refresh the page and try again.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            {
                               const accountEmail = user?.email || 'unknown-user';
                               const folderName = `Client Files/${accountEmail}/${website?.domain}/Website Progress`;
-                              
+
                               (window as any).cloudinary.openUploadWidget(
                                 {
                                   cloudName: "dem12vqtl",
@@ -445,12 +456,6 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
                                   }
                                 }
                               );
-                            } else {
-                              toast({
-                                title: t("websiteProgress.uploadServiceUnavailable") || "Upload Service Unavailable",
-                                description: t("websiteProgress.uploadServiceDescription") || "Please refresh the page and try again.",
-                                variant: "destructive",
-                              });
                             }
                           }}
                           className="mt-2 text-white"

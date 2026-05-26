@@ -1001,8 +1001,18 @@ export default function WebsiteDashboard() {
 
   // Cloudinary file upload handler for change requests (with signed uploads)
   const handleChangeFileUpload = async () => {
-    if (typeof window !== 'undefined' && (window as any).cloudinary) {
-      try {
+    try {
+      await loadCloudinaryWidget();
+    } catch {
+      toast({
+        title: t("dashboard.uploadUnavailable") || "Upload Service Unavailable",
+        description: t("dashboard.uploadUnavailableDesc") || "Please try again later.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
         const accountEmail = userData?.user?.email || 'unknown-user';
         const folderName = `Website Media/${accountEmail}/${website?.domain}/Change Requests`;
 
@@ -1073,18 +1083,11 @@ export default function WebsiteDashboard() {
             }
           }
         );
-      } catch (error) {
-        console.error("Upload configuration error:", error);
-        toast({
-          title: t("dashboard.uploadError") || "Upload Error",
-          description: t("dashboard.uploadErrorDesc") || "Failed to initialize upload. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } else {
+    } catch (error) {
+      console.error("Upload configuration error:", error);
       toast({
-        title: t("dashboard.uploadUnavailable") || "Upload Service Unavailable",
-        description: t("dashboard.uploadUnavailableDesc") || "Please try again later.",
+        title: t("dashboard.uploadError") || "Upload Error",
+        description: t("dashboard.uploadErrorDesc") || "Failed to initialize upload. Please try again.",
         variant: "destructive",
       });
     }
@@ -3199,7 +3202,7 @@ export default function WebsiteDashboard() {
     const disabled = planSubscription?.status !== "active";
     return (
       <div data-testid="newsletter-templates-view">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold">
               {t("dashboard.emailTemplates") || "Email Templates"}
@@ -3212,7 +3215,7 @@ export default function WebsiteDashboard() {
           <Button
             onClick={() => navigate(`/websites/${websiteId}/email-builder`)}
             data-testid="button-create-new-template"
-            className={`${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}`}
+            className={`shrink-0 ${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}`}
           >
             <Plus className="h-4 w-4 mr-2" />
             {t("dashboard.createNewTemplate") || "Create New Template"}

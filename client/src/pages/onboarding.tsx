@@ -50,6 +50,7 @@ import { useAuth } from "@/components/ui/authContext";
 import { TemplateBrowserModal } from "@/components/TemplateBrowserModal";
 import type { Template } from "@shared/schema";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 
 // Configuration: Add new purchasable field names here when you add them to the form
 const PURCHASABLE_FIELDS = [
@@ -1180,7 +1181,17 @@ export default function Onboarding() {
   };
 
   const handleCloudinaryUpload = async () => {
-    if (typeof window !== "undefined" && (window as any).cloudinary) {
+    try {
+      await loadCloudinaryWidget();
+    } catch {
+      toast({
+        title: t("onboarding.uploadServiceUnavailable"),
+        description: t("onboarding.uploadServiceUnavailableDesc"),
+        variant: "destructive",
+      });
+      return;
+    }
+    {
       // Use the domain from initialization for proper folder structure
       const accountEmail = user?.email || "unknown-user";
       const folderName = onboardingDomain 
@@ -1275,17 +1286,21 @@ export default function Onboarding() {
           }
         },
       );
-    } else {
-      toast({
-        title: t("onboarding.uploadServiceUnavailable"),
-        description: t("onboarding.uploadServiceUnavailableDesc"),
-        variant: "destructive",
-      });
     }
   };
 
   const handleContentUpload = async (contentType: "text" | "media") => {
-    if (typeof window !== "undefined" && (window as any).cloudinary) {
+    try {
+      await loadCloudinaryWidget();
+    } catch {
+      toast({
+        title: t("onboarding.uploadServiceUnavailable"),
+        description: t("onboarding.toasts.uploadServiceUnavailable"),
+        variant: "destructive",
+      });
+      return;
+    }
+    {
       // Use the domain from initialization for proper folder structure
       const accountEmail = user?.email || "unknown-user";
       const folderName = onboardingDomain 
@@ -1406,12 +1421,6 @@ export default function Onboarding() {
           }
         },
       );
-    } else {
-      toast({
-        title: t("onboarding.uploadServiceUnavailable"),
-        description: t("onboarding.toasts.uploadServiceUnavailable"),
-        variant: "destructive",
-      });
     }
   };
 
