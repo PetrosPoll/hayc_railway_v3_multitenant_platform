@@ -14571,6 +14571,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lightweight presence map: which websiteProgressIds have a get-started submission (Admin only)
+  app.get("/api/admin/get-started-submissions/presence", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const rows = await db
+        .select({
+          websiteProgressId: getStartedSubmissions.websiteProgressId,
+          status: getStartedSubmissions.status,
+        })
+        .from(getStartedSubmissions)
+        .where(sql`${getStartedSubmissions.websiteProgressId} is not null`)
+        .orderBy(desc(getStartedSubmissions.createdAt));
+
+      // Keep only the most recent submission per websiteProgressId
+      const seen = new Set<number>();
+      const presence: { websiteProgressId: number; status: string }[] = [];
+      for (const row of rows) {
+        if (row.websiteProgressId && !seen.has(row.websiteProgressId)) {
+          seen.add(row.websiteProgressId);
+          presence.push({ websiteProgressId: row.websiteProgressId, status: row.status ?? "" });
+        }
+      }
+
+      return res.json({ presence });
+    } catch (err) {
+      console.error("GET /api/admin/get-started-submissions/presence error:", err);
+      return res.status(500).json({ error: "Failed to fetch presence" });
+    }
+  });
+
   // Get single get-started submission by ID (Admin only)
   app.get("/api/admin/get-started-submissions/:id", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -14639,6 +14676,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching customer onboarding form response:", err);
       res.status(500).json({ error: "Failed to fetch onboarding form response" });
+    }
+  });
+
+  // Get customer's own get-started submission for a website
+  app.get("/api/websites/:id/get-started-submission", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const websiteId = parseInt(req.params.id);
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      if (website.userId !== req.user.id) {
+        return res.status(403).json({ error: "Not authorized to view this website's submission" });
+      }
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.websiteProgressId, websiteId))
+        .orderBy(desc(getStartedSubmissions.createdAt))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+
+      if (!submission) {
+        return res.status(404).json({ error: "No get-started submission found for this website" });
+      }
+
+      res.json({ submission });
+    } catch (err) {
+      console.error("Error fetching customer get-started submission:", err);
+      res.status(500).json({ error: "Failed to fetch get-started submission" });
     }
   });
 

@@ -215,16 +215,6 @@ export default function StepRecommendation({
   const goals = form.watch("goals");
   const suggestedStructure = computeSuggestedStructure(businessType, goals ?? []);
 
-  const btKey = BUSINESS_TYPE_DISPLAY_MAP[businessType ?? ""] ?? businessType ?? "default";
-  const titleConfig = {
-    title: t(`getStarted.recommendation.businessTypes.${btKey}.title`, {
-      defaultValue: t("getStarted.recommendation.businessTypes.default.title"),
-    }),
-    subtitle: t(`getStarted.recommendation.businessTypes.${btKey}.subtitle`, {
-      defaultValue: t("getStarted.recommendation.businessTypes.default.subtitle"),
-    }),
-  };
-
   const getPageLabel = (page: string): string => {
     const result = t(`getStarted.websiteStructure.pages.${page}`);
     return result.startsWith("getStarted.") ? page : result;
@@ -336,28 +326,14 @@ export default function StepRecommendation({
           <div className="hidden md:flex items-center gap-4">{navButtons}</div>
         </div>
 
-        {/* Right panel — website preview + pages + addons */}
+        {/* Right panel — live website wireframe preview */}
         <div className="flex-1 md:h-screen bg-[#111111] mt-8 md:mt-0 max-md:-mx-4 max-md:w-[calc(100%+2rem)] shrink-0 overflow-hidden">
-          <div className="w-full flex flex-col gap-6 py-8 md:py-16 px-4 md:px-10 md:h-full md:justify-center">
-
-            {/* Dynamic title */}
-            <div className="flex flex-col gap-2">
-              <h2 className="text-white text-2xl md:text-3xl font-semibold font-brand leading-tight">
-                {titleConfig.title}
-              </h2>
-              <p className="text-white/60 text-sm font-normal font-brand leading-6">
-                {titleConfig.subtitle}
-              </p>
-            </div>
-
-            {/* Eyebrow */}
-            <span className="text-[#ED4C14] text-xs font-semibold tracking-[0.1em] font-brand uppercase">
-              {t("getStarted.recommendation.panel.eyebrow")}
-            </span>
+          <div className="w-full flex flex-col gap-4 py-8 md:py-16 px-4 md:px-10 md:h-full md:justify-center md:overflow-y-auto">
 
             {/* Website wireframe mockup */}
             <div className="w-full rounded-[12px] bg-[#f5f0ea] overflow-hidden flex flex-col flex-shrink-0">
-              {/* Fake browser bar */}
+
+              {/* Browser bar */}
               <div className="w-full h-7 bg-[#e8e2da] flex items-center px-3 gap-1.5 flex-shrink-0">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#d4cdc6]" />
                 <div className="w-2.5 h-2.5 rounded-full bg-[#d4cdc6]" />
@@ -365,7 +341,7 @@ export default function StepRecommendation({
                 <div className="flex-1 mx-3 h-3.5 rounded-full bg-[#d4cdc6]" />
               </div>
 
-              {/* Fake navbar */}
+              {/* Navbar */}
               <div className="w-full px-4 py-2 bg-[#fefaf7] border-b border-[#e8e2da] flex items-center gap-3 flex-shrink-0">
                 <div className="w-5 h-5 rounded-full bg-[#d4cdc6] flex-shrink-0" />
                 <div className="flex-1 flex items-center gap-3 overflow-hidden">
@@ -385,7 +361,7 @@ export default function StepRecommendation({
                 </div>
               </div>
 
-              {/* Fake hero section */}
+              {/* Hero section */}
               <div className="w-full px-4 pt-4 pb-3 flex gap-3 bg-[#fefaf7]">
                 <div className="flex-1 flex flex-col gap-2 justify-center">
                   <div className="w-4 h-0.5 bg-[#F07848]" />
@@ -393,7 +369,9 @@ export default function StepRecommendation({
                   <div className="h-1.5 w-full rounded bg-[#e8e2da]" />
                   <div className="h-1.5 w-5/6 rounded bg-[#e8e2da]" />
                   <div className="mt-1 h-5 w-20 rounded bg-[#1a1a1a] flex items-center justify-center">
-                    <span className="text-white text-[7px] font-medium font-brand">{t("getStarted.recommendation.panel.bookButton")}</span>
+                    <span className="text-white text-[7px] font-medium font-brand">
+                      {t("getStarted.recommendation.panel.bookButton")}
+                    </span>
                   </div>
                 </div>
                 <div className="w-20 h-16 rounded bg-[#e8e2da] flex items-center justify-center flex-shrink-0">
@@ -405,74 +383,88 @@ export default function StepRecommendation({
                 </div>
               </div>
 
-              {/* Fake services row */}
-              <div className="w-full px-4 pb-4 bg-[#fefaf7] flex flex-col gap-2">
-                <div className="h-1.5 w-16 rounded bg-[#d4cdc6] mx-auto" />
+              {/* Digital Products — visible when HDP addon is selected */}
+              {selectedAddons.includes("HDP") && (
+                <div className="w-full px-4 py-3 bg-[#fefaf7] border-t border-[#e8e2da] flex flex-col gap-2">
+                  <div className="text-[9px] font-semibold text-[#333] text-center font-brand">Digital Products</div>
+                  <div className="flex gap-2">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="flex-1 bg-white rounded-lg border border-[#e8e2da] overflow-hidden flex flex-col">
+                        {/* Product image */}
+                        <div className="w-full h-12 bg-[#e8e2da] flex items-center justify-center flex-shrink-0">
+                          <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
+                            <rect width="16" height="12" rx="1" fill="#d4cdc6"/>
+                            <circle cx="5" cy="4.5" r="1.8" fill="#c4bdb6"/>
+                            <path d="M0 10 L5 6.5 L8 8.5 L11 5.5 L16 10" stroke="#c4bdb6" strokeWidth="1" fill="none"/>
+                          </svg>
+                        </div>
+                        {/* Card body */}
+                        <div className="flex flex-col gap-1.5 px-2 py-2">
+                          {/* Title */}
+                          <div className="h-1.5 w-4/5 rounded bg-[#c8c2ba] mx-auto" />
+                          {/* Price */}
+                          <div className="h-3 w-1/2 rounded bg-[#c8c2ba] mx-auto mt-0.5" />
+                          {/* "One time" label */}
+                          <div className="h-1 w-2/5 rounded bg-[#ddd8d0] mx-auto" />
+                          {/* Description lines */}
+                          <div className="h-1 w-full rounded bg-[#e8e2da]" />
+                          <div className="h-1 w-5/6 rounded bg-[#e8e2da]" />
+                          <div className="h-1 w-4/5 rounded bg-[#e8e2da]" />
+                          {/* Button */}
+                          <div className="mt-1 h-4 w-full rounded-full bg-[#d4cdc6] flex items-center justify-center">
+                            <div className="h-1 w-2/3 rounded bg-[#bdb6ae]" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Services section */}
+              <div className="w-full px-4 py-3 bg-[#fefaf7] border-t border-[#e8e2da] flex flex-col gap-2">
+                <div className="text-[9px] font-semibold text-[#333] text-center font-brand">Services</div>
                 <div className="flex gap-2">
-                  {[0,1,2].map((i) => (
+                  {[0, 1, 2].map((i) => (
                     <div key={i} className="flex-1 rounded bg-[#f0ebe4] p-2 flex flex-col gap-1.5 items-center">
-                      <div className="w-5 h-5 rounded-full bg-[#d4cdc6]" />
+                      <div className="w-6 h-6 rounded-full bg-[#d4cdc6]" />
                       <div className="h-1 w-full rounded bg-[#d4cdc6]" />
                       <div className="h-1 w-3/4 rounded bg-[#e8e2da]" />
+                      <div className="h-1 w-5/6 rounded bg-[#e8e2da]" />
                     </div>
                   ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom row — pages + addons cards */}
-            <div className="flex gap-3 w-full">
-              {/* Recommended Pages card */}
-              <div className="flex-1 rounded-[10px] bg-[#1a1a1a] border border-white/10 p-3 flex flex-col gap-2 min-w-0">
-                <div className="flex items-center gap-2 pb-2 border-b border-white/10">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <rect x="1" y="1" width="12" height="12" rx="2" stroke="#ED4C14" strokeWidth="1.5"/>
-                    <path d="M4 4h6M4 7h6M4 10h4" stroke="#ED4C14" strokeWidth="1.2" strokeLinecap="round"/>
-                  </svg>
-                  <span className="text-[#ED4C14] text-[9px] font-semibold tracking-[0.08em] font-brand uppercase">
-                    {t("getStarted.recommendation.panel.pagesCard.title")}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {suggestedStructure.slice(0, 5).map((page) => (
-                    <div key={page} className="flex items-center gap-2">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <circle cx="6" cy="6" r="5.5" stroke="#ED4C14" strokeWidth="1"/>
-                        <path d="M3.5 6L5.5 8L8.5 4" stroke="#ED4C14" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span className="text-white text-[11px] font-medium font-brand">{getPageLabel(page)}</span>
-                    </div>
-                  ))}
-                  {suggestedStructure.length > 5 && (
-                    <span className="text-white/40 text-[10px] font-brand">
-                      {t("getStarted.recommendation.panel.pagesCard.more", { count: suggestedStructure.length - 5 })}
-                    </span>
-                  )}
                 </div>
               </div>
 
-              {/* Included Add-ons card */}
-              <div className="flex-1 rounded-[10px] bg-[#1a1a1a] border border-white/10 p-3 flex flex-col gap-2 min-w-0">
-                <div className="flex items-center gap-2 pb-2 border-b border-white/10">
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                    <path d="M7 1L8.5 5.5H13L9.5 8L11 12.5L7 10L3 12.5L4.5 8L1 5.5H5.5L7 1Z" stroke="#ED4C14" strokeWidth="1.2" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="text-[#ED4C14] text-[9px] font-semibold tracking-[0.08em] font-brand uppercase">
-                    {t("getStarted.recommendation.panel.addonsCard.title")}
-                  </span>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {selectedAddons.map((addon) => (
-                    <div key={addon} className="flex items-center gap-2">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                        <circle cx="6" cy="6" r="5.5" stroke="#ED4C14" strokeWidth="1"/>
-                        <path d="M3.5 6L5.5 8L8.5 4" stroke="#ED4C14" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      <span className="text-white text-[11px] font-medium font-brand">{getAddonLabel(addon)}</span>
+              {/* Booking Integration — full width, visible when addon is selected */}
+              {selectedAddons.includes("Booking Integration") && (
+                <div className="w-full px-4 py-3 bg-[#fefaf7] border-t border-[#e8e2da] flex flex-col gap-2">
+                  <div className="text-[9px] font-semibold text-[#333] font-brand">Booking Integration</div>
+                  <div className="w-full">
+                    <div className="grid grid-cols-7 mb-1">
+                      {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (
+                        <span key={d} className="text-[7px] text-center text-[#999] font-brand">{d}</span>
+                      ))}
                     </div>
-                  ))}
+                    <div className="grid grid-cols-7 gap-0.5">
+                      {Array.from({ length: 35 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-3.5 rounded-full ${i === 17 ? "bg-[#F07848]" : "bg-[#e8e2da]"}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-[8px] font-medium text-[#333] font-brand mt-1">Select a time</div>
+                  <div className="grid grid-cols-3 gap-1">
+                    {["9:00 AM", "10:00 AM", "11:00 AM", "1:00 PM", "2:00 PM", "3:00 PM"].map((time) => (
+                      <div key={time} className="h-5 rounded border border-[#d4cdc6] bg-white flex items-center justify-center">
+                        <span className="text-[7px] text-[#333] font-brand">{time}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Footer note */}

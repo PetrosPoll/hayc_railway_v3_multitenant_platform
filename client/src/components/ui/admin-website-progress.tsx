@@ -38,6 +38,7 @@ import { OnboardingFormResponse } from "@shared/schema"
 import { SubmissionDetailDialog } from "@/components/ui/admin-get-started-submissions"
 import { ENVATO_TEMPLATES } from "@/data/envato-templates"
 import { formatOnboardingValue } from "@/lib/onboarding-formatters"
+import { formatGsValue } from "@/lib/get-started-formatters"
 
 
 type WebsiteStage = {
@@ -868,6 +869,7 @@ export function AdminWebsiteProgress() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<number | null>(null)
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false)
+  const [onboardingDialogView, setOnboardingDialogView] = useState<"onboarding" | "get-started">("onboarding")
   const [gsWebsiteProgressId, setGsWebsiteProgressId] = useState<number | null>(null)
   const [isGsDialogOpen, setIsGsDialogOpen] = useState(false)
   const [editingDomainId, setEditingDomainId] = useState<number | null>(null)
@@ -974,6 +976,42 @@ export function AdminWebsiteProgress() {
   });
 
   const gsSubmission = gsSubmissionResponse?.submissions?.[0] ?? null;
+
+  // Also fetch get-started submission when the onboarding dialog opens, so we can show both side by side
+  const { data: onboardingDialogGsResponse, isLoading: isLoadingOnboardingGs } = useQuery({
+    queryKey: ["/api/admin/get-started-submissions", "for-onboarding-dialog", selectedWebsiteId],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/get-started-submissions?websiteProgressId=${selectedWebsiteId}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!selectedWebsiteId && isOnboardingDialogOpen,
+  });
+
+  const onboardingDialogGsSubmission = onboardingDialogGsResponse?.submissions?.[0] ?? null;
+
+  // Auto-switch to get-started tab when only a get-started submission exists (no old onboarding form)
+  useEffect(() => {
+    if (!isLoadingOnboarding && !isLoadingOnboardingGs && !onboardingResponse && onboardingDialogGsSubmission) {
+      setOnboardingDialogView("get-started");
+    }
+  }, [isLoadingOnboarding, isLoadingOnboardingGs, onboardingResponse, onboardingDialogGsSubmission]);
+
+  const { data: gsPresenceResponse } = useQuery({
+    queryKey: ["/api/admin/get-started-submissions/presence"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/get-started-submissions/presence", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const gsPresenceMap: Map<number, string> = new Map(
+    (gsPresenceResponse?.presence ?? []).map((p: { websiteProgressId: number; status: string }) => [p.websiteProgressId, p.status])
+  );
 
   const createWebsiteMutation = useMutation({
     mutationFn: async ({ userId, domain, currentStage, stages }: { userId: number, domain: string, currentStage: number, stages: string[] }) => {
@@ -1519,6 +1557,18 @@ export function AdminWebsiteProgress() {
                             ? "Form: Draft"
                             : `Form: ${website.onboardingStatus}`}
                       </span>
+                    ) : gsPresenceMap.has(website.id) ? (
+                      <span
+                        className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                          gsPresenceMap.get(website.id) === "completed" || gsPresenceMap.get(website.id) === "paid"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : gsPresenceMap.get(website.id) === "in_progress" || gsPresenceMap.get(website.id) === "pending_payment"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        }`}
+                      >
+                        {`Get-started: ${gsPresenceMap.get(website.id)}`}
+                      </span>
                     ) : (
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
                         No onboarding form
@@ -1532,6 +1582,7 @@ export function AdminWebsiteProgress() {
                       canManageWebsites={userPermissions?.canManageWebsites}
                       onOpenOnboarding={() => {
                         setSelectedWebsiteId(website.id);
+                        setOnboardingDialogView("onboarding");
                         setIsOnboardingDialogOpen(true);
                       }}
                       onOpenGetStartedForm={() => {
@@ -2314,21 +2365,126 @@ export function AdminWebsiteProgress() {
       <Dialog open={isOnboardingDialogOpen} onOpenChange={setIsOnboardingDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Onboarding Form Details</DialogTitle>
+            <DialogTitle>Form Details</DialogTitle>
             <DialogDescription>
-              Complete onboarding form submission details for this website project
+              Onboarding data for this website project
             </DialogDescription>
           </DialogHeader>
-          
-          {isLoadingOnboarding ? (
+
+          {/* Tab switcher — only rendered when both form types exist */}
+          {(onboardingResponse || onboardingDialogGsSubmission) && (
+            <div className="flex gap-2 border-b pb-2">
+              {onboardingResponse && (
+                <button
+                  onClick={() => setOnboardingDialogView("onboarding")}
+                  className={`text-sm px-3 py-1 rounded-t font-medium transition-colors ${
+                    onboardingDialogView === "onboarding"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Onboarding Form {onboardingResponse.id ? `#${onboardingResponse.id}` : ""}
+                </button>
+              )}
+              {onboardingDialogGsSubmission && (
+                <button
+                  onClick={() => setOnboardingDialogView("get-started")}
+                  className={`text-sm px-3 py-1 rounded-t font-medium transition-colors ${
+                    onboardingDialogView === "get-started"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Get-started Submission #{onboardingDialogGsSubmission.id}
+                </button>
+              )}
+            </div>
+          )}
+
+          {(isLoadingOnboarding || isLoadingOnboardingGs) ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : !onboardingResponse ? (
+          ) : !onboardingResponse && !onboardingDialogGsSubmission ? (
             <div className="text-center py-8 text-muted-foreground">
-              No onboarding form response found for this website.
+              No form data found for this website.
             </div>
-          ) : (
+          ) : onboardingDialogView === "get-started" && onboardingDialogGsSubmission ? (
+            (() => {
+              const s = onboardingDialogGsSubmission;
+              const Row = ({ label, field, value }: { label: string; field: string; value: unknown }) => {
+                const display = formatGsValue(field, value, t);
+                if (display === "—") return null;
+                return <div><Label className="text-sm font-medium">{label}</Label><p className="text-sm">{display}</p></div>;
+              };
+              return (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Account</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Full Name" field="fullName" value={s.fullName} />
+                      <Row label="Email" field="email" value={s.email} />
+                      <Row label="Phone" field="contactPhone" value={s.contactPhone} />
+                      <Row label="VAT Number" field="vatNumber" value={s.vatNumber} />
+                      <Row label="Document Type" field="documentType" value={s.documentType} />
+                      <Row label="City" field="city" value={s.city} />
+                      <Row label="Street" field="street" value={s.street ? `${s.street} ${s.streetNumber ?? ""}`.trim() : null} />
+                      <Row label="Postal Code" field="postalCode" value={s.postalCode} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Plan</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Selected Plan" field="selectedPlan" value={s.selectedPlan} />
+                      <Row label="Billing Period" field="billingPeriod" value={s.billingPeriod} />
+                      <Row label="Status" field="status" value={s.status} />
+                      <Row label="Current Step" field="currentStep" value={s.currentStep} />
+                      <Row label="Website Progress ID" field="websiteProgressId" value={s.websiteProgressId} />
+                      <Row label="Submission ID" field="submissionId" value={s.submissionId} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Pre-checkout</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Business Type" field="businessType" value={s.businessType} />
+                      <Row label="Website Goals" field="websiteGoals" value={s.websiteGoals} />
+                      <Row label="Suggested Structure" field="suggestedStructure" value={s.suggestedStructure} />
+                      <Row label="Suggested Addons" field="suggestedAddons" value={s.suggestedAddons} />
+                      <Row label="Selected Addons" field="selectedAddons" value={s.selectedAddons} />
+                      <Row label="Design Direction" field="designDirection" value={s.designDirection} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Onboarding (Steps 6–9)</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Business Name" field="businessName" value={s.businessName} />
+                      <Row label="Business Description" field="businessDescription" value={s.businessDescription} />
+                      <Row label="Services" field="services" value={s.services} />
+                      <Row label="Had Website Before" field="hadWebsiteBefore" value={s.hadWebsiteBefore} />
+                      <Row label="Previous Platform" field="previousWebsitePlatform" value={s.previousWebsitePlatform} />
+                      <Row label="Self Description" field="selfDescription" value={s.selfDescription} />
+                      <Row label="Biggest Concerns" field="biggestConcerns" value={s.biggestConcerns} />
+                      <Row label="Heard About Us" field="heardAboutUs" value={s.heardAboutUs} />
+                      <Row label="Confirmed Pages" field="confirmedPages" value={s.confirmedPages} />
+                      <Row label="Pages Notes" field="pagesNotes" value={s.pagesNotes} />
+                      <Row label="Website Content" field="websiteContent" value={s.websiteContent} />
+                      <Row label="Success Vision" field="successVision" value={s.successVision} />
+                      <Row label="Media URLs" field="mediaUrls" value={s.mediaUrls?.length ? `${s.mediaUrls.length} file(s)` : null} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Meta</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Session ID" field="sessionId" value={s.sessionId} />
+                      <Row label="Language" field="websiteLanguage" value={s.websiteLanguage} />
+                      <Row label="Created At" field="createdAt" value={s.createdAt ? new Date(s.createdAt).toLocaleString() : null} />
+                      <Row label="Updated At" field="updatedAt" value={s.updatedAt ? new Date(s.updatedAt).toLocaleString() : null} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          ) : onboardingResponse ? (
             <div className="space-y-6">
               {/* Business Information */}
               <div>
@@ -2661,8 +2817,8 @@ export function AdminWebsiteProgress() {
                 </div>
               </div>
             </div>
-          )}
-          
+          ) : null}
+
           <DialogFooter>
             <Button onClick={() => setIsOnboardingDialogOpen(false)}>Close</Button>
           </DialogFooter>
