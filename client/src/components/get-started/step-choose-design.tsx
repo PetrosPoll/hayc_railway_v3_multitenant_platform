@@ -1,9 +1,17 @@
-﻿import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import type { WizardValues } from "@/pages/get-started";
 import { cn } from "@/lib/utils";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Search,
+} from "lucide-react";
 
 const WIZARD_BUSINESS_TYPE_TO_KEY: Record<string, string> = {
   "Local Business": "local_business",
@@ -43,6 +51,20 @@ const GOAL_CATEGORY_BOOST: Record<string, string[]> = {
   showcase_work: ["psychologist", "education_coaching"],
   build_trust: ["professional_services", "psychologist"],
 };
+
+const BROWSER_INDUSTRIES = [
+  { key: "agriculture", value: "Agriculture" },
+  { key: "transportation", value: "Transportation" },
+  { key: "educationCoaching", value: "education_coaching" },
+  { key: "healthWellness", value: "health_wellness" },
+  { key: "professionalServices", value: "professional_services" },
+  { key: "psychologist", value: "psychologist" },
+  { key: "realEstate", value: "real_estate" },
+  { key: "restaurantsFood", value: "restaurants_food" },
+  { key: "tourismHospitality", value: "tourism_hospitality" },
+];
+
+const TEMPLATES_PER_PAGE = 9;
 
 function getRelevantTemplates(
   businessType: string | undefined,
@@ -90,6 +112,53 @@ function pickRandom<T>(arr: T[], n: number, seed: number): T[] {
   return shuffled.slice(0, n);
 }
 
+interface TemplateCardProps {
+  template: (typeof ENVATO_TEMPLATES)[number];
+  isSelected: boolean;
+  onSelect: () => void;
+}
+
+function TemplateCard({ template, isSelected, onSelect }: TemplateCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="w-full rounded-[10px] border-0 cursor-pointer transition-all overflow-hidden relative flex flex-col items-start gap-3 bg-transparent p-0 text-left group"
+      aria-label={template.name}
+    >
+      <div className="relative w-full">
+        <img
+          src={template.preview}
+          alt={template.name}
+          className={cn(
+            "w-full h-48 md:h-56 rounded-[10px] object-cover object-top transition-all",
+            "outline outline-1 outline-offset-[-1px]",
+            isSelected
+              ? "outline-[#ED4C14]"
+              : "outline-white/20 group-hover:outline-white/50",
+          )}
+        />
+        {isSelected && (
+          <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-[#ED4C14] flex items-center justify-center flex-shrink-0">
+            <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+              <path
+                d="M1 4L4.5 7.5L11 1"
+                stroke="white"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+        )}
+      </div>
+      <span className="text-white text-base font-semibold font-brand px-1">
+        {template.name}
+      </span>
+    </button>
+  );
+}
+
 interface StepChooseDesignProps {
   form: UseFormReturn<WizardValues>;
   onNext: () => void;
@@ -102,6 +171,14 @@ export default function StepChooseDesign({
   onBack,
 }: StepChooseDesignProps) {
   const { t } = useTranslation();
+
+  const [showBrowser, setShowBrowser] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [industryOpen, setIndustryOpen] = useState(false);
+  const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
   const businessType = form.watch("businessType");
   const goals = form.watch("goals");
   const selectedDesign = form.watch("selectedDesign");
@@ -114,13 +191,66 @@ export default function StepChooseDesign({
     [businessType],
   );
 
+  // Fixed 6 suggested templates based on business type + goals
   const suggestedTemplates = useMemo(() => {
     const pool = getRelevantTemplates(businessType, goals ?? []);
-    return pickRandom(pool, 3, seed);
+    return pickRandom(pool, 6, seed);
   }, [businessType, goals, seed]);
 
+  // Full browser — all templates, filtered by search + category
+  const filteredTemplates = useMemo(() => {
+    return ENVATO_TEMPLATES.filter((t) => {
+      const matchesSearch =
+        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.description.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCategory =
+        !selectedCategory || t.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [searchQuery, selectedCategory]);
+
+  const orderedTemplates = useMemo(() => {
+    if (selectedCategory) return filteredTemplates;
+    const shuffled = [...filteredTemplates];
+    for (let i = shuffled.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [filteredTemplates, selectedCategory]);
+
+  const totalPages = Math.max(1, Math.ceil(orderedTemplates.length / TEMPLATES_PER_PAGE));
+  const clampedPage = Math.min(currentPage, totalPages);
+
+  const pagedTemplates = useMemo(() => {
+    const start = (clampedPage - 1) * TEMPLATES_PER_PAGE;
+    return orderedTemplates.slice(start, start + TEMPLATES_PER_PAGE);
+  }, [orderedTemplates, clampedPage]);
+
+  const visiblePages = useMemo(() => {
+    const maxButtons = Math.min(5, totalPages);
+    const start = Math.max(1, Math.min(clampedPage - 2, totalPages - maxButtons + 1));
+    return Array.from({ length: maxButtons }, (_, idx) => start + idx);
+  }, [clampedPage, totalPages]);
+  const lastVisiblePage = visiblePages[visiblePages.length - 1] ?? 1;
+
+  const handleCategorySelect = (industryKey: string, categoryValue: string) => {
+    setSelectedIndustry(industryKey);
+    setSelectedCategory(categoryValue);
+    setIndustryOpen(false);
+    setCurrentPage(1);
+  };
+
+  const clearCategory = () => {
+    setSelectedIndustry(null);
+    setSelectedCategory(null);
+    setIndustryOpen(false);
+    setCurrentPage(1);
+  };
+
   return (
-    <div className="w-full min-h-screen bg-black flex flex-col justify-center items-center px-4 md:px-16 pt-24 pb-12 md:py-12 gap-6">
+    <div className="w-full min-h-screen bg-black flex flex-col items-center px-4 md:px-16 pt-24 pb-12 md:py-12 gap-6">
+      {/* Header */}
       <div className="w-full flex flex-col items-center gap-3">
         <div className="w-full text-center text-white text-2xl md:text-4xl font-semibold font-brand">
           {t("getStarted.chooseDesign.title")}
@@ -130,79 +260,209 @@ export default function StepChooseDesign({
         </div>
       </div>
 
-      <div className="w-full flex flex-col md:flex-row md:flex-wrap md:justify-center justify-start items-stretch gap-3 md:gap-6">
-        {suggestedTemplates.map((template) => {
-          const isSelected = selectedDesign === String(template.id);
-          return (
-            <button
-              key={template.id}
-              type="button"
-              onClick={() => form.setValue("selectedDesign", String(template.id))}
-              className={cn(
-                "w-full md:w-[638px] h-44 md:h-72 rounded-[10px]",
-                "border-0 cursor-pointer transition-all overflow-hidden relative",
-                "outline outline-1 outline-offset-[-1px]",
-                isSelected ? "outline-[#ED4C14]" : "outline-white/20",
-              )}
-              aria-label={template.name}
-            >
-              <img
-                src={template.preview}
-                alt={template.name}
-                className="w-full h-full object-cover object-top"
-              />
-              <div className="absolute bottom-0 left-0 right-0 px-4 py-3 bg-gradient-to-t from-black/80 to-transparent flex items-end justify-between">
-                <span className="text-white text-base font-semibold font-brand">
-                  {template.name}
-                </span>
-                {isSelected && (
-                  <div className="w-6 h-6 rounded-full bg-[#ED4C14] flex items-center justify-center flex-shrink-0">
-                    <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
-                      <path
-                        d="M1 4L4.5 7.5L11 1"
-                        stroke="white"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </div>
-                )}
-              </div>
-            </button>
-          );
-        })}
-
+      {/* Choose for me — aligned right */}
+      <div className="w-full flex justify-end">
         <button
           type="button"
           onClick={() => {
             form.setValue("selectedDesign", "auto");
             onNext();
           }}
-          className="w-full md:w-[638px] h-44 md:h-72 px-3.5 py-2 bg-[radial-gradient(ellipse_141.42%_151.02%_at_0%_0%,_rgba(237,76,20,0.21)_0%,_rgba(237,76,20,0.11)_67%)] rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white/30 border-0 cursor-pointer inline-flex flex-col justify-center items-center gap-3 hover:outline-[#ED4C14] transition-all"
+          className="h-10 px-4 py-2 rounded-[10px] inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 cursor-pointer transition-colors"
         >
-          <svg className="w-7 h-7 md:w-12 md:h-12" viewBox="0 0 48 48" fill="none">
-            <path
-              d="M24 4 L26 22 L44 24 L26 26 L24 44 L22 26 L4 24 L22 22 Z"
-              fill="white"
-              opacity="0.9"
-            />
-            <path
-              d="M38 8 L39 14 L45 15 L39 16 L38 22 L37 16 L31 15 L37 14 Z"
-              fill="white"
-              opacity="0.7"
-            />
+          <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 48 48" fill="none">
+            <path d="M24 4 L26 22 L44 24 L26 26 L24 44 L22 26 L4 24 L22 22 Z" fill="white" opacity="0.9" />
+            <path d="M38 8 L39 14 L45 15 L39 16 L38 22 L37 16 L31 15 L37 14 Z" fill="white" opacity="0.7" />
           </svg>
-          <div className="text-white text-lg font-medium font-brand">
+          <span className="text-white text-sm font-medium font-brand">
             {t("getStarted.chooseDesign.chooseForMe")}
-          </div>
-          <div className="text-white text-base font-normal font-brand leading-6">
-            {t("getStarted.chooseDesign.chooseForMeSubtitle")}
-          </div>
+          </span>
         </button>
       </div>
 
-      <div className="w-full flex items-center justify-center gap-4 pt-2">
+      {/* Suggested templates (6) */}
+      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+        {suggestedTemplates.map((template) => (
+          <TemplateCard
+            key={template.id}
+            template={template}
+            isSelected={selectedDesign === String(template.id)}
+            onSelect={() => form.setValue("selectedDesign", String(template.id))}
+          />
+        ))}
+      </div>
+
+      {/* Show me more button */}
+      {!showBrowser && (
+        <button
+          type="button"
+          onClick={() => setShowBrowser(true)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-[10px] border border-white/30 bg-transparent hover:bg-white/10 transition-colors cursor-pointer"
+        >
+          <span className="text-white text-base font-medium font-brand">
+            {t("getStarted.chooseDesign.showMore")}
+          </span>
+          <ChevronDown className="w-5 h-5 text-white" />
+        </button>
+      )}
+
+      {/* Full template browser */}
+      {showBrowser && (
+        <div className="w-full flex flex-col gap-6">
+          {/* Divider */}
+          <div className="w-full flex items-center gap-4">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-white/50 text-sm font-medium font-brand whitespace-nowrap">
+              {t("getStarted.chooseDesign.browseAll")}
+            </span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
+
+          {/* Search bar */}
+          <div className="w-full p-4 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white/30 flex items-center gap-4">
+            <Search className="w-5 h-5 text-white/50 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder={t("templates.page.searchPlaceholder")}
+              className="flex-1 bg-transparent text-white text-sm font-normal font-brand leading-5 placeholder:text-white/50 outline-none"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+
+          {/* Category filter */}
+          <div className="w-full relative inline-flex justify-start items-center gap-3">
+            <button
+              type="button"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              onClick={() => setIndustryOpen((o) => !o)}
+            >
+              <span className="text-white text-base font-medium font-brand">
+                {selectedIndustry
+                  ? t(`templates.page.industries.${selectedIndustry}`)
+                  : t("templates.page.industry")}
+              </span>
+              <ChevronDown
+                className={cn(
+                  "w-5 h-5 text-white transition-transform",
+                  industryOpen && "rotate-180",
+                )}
+              />
+            </button>
+            {selectedIndustry && (
+              <button
+                type="button"
+                onClick={clearCategory}
+                className="text-white/50 text-sm font-medium font-brand hover:text-white transition-colors"
+              >
+                ✕ {t("getStarted.chooseDesign.clearFilter")}
+              </button>
+            )}
+
+            {industryOpen && (
+              <div className="absolute left-0 top-[33px] z-50 w-full max-w-[280px] bg-gradient-to-br from-black/80 to-black/95 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white/30 overflow-hidden shadow-xl">
+                {BROWSER_INDUSTRIES.map((industry) => (
+                  <button
+                    key={industry.key}
+                    type="button"
+                    className={cn(
+                      "w-full p-3 text-left text-white text-sm font-medium font-brand hover:bg-white/10 transition-colors",
+                      selectedIndustry === industry.key && "bg-white/10",
+                    )}
+                    onClick={() => handleCategorySelect(industry.key, industry.value)}
+                  >
+                    {t(`templates.page.industries.${industry.key}`)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Templates grid */}
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+            {pagedTemplates.map((template) => (
+              <TemplateCard
+                key={template.id}
+                template={template}
+                isSelected={selectedDesign === String(template.id)}
+                onSelect={() => form.setValue("selectedDesign", String(template.id))}
+              />
+            ))}
+          </div>
+
+          {/* Pagination */}
+          <div className="w-full inline-flex justify-center items-center">
+            <button
+              type="button"
+              className="w-10 h-10 p-2.5 rounded-lg flex justify-center items-center hover:bg-white/10 transition-colors disabled:opacity-30"
+              onClick={() => setCurrentPage(1)}
+              disabled={clampedPage === 1}
+            >
+              <ChevronsLeft className="w-4 h-4 text-white" />
+            </button>
+            <button
+              type="button"
+              className="w-10 h-10 p-2.5 rounded-lg flex justify-center items-center hover:bg-white/10 transition-colors disabled:opacity-30"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={clampedPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4 text-white" />
+            </button>
+
+            {visiblePages.map((page) => (
+              <button
+                key={page}
+                type="button"
+                className={cn(
+                  "w-10 p-2.5 rounded-lg flex justify-center items-center transition-colors",
+                  clampedPage === page ? "bg-[#ED4C14]" : "hover:bg-white/10",
+                )}
+                onClick={() => setCurrentPage(page)}
+              >
+                <span className="text-white text-base font-medium font-brand">{page}</span>
+              </button>
+            ))}
+
+            {lastVisiblePage < totalPages - 1 && (
+              <button type="button" className="w-10 p-2.5 rounded-lg flex justify-center items-center">
+                <span className="text-white text-base font-medium font-brand">…</span>
+              </button>
+            )}
+            {lastVisiblePage < totalPages && (
+              <button
+                type="button"
+                className="w-10 p-2.5 rounded-lg flex justify-center items-center hover:bg-white/10 transition-colors"
+                onClick={() => setCurrentPage(totalPages)}
+              >
+                <span className="text-white text-base font-medium font-brand">{totalPages}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              className="w-10 h-10 p-2.5 rounded-lg flex justify-center items-center hover:bg-white/10 transition-colors disabled:opacity-30"
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={clampedPage === totalPages}
+            >
+              <ChevronRight className="w-4 h-4 text-white" />
+            </button>
+            <button
+              type="button"
+              className="w-10 h-10 p-2.5 rounded-lg flex justify-center items-center hover:bg-white/10 transition-colors disabled:opacity-30"
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={clampedPage === totalPages}
+            >
+              <ChevronsRight className="w-4 h-4 text-white" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="w-full flex items-center justify-between gap-4 pt-2">
         <button
           type="button"
           onClick={onBack}
@@ -226,4 +486,3 @@ export default function StepChooseDesign({
     </div>
   );
 }
-

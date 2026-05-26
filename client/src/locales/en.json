@@ -2930,6 +2930,9 @@
             "subtitle": "Pick a direction that feels closest to your brand.",
             "chooseForMe": "Choose for me",
             "chooseForMeSubtitle": "We'll pick the best direction for you",
+            "showMore": "Show me more",
+            "browseAll": "Browse all templates",
+            "clearFilter": "Clear filter",
             "options": {
                 "cleanMinimal": "Clean & Minimal",
                 "boldModern": "Bold & Modern",
