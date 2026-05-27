@@ -46,6 +46,7 @@ type Website = {
   selectedTemplateId: number | null;
   onboardingStatus: string | null;
   bookingEnabled?: boolean;
+  siteId?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   stages: Array<{
@@ -553,7 +554,15 @@ export default function WebsitesList() {
                       className={`cursor-pointer hover:shadow-lg transition-shadow ${
                         isPendingOnboarding ? 'border-2 border-blue-300 bg-blue-50' : ''
                       }`}
-                      onClick={() => !isPendingOnboarding && navigate(`/dashboard/website/${website.id}`)}
+                      onClick={() => {
+                        if (isPendingOnboarding) return;
+                        const stages = website.stages ?? [];
+                        const maxStage = stages.length > 0 ? Math.max(...stages.map((s) => s.stageNumber)) : -1;
+                        const lastStage = stages.find((s) => s.stageNumber === maxStage);
+                        const progressComplete = website.currentStage === maxStage && lastStage?.status === "completed";
+                        const tab = progressComplete && website.siteId ? "content" : null;
+                        navigate(`/dashboard/website/${website.id}${tab ? `?tab=${tab}` : ""}`);
+                      }}
                       data-testid={`card-website-${website.id}`}
                     >
                       <CardContent className="p-6">

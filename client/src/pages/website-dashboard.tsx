@@ -1233,13 +1233,20 @@ export default function WebsiteDashboard() {
   });
 
   const menuItems = React.useMemo(() => {
+    const isProgressComplete = (() => {
+      if (!website?.stages || website.stages.length === 0) return false;
+      const maxStageNumber = Math.max(...website.stages.map((s) => s.stageNumber));
+      const lastStage = website.stages.find((s) => s.stageNumber === maxStageNumber);
+      return website.currentStage === maxStageNumber && lastStage?.status === "completed";
+    })();
+
     const base = [
-      { id: "progress", label: t("dashboard.progress") || "Website", icon: Settings },
+      ...(!isProgressComplete ? [{ id: "progress", label: t("dashboard.progress") || "Website", icon: Settings }] : []),
+      ...(website?.siteId ? [{ id: "content", label: t("dashboard.content"), icon: FileEdit }] : []),
+      ...(isProgressComplete ? [{ id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart }] : []),
       { id: "changes", label: t("dashboard.changes") || "Changes", icon: FileText },
       { id: "media", label: t("dashboard.media") || "Media", icon: ImageIcon },
-      ...(website?.siteId ? [{ id: "content", label: t("dashboard.content"), icon: FileEdit }] : []),
       { id: "billing", label: t("dashboard.billing") || "Billing", icon: CreditCard },
-      { id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart },
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
     ];
     const bookingItem = {
@@ -1268,7 +1275,7 @@ export default function WebsiteDashboard() {
       items.push(paymentsItem);
     }
     return [...items, ...after];
-  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, website?.siteId]);
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
 
   if (websiteLoading) {
     return (
@@ -4332,6 +4339,8 @@ export default function WebsiteDashboard() {
                           const win = iframe.contentWindow as any;
                           if (!win || win.__haycNavGuard) return;
                           win.__haycNavGuard = true;
+
+                          // Layer 1: intercept anchor clicks — open external links in a new tab
                           win.document.addEventListener(
                             "click",
                             (evt: MouseEvent) => {
@@ -4342,11 +4351,17 @@ export default function WebsiteDashboard() {
                                   (anchor as HTMLAnchorElement).href,
                                   win.location.href
                                 );
-                                if (url.origin !== homeOrigin) evt.preventDefault();
+                                console.log("[haycNavGuard] anchor clicked", { href: url.href, sameOrigin: url.origin === homeOrigin });
+                                if (url.origin !== homeOrigin) {
+                                  evt.preventDefault();
+                                  evt.stopImmediatePropagation();
+                                  window.open(url.href, "_blank", "noopener,noreferrer");
+                                }
                               } catch {}
                             },
                             true
                           );
+
                         } catch {}
                       }}
                     />

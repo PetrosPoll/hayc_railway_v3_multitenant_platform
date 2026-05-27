@@ -398,7 +398,7 @@ interface ConfigSectionProps {
   onRequestPickImage?: (path: string) => void;
 }
 
-const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config"];
+const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config", "digitalProductsConfig"];
 
 function isEmptyValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;
@@ -895,6 +895,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const [focusedPath, setFocusedPath] = useState<string | null>(null);
   const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [previewLanguage, setPreviewLanguage] = useState<string | null>(null);
   const [pickImagePath, setPickImagePath] = useState<string | null>(null);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [fieldDrawerOpen, setFieldDrawerOpen] = useState(false);
@@ -954,10 +955,32 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   }, [queryData]);
 
   useEffect(() => {
+    if (websiteLanguage && previewLanguage === null) {
+      const langs = websiteLanguage === "both"
+        ? ["el", "en"]
+        : websiteLanguage.split(",").map((l) => l.trim()).filter(Boolean);
+      if (langs.length > 0) setPreviewLanguage(langs[0]);
+    }
+  }, [websiteLanguage, previewLanguage]);
+
+  useEffect(() => {
     if (savedAt === null) return;
     const timer = setTimeout(() => setSavedAt(null), 10000);
     return () => clearTimeout(timer);
   }, [savedAt]);
+
+  useEffect(() => {
+    if (open) {
+      setEditMode(false);
+    }
+    // Always push the current state to the iframe — on close this resets the
+    // site's edit mode while the iframe is still mounted; on open it enforces
+    // the false we just set above before onLoad fires.
+    iframeRef.current?.contentWindow?.postMessage(
+      { type: "HAYC_EDIT_MODE", payload: { enabled: false } },
+      "*"
+    );
+  }, [open]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
@@ -1000,6 +1023,10 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
 
   const isDirty =
     localConfig !== null && JSON.stringify(localConfig) !== JSON.stringify(queryData);
+
+  const handleLanguageChange = (lang: string) => {
+    setPreviewLanguage(lang);
+  };
 
   const handleReloadIframe = () => {
     if (iframeRef.current) {
@@ -1069,7 +1096,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                 forceOpen={focusedSection === key}
                 focusedPath={focusedPath}
                 highlightedPath={highlightedPath}
-                websiteLanguage={websiteLanguage}
+                websiteLanguage={previewLanguage ?? websiteLanguage}
                 onRequestPickImage={(path) => setPickImagePath(path)}
               />
             ))}
@@ -1138,13 +1165,19 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                   const langs = websiteLanguage === "both"
                     ? ["el", "en"]
                     : websiteLanguage.split(",").map(l => l.trim()).filter(Boolean);
+                  if (langs.length <= 1) return null;
                   return (
-                    <div className="hidden sm:flex items-center gap-1">
-                      <span className="text-muted-foreground text-sm">·</span>
-                      {langs.map(lang => (
-                        <Badge key={lang} variant="secondary" className="text-xs px-1.5 py-0 h-5 uppercase font-mono">
+                    <div className="flex items-center border rounded-md">
+                      {langs.map((lang, i) => (
+                        <Button
+                          key={lang}
+                          variant={previewLanguage === lang ? "secondary" : "ghost"}
+                          size="sm"
+                          onClick={() => handleLanguageChange(lang)}
+                          className={`uppercase font-mono text-xs px-2.5 ${i === 0 ? "rounded-r-none" : "rounded-l-none"}`}
+                        >
                           {lang}
-                        </Badge>
+                        </Button>
                       ))}
                     </div>
                   );
@@ -1168,7 +1201,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                   <Smartphone className="h-4 w-4" />
                 </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={handleReloadIframe} className="hidden sm:flex">
+              <Button variant="outline" size="sm" onClick={handleReloadIframe} className="flex">
                 <RefreshCw className="h-4 w-4" />
               </Button>
               <Button
@@ -1292,7 +1325,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                       value={fieldValue}
                       onChange={handleFieldChange}
                       highlightedPath={highlightedPath}
-                      websiteLanguage={websiteLanguage}
+                      websiteLanguage={previewLanguage ?? websiteLanguage}
                       onRequestPickImage={(path) => setPickImagePath(path)}
                     />
                     <Button
