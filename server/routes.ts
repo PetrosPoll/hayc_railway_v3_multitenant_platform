@@ -22134,7 +22134,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     logoUrl: z.string(),
     primaryColor: z.string(),
     primaryForeground: z.string(),
-    fontFamily: z.enum(["Inter", "Roboto", "Lato", "Playfair Display", "Poppins"]),
+    fontFamily: z.enum(["Inter", "Roboto", "Open Sans", "Lato", "Noto Sans", "Source Sans 3", "Nunito", "Raleway", "Playfair Display", "Merriweather"]),
     borderRadius: z.enum(["0px", "4px", "8px", "16px", "9999px"]),
   });
 
