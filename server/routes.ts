@@ -4943,6 +4943,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ----- Internal API: Site URL lookup (token-auth, machine-to-machine) -----
+  app.get("/internal/websites/:siteId/site-url", internalAuth, async (req, res) => {
+    try {
+      const [wp] = await db
+        .select({ siteId: websiteProgress.siteId, customDomain: websiteProgress.customDomain })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, req.params.siteId));
+
+      if (!wp) {
+        return res.json({ siteUrl: null });
+      }
+
+      const siteUrl =
+        wp.customDomain?.trim()
+          ? `https://${wp.customDomain}`
+          : `https://${wp.siteId}.hayc.gr`;
+
+      return res.json({ siteUrl });
+    } catch {
+      return res.json({ siteUrl: null });
+    }
+  });
+
   // Function to submit lead to HubSpot using Contacts API
   async function submitToHubSpot(data: any) {
     const apiKey = process.env.HUBSPOT_API_KEY;
