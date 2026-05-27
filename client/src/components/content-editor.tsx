@@ -14,7 +14,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, X, Monitor, Smartphone, History, RotateCcw, Loader2 } from "lucide-react";
+import { ExternalLink, RefreshCw, AlertCircle, ChevronDown, X, Monitor, Smartphone, History, RotateCcw, Loader2, SlidersHorizontal } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -455,7 +456,7 @@ function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, hi
         <CollapsibleTrigger asChild>
           <CardHeader className="py-3 px-4 cursor-pointer">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">{formatLabel(sectionKey)}</span>
+              <span className="text-sm font-semibold">{formatLabel(sectionKey).replace(/ Config$/i, "")}</span>
               <ChevronDown
                 className={`h-4 w-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
               />
@@ -885,6 +886,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const isMobile = useIsMobile();
 
   const [localConfig, setLocalConfig] = useState<Record<string, unknown> | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -894,6 +896,9 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [pickImagePath, setPickImagePath] = useState<string | null>(null);
+  const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
+  const [fieldDrawerOpen, setFieldDrawerOpen] = useState(false);
+  const [fieldDrawerPath, setFieldDrawerPath] = useState<string | null>(null);
 
   const { data: websiteData } = useQuery<{ websiteLanguage?: string }>({
     queryKey: ["/api/admin/websites", websiteId],
@@ -965,12 +970,24 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
       setFocusedPath(path);
       setHighlightedPath(path);
 
-      setTimeout(() => {
-        const el = document.querySelector(`[data-path="${path}"]`)
-          ?? document.querySelector(`[data-field-path="${path}"]`)
-          ?? document.querySelector(`[data-path="${path}.el"]`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 150);
+      if (isMobile) {
+        // Normalise path: strip trailing .el / .en so we show the whole locale field
+        const parts = path.split('.');
+        const last = parts[parts.length - 1];
+        const normalized = (last === 'el' || last === 'en') && parts.length > 1
+          ? parts.slice(0, -1).join('.')
+          : path;
+        setFieldDrawerPath(normalized);
+        setFieldDrawerOpen(true);
+        setConfigDrawerOpen(false);
+      } else {
+        setTimeout(() => {
+          const el = document.querySelector(`[data-path="${path}"]`)
+            ?? document.querySelector(`[data-field-path="${path}"]`)
+            ?? document.querySelector(`[data-path="${path}.el"]`);
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 150);
+      }
 
       setTimeout(() => {
         setFocusedSection(null);
@@ -979,7 +996,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, []);
+  }, [isMobile]);
 
   const isDirty =
     localConfig !== null && JSON.stringify(localConfig) !== JSON.stringify(queryData);
@@ -1022,26 +1039,67 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
     });
   };
 
+  const configPanelContent = (
+    <>
+      {isLoading && (
+        <>
+          <Skeleton className="h-24 w-full mb-4" />
+          <Skeleton className="h-24 w-full mb-4" />
+          <Skeleton className="h-24 w-full mb-4" />
+        </>
+      )}
+      {isError && (
+        <div className="flex flex-col items-center justify-center gap-4 py-8">
+          <AlertCircle className="h-8 w-8 text-destructive" />
+          <p className="text-muted-foreground">Failed to load config</p>
+          <Button variant="outline" onClick={() => refetch()}>Retry</Button>
+        </div>
+      )}
+      {localConfig !== null && !isLoading && !isError && (
+        <div className="space-y-4">
+          <VersionHistorySection siteId={siteId} currentConfig={localConfig} onRestore={() => { refetch(); handleReloadIframe(); }} />
+          {Object.entries(localConfig)
+            .filter(([key, value]) => !shouldHideField(key, value))
+            .map(([key, value]) => (
+              <ConfigSection
+                key={key}
+                sectionKey={key}
+                value={value}
+                onChange={handleFieldChange}
+                forceOpen={focusedSection === key}
+                focusedPath={focusedPath}
+                highlightedPath={highlightedPath}
+                websiteLanguage={websiteLanguage}
+                onRequestPickImage={(path) => setPickImagePath(path)}
+              />
+            ))}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <>
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) { setConfigDrawerOpen(false); setFieldDrawerOpen(false); } onOpenChange(v); }}>
       <DialogContent className="max-w-none w-screen h-screen p-0 rounded-none border-0 gap-0 [&>button]:hidden">
         <VisuallyHidden.Root>
           <DialogTitle>Content Editor</DialogTitle>
         </VisuallyHidden.Root>
-        <div className="flex flex-col h-full overflow-hidden">
-          <div className="border-b px-4 py-2 flex items-center gap-4 shrink-0">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+        <div className="flex flex-col h-full overflow-hidden relative">
+
+          {/* Header */}
+          <div className="border-b px-3 sm:px-4 py-2 flex items-center gap-2 sm:gap-4 shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => onOpenChange(false)}
-              className="mr-2"
+              className="mr-1 sm:mr-2 px-2 sm:px-3"
             >
-              <X className="h-4 w-4 mr-1" />
-              Close
+              <X className="h-4 w-4" />
+              <span className="hidden sm:inline ml-1">Close</span>
             </Button>
-            
-            <Badge variant="outline" className="flex items-center gap-1">
+
+            <Badge variant="outline" className="hidden sm:flex items-center gap-1">
               <a
                 href={`https://${siteId}.hayc.gr`}
                 target="_blank"
@@ -1054,13 +1112,13 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
             </Badge>
 
             {savedAt !== null && (
-              <span className="ml-auto text-sm text-green-600">
+              <span className="hidden sm:inline ml-auto text-sm text-green-600">
                 ✓ Changes live within 60 seconds
               </span>
             )}
 
-            <div className={savedAt === null ? "ml-auto flex items-center gap-2" : "flex items-center gap-2"}>
-              <div className="flex items-center gap-2">
+            <div className={`${savedAt === null ? "ml-auto" : "sm:ml-0"} flex items-center gap-2`}>
+              <div className="flex items-center gap-1.5">
                 <Switch
                   checked={editMode}
                   onCheckedChange={(checked) => {
@@ -1071,16 +1129,28 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                     );
                   }}
                 />
-                <span className="text-sm font-medium">
-                  Edit mode: {editMode ? "ON" : "OFF"}
+                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                  <span className="sm:hidden">Edit: </span>
+                  <span className="hidden sm:inline">Edit mode: </span>
+                  {editMode ? "ON" : "OFF"}
                 </span>
-                {websiteLanguage && (
-                  <span className="text-sm text-muted-foreground">
-                    · Language: {websiteLanguage === "el" ? "Greek (EL)" : websiteLanguage === "en" ? "English (EN)" : websiteLanguage === "both" ? "Both (EL + EN)" : websiteLanguage}
-                  </span>
-                )}
+                {websiteLanguage && (() => {
+                  const langs = websiteLanguage === "both"
+                    ? ["el", "en"]
+                    : websiteLanguage.split(",").map(l => l.trim()).filter(Boolean);
+                  return (
+                    <div className="hidden sm:flex items-center gap-1">
+                      <span className="text-muted-foreground text-sm">·</span>
+                      {langs.map(lang => (
+                        <Badge key={lang} variant="secondary" className="text-xs px-1.5 py-0 h-5 uppercase font-mono">
+                          {lang}
+                        </Badge>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
-              <div className="flex items-center border rounded-md">
+              <div className="hidden sm:flex items-center border rounded-md">
                 <Button
                   variant={previewMode === "desktop" ? "secondary" : "ghost"}
                   size="sm"
@@ -1098,7 +1168,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                   <Smartphone className="h-4 w-4" />
                 </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={handleReloadIframe}>
+              <Button variant="outline" size="sm" onClick={handleReloadIframe} className="hidden sm:flex">
                 <RefreshCw className="h-4 w-4" />
               </Button>
               <Button
@@ -1111,15 +1181,17 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
             </div>
           </div>
 
+          {/* Body */}
           <div className="flex-1 flex overflow-hidden min-h-0">
-            <div className="w-3/4 h-full border-r overflow-hidden bg-muted/30 flex items-center justify-center">
+            {/* Iframe */}
+            <div className="w-full sm:w-3/4 h-full border-r overflow-hidden bg-muted/30 flex items-center justify-center">
               <iframe
                 ref={iframeRef}
                 src={`https://${siteId}.hayc.gr?hayc-edit=true`}
                 sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms allow-top-navigation-by-user-activation"
                 className={`h-full border-0 bg-white transition-all duration-300 ${
-                  previewMode === "mobile" 
-                    ? "w-[390px] rounded-lg shadow-xl border" 
+                  previewMode === "mobile"
+                    ? "w-[390px] rounded-lg shadow-xl border"
                     : "w-full"
                 }`}
                 title="Site preview"
@@ -1132,47 +1204,110 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
               />
             </div>
 
-            <div className="w-1/4 h-full overflow-y-auto p-4 min-h-0" onClick={() => setHighlightedPath(null)}>
-              {isLoading && (
-                <>
-                  <Skeleton className="h-24 w-full mb-4" />
-                  <Skeleton className="h-24 w-full mb-4" />
-                  <Skeleton className="h-24 w-full mb-4" />
-                </>
-              )}
-
-              {isError && (
-                <div className="flex flex-col items-center justify-center gap-4 py-8">
-                  <AlertCircle className="h-8 w-8 text-destructive" />
-                  <p className="text-muted-foreground">Failed to load config</p>
-                  <Button variant="outline" onClick={() => refetch()}>
-                    Retry
-                  </Button>
-                </div>
-              )}
-
-          {localConfig !== null && !isLoading && !isError && (
-            <div className="space-y-4">
-              <VersionHistorySection siteId={siteId} currentConfig={localConfig} onRestore={() => { refetch(); handleReloadIframe(); }} />
-              {Object.entries(localConfig)
-                .filter(([key, value]) => !shouldHideField(key, value))
-                .map(([key, value]) => (
-                  <ConfigSection
-                    key={key}
-                    sectionKey={key}
-                    value={value}
-                    onChange={handleFieldChange}
-                    forceOpen={focusedSection === key}
-                    focusedPath={focusedPath}
-                    highlightedPath={highlightedPath}
-                    websiteLanguage={websiteLanguage}
-                    onRequestPickImage={(path) => setPickImagePath(path)}
-                  />
-                ))}
-            </div>
-          )}
+            {/* Config panel — desktop only */}
+            <div className="hidden sm:block sm:w-1/4 h-full overflow-y-auto p-4 min-h-0" onClick={() => setHighlightedPath(null)}>
+              {configPanelContent}
             </div>
           </div>
+
+          {/* Mobile: backdrop (shared) */}
+          <div
+            className={`sm:hidden absolute inset-0 z-10 bg-black/40 transition-opacity duration-300 ${
+              configDrawerOpen || fieldDrawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+            }`}
+            onClick={() => { setConfigDrawerOpen(false); setFieldDrawerOpen(false); }}
+          />
+
+          {/* Mobile: FAB — hidden while field drawer is open */}
+          <button
+            className={`sm:hidden absolute bottom-5 right-4 z-20 bg-primary text-primary-foreground rounded-full shadow-lg px-4 py-3 flex items-center gap-2 text-sm font-medium transition-opacity duration-200 ${
+              fieldDrawerOpen ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
+            onClick={() => { setFieldDrawerOpen(false); setConfigDrawerOpen(true); }}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Edit Content
+          </button>
+
+          {/* Mobile: full config drawer (FAB) */}
+          <div
+            className={`sm:hidden absolute bottom-0 left-0 right-0 z-30 bg-background border-t rounded-t-2xl shadow-2xl flex flex-col transition-transform duration-300 ease-out ${
+              configDrawerOpen ? "translate-y-0" : "translate-y-full"
+            }`}
+            style={{ maxHeight: "78vh" }}
+          >
+            <div className="flex justify-center pt-3 pb-1 shrink-0">
+              <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30" />
+            </div>
+            <div className="flex items-center justify-between px-4 py-2 shrink-0">
+              <span className="font-semibold text-base">Edit Content</span>
+              <Button variant="ghost" size="sm" onClick={() => setConfigDrawerOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 pb-2 min-h-0" onClick={() => setHighlightedPath(null)}>
+              {configPanelContent}
+            </div>
+            <div className="p-4 border-t shrink-0">
+              <Button
+                className="w-full"
+                disabled={!isDirty || mutation.isPending}
+                onClick={handleSave}
+              >
+                {mutation.isPending ? "Saving..." : isDirty ? "Save Changes" : "No changes"}
+              </Button>
+            </div>
+          </div>
+
+          {/* Mobile: focused single-field mini-drawer (click-to-edit) */}
+          <div
+            className={`sm:hidden absolute bottom-0 left-0 right-0 z-30 bg-background border-t rounded-t-2xl shadow-2xl transition-transform duration-300 ease-out ${
+              fieldDrawerOpen ? "translate-y-0" : "translate-y-full"
+            }`}
+          >
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-12 h-1.5 rounded-full bg-muted-foreground/30" />
+            </div>
+            <div className="flex items-center justify-between px-4 pb-2">
+              <button
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => { setFieldDrawerOpen(false); setConfigDrawerOpen(true); }}
+              >
+                <SlidersHorizontal className="h-3 w-3" />
+                Edit Content
+              </button>
+              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setFieldDrawerOpen(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="px-4 pb-5">
+              {fieldDrawerPath && localConfig && (() => {
+                const fieldKey = fieldDrawerPath.split('.').pop() ?? '';
+                const fieldValue = getValueAtPath(localConfig, fieldDrawerPath);
+                return (
+                  <>
+                    <ConfigField
+                      path={fieldDrawerPath}
+                      fieldKey={fieldKey}
+                      value={fieldValue}
+                      onChange={handleFieldChange}
+                      highlightedPath={highlightedPath}
+                      websiteLanguage={websiteLanguage}
+                      onRequestPickImage={(path) => setPickImagePath(path)}
+                    />
+                    <Button
+                      className="w-full mt-4"
+                      disabled={!isDirty || mutation.isPending}
+                      onClick={() => { handleSave(); setFieldDrawerOpen(false); }}
+                    >
+                      {mutation.isPending ? "Saving..." : isDirty ? "Save" : "Done"}
+                    </Button>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+
         </div>
       </DialogContent>
     </Dialog>

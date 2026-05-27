@@ -4303,23 +4303,56 @@ export default function WebsiteDashboard() {
               )}
 
               {activeSection === "content" && website?.siteId && (
-                <div data-testid="section-content" className="flex flex-col items-center justify-center h-[60vh] gap-6">
-                  <div className="text-center space-y-2">
-                    <h2 className="text-2xl font-semibold">{t("dashboard.contentEditor")}</h2>
-                    <p className="text-muted-foreground max-w-md">
-                      {t("dashboard.contentEditorDescription")}
-                    </p>
+                <div data-testid="section-content" className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-2.5">
+                    <span className="text-sm text-muted-foreground truncate">
+                      {website.siteId}.hayc.gr
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => setContentEditorOpen(true)}
+                      className="gap-2 shrink-0"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      {t("dashboard.openContentEditor")}
+                    </Button>
                   </div>
-                  <Button 
-                    size="lg" 
-                    onClick={() => setContentEditorOpen(true)}
-                    className="gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    {t("dashboard.openContentEditor")}
-                  </Button>
-                  <ContentEditor 
-                    websiteId={Number(websiteId)} 
+                  <div className="rounded-lg border overflow-hidden shadow-sm">
+                    <iframe
+                      src={`https://${website.siteId}.hayc.gr?hayc_preview=true`}
+                      className="w-full border-0 block"
+                      style={{ height: "calc(100vh - 220px)", minHeight: "500px" }}
+                      title="Site Preview"
+                      sandbox="allow-same-origin allow-scripts allow-forms"
+                      referrerPolicy="no-referrer"
+                      onLoad={(e) => {
+                        const iframe = e.currentTarget;
+                        const homeOrigin = new URL(`https://${website.siteId}.hayc.gr`).origin;
+                        try {
+                          const win = iframe.contentWindow as any;
+                          if (!win || win.__haycNavGuard) return;
+                          win.__haycNavGuard = true;
+                          win.document.addEventListener(
+                            "click",
+                            (evt: MouseEvent) => {
+                              const anchor = (evt.target as Element)?.closest("a[href]");
+                              if (!anchor) return;
+                              try {
+                                const url = new URL(
+                                  (anchor as HTMLAnchorElement).href,
+                                  win.location.href
+                                );
+                                if (url.origin !== homeOrigin) evt.preventDefault();
+                              } catch {}
+                            },
+                            true
+                          );
+                        } catch {}
+                      }}
+                    />
+                  </div>
+                  <ContentEditor
+                    websiteId={Number(websiteId)}
                     siteId={website.siteId}
                     open={contentEditorOpen}
                     onOpenChange={setContentEditorOpen}
