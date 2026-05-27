@@ -1144,7 +1144,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
               </span>
             )}
 
-            <div className={`${savedAt === null ? "ml-auto" : "sm:ml-0"} flex items-center gap-1 sm:gap-2`}>
+            <div className={`ml-auto ${savedAt !== null ? "sm:ml-0" : ""} flex items-center gap-1 sm:gap-2`}>
               <div className="flex items-center gap-1 sm:gap-1.5">
                 <Switch
                   checked={editMode}
