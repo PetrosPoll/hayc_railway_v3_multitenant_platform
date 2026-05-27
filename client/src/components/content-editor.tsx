@@ -1144,8 +1144,8 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
               </span>
             )}
 
-            <div className={`${savedAt === null ? "ml-auto" : "sm:ml-0"} flex items-center gap-2`}>
-              <div className="flex items-center gap-1.5">
+            <div className={`${savedAt === null ? "ml-auto" : "sm:ml-0"} flex items-center gap-1 sm:gap-2`}>
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <Switch
                   checked={editMode}
                   onCheckedChange={(checked) => {
@@ -1156,10 +1156,8 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                     );
                   }}
                 />
-                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
-                  <span className="sm:hidden">Edit: </span>
-                  <span className="hidden sm:inline">Edit mode: </span>
-                  {editMode ? "ON" : "OFF"}
+                <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">
+                  Edit mode: {editMode ? "ON" : "OFF"}
                 </span>
                 {websiteLanguage && (() => {
                   const langs = websiteLanguage === "both"

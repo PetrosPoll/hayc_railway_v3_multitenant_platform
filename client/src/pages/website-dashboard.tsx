@@ -4292,7 +4292,7 @@ export default function WebsiteDashboard() {
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
               <SidebarTrigger />
             </header>
-            <div className="flex-1 p-4 md:p-6">
+            <div className="flex-1 p-4 md:p-6 overflow-x-hidden">
               {renderBreadcrumbs()}
 
               {activeSection === "progress" && (
@@ -4321,7 +4321,7 @@ export default function WebsiteDashboard() {
                       className="gap-2 shrink-0"
                     >
                       <ExternalLink className="h-4 w-4" />
-                      {t("dashboard.openContentEditor")}
+                      <span className="hidden sm:inline">{t("dashboard.openContentEditor")}</span>
                     </Button>
                   </div>
                   <div className="rounded-lg border overflow-hidden shadow-sm">
