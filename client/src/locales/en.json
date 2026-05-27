@@ -2881,6 +2881,7 @@
                 "primaryColor": "Primary color",
                 "textColorOnPrimary": "Text color on primary",
                 "fontFamily": "Font family",
+                "defaultLanguage": "Default Language",
                 "borderRadius": "Border radius"
             },
             "placeholders": {

@@ -22136,6 +22136,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     primaryForeground: z.string(),
     fontFamily: z.enum(["Inter", "Roboto", "Open Sans", "Lato", "Noto Sans", "Source Sans 3", "Nunito", "Raleway", "Playfair Display", "Merriweather"]),
     borderRadius: z.enum(["0px", "4px", "8px", "16px", "9999px"]),
+    defaultLanguage: z.enum(["el", "en"]).optional(),
   });
 
   app.get("/api/hdp/brand/:siteId", async (req, res) => {

@@ -2881,6 +2881,7 @@
                 "primaryColor": "Κύριο χρώμα",
                 "textColorOnPrimary": "Χρώμα κειμένου πάνω στο κύριο",
                 "fontFamily": "Γραμματοσειρά",
+                "defaultLanguage": "Προεπιλεγμένη γλώσσα",
                 "borderRadius": "Ακτίνα γωνιών"
             },
             "placeholders": {

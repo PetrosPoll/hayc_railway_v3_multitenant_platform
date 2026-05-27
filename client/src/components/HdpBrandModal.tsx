@@ -37,7 +37,13 @@ interface HdpBrandFormState {
   primaryForeground: string;
   fontFamily: HdpFontFamily;
   borderRadius: HdpBorderRadius;
+  defaultLanguage: "el" | "en";
 }
+
+const HDP_LANGUAGES: Array<{ value: "el" | "en"; label: string }> = [
+  { value: "el", label: "Ελληνικά (Greek)" },
+  { value: "en", label: "English" },
+];
 
 const FONT_FAMILIES: HdpFontFamily[] = [
   "Inter",
@@ -66,6 +72,7 @@ const DEFAULT_FORM: HdpBrandFormState = {
   primaryForeground: "#FFFFFF",
   fontFamily: "Inter",
   borderRadius: "8px",
+  defaultLanguage: "el",
 };
 
 function normalizeHexColor(input: string, fallback: string) {
@@ -257,6 +264,11 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
               DEFAULT_FORM.borderRadius,
             DEFAULT_FORM.borderRadius
           ),
+          defaultLanguage: (
+            getFirstString(brandRoot, ["defaultLanguage", "default_language"]) === "en"
+              ? "en"
+              : "el"
+          ),
         };
 
         if (cancelled) return;
@@ -295,6 +307,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
           primaryForeground: form.primaryForeground,
           fontFamily: form.fontFamily,
           borderRadius: form.borderRadius,
+          defaultLanguage: form.defaultLanguage,
         }),
       });
 
@@ -426,6 +439,26 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
                     {FONT_FAMILIES.map((font) => (
                       <SelectItem key={font} value={font}>
                         <span style={{ fontFamily: font }}>{font}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.defaultLanguage")}</Label>
+                <Select
+                  value={form.defaultLanguage}
+                  onValueChange={(val) => setForm((prev) => ({ ...prev, defaultLanguage: val as "el" | "en" }))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select default language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HDP_LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.value} value={lang.value}>
+                        {lang.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
