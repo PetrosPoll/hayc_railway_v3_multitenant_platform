@@ -1108,7 +1108,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   return (
     <>
     <Dialog open={open} onOpenChange={(v) => { if (!v) { setConfigDrawerOpen(false); setFieldDrawerOpen(false); } onOpenChange(v); }}>
-      <DialogContent className="max-w-none w-screen h-screen p-0 rounded-none border-0 gap-0 [&>button]:hidden">
+      <DialogContent className="max-w-none w-screen h-screen h-dvh p-0 rounded-none border-0 gap-0 [&>button]:hidden" style={{ height: '100dvh' }}>
         <VisuallyHidden.Root>
           <DialogTitle>Content Editor</DialogTitle>
         </VisuallyHidden.Root>
