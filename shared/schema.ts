@@ -621,7 +621,7 @@ export const subscriptionPlans = {
     id: "pro",
     name: "Pro",
     price: 200,
-    yearlyPrice: 2400,
+    yearlyPrice: 1920,
     yearlyPriceInMonth: 160,
     setupFee: 99,
     changesPerMonth: 5,

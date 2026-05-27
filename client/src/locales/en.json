@@ -3221,7 +3221,33 @@
                 }
             },
             "missingFieldsTitle": "Please fill in the required fields",
-            "missingFieldsDismiss": "Got it"
+            "missingFieldsDismiss": "Got it",
+            "continueToCheckout": "Continue to checkout",
+            "nextStepHint": "Next Step: review your plan and payment details",
+            "setupSavedNote": "Your Setup will be saved to your account"
+        },
+        "pricing": {
+            "title": "Simple, transparent pricing",
+            "todayLabel": "Today",
+            "todayDesc": "Pay {{amount}}€ once to get started",
+            "alwaysLabel": "Always",
+            "alwaysDesc": "Cancel anytime",
+            "recurringDesc": "{{amount}}€/mo for your selected plan + add-ons",
+            "recurringDescYearly": "{{amount}}€/yr for your selected plan + add-ons",
+            "setupFeeNote": "Today's payment includes a one-time {{amount}}€ setup fee.",
+            "choosePlan": "Choose your plan",
+            "baseModelNote": "Base model price before add-ons",
+            "selectedAddons": "Selected add-ons",
+            "pricingSummary": "Pricing summary",
+            "basePlanLine": "Base plan: {{plan}}",
+            "addonsLine": "Selected add-ons",
+            "setupFeeLine": "One-time setup fee",
+            "payTodayLine": "Pay Today",
+            "payTodayNote": "Includes the one-time setup fee and your first month",
+            "payTodayNoteYearly": "Includes the one-time setup fee and your first year",
+            "subscriptionContinues": "Your subscription continues at {{amount}}€/mo until changed or cancelled.",
+            "subscriptionContinuesYearly": "Your subscription continues at {{amount}}€/yr until changed or cancelled.",
+            "continueToPayment": "Continue to Payment"
         },
         "onboarding": {
             "title": "Add your services",

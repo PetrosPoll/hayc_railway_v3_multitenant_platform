@@ -3221,7 +3221,33 @@
                 }
             },
             "missingFieldsTitle": "Παρακαλώ συμπληρώστε τα υποχρεωτικά πεδία",
-            "missingFieldsDismiss": "Κατάλαβα"
+            "missingFieldsDismiss": "Κατάλαβα",
+            "continueToCheckout": "Συνέχεια στην ολοκλήρωση",
+            "nextStepHint": "Επόμενο βήμα: επισκόπηση πλάνου και στοιχείων πληρωμής",
+            "setupSavedNote": "Η ρύθμισή σας θα αποθηκευτεί στον λογαριασμό σας"
+        },
+        "pricing": {
+            "title": "Απλή, διαφανής τιμολόγηση",
+            "todayLabel": "Σήμερα",
+            "todayDesc": "Πληρώστε {{amount}}€ μία φορά για να ξεκινήσετε",
+            "alwaysLabel": "Πάντα",
+            "alwaysDesc": "Ακύρωση ανά πάσα στιγμή",
+            "recurringDesc": "{{amount}}€/μήνα για το πλάνο + add-ons σας",
+            "recurringDescYearly": "{{amount}}€/χρόνο για το πλάνο + add-ons σας",
+            "setupFeeNote": "Η σημερινή πληρωμή περιλαμβάνει εφάπαξ τέλος {{amount}}€.",
+            "choosePlan": "Επιλέξτε πλάνο",
+            "baseModelNote": "Βασική τιμή πριν τα add-ons",
+            "selectedAddons": "Επιλεγμένα add-ons",
+            "pricingSummary": "Σύνοψη τιμολόγησης",
+            "basePlanLine": "Βασικό πλάνο: {{plan}}",
+            "addonsLine": "Επιλεγμένα add-ons",
+            "setupFeeLine": "Εφάπαξ τέλος ρύθμισης",
+            "payTodayLine": "Πληρωμή σήμερα",
+            "payTodayNote": "Περιλαμβάνει το εφάπαξ τέλος και τον πρώτο μήνα",
+            "payTodayNoteYearly": "Περιλαμβάνει το εφάπαξ τέλος και τον πρώτο χρόνο",
+            "subscriptionContinues": "Η συνδρομή σας συνεχίζεται στα {{amount}}€/μήνα έως ότου αλλάξει ή ακυρωθεί.",
+            "subscriptionContinuesYearly": "Η συνδρομή σας συνεχίζεται στα {{amount}}€/χρόνο έως ότου αλλάξει ή ακυρωθεί.",
+            "continueToPayment": "Συνέχεια στην πληρωμή"
         },
         "onboarding": {
             "title": "Προσθέστε τις υπηρεσίες σας",

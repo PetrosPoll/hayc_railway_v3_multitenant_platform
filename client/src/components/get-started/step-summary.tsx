@@ -1,9 +1,7 @@
-﻿import React, { useState } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import {
-  PLANS,
-  WIZARD_BILLING_PERIODS,
   type WizardValues,
 } from "@/pages/get-started";
 import { SUMMARY_SELECTED_DESIGN_I18N_KEY } from "@/lib/get-started-translations";
@@ -36,17 +34,6 @@ const ADDON_I18N_KEY_MAP: Record<string, string> = {
   "HDP": "hdp",
 };
 
-const PLAN_CONFIG: {
-  id: (typeof PLANS)[number];
-  monthlyPrice: number;
-  yearlyPricePerMonth: number;
-  recommended: boolean;
-}[] = [
-  { id: "essential", monthlyPrice: 39, yearlyPricePerMonth: 31, recommended: true },
-  { id: "basic", monthlyPrice: 34, yearlyPricePerMonth: 27, recommended: false },
-  { id: "pro", monthlyPrice: 200, yearlyPricePerMonth: 160, recommended: false },
-];
-
 interface StepSummaryProps {
   form: UseFormReturn<WizardValues>;
   onBack: () => void;
@@ -76,9 +63,8 @@ export default function StepSummary({
     const key = ADDON_I18N_KEY_MAP[value];
     return key ? t(`getStarted.recommendation.addons.${key}`) : value;
   };
+
   const selectedDesignId = form.watch("selectedDesign");
-  const selectedPlanId = form.watch("plan");
-  const selectedBillingPeriod = form.watch("billingPeriod") ?? "monthly";
   const fullName = form.watch("fullName");
   const email = form.watch("email");
   const password = form.watch("password") ?? "";
@@ -138,11 +124,6 @@ export default function StepSummary({
       ? ENVATO_TEMPLATES.find((t) => String(t.id) === selectedDesignId)
       : null;
 
-  const planLabelForCta =
-    selectedPlanId && PLANS.includes(selectedPlanId)
-      ? t(`getStarted.summary.plans.${selectedPlanId}.label`)
-      : t("getStarted.summary.plans.essential.label");
-
   return (
     <div className="w-full min-h-screen bg-black px-4 md:px-16 pt-16 pb-8 md:py-12 flex flex-col justify-center items-center gap-6 overflow-hidden">
       {/* Header */}
@@ -157,7 +138,7 @@ export default function StepSummary({
         </div>
       </div>
 
-      {/* Two column cards — desktop: equal height (stretch to tallest) */}
+      {/* Two column cards */}
       <div className="w-full flex flex-col md:flex-row justify-start items-start gap-6">
         {/* LEFT CARD — summary */}
         <div className="w-full md:flex-1 md:min-h-0 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-6">
@@ -242,8 +223,8 @@ export default function StepSummary({
           </div>
         </div>
 
-        {/* RIGHT CARD — account + plan */}
-        <div className="w-full md:flex-1 md:min-h-0 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-8 md:gap-24">
+        {/* RIGHT CARD — account creation */}
+        <div className="w-full md:flex-1 md:min-h-0 p-4 md:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col gap-6">
           <div className="flex flex-col gap-6">
             <div className="text-white text-base md:text-2xl font-medium font-brand">
               {isLoggedIn
@@ -598,201 +579,44 @@ export default function StepSummary({
             )}
           </div>
 
-          <div className="flex flex-col gap-6">
-            <div className="text-white text-base md:text-2xl font-medium font-brand">
-              {t("getStarted.summary.choosePlan")}
+          {/* CTA buttons */}
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-center gap-2">
+              <Check className="w-4 h-4 text-white/40" />
+              <span className="text-white/50 text-xs font-normal font-brand">
+                {t("getStarted.summary.setupSavedNote")}
+              </span>
             </div>
-            <div className="flex flex-col gap-3">
-              <FormField
-                control={form.control}
-                name="billingPeriod"
-                render={({ field }) => {
-                  const current = field.value ?? "monthly";
-                  return (
-                    <FormItem className="w-full">
-                      <div className="text-white text-sm font-medium font-brand mb-2">
-                        {t("getStarted.summary.billing.label")}
-                      </div>
-                      <FormControl>
-                        <div className="flex flex-row flex-wrap gap-2">
-                          {WIZARD_BILLING_PERIODS.map((period) => {
-                            const isSel = current === period;
-                            return (
-                              <button
-                                key={period}
-                                type="button"
-                                onClick={() => field.onChange(period)}
-                                className={cn(
-                                  "px-3.5 py-2 rounded-[10px] outline outline-1 outline-offset-[-1px]",
-                                  "text-white text-sm font-semibold font-brand",
-                                  "transition-colors cursor-pointer border-0",
-                                  "bg-gradient-to-br from-neutral-700/30 to-neutral-700/20",
-                                  isSel
-                                    ? "outline-[#ED4C14]"
-                                    : "outline-white/30",
-                                )}
-                              >
-                                {t(
-                                  period === "monthly"
-                                    ? "getStarted.summary.billing.monthly"
-                                    : "getStarted.summary.billing.yearly",
-                                )}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </FormControl>
-                      {current === "yearly" && (
-                        <p className="mt-2 text-white/60 text-xs font-normal font-brand leading-snug">
-                          {t("getStarted.summary.billing.yearlyExplanation")}
-                        </p>
-                      )}
-                    </FormItem>
-                  );
-                }}
-              />
-
-              <FormField
-                control={form.control}
-                name="plan"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <div className="flex flex-col gap-3">
-                        {PLAN_CONFIG.map((plan) => {
-                          const isSelected = field.value === plan.id;
-                          const displayPrice =
-                            selectedBillingPeriod === "yearly"
-                              ? plan.yearlyPricePerMonth
-                              : plan.monthlyPrice;
-                          return (
-                            <button
-                              key={plan.id}
-                              type="button"
-                              onClick={() => field.onChange(plan.id)}
-                              className={cn(
-                                "w-full h-16 px-3.5 py-2.5 rounded-[10px]",
-                                "outline outline-1 outline-offset-[-1px] outline-blue-50/20",
-                                "inline-flex justify-start items-center gap-3",
-                                "border-0 cursor-pointer transition-all",
-                                isSelected
-                                  ? "bg-[radial-gradient(ellipse_141.42%_177.70%_at_100%_100%,rgba(237,76,20,0.50)_0%,rgba(237,76,20,0)_77%)]"
-                                  : "bg-[radial-gradient(ellipse_141.42%_177.70%_at_100%_100%,rgba(237,76,20,0.02)_0%,rgba(237,76,20,0.04)_50%,rgba(237,76,20,0.01)_100%)]",
-                              )}
-                            >
-                              <div
-                                className={cn(
-                                  "w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center",
-                                  isSelected
-                                    ? "bg-white"
-                                    : "border border-white",
-                                )}
-                              >
-                                {isSelected && (
-                                  <Check
-                                    className="w-3 h-3 text-[#182B53]"
-                                    strokeWidth={3}
-                                  />
-                                )}
-                              </div>
-
-                              <div className="flex-1 flex justify-between items-center">
-                                <div className="flex flex-col gap-1 items-start">
-                                  <div className="flex items-end gap-1.5">
-                                    <span className="text-white text-sm md:text-lg font-medium font-brand">
-                                      {t(
-                                        `getStarted.summary.plans.${plan.id}.label`,
-                                      )}{" "}
-                                      -
-                                    </span>
-                                    <span className="text-white text-sm md:text-base font-normal font-brand leading-6">
-                                      {displayPrice}€
-                                    </span>
-                                    <span className="hidden md:inline text-white/80 text-sm font-normal font-brand leading-5">
-                                      {selectedBillingPeriod === "yearly"
-                                        ? t(
-                                            "getStarted.summary.perMonthAnnual",
-                                          )
-                                        : t("getStarted.summary.perMonth")}
-                                    </span>
-                                  </div>
-                                  <div className="text-white/50 text-xs md:text-sm font-normal font-brand tracking-tight">
-                                    {t(
-                                      `getStarted.summary.plans.${plan.id}.description`,
-                                    )}
-                                  </div>
-                                </div>
-                                {plan.recommended && (
-                                  <div className="px-2 py-[5px] bg-[#ED4C14] rounded-[5px] outline outline-1 outline-offset-[-1px] outline-white/10 flex items-center">
-                                    <span className="text-white text-sm font-medium font-brand">
-                                      {t("getStarted.summary.recommended")}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <div className="text-white/80 text-xs md:text-sm font-normal font-brand leading-5 text-center">
-                {t("getStarted.summary.setupFee")}
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={onBack}
-                className="w-full h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-center items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
-              >
-                <span className="text-white text-sm md:text-base font-semibold font-brand leading-5">
-                  {t("getStarted.navigation.back")}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const missing = getMissingFieldLabels();
-                  if (missing.length > 0) {
-                    setMissingFields(missing);
-                  } else {
-                    onSubmit();
-                  }
-                }}
-                disabled={isSubmitting}
-                className="w-full h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-center items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-              >
-                <span className="text-white text-sm md:text-base font-semibold font-brand leading-5">
-                  {isSubmitting
-                    ? t("getStarted.summary.processing")
-                    : t("getStarted.summary.continueWith", {
-                        plan: planLabelForCta,
-                      })}
-                </span>
-              </button>
-
-              <div className="flex justify-center items-center gap-6">
-                <div className="w-9 h-6 bg-zinc-900 rounded border border-neutral-500 flex items-center justify-center">
-                  <span className="text-white/60 text-xs font-brand">
-                    {t("getStarted.summary.visa")}
-                  </span>
-                </div>
-                <div className="w-9 h-6 bg-zinc-900 rounded border border-neutral-500 flex items-center justify-center">
-                  <span className="text-white/60 text-xs font-brand">
-                    {t("getStarted.summary.payLabel")}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Check className="w-4 h-4 text-white/60" />
-                  <span className="text-white/80 text-xs font-normal font-brand">
-                    {t("getStarted.summary.cancelAnytime")}
-                  </span>
-                </div>
-              </div>
+            <button
+              type="button"
+              onClick={onBack}
+              className="w-full h-11 px-5 py-3.5 rounded-[10px] inline-flex justify-center items-center gap-4 border border-white/30 cursor-pointer bg-transparent hover:bg-white/10 transition-colors"
+            >
+              <span className="text-white text-sm md:text-base font-semibold font-brand leading-5">
+                {t("getStarted.navigation.back")}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const missing = getMissingFieldLabels();
+                if (missing.length > 0) {
+                  setMissingFields(missing);
+                } else {
+                  onSubmit();
+                }
+              }}
+              disabled={isSubmitting}
+              className="w-full h-11 px-5 py-3.5 bg-[#ED4C14] rounded-[10px] inline-flex justify-center items-center gap-4 border-0 cursor-pointer hover:bg-[#d44310] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span className="text-white text-sm md:text-base font-semibold font-brand leading-5">
+                {isSubmitting
+                  ? t("getStarted.summary.processing")
+                  : t("getStarted.summary.continueToCheckout")}
+              </span>
+            </button>
+            <div className="text-center text-white/40 text-xs font-normal font-brand">
+              {t("getStarted.summary.nextStepHint")}
             </div>
           </div>
         </div>
@@ -826,4 +650,3 @@ export default function StepSummary({
     </div>
   );
 }
-

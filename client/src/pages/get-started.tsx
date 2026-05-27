@@ -20,6 +20,7 @@ import StepGoal from "@/components/get-started/step-goal";
 import StepRecommendation from "@/components/get-started/step-recommendation";
 import StepChooseDesign from "@/components/get-started/step-choose-design";
 import StepSummary from "@/components/get-started/step-summary";
+import StepPricing from "@/components/get-started/step-pricing";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
 import { checkEmailExists } from "@/lib/api";
 // import { StepBusinessType } from "@/pages/get-started/steps/step-business-type";
@@ -249,6 +250,13 @@ export default function GetStarted() {
     if (billingParam === "monthly" || billingParam === "yearly") {
       setValue("billingPeriod", billingParam);
     }
+    const stepParam = searchParams.get("step");
+    if (stepParam !== null) {
+      const stepNum = parseInt(stepParam, 10);
+      if (!isNaN(stepNum) && stepNum >= 0 && stepNum <= 5) {
+        setCurrentStep(stepNum);
+      }
+    }
   }, [searchParams, setValue]);
 
   useEffect(() => {
@@ -338,19 +346,23 @@ export default function GetStarted() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const onSubmit = async (values: WizardValues) => {
-    const plan = values.plan ?? "essential";
-    const billingPeriod = values.billingPeriod ?? "monthly";
-    const email = sessionUser?.email ?? values.email ?? "";
-    const fullName = sessionUser?.username ?? values.fullName ?? "";
+  /**
+   * Called when the user completes the account step (step 4).
+   * Runs field validation and an async email-existence check before advancing to step 5.
+   */
+  const onAccountComplete = async () => {
+    const values = form.getValues();
 
     if (!isLoggedIn) {
-      if (!email) {
-        toast({ title: t("getStarted.errors.emailRequired"), variant: "destructive" });
+      const email = values.email ?? "";
+      const fullName = values.fullName ?? "";
+
+      if (!fullName.trim()) {
+        toast({ title: t("getStarted.errors.nameRequired"), variant: "destructive" });
         return;
       }
-      if (!fullName) {
-        toast({ title: t("getStarted.errors.nameRequired"), variant: "destructive" });
+      if (!email.trim()) {
+        toast({ title: t("getStarted.errors.emailRequired"), variant: "destructive" });
         return;
       }
       if (!values.password) {
@@ -382,6 +394,7 @@ export default function GetStarted() {
         }
       }
 
+      setIsSubmitting(true);
       try {
         const emailCheck = await checkEmailExists(email);
         if (emailCheck.success && emailCheck.exists) {
@@ -394,10 +407,20 @@ export default function GetStarted() {
         }
       } catch (e) {
         console.warn("Email check error:", e);
+      } finally {
+        setIsSubmitting(false);
       }
     }
 
-    if (!values.privacyAccepted && !isLoggedIn) return;
+    nextStep();
+  };
+
+  /** Called at step 5 — account was already validated in onAccountComplete. */
+  const onSubmit = async (values: WizardValues) => {
+    const plan = values.plan ?? "essential";
+    const billingPeriod = values.billingPeriod ?? "monthly";
+    const email = sessionUser?.email ?? values.email ?? "";
+    const fullName = sessionUser?.username ?? values.fullName ?? "";
 
     persistPreCheckout({
       plan: values.plan,
@@ -432,7 +455,7 @@ export default function GetStarted() {
           street: values.documentType === "invoice" ? (values.street ?? "") : "",
           streetNumber: values.documentType === "invoice" ? (values.streetNumber ?? "") : "",
           postalCode: values.documentType === "invoice" ? (values.postalCode ?? "") : "",
-          addOns: values.addOns ?? [],
+          addOns: values.selectedAddons ?? [],
           language: i18n.language,
         }),
       });
@@ -495,8 +518,17 @@ export default function GetStarted() {
           <StepSummary
             form={form}
             onBack={prevStep}
-            onSubmit={form.handleSubmit(onSubmit)}
+            onSubmit={onAccountComplete}
             isLoggedIn={isLoggedIn}
+            isSubmitting={isSubmitting}
+          />
+        );
+      case 5:
+        return (
+          <StepPricing
+            form={form}
+            onBack={prevStep}
+            onSubmit={form.handleSubmit(onSubmit)}
             isSubmitting={isSubmitting}
           />
         );

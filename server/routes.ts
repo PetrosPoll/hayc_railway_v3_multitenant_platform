@@ -303,6 +303,12 @@ const ADDON_PRICE_MAP = availableAddOnsWithPriceIds.reduce((map, addon) => {
   return map;
 }, {} as Record<string, string>);
 
+// Map client-side display names → schema IDs (client stores display names in selectedAddons)
+const ADDON_DISPLAY_NAME_TO_ID: Record<string, string> = {
+  "Booking Integration": "booking",
+  "HDP": "lms",
+};
+
 // Mapping of add-on IDs to their yearly price environment variable names
 const ADDON_YEARLY_ENV_KEYS: Record<string, string> = {
   'lms': 'STRIPE_LMS_ADDON_YEARLY_PRICE_ID',
@@ -2417,16 +2423,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (body.addOns && body.addOns.length > 0) {
         console.log("📦 Processing add-ons:", body.addOns);
-        body.addOns.forEach((addonId) => {
-          const priceId = ADDON_PRICE_MAP[addonId];
-          console.log(`  - Add-on "${addonId}" -> Price ID: ${priceId}`);
+        body.addOns.forEach((rawAddonId) => {
+          const addonId = ADDON_DISPLAY_NAME_TO_ID[rawAddonId] ?? rawAddonId;
+          const priceId = body.billingPeriod === "yearly"
+            ? (ADDON_YEARLY_PRICE_MAP[addonId]?.priceId ?? ADDON_PRICE_MAP[addonId])
+            : ADDON_PRICE_MAP[addonId];
+          console.log(`  - Add-on "${rawAddonId}" -> "${addonId}" (${body.billingPeriod}) -> Price ID: ${priceId}`);
           if (priceId) {
             lineItems.push({
               price: priceId,
               quantity: 1,
             });
           } else {
-            console.warn(`Unknown add-on ID: ${addonId}`);
+            console.warn(`Unknown add-on ID: ${addonId} (raw: ${rawAddonId})`);
           }
         });
       }
