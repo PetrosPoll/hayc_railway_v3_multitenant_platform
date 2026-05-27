@@ -2891,6 +2891,13 @@
             "actions": {
                 "preview": "Προεπισκόπηση"
             },
+            "borderRadiusOptions": {
+                "none": "Χωρίς (0px)",
+                "small": "Μικρή (4px)",
+                "medium": "Μέτρια (8px)",
+                "large": "Μεγάλη (16px)",
+                "full": "Πλήρης (pill)"
+            },
             "toasts": {
                 "lookAndFeelUpdated": "Η εμφάνιση ενημερώθηκε",
                 "somethingWentWrong": "Κάτι πήγε στραβά, δοκιμάστε ξανά"

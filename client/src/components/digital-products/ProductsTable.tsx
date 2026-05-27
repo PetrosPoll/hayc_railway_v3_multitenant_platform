@@ -1,6 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Table,
   TableBody,
@@ -9,6 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Eye, EyeOff, Globe, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Product, ProductStatus } from "@/types/digital-products";
 
@@ -32,6 +38,23 @@ function formatPrice(price: number | string, currency: string): string {
   }).format(amount);
 }
 
+function StatusBadge({ status, t }: { status: ProductStatus; t: (k: string) => string }) {
+  return (
+    <Badge
+      variant="secondary"
+      className={
+        status === "published"
+          ? "shrink-0 bg-green-100 text-green-800 hover:bg-green-100"
+          : "shrink-0 bg-gray-100 text-gray-700 hover:bg-gray-100"
+      }
+    >
+      {status === "published"
+        ? t("digitalProductsManagement.status.published")
+        : t("digitalProductsManagement.status.draft")}
+    </Badge>
+  );
+}
+
 export function ProductsTable({
   products,
   onEdit,
@@ -43,87 +66,168 @@ export function ProductsTable({
   const { t } = useTranslation();
 
   return (
-    <div className="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{t("digitalProductsManagement.table.title")}</TableHead>
-            <TableHead>{t("digitalProductsManagement.table.price")}</TableHead>
-            <TableHead>{t("digitalProductsManagement.table.status")}</TableHead>
-            <TableHead className="text-right">{t("digitalProductsManagement.table.actions")}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <TooltipProvider>
+      <div className="rounded-lg border">
+        {/* Mobile: card layout */}
+        <div className="divide-y sm:hidden">
           {products.map((product) => (
-            <TableRow key={product.id}>
-              <TableCell className="font-medium">{product.title}</TableCell>
-              <TableCell>{formatPrice(product.price, product.currency)}</TableCell>
-              <TableCell>
-                <Badge
-                  variant="secondary"
-                  className={
+            <div key={product.id} className="p-4 space-y-3">
+              <div className="flex items-start justify-between gap-2">
+                <p className="font-medium leading-snug">{product.title}</p>
+                <StatusBadge status={product.status} t={t} />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {formatPrice(product.price, product.currency)}
+              </p>
+              <div className="flex items-center gap-1">
+                {product.type === "course" ? (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    type="button"
+                    aria-label={t("digitalProductsManagement.actions.preview", { defaultValue: "Preview" })}
+                    onClick={() => onPreviewCourse(product)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                ) : null}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  type="button"
+                  aria-label={t("digitalProductsManagement.actions.edit")}
+                  onClick={() => onEdit(product)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  type="button"
+                  aria-label={
                     product.status === "published"
-                      ? "bg-green-100 text-green-800 hover:bg-green-100"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-100"
+                      ? t("digitalProductsManagement.actions.unpublish")
+                      : t("digitalProductsManagement.actions.publish")
                   }
+                  onClick={() => onStatusToggle(product.id, product.status)}
                 >
                   {product.status === "published"
-                    ? t("digitalProductsManagement.status.published")
-                    : t("digitalProductsManagement.status.draft")}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-right">
-                <div className="inline-flex items-center gap-2">
-                  {product.type === "course" ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      onClick={() => onPreviewCourse(product)}
-                    >
-                      {t("digitalProductsManagement.actions.preview", { defaultValue: "Preview" })}
-                    </Button>
-                  ) : null}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={() => onEdit(product)}
-                  >
-                    {t("digitalProductsManagement.actions.edit")}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    type="button"
-                    onClick={() => onStatusToggle(product.id, product.status)}
-                  >
-                    {product.status === "published"
-                      ? t("digitalProductsManagement.actions.unpublish")
-                      : t("digitalProductsManagement.actions.publish")}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    type="button"
-                    onClick={() => onDelete(product.id)}
-                    disabled={deletingId === product.id}
-                  >
-                    {deletingId === product.id ? (
-                      <span className="inline-flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        {t("digitalProductsManagement.actions.deleting")}
-                      </span>
-                    ) : (
-                      t("digitalProductsManagement.actions.delete")
-                    )}
-                  </Button>
-                </div>
-              </TableCell>
-            </TableRow>
+                    ? <EyeOff className="h-4 w-4" />
+                    : <Globe className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  type="button"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  aria-label={t("digitalProductsManagement.actions.delete")}
+                  onClick={() => onDelete(product.id)}
+                  disabled={deletingId === product.id}
+                >
+                  {deletingId === product.id
+                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                    : <Trash2 className="h-4 w-4" />}
+                </Button>
+              </div>
+            </div>
           ))}
-        </TableBody>
-      </Table>
-    </div>
+        </div>
+
+        {/* Desktop: table with icon buttons */}
+        <div className="hidden sm:block overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/60 hover:bg-muted/60">
+                <TableHead>{t("digitalProductsManagement.table.title")}</TableHead>
+                <TableHead>{t("digitalProductsManagement.table.price")}</TableHead>
+                <TableHead>{t("digitalProductsManagement.table.status")}</TableHead>
+                <TableHead className="text-right">{t("digitalProductsManagement.table.actions")}</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {products.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell className="font-medium">{product.title}</TableCell>
+                  <TableCell>{formatPrice(product.price, product.currency)}</TableCell>
+                  <TableCell>
+                    <StatusBadge status={product.status} t={t} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="inline-flex items-center gap-1">
+                      {product.type === "course" ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              type="button"
+                              onClick={() => onPreviewCourse(product)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            {t("digitalProductsManagement.actions.preview", { defaultValue: "Preview" })}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : null}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            type="button"
+                            onClick={() => onEdit(product)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("digitalProductsManagement.actions.edit")}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            type="button"
+                            onClick={() => onStatusToggle(product.id, product.status)}
+                          >
+                            {product.status === "published"
+                              ? <EyeOff className="h-4 w-4" />
+                              : <Globe className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {product.status === "published"
+                            ? t("digitalProductsManagement.actions.unpublish")
+                            : t("digitalProductsManagement.actions.publish")}
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            type="button"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => onDelete(product.id)}
+                            disabled={deletingId === product.id}
+                          >
+                            {deletingId === product.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Trash2 className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t("digitalProductsManagement.actions.delete")}</TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    </TooltipProvider>
   );
 }

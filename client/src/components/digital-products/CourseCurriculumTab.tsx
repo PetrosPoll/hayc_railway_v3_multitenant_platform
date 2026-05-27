@@ -1044,7 +1044,7 @@ export function CourseCurriculumTab({
                       : t("digitalProductsManagement.status.draft")}
                   </Badge>
                 </div>
-                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
                   <Button
                     type="button"
                     variant="outline"
@@ -1195,7 +1195,7 @@ export function CourseCurriculumTab({
                                 : t("digitalProductsManagement.status.draft")}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex shrink-0 items-center gap-1" onClick={(e) => e.stopPropagation()}>
                             <Button
                               type="button"
                               variant="outline"

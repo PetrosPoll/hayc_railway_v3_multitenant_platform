@@ -377,9 +377,48 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
     <div>
       <h2 className="text-2xl font-bold mb-2">{t("digitalProductsManagement.title")}</h2>
 
-      <div className="flex items-center justify-between mb-6 gap-4">
+      {/* Mobile layout */}
+      <div className="sm:hidden mb-6 space-y-3">
+        {listMode === "courses" && types.length > 1 ? (
+          /* Filter present: filter + create on one row, configure below */
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <ProductTypeFilter types={types} active={activeFilter} onChange={setActiveFilter} />
+              </div>
+              <CreateProductButton onSelect={handleCreateSelect} />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setBrandModalOpen(true)}
+              data-testid="button-configure-look-feel"
+            >
+              {t("digitalProductsManagement.configureLookAndFeel")}
+            </Button>
+          </>
+        ) : (
+          /* No filter: both buttons on one row */
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setBrandModalOpen(true)}
+              data-testid="button-configure-look-feel"
+            >
+              {t("digitalProductsManagement.configureLookAndFeel")}
+            </Button>
+            {listMode === "courses" ? <CreateProductButton onSelect={handleCreateSelect} /> : null}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop layout: filter left, configure + create right */}
+      <div className="hidden sm:flex items-center justify-between mb-6 gap-4">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          {listMode === "courses" ? (
+          {listMode === "courses" && types.length > 1 ? (
             <ProductTypeFilter types={types} active={activeFilter} onChange={setActiveFilter} />
           ) : null}
         </div>
@@ -403,6 +442,7 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
             <Button
               type="button"
               variant="secondary"
+              className="w-full sm:w-auto"
               onClick={handleSyncToWebsite}
               disabled={isSyncButtonDisabled}
               data-testid="button-sync-digital-products-to-website"

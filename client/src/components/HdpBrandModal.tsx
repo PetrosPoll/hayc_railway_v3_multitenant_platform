@@ -285,139 +285,145 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>{t("digitalProductsManagement.brandModal.title")}</DialogTitle>
-          <DialogDescription>
-            {t("digitalProductsManagement.brandModal.subtitle")}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90dvh] p-0 gap-0">
+        <div className="shrink-0 px-6 pt-6 pb-4 pr-14">
+          <DialogHeader className="text-left">
+            <DialogTitle>{t("digitalProductsManagement.brandModal.title")}</DialogTitle>
+            <DialogDescription>
+              {t("digitalProductsManagement.brandModal.subtitle")}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10" data-testid="hdp-brand-loading">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="hdp-brand-name">{t("digitalProductsManagement.brandModal.fields.brandName")}</Label>
-              <Input
-                id="hdp-brand-name"
-                value={form.brandName}
-                onChange={(e) => setForm((prev) => ({ ...prev, brandName: e.target.value }))}
-                placeholder={t("digitalProductsManagement.brandModal.placeholders.brandName")}
-                disabled={isSaving}
-              />
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-2">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10" data-testid="hdp-brand-loading">
+              <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="hdp-brand-logo-url">
-                {t("digitalProductsManagement.brandModal.fields.logoUrl")}
-              </Label>
-              <div className="flex items-center gap-2">
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="hdp-brand-name">{t("digitalProductsManagement.brandModal.fields.brandName")}</Label>
                 <Input
-                  id="hdp-brand-logo-url"
-                  value={form.logoUrl}
-                  readOnly
-                  placeholder="No image selected"
-                  className="w-full bg-muted/50"
-                  disabled={isSaving}
-                />
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={isSaving}
-                  onClick={() => setIsPickingImage(true)}
-                >
-                  Pick Image
-                </Button>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("digitalProductsManagement.brandModal.fields.primaryColor")}</Label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={form.primaryColor}
-                  onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: normalizeHexColor(e.target.value, prev.primaryColor) }))}
-                  className="h-10 w-12 p-0 border border-input rounded-md bg-background"
-                  disabled={isSaving}
-                />
-                <Input
-                  type="text"
-                  value={form.primaryColor}
-                  onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: normalizeHexColor(e.target.value, prev.primaryColor) }))}
+                  id="hdp-brand-name"
+                  value={form.brandName}
+                  onChange={(e) => setForm((prev) => ({ ...prev, brandName: e.target.value }))}
+                  placeholder={t("digitalProductsManagement.brandModal.placeholders.brandName")}
                   disabled={isSaving}
                 />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>{t("digitalProductsManagement.brandModal.fields.textColorOnPrimary")}</Label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={form.primaryForeground}
-                  onChange={(e) => setForm((prev) => ({ ...prev, primaryForeground: normalizeHexColor(e.target.value, prev.primaryForeground) }))}
-                  className="h-10 w-12 p-0 border border-input rounded-md bg-background"
-                  disabled={isSaving}
-                />
-                <Input
-                  type="text"
-                  value={form.primaryForeground}
-                  onChange={(e) => setForm((prev) => ({ ...prev, primaryForeground: normalizeHexColor(e.target.value, prev.primaryForeground) }))}
-                  disabled={isSaving}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("digitalProductsManagement.brandModal.fields.fontFamily")}</Label>
-              <Select
-                value={form.fontFamily}
-                onValueChange={(val) => setForm((prev) => ({ ...prev, fontFamily: val as HdpFontFamily }))}
-                disabled={isSaving}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("digitalProductsManagement.brandModal.placeholders.selectFont")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {FONT_FAMILIES.map((font) => (
-                    <SelectItem key={font} value={font}>
-                      <span style={{ fontFamily: font }}>{font}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("digitalProductsManagement.brandModal.fields.borderRadius")}</Label>
-              <Select
-                value={form.borderRadius}
-                onValueChange={(val) => setForm((prev) => ({ ...prev, borderRadius: val as HdpBorderRadius }))}
-                disabled={isSaving}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={t("digitalProductsManagement.brandModal.placeholders.selectBorderRadius")}
+              <div className="space-y-2">
+                <Label htmlFor="hdp-brand-logo-url">
+                  {t("digitalProductsManagement.brandModal.fields.logoUrl")}
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="hdp-brand-logo-url"
+                    value={form.logoUrl}
+                    readOnly
+                    placeholder="No image selected"
+                    className="min-w-0 flex-1 bg-muted/50"
+                    disabled={isSaving}
                   />
-                </SelectTrigger>
-                <SelectContent>
-                  {BORDER_RADII.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {t(opt.labelKey)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={() => setIsPickingImage(true)}
+                  >
+                    Pick Image
+                  </Button>
+                </div>
+              </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+              <div className="space-y-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.primaryColor")}</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={form.primaryColor}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: normalizeHexColor(e.target.value, prev.primaryColor) }))}
+                    className="h-10 w-12 shrink-0 p-0 border border-input rounded-md bg-background"
+                    disabled={isSaving}
+                  />
+                  <Input
+                    type="text"
+                    value={form.primaryColor}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: normalizeHexColor(e.target.value, prev.primaryColor) }))}
+                    className="min-w-0 flex-1"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.textColorOnPrimary")}</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={form.primaryForeground}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryForeground: normalizeHexColor(e.target.value, prev.primaryForeground) }))}
+                    className="h-10 w-12 shrink-0 p-0 border border-input rounded-md bg-background"
+                    disabled={isSaving}
+                  />
+                  <Input
+                    type="text"
+                    value={form.primaryForeground}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryForeground: normalizeHexColor(e.target.value, prev.primaryForeground) }))}
+                    className="min-w-0 flex-1"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.fontFamily")}</Label>
+                <Select
+                  value={form.fontFamily}
+                  onValueChange={(val) => setForm((prev) => ({ ...prev, fontFamily: val as HdpFontFamily }))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("digitalProductsManagement.brandModal.placeholders.selectFont")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONT_FAMILIES.map((font) => (
+                      <SelectItem key={font} value={font}>
+                        <span style={{ fontFamily: font }}>{font}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 pb-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.borderRadius")}</Label>
+                <Select
+                  value={form.borderRadius}
+                  onValueChange={(val) => setForm((prev) => ({ ...prev, borderRadius: val as HdpBorderRadius }))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={t("digitalProductsManagement.brandModal.placeholders.selectBorderRadius")}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BORDER_RADII.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {t(opt.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="shrink-0 gap-2 px-6 py-4 border-t flex-col-reverse sm:flex-row sm:justify-end">
           {previewUrl ? (
             <Button
               type="button"
