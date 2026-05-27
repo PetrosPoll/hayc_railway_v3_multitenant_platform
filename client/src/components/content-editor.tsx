@@ -1156,8 +1156,10 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                     );
                   }}
                 />
-                <span className="hidden sm:inline text-sm font-medium whitespace-nowrap">
-                  Edit mode: {editMode ? "ON" : "OFF"}
+                <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
+                  <span className="sm:hidden">Edit: </span>
+                  <span className="hidden sm:inline">Edit mode: </span>
+                  {editMode ? "ON" : "OFF"}
                 </span>
                 {websiteLanguage && (() => {
                   const langs = websiteLanguage === "both"
