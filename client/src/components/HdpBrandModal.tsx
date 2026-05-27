@@ -9,7 +9,17 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
-export type HdpFontFamily = "Inter" | "Roboto" | "Lato" | "Playfair Display" | "Poppins";
+export type HdpFontFamily =
+  | "Inter"
+  | "Roboto"
+  | "Open Sans"
+  | "Lato"
+  | "Noto Sans"
+  | "Source Sans 3"
+  | "Nunito"
+  | "Raleway"
+  | "Playfair Display"
+  | "Merriweather";
 export type HdpBorderRadius = "0px" | "4px" | "8px" | "16px" | "9999px";
 
 interface HdpBrandModalProps {
@@ -29,7 +39,18 @@ interface HdpBrandFormState {
   borderRadius: HdpBorderRadius;
 }
 
-const FONT_FAMILIES: HdpFontFamily[] = ["Inter", "Roboto", "Lato", "Playfair Display", "Poppins"];
+const FONT_FAMILIES: HdpFontFamily[] = [
+  "Inter",
+  "Roboto",
+  "Open Sans",
+  "Lato",
+  "Noto Sans",
+  "Source Sans 3",
+  "Nunito",
+  "Raleway",
+  "Playfair Display",
+  "Merriweather",
+];
 const BORDER_RADII: Array<{ value: HdpBorderRadius; labelKey: string }> = [
   { value: "0px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.none" },
   { value: "4px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.small" },
@@ -136,6 +157,19 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
   const [form, setForm] = useState<HdpBrandFormState>(DEFAULT_FORM);
 
   const canSave = useMemo(() => open && !isLoading && !isSaving && !!siteId, [open, isLoading, isSaving, siteId]);
+
+  useEffect(() => {
+    const id = "hdp-brand-modal-fonts";
+    if (document.getElementById(id)) return;
+    const families = FONT_FAMILIES.map(
+      (f) => `family=${encodeURIComponent(f)}:wght@400;600`
+    ).join("&");
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+    document.head.appendChild(link);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
