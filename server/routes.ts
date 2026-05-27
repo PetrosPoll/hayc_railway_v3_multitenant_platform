@@ -4720,8 +4720,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return loadTemplate(fileName, context, language);
   };
 
-  // ----- Internal email endpoint (token-auth, used by booking and other apps) -----
+  // ----- Shared internal auth middleware -----
   const INTERNAL_EMAIL_TOKEN = process.env.INTERNAL_EMAIL_TOKEN;
+  const internalAuth: express.RequestHandler = (req, res, next) => {
+    if (!INTERNAL_EMAIL_TOKEN) {
+      return res.status(503).json({ error: "Internal token not configured" });
+    }
+    const token =
+      (req.headers.authorization?.startsWith("Bearer ")
+        ? req.headers.authorization.slice(7)
+        : null) ?? (req.headers["x-internal-token"] as string | undefined) ?? null;
+    if (token !== INTERNAL_EMAIL_TOKEN) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    next();
+  };
+
+  // ----- Internal CORS validation endpoint (used by HDP to check allowed origins) -----
+  app.get("/internal/cors/validate", internalAuth, async (req, res) => {
+    try {
+      const origin = req.query.origin as string | undefined;
+      const result = await getAllowedOriginForPublicContact(origin);
+      return res.json({ allowed: result !== null });
+    } catch {
+      return res.json({ allowed: false });
+    }
+  });
+
+  // ----- Internal email endpoint (token-auth, used by booking and other apps) -----
   app.post("/internal/email", async (req, res) => {
     if (!INTERNAL_EMAIL_TOKEN) {
       return res.status(503).json({ error: "Internal email not configured" });
