@@ -808,14 +808,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         customer: stripeSubscription.customer as string,
                         subscription: subscription.stripeSubscriptionId,
                       });
-                      
+
                       if (upcomingInvoice) {
-                        // amount_due is in cents, so it's ready to use
-                        nextBillingAmount = upcomingInvoice.amount_due;
+                        const lineItem = upcomingInvoice.lines.data.find(
+                          (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                        );
+                        nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
                       }
                     } catch (invoiceError) {
                       console.error("[/api/user] Error fetching upcoming invoice:", invoiceError);
-                      // If we can't get the upcoming invoice, use the subscription price as fallback
                       nextBillingAmount = price;
                     }
                   }
@@ -1165,10 +1166,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         customer: stripeSubscription.customer as string,
                         subscription: subscription.stripeSubscriptionId,
                       });
-                      
+
                       if (upcomingInvoice) {
-                        nextBillingAmount = upcomingInvoice.amount_due;
-                        console.log(`[/api/subscriptions Mode 1] Upcoming invoice: ${nextBillingAmount} cents`);
+                        const lineItem = upcomingInvoice.lines.data.find(
+                          (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                        );
+                        nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
+                        console.log(`[/api/subscriptions Mode 1] Upcoming invoice line item: ${nextBillingAmount} cents`);
                       }
                     } catch (invoiceError) {
                       console.error("[/api/subscriptions Mode 1] Error fetching upcoming invoice:", invoiceError);
@@ -1291,14 +1295,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     customer: stripeSubscription.customer as string,
                     subscription: subscription.stripeSubscriptionId,
                   });
-                  
+
                   if (upcomingInvoice) {
-                    // amount_due is in cents, so it's ready to use
-                    nextBillingAmount = upcomingInvoice.amount_due;
+                    const lineItem = upcomingInvoice.lines.data.find(
+                      (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                    );
+                    nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
                   }
                 } catch (invoiceError) {
                   console.error("[/api/subscriptions Mode 2] Error fetching upcoming invoice:", invoiceError);
-                  // If we can't get the upcoming invoice, use the subscription price as fallback
                   nextBillingAmount = price;
                 }
               }
@@ -2853,6 +2858,135 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
       }
 
+      // Link any addon subscriptions that share the same Stripe subscription as the plan
+      const linkedPlan = await db
+        .select()
+        .from(subscriptionsTable)
+        .where(
+          and(
+            eq(subscriptionsTable.userId, req.user.id),
+            eq(subscriptionsTable.productType, "plan"),
+            eq(subscriptionsTable.websiteProgressId, websiteProgressEntry.id),
+          ),
+        )
+        .then((rows) => rows[0]);
+
+      if (linkedPlan?.stripeSubscriptionId) {
+        const linkedAddons = await db
+          .update(subscriptionsTable)
+          .set({ websiteProgressId: websiteProgressEntry.id })
+          .where(
+            and(
+              eq(subscriptionsTable.stripeSubscriptionId, linkedPlan.stripeSubscriptionId),
+              eq(subscriptionsTable.userId, req.user.id),
+              eq(subscriptionsTable.productType, "addon"),
+              isNull(subscriptionsTable.websiteProgressId),
+            ),
+          )
+          .returning();
+
+        if (linkedAddons.length > 0) {
+          console.log("✅ [GET-STARTED COMPLETE] Linked addon subscriptions to website:", {
+            websiteProgressId: websiteProgressEntry.id,
+            addonIds: linkedAddons.map((a) => a.id),
+            addonProductIds: linkedAddons.map((a) => a.productId),
+          });
+        }
+      }
+
+      // Create draft invoices for all subscriptions linked to this website (initial purchase)
+      try {
+        const allLinkedSubscriptions = await db
+          .select()
+          .from(subscriptionsTable)
+          .where(
+            and(
+              eq(subscriptionsTable.userId, req.user.id),
+              eq(subscriptionsTable.websiteProgressId, websiteProgressEntry.id),
+              eq(subscriptionsTable.status, 'active'),
+            )
+          );
+
+        if (allLinkedSubscriptions.length > 0 && allLinkedSubscriptions[0].stripeSubscriptionId) {
+          const stripeSubscription = await stripe.subscriptions.retrieve(
+            allLinkedSubscriptions[0].stripeSubscriptionId,
+            { expand: ['latest_invoice.payment_intent'] }
+          );
+
+          const latestInvoice = stripeSubscription.latest_invoice as Stripe.Invoice;
+
+          if (latestInvoice && latestInvoice.paid && latestInvoice.amount_paid > 0) {
+            const now = new Date();
+            const invoiceMonth = now.getMonth() + 1;
+            const invoiceYear = now.getFullYear();
+
+            let paymentIntentId: string | null = null;
+            if (latestInvoice.payment_intent) {
+              paymentIntentId = typeof latestInvoice.payment_intent === 'string'
+                ? latestInvoice.payment_intent
+                : (latestInvoice.payment_intent as Stripe.PaymentIntent).id;
+            }
+
+            for (const sub of allLinkedSubscriptions) {
+              const lineItem = latestInvoice.lines.data.find(
+                (line) => line.subscription_item === sub.stripeSubscriptionItemId
+              );
+              const amount = lineItem ? lineItem.amount : 0;
+
+              if (amount <= 0) continue;
+
+              const existingInvoice = await db
+                .select()
+                .from(websiteInvoices)
+                .where(
+                  and(
+                    eq(websiteInvoices.subscriptionId, sub.id),
+                    eq(websiteInvoices.websiteProgressId, websiteProgressEntry.id),
+                    sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
+                    sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`
+                  )
+                )
+                .limit(1)
+                .then((rows) => rows[0]);
+
+              if (existingInvoice) continue;
+
+              let invoiceTitle: string;
+              let invoiceDescription: string;
+
+              if (sub.productType === 'plan') {
+                const tierName = sub.tier ? sub.tier.charAt(0).toUpperCase() + sub.tier.slice(1) : 'Plan';
+                const billingPeriod = sub.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
+                const planName = subscriptionPlans[sub.tier as keyof typeof subscriptionPlans]?.name || tierName;
+                invoiceTitle = `Invoice for ${planName} Plan (${billingPeriod})`;
+                invoiceDescription = `Subscription plan - ${planName} (${billingPeriod})`;
+              } else if (sub.productType === 'addon') {
+                const addOn = availableAddOns.find((a) => a.id === sub.productId);
+                const addOnName = addOn?.name || 'Add-on';
+                invoiceTitle = `Invoice for ${addOnName}`;
+                invoiceDescription = `Add-on - ${addOnName}`;
+              } else {
+                invoiceTitle = 'Invoice for Subscription';
+                invoiceDescription = 'Initial payment';
+              }
+
+              await createDraftInvoice({
+                websiteProgressId: websiteProgressEntry.id,
+                subscriptionId: sub.id,
+                paymentIntentId,
+                title: invoiceTitle,
+                description: invoiceDescription,
+                amount,
+                currency: (latestInvoice.currency || 'eur').toUpperCase(),
+                context: `initial purchase via get-started (${sub.productType})`,
+              });
+            }
+          }
+        }
+      } catch (invoiceError) {
+        console.error('[GET-STARTED COMPLETE] Error creating invoice drafts:', invoiceError);
+      }
+
       const defaultStages = [
         {
           title: "Welcome & Project Setup",
@@ -4303,59 +4437,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 currency: invoice.currency
               });
 
-              // Check if transaction already exists by Stripe invoice ID
-              const existingTransaction = await db
-                .select()
-                .from(transactionsTable)
-                .where(eq(transactionsTable.stripeInvoiceId, invoice.id))
-                .limit(1);
-
-              if (existingTransaction.length > 0) {
-                console.log('⏭️  Transaction already exists for invoice:', invoice.id);
-                break;
-              }
-
-              // Find the subscription in our database
-              let dbSubscription = await db
+              // Find ALL local subscriptions sharing this Stripe subscription ID
+              let dbSubscriptions = await db
                 .select()
                 .from(subscriptionsTable)
-                .where(eq(subscriptionsTable.stripeSubscriptionId, invoice.subscription as string))
-                .limit(1);
+                .where(eq(subscriptionsTable.stripeSubscriptionId, invoice.subscription as string));
 
-              // If not found, check if this subscription came from a schedule
-              if (dbSubscription.length === 0) {
+              // If none found, check if this subscription came from a schedule
+              if (dbSubscriptions.length === 0) {
                 try {
-                  // Fetch the subscription from Stripe to check if it has a schedule
                   const stripeSubscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-                  
+
                   if (stripeSubscription.schedule) {
                     console.log(`🔄 Subscription ${invoice.subscription} came from schedule ${stripeSubscription.schedule}`);
-                    
-                    // Look for a subscription with the schedule ID
+
                     const scheduleSubscription = await db
                       .select()
                       .from(subscriptionsTable)
                       .where(eq(subscriptionsTable.stripeSubscriptionId, stripeSubscription.schedule as string))
                       .limit(1);
-                    
+
                     if (scheduleSubscription.length > 0) {
                       console.log(`✅ Found subscription with schedule ID, updating to real subscription ID`);
-                      
-                      // Extract tier and price from the Stripe subscription
+
                       let updatedTier = scheduleSubscription[0].tier;
                       let updatedPrice = scheduleSubscription[0].price;
-                      
+
                       if (stripeSubscription.items.data.length > 0) {
                         const subscriptionItem = stripeSubscription.items.data[0];
-                        const priceId = typeof subscriptionItem.price.id === 'string' ? subscriptionItem.price.id : subscriptionItem.price.id;
-                        
-                        // Check if this is an add-on
+                        const priceId = subscriptionItem.price.id;
+
                         if (PRICE_TO_ADDON_MAP[priceId]) {
-                          const addonId = PRICE_TO_ADDON_MAP[priceId];
-                          updatedTier = addonId; // For add-ons, tier is the add-on ID
-                          console.log(`Detected add-on from activated schedule: ${addonId}`);
+                          updatedTier = PRICE_TO_ADDON_MAP[priceId];
+                          console.log(`Detected add-on from activated schedule: ${updatedTier}`);
                         } else {
-                          // Check if it's a plan subscription
                           for (const [tierKey, prices] of Object.entries(SUBSCRIPTION_PRICES)) {
                             if (priceId === prices.monthly || priceId === prices.yearly) {
                               updatedTier = tierKey as SubscriptionTier;
@@ -4364,32 +4479,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             }
                           }
                         }
-                        
-                        // Extract price amount
+
                         if (subscriptionItem.price.unit_amount) {
                           updatedPrice = subscriptionItem.price.unit_amount;
-                          console.log(`Extracted price from activated schedule: ${updatedPrice}`);
                         }
                       }
-                      
-                      // Update the schedule ID to the real subscription ID, plus tier and price
+
                       await db
                         .update(subscriptionsTable)
-                        .set({ 
+                        .set({
                           stripeSubscriptionId: invoice.subscription as string,
                           tier: updatedTier,
-                          price: updatedPrice
+                          price: updatedPrice,
                         })
                         .where(eq(subscriptionsTable.id, scheduleSubscription[0].id));
-                      
-                      // Reload the subscription
-                      dbSubscription = await db
+
+                      dbSubscriptions = await db
                         .select()
                         .from(subscriptionsTable)
-                        .where(eq(subscriptionsTable.id, scheduleSubscription[0].id))
-                        .limit(1);
-                      
-                      console.log(`🔄 Updated subscription ${scheduleSubscription[0].id} from schedule ${stripeSubscription.schedule} to subscription ${invoice.subscription} with tier: ${updatedTier}, price: ${updatedPrice}`);
+                        .where(eq(subscriptionsTable.id, scheduleSubscription[0].id));
+
+                      console.log(`🔄 Updated subscription ${scheduleSubscription[0].id} from schedule to ${invoice.subscription}`);
                     }
                   }
                 } catch (scheduleError) {
@@ -4397,173 +4507,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
 
-              if (dbSubscription.length > 0) {
-                const subscription = dbSubscription[0];
-                
-                // Fetch website domain for logging
-                let websiteDomain = 'unknown';
-                if (subscription.websiteProgressId) {
-                  try {
-                    const website = await db
-                      .select({ domain: websiteProgress.domain })
-                      .from(websiteProgress)
-                      .where(eq(websiteProgress.id, subscription.websiteProgressId))
-                      .limit(1)
-                      .then((rows) => rows[0]);
-                    if (website) {
-                      websiteDomain = website.domain;
-                    }
-                  } catch (err) {
-                    // Ignore error, use default
-                  }
-                }
-                
-                console.log('📋 [WEBHOOK] Processing invoice for subscription:', {
-                  dbSubscriptionId: subscription.id,
-                  stripeSubscriptionId: invoice.subscription,
-                  websiteProgressId: subscription.websiteProgressId,
-                  websiteDomain: websiteDomain,
-                  productType: subscription.productType,
-                  amount: invoice.amount_paid,
-                  currency: invoice.currency
-                });
-                
-                // Get the actual payment timestamp
-                const paidAt = invoice.status_transitions?.paid_at 
+              if (dbSubscriptions.length > 0) {
+                const paidAt = invoice.status_transitions?.paid_at
                   ? new Date(invoice.status_transitions.paid_at * 1000)
                   : new Date(invoice.created * 1000);
 
-                // Create new transaction with Stripe invoice ID and paid_at timestamp
-                // Note: pdfUrl is set to null - admin will upload custom invoice from Cloudinary
-                await storage.createTransaction({
-                  subscriptionId: subscription.id,
-                  amount: invoice.amount_paid,
-                  currency: invoice.currency,
-                  status: 'paid',
-                  pdfUrl: null,
-                  stripeInvoiceId: invoice.id,
-                  paidAt: paidAt,
-                  createdAt: paidAt, // Use the actual payment date as createdAt
-                });
-
-                console.log('✅ [WEBHOOK] Transaction created for invoice:', invoice.id);
-
-                // Create invoice draft for recurring payments (both plans and addons)
-                // This handles monthly/yearly renewals, not the initial purchase
-                // Initial purchase invoice is created in /initialize endpoint
-                if (subscription.websiteProgressId && subscription.id) {
-                  try {
-                    // Check if invoice draft already exists for this subscription + this billing period
-                    // Use invoice date to determine the billing period (month/year)
-                    const invoiceDate = new Date(invoice.created * 1000);
-                    const invoiceMonth = invoiceDate.getMonth() + 1; // 1-12
-                    const invoiceYear = invoiceDate.getFullYear();
-
-                    const existingInvoice = await db
-                      .select()
-                      .from(websiteInvoices)
-                      .where(
-                        and(
-                          eq(websiteInvoices.subscriptionId, subscription.id),
-                          eq(websiteInvoices.websiteProgressId, subscription.websiteProgressId),
-                          // Check if invoice exists for this month/year
-                          sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
-                          sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`
-                        )
-                      )
-                      .limit(1)
-                      .then((rows) => rows[0]);
-
-                    if (!existingInvoice && invoice.amount_paid > 0) {
-                      // Fetch website domain for logging
-                      let websiteDomain = 'unknown';
-                      try {
-                        const website = await db
-                          .select({ domain: websiteProgress.domain })
-                          .from(websiteProgress)
-                          .where(eq(websiteProgress.id, subscription.websiteProgressId))
-                          .limit(1)
-                          .then((rows) => rows[0]);
-                        if (website) {
-                          websiteDomain = website.domain;
-                        }
-                      } catch (err) {
-                        // Ignore error, use default
-                      }
-                      
-                      console.log('🔵 [WEBHOOK] Creating invoice draft for recurring payment:', {
-                        subscriptionId: subscription.id,
-                        websiteProgressId: subscription.websiteProgressId,
-                        websiteDomain: websiteDomain,
-                        productType: subscription.productType,
-                        amount: invoice.amount_paid,
-                        currency: invoice.currency
-                      });
-
-                      // Get payment intent from invoice
-                      let paymentIntentId: string | null = null;
-                      if (invoice.payment_intent) {
-                        paymentIntentId = typeof invoice.payment_intent === 'string'
-                          ? invoice.payment_intent
-                          : invoice.payment_intent.id;
-                      }
-
-                      // Determine invoice title and description based on product type
-                      let invoiceTitle: string;
-                      let invoiceDescription: string;
-
-                      if (subscription.productType === 'plan') {
-                        const tierName = subscription.tier 
-                          ? subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)
-                          : 'Plan';
-                        const billingPeriod = subscription.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
-                        const planName = subscriptionPlans[subscription.tier as keyof typeof subscriptionPlans]?.name || tierName;
-                        invoiceTitle = `Invoice for ${planName} Plan (${billingPeriod})`;
-                        invoiceDescription = `Subscription plan - ${planName} (${billingPeriod})`;
-                      } else if (subscription.productType === 'addon') {
-                        const addOn = availableAddOns.find(a => a.id === subscription.productId);
-                        const addOnName = addOn?.name || "Add-on";
-                        invoiceTitle = `Invoice for ${addOnName}`;
-                        invoiceDescription = `Add-on purchase - ${addOnName}`;
-                      } else {
-                        invoiceTitle = `Invoice for Subscription`;
-                        invoiceDescription = `Recurring payment`;
-                      }
-
-                      await createDraftInvoice({
-                        websiteProgressId: subscription.websiteProgressId,
-                        subscriptionId: subscription.id,
-                        paymentIntentId,
-                        title: invoiceTitle,
-                        description: invoiceDescription,
-                        amount: invoice.amount_paid,
-                        currency: (invoice.currency || 'eur').toUpperCase(),
-                        context: `recurring payment via webhook (${subscription.productType})`,
-                      });
-
-                      console.log('✅ [WEBHOOK] Invoice draft created for recurring payment:', {
-                        websiteDomain: websiteDomain,
-                        invoiceTitle: invoiceTitle,
-                        amount: invoice.amount_paid
-                      });
-                    } else if (existingInvoice) {
-                      console.log('🔵 [WEBHOOK] Invoice draft already exists for this billing period, skipping creation');
-                    } else {
-                      console.log('🔵 [WEBHOOK] Invoice amount is 0, skipping invoice draft creation');
-                    }
-                  } catch (invoiceError) {
-                    console.error('❌ [WEBHOOK] Error creating invoice draft:', invoiceError);
-                    // Don't fail the entire webhook if invoice creation fails
-                  }
-                } else {
-                  console.log('🔵 [WEBHOOK] Subscription has no websiteProgressId, skipping invoice draft creation');
+                let paymentIntentId: string | null = null;
+                if (invoice.payment_intent) {
+                  paymentIntentId = typeof invoice.payment_intent === 'string'
+                    ? invoice.payment_intent
+                    : invoice.payment_intent.id;
                 }
-                console.log('✅ Transaction created for invoice:', invoice.id);
-                
-                // Also settle any existing obligation for this invoice
+
+                // Settle obligation once per invoice (not per subscription item)
                 const existingObligation = await storage.getObligationsByStripeInvoiceId(invoice.id);
                 if (existingObligation) {
-                  // Create a settlement record
                   await storage.createPaymentSettlement({
                     obligationId: existingObligation.id,
                     amountPaid: invoice.amount_paid,
@@ -4575,6 +4533,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                   await storage.markObligationSettled(existingObligation.id);
                   console.log('✅ Obligation settled for invoice:', invoice.id);
+                }
+
+                // Process each subscription separately with its own per-item amount
+                for (const subscription of dbSubscriptions) {
+                  // Per-subscription transaction dedup check
+                  const existingTransaction = await db
+                    .select()
+                    .from(transactionsTable)
+                    .where(
+                      and(
+                        eq(transactionsTable.stripeInvoiceId, invoice.id),
+                        eq(transactionsTable.subscriptionId, subscription.id),
+                      )
+                    )
+                    .limit(1);
+
+                  if (existingTransaction.length > 0) {
+                    console.log(`⏭️  Transaction already exists for invoice ${invoice.id} / subscription ${subscription.id}, skipping`);
+                    continue;
+                  }
+
+                  // Resolve per-item amount from invoice line items
+                  const lineItem = invoice.lines.data.find(
+                    (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                  );
+                  const itemAmount = lineItem ? lineItem.amount : invoice.amount_paid;
+
+                  console.log('📋 [WEBHOOK] Processing invoice for subscription:', {
+                    dbSubscriptionId: subscription.id,
+                    productType: subscription.productType,
+                    websiteProgressId: subscription.websiteProgressId,
+                    itemAmount,
+                  });
+
+                  await storage.createTransaction({
+                    subscriptionId: subscription.id,
+                    amount: itemAmount,
+                    currency: invoice.currency,
+                    status: 'paid',
+                    pdfUrl: null,
+                    stripeInvoiceId: invoice.id,
+                    paidAt: paidAt,
+                    createdAt: paidAt,
+                  });
+
+                  console.log(`✅ [WEBHOOK] Transaction created for subscription ${subscription.id}, amount: ${itemAmount}`);
+
+                  if (subscription.websiteProgressId && subscription.id) {
+                    try {
+                      const invoiceDate = new Date(invoice.created * 1000);
+                      const invoiceMonth = invoiceDate.getMonth() + 1;
+                      const invoiceYear = invoiceDate.getFullYear();
+
+                      const existingInvoice = await db
+                        .select()
+                        .from(websiteInvoices)
+                        .where(
+                          and(
+                            eq(websiteInvoices.subscriptionId, subscription.id),
+                            eq(websiteInvoices.websiteProgressId, subscription.websiteProgressId),
+                            sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
+                            sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`
+                          )
+                        )
+                        .limit(1)
+                        .then((rows) => rows[0]);
+
+                      if (!existingInvoice && itemAmount > 0) {
+                        let invoiceTitle: string;
+                        let invoiceDescription: string;
+
+                        if (subscription.productType === 'plan') {
+                          const tierName = subscription.tier
+                            ? subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)
+                            : 'Plan';
+                          const billingPeriod = subscription.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
+                          const planName = subscriptionPlans[subscription.tier as keyof typeof subscriptionPlans]?.name || tierName;
+                          invoiceTitle = `Invoice for ${planName} Plan (${billingPeriod})`;
+                          invoiceDescription = `Subscription plan - ${planName} (${billingPeriod})`;
+                        } else if (subscription.productType === 'addon') {
+                          const addOn = availableAddOns.find(a => a.id === subscription.productId);
+                          const addOnName = addOn?.name || 'Add-on';
+                          invoiceTitle = `Invoice for ${addOnName}`;
+                          invoiceDescription = `Add-on purchase - ${addOnName}`;
+                        } else {
+                          invoiceTitle = `Invoice for Subscription`;
+                          invoiceDescription = `Recurring payment`;
+                        }
+
+                        await createDraftInvoice({
+                          websiteProgressId: subscription.websiteProgressId,
+                          subscriptionId: subscription.id,
+                          paymentIntentId,
+                          title: invoiceTitle,
+                          description: invoiceDescription,
+                          amount: itemAmount,
+                          currency: (invoice.currency || 'eur').toUpperCase(),
+                          context: `recurring payment via webhook (${subscription.productType})`,
+                        });
+
+                        console.log(`✅ [WEBHOOK] Invoice draft created for subscription ${subscription.id} (${subscription.productType}), amount: ${itemAmount}`);
+                      } else if (existingInvoice) {
+                        console.log(`🔵 [WEBHOOK] Invoice draft already exists for subscription ${subscription.id}, skipping`);
+                      }
+                    } catch (invoiceError) {
+                      console.error(`❌ [WEBHOOK] Error creating invoice draft for subscription ${subscription.id}:`, invoiceError);
+                    }
+                  } else {
+                    console.log(`🔵 [WEBHOOK] Subscription ${subscription.id} has no websiteProgressId, skipping invoice draft`);
+                  }
                 }
               } else {
                 console.log('⚠️  No local subscription found for Stripe subscription:', invoice.subscription);
@@ -6391,9 +6459,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .set({ websiteProgressId: websiteProgressEntry.id })
               .where(eq(subscriptionsTable.id, subscriptionIdNum));
 
+            // Also link addon subscriptions that share the same Stripe subscription
+            if (subscription.stripeSubscriptionId) {
+              const linkedAddons = await db
+                .update(subscriptionsTable)
+                .set({ websiteProgressId: websiteProgressEntry.id })
+                .where(
+                  and(
+                    eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+                    eq(subscriptionsTable.userId, req.user.id),
+                    eq(subscriptionsTable.productType, 'addon'),
+                    isNull(subscriptionsTable.websiteProgressId)
+                  )
+                )
+                .returning();
+
+              if (linkedAddons.length > 0) {
+                console.log('✅ [ONBOARDING INITIALIZE] Linked addon subscriptions to new website:', {
+                  websiteProgressId: websiteProgressEntry.id,
+                  addonIds: linkedAddons.map(a => a.id),
+                  addonProductIds: linkedAddons.map(a => a.productId)
+                });
+              }
+            }
+
             // Create system tags for new website
             await storage.createSystemTagsForWebsite(websiteProgressEntry.id);
-            
+
             console.log('✅ [ONBOARDING INITIALIZE] New website created for new purchase:', {
               websiteProgressId: websiteProgressEntry.id,
               domain: websiteProgressEntry.domain,
@@ -6443,9 +6535,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .set({ websiteProgressId: websiteProgressEntry.id })
             .where(eq(subscriptionsTable.id, subscriptionIdNum));
 
+          // Also link addon subscriptions that share the same Stripe subscription
+          if (subscription.stripeSubscriptionId) {
+            const linkedAddons = await db
+              .update(subscriptionsTable)
+              .set({ websiteProgressId: websiteProgressEntry.id })
+              .where(
+                and(
+                  eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+                  eq(subscriptionsTable.userId, req.user.id),
+                  eq(subscriptionsTable.productType, 'addon'),
+                  isNull(subscriptionsTable.websiteProgressId)
+                )
+              )
+              .returning();
+
+            if (linkedAddons.length > 0) {
+              console.log('✅ [ONBOARDING INITIALIZE] Linked addon subscriptions to website:', {
+                websiteProgressId: websiteProgressEntry.id,
+                addonIds: linkedAddons.map(a => a.id),
+                addonProductIds: linkedAddons.map(a => a.productId)
+              });
+            }
+          }
+
           // Create system tags for new website
           await storage.createSystemTagsForWebsite(websiteProgressEntry.id);
-          
+
           console.log('✅ [ONBOARDING INITIALIZE] New website created and linked:', {
             websiteProgressId: websiteProgressEntry.id,
             domain: websiteProgressEntry.domain,

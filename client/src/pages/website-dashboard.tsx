@@ -1535,7 +1535,7 @@ export default function WebsiteDashboard() {
 
   const renderBillingOverview = () => {
     return (
-      <div className="space-y-4 space-x-4" data-testid="billing-overview">
+      <div className="space-y-4" data-testid="billing-overview">
         <h2 className="text-2xl font-bold mb-6">
           {t("dashboard.billing") || "Billing"}
         </h2>

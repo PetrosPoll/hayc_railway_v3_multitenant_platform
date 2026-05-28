@@ -208,10 +208,12 @@ export const transactions = pgTable("transactions", {
   currency: text("currency").notNull(),
   status: text("status").notNull(),
   pdfUrl: text("pdf_url"),
-  stripeInvoiceId: text("stripe_invoice_id").unique(),
+  stripeInvoiceId: text("stripe_invoice_id"),
   paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => ({
+  stripeInvoiceSubscriptionUnique: unique("transactions_stripe_invoice_subscription_unique").on(table.stripeInvoiceId, table.subscriptionId),
+}));
 
 export const websiteInvoices = pgTable("website_invoices", {
   id: serial("id").primaryKey(),
