@@ -5073,14 +5073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ error: "User or Stripe customer not found" });
       }
 
-      // Get Stripe subscriptions with expanded data
-      const stripeSubscriptions = await stripe.subscriptions.list({
-        customer: currentUser.stripeCustomerId,
-        status: "active",
-        expand: ["data.items", "data.items.data.price"],
-      });
-
-      // Get our local subscription to find matching Stripe subscription
+      // Get our local subscription record
       const userSubscriptions = await storage.getUserSubscriptions(
         currentUser.id,
       );
@@ -5092,33 +5085,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Subscription not found" });
       }
 
-      // Find matching Stripe subscription by checking all tier price IDs
-      let stripeSubscription = null;
-      let foundTier = null;
-
-      for (const stripeSub of stripeSubscriptions.data) {
-        const priceId = stripeSub.items.data[0]?.price.id;
-        if (!priceId) continue;
-
-        // Check against all subscription tiers and billing periods
-        for (const [tierKey, prices] of Object.entries(SUBSCRIPTION_PRICES)) {
-          if (priceId === prices.monthly || priceId === prices.yearly) {
-            stripeSubscription = stripeSub;
-            foundTier = tierKey;
-            break;
-          }
-        }
-        if (stripeSubscription) break;
+      if (!localSubscription.stripeSubscriptionId) {
+        return res.status(400).json({ error: "No Stripe subscription ID found for this subscription" });
       }
 
-      if (!stripeSubscription) {
-        return res.status(404).json({ error: "Stripe subscription not found" });
+      // Retrieve the Stripe subscription directly by ID
+      const stripeSubscription = await stripe.subscriptions.retrieve(
+        localSubscription.stripeSubscriptionId,
+      );
+
+      if (!stripeSubscription || stripeSubscription.status !== "active") {
+        return res.status(404).json({ error: "Stripe subscription not found or not active" });
       }
 
-      // Cancel only this specific subscription
+      // Cancel the Stripe subscription
       await stripe.subscriptions.cancel(stripeSubscription.id);
 
-      // Update local subscription status to cancelled instead of deleting
+      // Update all DB rows sharing the same stripeSubscriptionId (plan + addons)
       await db
         .update(subscriptionsTable)
         .set({
@@ -5126,7 +5109,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cancellationReason: "User requested cancellation",
           accessUntil: new Date(stripeSubscription.current_period_end * 1000),
         })
-        .where(eq(subscriptionsTable.id, subscriptionId));
+        .where(
+          and(
+            eq(subscriptionsTable.userId, currentUser.id),
+            eq(subscriptionsTable.stripeSubscriptionId, localSubscription.stripeSubscriptionId),
+          ),
+        );
 
       // Get fresh subscriptions
       const subscriptions = await storage.getUserSubscriptions(currentUser.id);
@@ -16508,6 +16496,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: subscriptionsTable.id,
           userId: subscriptionsTable.userId,
           tier: subscriptionsTable.tier,
+          stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
           userEmail: users.email,
           username: users.username,
           language: users.language,
@@ -16523,36 +16512,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Subscription not found" });
       }
 
-      if (!subscription.stripeCustomerId) {
-        return res.status(400).json({ error: "No Stripe customer ID found" });
+      if (!subscription.stripeSubscriptionId) {
+        return res.status(400).json({ error: "No Stripe subscription ID found for this subscription" });
       }
 
-      // Get Stripe subscriptions for this customer
-      const stripeSubscriptions = await stripe.subscriptions.list({
-        customer: subscription.stripeCustomerId,
-        status: "active",
-      });
+      // Retrieve the Stripe subscription directly by ID
+      const stripeSubscription = await stripe.subscriptions.retrieve(
+        subscription.stripeSubscriptionId,
+      );
 
-      // Find matching Stripe subscription by tier
-      const stripeSubscription = stripeSubscriptions.data.find((stripeSub) => {
-        const priceId = stripeSub.items.data[0]?.price.id;
-        return (
-          priceId ===
-            SUBSCRIPTION_PRICES[subscription.tier as SubscriptionTier]
-              ?.monthly ||
-          priceId ===
-            SUBSCRIPTION_PRICES[subscription.tier as SubscriptionTier]?.yearly
-        );
-      });
-
-      if (!stripeSubscription) {
-        return res.status(404).json({ error: "Stripe subscription not found" });
+      if (!stripeSubscription || stripeSubscription.status !== "active") {
+        return res.status(404).json({ error: "Stripe subscription not found or not active" });
       }
 
       // Cancel the Stripe subscription
       await stripe.subscriptions.cancel(stripeSubscription.id);
 
-      // Update local subscription status
+      // Update all DB rows sharing the same stripeSubscriptionId (plan + addons)
       await db
         .update(subscriptionsTable)
         .set({
@@ -16560,7 +16536,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           cancellationReason: reason,
           accessUntil: new Date(stripeSubscription.current_period_end * 1000),
         })
-        .where(eq(subscriptionsTable.id, subscriptionId));
+        .where(
+          and(
+            eq(subscriptionsTable.userId, subscription.userId),
+            eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+          ),
+        );
 
       // Fetch website info if subscription is linked to a website
       let websiteDomain = null;
