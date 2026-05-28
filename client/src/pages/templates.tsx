@@ -122,7 +122,7 @@ export default function Templates() {
           </div>
 
           {/* Search bar */}
-          <div className="w-full p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[10px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-white/80 flex justify-start items-start lg:items-center gap-6 lg:gap-12">
+          <div className="hidden w-full p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[10px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-white/80 flex justify-start items-start lg:items-center gap-6 lg:gap-12">
             <Search className="w-6 h-6 text-white flex-shrink-0" />
             <input
               type="text"

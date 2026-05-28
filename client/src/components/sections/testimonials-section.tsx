@@ -315,7 +315,7 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
                 <span className="text-blue-400 text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.facebook.name")}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-white text-lg font-medium font-brand">5.0</span>
+                <span className="text-white text-lg font-medium font-brand">6.0</span>
                 <StarRating
                   rating={5}
                   fullStarAlt={t("home.testimonialsSection.fullStarAlt")}

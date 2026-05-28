@@ -77,7 +77,19 @@ export default function AboutPage() {
                     <span className="text-white"> {t("about.hero.titleSuffix")}</span>
                   </h1>
                   <p className="text-center text-white text-base lg:text-lg font-normal lg:font-medium leading-5 lg:leading-normal font-brand">
-                    {t("about.hero.subtitle")}
+                    {(() => {
+                      const text = t("about.hero.subtitle");
+                      const highlight = ["isn't", "δεν είναι"].find((w) => text.includes(w));
+                      if (!highlight) return text;
+                      const parts = text.split(highlight);
+                      return (
+                        <>
+                          {parts[0]}
+                          <span className="text-[#ED4C14]">{highlight}</span>
+                          {parts.slice(1).join(highlight)}
+                        </>
+                      );
+                    })()}
                   </p>
                 </div>
 
@@ -214,16 +226,16 @@ export default function AboutPage() {
           <section className="relative w-full">
             <div className="w-full max-w-7xl mx-auto flex flex-col lg:flex-row justify-center items-center px-4 lg:px-16 py-24 gap-20 lg:gap-48">
           <div className="flex-1 flex flex-col justify-center items-center">
-            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">{t("about.stats.uptime.value")}</span>
-            <span className="text-center text-white text-lg font-medium font-brand">{t("about.stats.uptime.label")}</span>
+            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">{t("about.stats.moneyBack.value")}</span>
+            <span className="text-center text-white text-lg font-medium font-brand">{t("about.stats.moneyBack.label")}</span>
           </div>
           <div className="flex-1 flex flex-col justify-center items-center">
             <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">{t("about.stats.savings.value")}</span>
             <span className="text-center text-white text-lg font-medium font-brand">{t("about.stats.savings.label")}</span>
           </div>
           <div className="flex-1 flex flex-col justify-center items-center">
-            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">{t("about.stats.moneyBack.value")}</span>
-            <span className="text-center text-white text-lg font-medium font-brand">{t("about.stats.moneyBack.label")}</span>
+            <span className="text-center text-white text-4xl lg:text-6xl font-semibold font-brand">{t("about.stats.uptime.value")}</span>
+            <span className="text-center text-white text-lg font-medium font-brand">{t("about.stats.uptime.label")}</span>
           </div>
             </div>
           </section>
