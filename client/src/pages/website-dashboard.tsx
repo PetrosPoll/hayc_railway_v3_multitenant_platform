@@ -907,6 +907,25 @@ export default function WebsiteDashboard() {
     },
   });
 
+  // Auto-redirect to content tab when progress is complete and no tab was explicitly set
+  useEffect(() => {
+    if (!website) return;
+    if (searchParams.get("tab")) return;
+    const stages = website.stages ?? [];
+    if (stages.length === 0) return;
+    const maxStage = Math.max(...stages.map((s) => s.stageNumber));
+    const lastStage = stages.find((s) => s.stageNumber === maxStage);
+    const progressComplete = website.currentStage === maxStage && lastStage?.status === "completed";
+    if (progressComplete && website.siteId) {
+      lastTabRef.current = "content";
+      setActiveSection("content");
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set("tab", "content");
+      setSearchParams(newParams, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [website]);
+
   // Load user's language preference from database when user data is loaded
   useEffect(() => {
     if (userData?.user?.language) {
