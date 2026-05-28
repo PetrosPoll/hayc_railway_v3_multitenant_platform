@@ -137,15 +137,16 @@ export function AdminWebsiteInvoices() {
   });
 
   // Fetch website billing (per-website, survives subscription sync)
+  const websiteIdForBilling = expandedWebsiteId || selectedWebsiteForBilling;
   const { data: billingData, isLoading: billingLoading } = useQuery({
-    queryKey: ["/api/admin/websites", selectedWebsiteForBilling, "billing"],
+    queryKey: ["/api/admin/websites", websiteIdForBilling, "billing"],
     queryFn: async () => {
-      if (!selectedWebsiteForBilling) return null;
-      const response = await fetch(`/api/admin/websites/${selectedWebsiteForBilling}/billing`, { credentials: "include" });
+      if (!websiteIdForBilling) return null;
+      const response = await fetch(`/api/admin/websites/${websiteIdForBilling}/billing`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch billing");
       return response.json();
     },
-    enabled: !!selectedWebsiteForBilling && billingInfoDialogOpen,
+    enabled: !!websiteIdForBilling,
   });
 
   // Update website billing mutation (saves to website_progress, not subscription)
@@ -1549,7 +1550,11 @@ export function AdminWebsiteInvoices() {
                                 const invoiceType = invoice.description?.toLowerCase().includes('add-on') ? 'Addon' : 'Plan';
                                 const subscriptions = (subscriptionsData as any[]) || [];
                                 const planSubscription = subscriptions.find((sub: any) => sub.productType === "plan");
-                                const canCreateWithWrapp = planSubscription?.classificationType && planSubscription?.invoiceTypeCode && planSubscription?.productName;
+                                // Mirror server-side priority: website billing first, subscription billing as fallback
+                                const canCreateWithWrapp =
+                                  (billingData?.classificationType || planSubscription?.classificationType) &&
+                                  (billingData?.invoiceTypeCode || planSubscription?.invoiceTypeCode) &&
+                                  (billingData?.productName || planSubscription?.productName);
                                 return (
                                 <TableRow key={invoice.id}>
                                   <TableCell>
