@@ -678,7 +678,9 @@ export default function WebsiteDashboard() {
         description: t("dashboard.subscriptionCancelledDesc") || "Your subscription has been cancelled successfully.",
       });
       setSubscriptionToCancel(null);
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "stripe", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     onError: () => {
       toast({
