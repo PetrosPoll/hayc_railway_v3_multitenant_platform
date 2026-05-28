@@ -1292,6 +1292,7 @@
         "billingUpdateFailed": "Failed to update billing information",
         "wrappInvoiceCreated": "Invoice created with Wrapp successfully",
         "wrappInvoiceCreateFailed": "Failed to create invoice with Wrapp",
+        "cancelling": "Cancelling...",
         "subscriptionCancelled": "Subscription cancelled",
         "subscriptionCancelledDesc": "Your subscription has been cancelled successfully.",
         "error": "Error",

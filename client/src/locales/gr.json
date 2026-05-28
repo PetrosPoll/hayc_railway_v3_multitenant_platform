@@ -1294,6 +1294,7 @@
         "billingUpdateFailed": "Αποτυχία ενημέρωσης των πληροφοριών χρέωσης",
         "wrappInvoiceCreated": "Το τιμολόγιο δημιουργήθηκε επιτυχώς με το Wrapp",
         "wrappInvoiceCreateFailed": "Αποτυχία δημιουργίας τιμολογίου με το Wrapp",
+        "cancelling": "Ακύρωση...",
         "subscriptionCancelled": "Η συνδρομή ακυρώθηκε",
         "subscriptionCancelledDesc": "Η συνδρομή σας ακυρώθηκε επιτυχώς.",
         "error": "Σφάλμα",
