@@ -4235,7 +4235,7 @@ export default function WebsiteDashboard() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full font-brand">
         <Sidebar>
           <SidebarContent>
             <SidebarGroup>
