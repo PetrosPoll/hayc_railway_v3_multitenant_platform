@@ -97,67 +97,68 @@ export default function StepPricing({
     <div className="w-full min-h-screen bg-black px-4 md:px-16 py-12 md:py-7 flex flex-col justify-center items-center overflow-hidden">
       <div className="w-full flex flex-col md:flex-row justify-start items-start gap-6">
 
-        {/* ─── LEFT — timeline (no card background, matches Figma) ─── */}
-        <div className="w-full md:w-1/2 self-stretch py-6 md:pt-14 flex flex-col gap-12">
-          <div className="text-white text-2xl md:text-4xl font-semibold font-brand">
-            {t("getStarted.pricing.title")}
-          </div>
-
-          <div className="flex flex-col gap-6">
-            {/* Timeline row */}
-            <div className="pt-7 pb-6 border-b border-neutral-500 flex justify-start items-start gap-6">
-              {/* Icon + line column — mirrors Figma's w-11 h-72 relative container */}
-              <div className="relative flex-shrink-0" style={{ width: 44, height: 288 }}>
-                {/* Circle 1 — Today */}
-                <div className="absolute left-0 top-1 w-11 h-11 rounded-full bg-black outline outline-1 outline-offset-[-1px] outline-neutral-500 flex items-center justify-center">
-                  <img src={ICON_TODAY} alt="" className="w-5 h-5" />
-                </div>
-                {/* Line 1 */}
-                <div className="absolute left-[21px] top-[48px] w-px bg-neutral-500" style={{ height: 80 }} />
-                {/* Circle 2 — Next billing date */}
-                <div className="absolute left-0 top-[121px] w-11 h-11 rounded-full bg-black outline outline-1 outline-offset-[-1px] outline-neutral-500 flex items-center justify-center">
-                  <img src={ICON_CALENDAR} alt="" className="w-5 h-5" />
-                </div>
-                {/* Line 2 */}
-                <div className="absolute left-[21px] top-[165px] w-px bg-neutral-500" style={{ height: 80 }} />
-                {/* Circle 3 — Always */}
-                <div className="absolute left-0 top-[238px] w-11 h-11 rounded-full bg-black outline outline-1 outline-offset-[-1px] outline-neutral-500 flex items-center justify-center">
-                  <img src={ICON_TICK} alt="" className="w-5 h-5" />
-                </div>
-              </div>
-
-              {/* Text column — gap-16 matches Figma */}
-              <div className="flex flex-col gap-16">
-                <div className="flex flex-col gap-1">
-                  <div className="text-white text-lg font-semibold font-brand">
-                    {t("getStarted.pricing.todayLabel")}
-                  </div>
-                  <div className="text-white text-base font-normal font-brand leading-6">
-                    {t("getStarted.pricing.todayDesc", { amount: payToday })}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="text-white text-lg font-semibold font-brand">
-                    {nextBillingLabel}
-                  </div>
-                  <div className="text-white text-base font-normal font-brand leading-6">
-                    {t(isYearly ? "getStarted.pricing.recurringDescYearly" : "getStarted.pricing.recurringDesc", { amount: billingTotal })}
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <div className="text-white text-lg font-semibold font-brand">
-                    {t("getStarted.pricing.alwaysLabel")}
-                  </div>
-                  <div className="text-white text-base font-normal font-brand leading-6">
-                    {t("getStarted.pricing.alwaysDesc")}
-                  </div>
-                </div>
-              </div>
+        {/* ─── LEFT — presentational pricing card ─── */}
+        <div className="w-full md:w-1/2 self-stretch px-4 py-4 md:px-9 md:py-6 bg-orange-50 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-stone-300 flex flex-col justify-center items-start">
+          <div className="w-full p-4 md:p-6 bg-stone-50 rounded-[20px] shadow-[0px_0px_12px_0px_rgba(224,219,212,1.00)] outline outline-1 outline-offset-[-1px] outline-orange-50 flex flex-col justify-start items-start gap-8 md:gap-12">
+            <div className="text-black text-2xl md:text-4xl font-semibold font-brand">
+              {t("getStarted.pricing.title")}
             </div>
 
-            {/* Setup fee note */}
-            <div className="text-white text-base font-normal font-brand leading-6">
-              {t("getStarted.pricing.setupFeeNote", { amount: SETUP_FEE })}
+            <div className="w-full flex flex-col gap-6">
+              {/* Timeline rows */}
+              <div className="w-full pb-6 border-b border-stone-300 flex flex-col">
+                {/* Row 1 — Today */}
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 flex-shrink-0 bg-stone-200 rounded-full outline outline-1 outline-offset-[-1px] outline-stone-300 flex items-center justify-center">
+                    <img src={ICON_TODAY} alt="" className="w-5 h-5 brightness-0" />
+                  </div>
+                  <div className="flex-1 flex flex-col md:flex-row md:justify-between md:items-center gap-0.5 md:gap-2">
+                    <span className="text-[#ED4C14] text-base md:text-lg font-medium font-brand">
+                      {t("getStarted.pricing.todayLabel")}
+                    </span>
+                    <span className="text-black text-sm md:text-lg font-medium font-brand md:text-right">
+                      {t("getStarted.pricing.todayDesc", { amount: payToday })}
+                    </span>
+                  </div>
+                </div>
+                {/* Connector line 1 */}
+                <div className="ml-[22px] w-px h-8 md:h-12 bg-stone-300" />
+                {/* Row 2 — Next billing */}
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 flex-shrink-0 bg-stone-200 rounded-full outline outline-1 outline-offset-[-1px] outline-stone-300 flex items-center justify-center">
+                    <img src={ICON_CALENDAR} alt="" className="w-5 h-5 brightness-0" />
+                  </div>
+                  <div className="flex-1 flex flex-col md:flex-row md:justify-between md:items-center gap-0.5 md:gap-2">
+                    <span className="text-[#ED4C14] text-base md:text-lg font-medium font-brand">
+                      {nextBillingLabel}
+                    </span>
+                    <span className="text-black text-sm md:text-lg font-medium font-brand md:text-right">
+                      {t(isYearly ? "getStarted.pricing.recurringDescYearly" : "getStarted.pricing.recurringDesc", { amount: billingTotal })}
+                    </span>
+                  </div>
+                </div>
+                {/* Connector line 2 */}
+                <div className="ml-[22px] w-px h-8 md:h-12 bg-stone-300" />
+                {/* Row 3 — Always */}
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 flex-shrink-0 bg-stone-200 rounded-full outline outline-1 outline-offset-[-1px] outline-stone-300 flex items-center justify-center">
+                    <img src={ICON_TICK} alt="" className="w-5 h-5 brightness-0" />
+                  </div>
+                  <div className="flex-1 flex flex-col md:flex-row md:justify-between md:items-center gap-0.5 md:gap-2">
+                    <span className="text-[#ED4C14] text-base md:text-lg font-medium font-brand">
+                      {t("getStarted.pricing.alwaysLabel")}
+                    </span>
+                    <span className="text-black text-sm md:text-lg font-medium font-brand md:text-right">
+                      {t("getStarted.pricing.alwaysDesc")}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Setup fee note */}
+              <div className="text-black text-base font-normal font-brand leading-6">
+                {t("getStarted.pricing.setupFeeNote", { amount: SETUP_FEE })}
+              </div>
             </div>
           </div>
         </div>
@@ -298,7 +299,7 @@ export default function StepPricing({
                 </div>
               </div>
               {/* Figma: inline-flex gap-3, each chip is flex-1 */}
-              <div className="flex gap-3">
+              <div className="flex flex-col md:flex-row gap-3">
                 {selectedAddons.map((addon) => (
                   <div
                     key={addon}

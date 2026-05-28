@@ -539,16 +539,17 @@ export default function GetStarted() {
 
   return (
     <div className="relative">
-      {/* Cancel button */}
-      <button
-        type="button"
-        onClick={() => setShowExitModal(true)}
-        className="fixed top-4 right-4 md:top-6 md:left-4 md:right-auto z-50 h-9 px-3 rounded-full bg-white/10 hover:bg-white/20 border-0 cursor-pointer flex items-center justify-center transition-colors"
-      >
-        <span className="text-white/60 text-sm font-medium font-brand hover:text-white/90 transition-colors">
-          {t("getStarted.justBrowsing")}
-        </span>
-      </button>
+      {currentStep !== 5 && (
+        <button
+          type="button"
+          onClick={() => setShowExitModal(true)}
+          className="fixed top-4 right-4 md:top-6 md:left-4 md:right-auto z-50 h-9 px-3 rounded-full bg-white/10 hover:bg-white/20 border-0 cursor-pointer flex items-center justify-center transition-colors"
+        >
+          <span className="text-white/60 text-sm font-medium font-brand hover:text-white/90 transition-colors">
+            {t("getStarted.justBrowsing")}
+          </span>
+        </button>
+      )}
       <div className="min-h-screen bg-black">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
