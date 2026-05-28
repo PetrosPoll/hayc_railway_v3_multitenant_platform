@@ -5098,23 +5098,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Stripe subscription not found or not active" });
       }
 
-      // Cancel the Stripe subscription
-      await stripe.subscriptions.cancel(stripeSubscription.id);
+      const accessUntil = new Date(stripeSubscription.current_period_end * 1000);
 
-      // Update all DB rows sharing the same stripeSubscriptionId (plan + addons)
-      await db
-        .update(subscriptionsTable)
-        .set({
-          status: "cancelled",
-          cancellationReason: "User requested cancellation",
-          accessUntil: new Date(stripeSubscription.current_period_end * 1000),
-        })
-        .where(
-          and(
-            eq(subscriptionsTable.userId, currentUser.id),
-            eq(subscriptionsTable.stripeSubscriptionId, localSubscription.stripeSubscriptionId),
-          ),
-        );
+      if (localSubscription.productType === "addon") {
+        // Addon: remove only this item from the Stripe subscription so the plan stays active.
+        // If this is somehow the last item, fall back to cancelling the whole subscription.
+        if (!localSubscription.stripeSubscriptionItemId) {
+          return res.status(400).json({ error: "No Stripe subscription item ID found for this addon" });
+        }
+        if (stripeSubscription.items.data.length === 1) {
+          await stripe.subscriptions.cancel(stripeSubscription.id);
+          await db
+            .update(subscriptionsTable)
+            .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+            .where(
+              and(
+                eq(subscriptionsTable.userId, currentUser.id),
+                eq(subscriptionsTable.stripeSubscriptionId, localSubscription.stripeSubscriptionId),
+              ),
+            );
+        } else {
+          await stripe.subscriptionItems.del(localSubscription.stripeSubscriptionItemId);
+          await db
+            .update(subscriptionsTable)
+            .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+            .where(eq(subscriptionsTable.id, subscriptionId));
+        }
+      } else {
+        // Plan: cancel the entire Stripe subscription — this also removes all addons.
+        await stripe.subscriptions.cancel(stripeSubscription.id);
+        await db
+          .update(subscriptionsTable)
+          .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+          .where(
+            and(
+              eq(subscriptionsTable.userId, currentUser.id),
+              eq(subscriptionsTable.stripeSubscriptionId, localSubscription.stripeSubscriptionId),
+            ),
+          );
+      }
 
       // Get fresh subscriptions
       const subscriptions = await storage.getUserSubscriptions(currentUser.id);
@@ -16496,7 +16518,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: subscriptionsTable.id,
           userId: subscriptionsTable.userId,
           tier: subscriptionsTable.tier,
+          productType: subscriptionsTable.productType,
           stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
+          stripeSubscriptionItemId: subscriptionsTable.stripeSubscriptionItemId,
           userEmail: users.email,
           username: users.username,
           language: users.language,
@@ -16525,23 +16549,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Stripe subscription not found or not active" });
       }
 
-      // Cancel the Stripe subscription
-      await stripe.subscriptions.cancel(stripeSubscription.id);
+      const accessUntil = new Date(stripeSubscription.current_period_end * 1000);
 
-      // Update all DB rows sharing the same stripeSubscriptionId (plan + addons)
-      await db
-        .update(subscriptionsTable)
-        .set({
-          status: "cancelled",
-          cancellationReason: reason,
-          accessUntil: new Date(stripeSubscription.current_period_end * 1000),
-        })
-        .where(
-          and(
-            eq(subscriptionsTable.userId, subscription.userId),
-            eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
-          ),
-        );
+      if (subscription.productType === "addon") {
+        // Addon: remove only this item from the Stripe subscription so the plan stays active.
+        // If this is somehow the last item, fall back to cancelling the whole subscription.
+        if (!subscription.stripeSubscriptionItemId) {
+          return res.status(400).json({ error: "No Stripe subscription item ID found for this addon" });
+        }
+        if (stripeSubscription.items.data.length === 1) {
+          await stripe.subscriptions.cancel(stripeSubscription.id);
+          await db
+            .update(subscriptionsTable)
+            .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+            .where(
+              and(
+                eq(subscriptionsTable.userId, subscription.userId),
+                eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+              ),
+            );
+        } else {
+          await stripe.subscriptionItems.del(subscription.stripeSubscriptionItemId);
+          await db
+            .update(subscriptionsTable)
+            .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+            .where(eq(subscriptionsTable.id, subscriptionId));
+        }
+      } else {
+        // Plan: cancel the entire Stripe subscription — this also removes all addons.
+        await stripe.subscriptions.cancel(stripeSubscription.id);
+        await db
+          .update(subscriptionsTable)
+          .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+          .where(
+            and(
+              eq(subscriptionsTable.userId, subscription.userId),
+              eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+            ),
+          );
+      }
 
       // Fetch website info if subscription is linked to a website
       let websiteDomain = null;
