@@ -62,7 +62,7 @@ export function FeedbackDialog({ open, onOpenChange }: FeedbackDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]" data-testid="dialog-feedback">
+      <DialogContent className="sm:max-w-[500px] font-brand" data-testid="dialog-feedback">
         <DialogHeader>
           <DialogTitle>{t("dashboard.shareFeedback")}</DialogTitle>
         </DialogHeader>
