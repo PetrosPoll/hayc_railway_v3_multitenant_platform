@@ -70,6 +70,7 @@
             "annually": "Ετήσια"
         },
         "perMonth": "/ ανά μήνα",
+        "vatIncluded": "συμπ. ΦΠΑ",
         "saveAnnually": "Εξοικονόμηση 20% ετησίως",
         "whatYouGet": "Τι θα λάβετε",
         "getStarted": "Ξεκινήστε",
@@ -2173,6 +2174,7 @@
         "today": "σήμερα",
         "then": "Στη συνέχεια",
         "perMonth": "/μήνα",
+        "vatIncluded": "συμπ. ΦΠΑ",
         "perYear": "/έτος",
         "title": "Ολοκληρώστε την {{planName}} συνδρομή σας",
         "backToPlans": "Επιστροφή στα Πλάνα",

@@ -646,7 +646,9 @@ function PreCheckoutPage({
                         <span>{plan.name}</span>
                         <span>
                           €{isYearly ? plan.yearlyPrice : plan.price}
-                          {isYearly ? t("preCheckout.perYear") : t("preCheckout.perMonth")}
+                          {isYearly
+                            ? ` ${t("preCheckout.perYear")} · ${t("preCheckout.vatIncluded")}`
+                            : ` ${t("preCheckout.perMonth")} · ${t("preCheckout.vatIncluded")}`}
                         </span>
                       </div>
 
@@ -667,9 +669,9 @@ function PreCheckoutPage({
                           €{calculateTotals().totalToday.toFixed(2)}
                           {plan.setupFee > 0 && !isResumeFlow
                             ? " " + t("preCheckout.today")
-                            : (isYearly
-                                ? t("preCheckout.perYear")
-                                : t("preCheckout.perMonth"))}
+                          {isYearly
+                            ? ` ${t("preCheckout.perYear")} · ${t("preCheckout.vatIncluded")}`
+                            : ` ${t("preCheckout.perMonth")} · ${t("preCheckout.vatIncluded")}`}
                         </span>
                       </div>
 
@@ -677,7 +679,9 @@ function PreCheckoutPage({
                       {plan.setupFee > 0 && !isResumeFlow && (
                         <div className="text-sm text-muted-foreground mt-1">
                           {t("preCheckout.then")} €{calculateTotals().recurringTotal.toFixed(2)}
-                          {isYearly ? t("preCheckout.perYear") : t("preCheckout.perMonth")}
+                          {isYearly
+                            ? ` ${t("preCheckout.perYear")} · ${t("preCheckout.vatIncluded")}`
+                            : ` ${t("preCheckout.perMonth")} · ${t("preCheckout.vatIncluded")}`}
                         </div>
                       )}
                     </div>

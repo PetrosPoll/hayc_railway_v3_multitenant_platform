@@ -229,7 +229,7 @@ export default function PricingPage() {
                           {billing === "monthly" ? plan.monthlyPrice : plan.annualPrice}
                         </span>
                         <span className="text-white/80 text-sm font-normal font-brand leading-5 mb-3">
-                          {t("pricing.perMonth")}
+                          {t("pricing.perMonth")} · {t("pricing.vatIncluded")}
                         </span>
                       </div>
                       <span className="text-blue-400 text-sm font-normal font-brand leading-5">

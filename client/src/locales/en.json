@@ -70,6 +70,7 @@
             "annually": "Annually"
         },
         "perMonth": "/ per month",
+        "vatIncluded": "incl. VAT",
         "saveAnnually": "Save 20% annually",
         "whatYouGet": "What you will get",
         "getStarted": "Get Started",
@@ -2173,6 +2174,7 @@
         "today": "today",
         "then": "Then",
         "perMonth": "/month",
+        "vatIncluded": "incl. VAT",
         "perYear": "/year",
         "title": "Complete Your {{planName}} Subscription",
         "backToPlans": "Back to Plans",
