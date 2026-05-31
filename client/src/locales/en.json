@@ -3777,16 +3777,22 @@
         },
         "acceptable": {
             "title": "Acceptable Use Policy (AUP)",
-            "s1": "Forbidden Content/Services",
+            "intro": "This Acceptable Use Policy applies to all hayc clients and to all content and activity on websites hosted through the hayc platform. It supplements our Terms of Service.",
+            "s1": "1. Prohibited Content & Services",
             "list1": "Adult content",
             "list2": "Gambling",
-            "list3": "Medical/health sensitive data",
+            "list3": "Websites handling sensitive health or medical data without appropriate legal compliance",
             "list4": "Crypto/KYC services",
-            "list5": "Illegal content, malware, phishing, spam",
+            "list5": "Illegal content, malware, phishing, or spam",
             "list6": "Hate speech",
             "list7": "Copyright-infringing content",
-            "s2": "Violations",
-            "p2": "Violations may result in suspension or termination."
+            "list8": "Misleading, false, or deceptive commercial claims (including unverified medical, financial, or legal claims)",
+            "list9": "Unsolicited bulk messaging or newsletter spam sent through hayc add-ons",
+            "list10": "Abuse of the hayc platform (e.g. scraping, reverse engineering, bypassing limits, or overloading infrastructure)",
+            "s2": "2. Violations & Enforcement",
+            "p2": "Violations may result in content removal, suspension, or termination of your website and account, without refund where permitted by law. You remain solely responsible for all content on your website under our Terms of Service, Section 6 (Content Responsibilities).",
+            "s3": "3. Contact",
+            "p3": "To report abuse or ask questions: support@hayc.gr"
         }
     },
     "about": {
