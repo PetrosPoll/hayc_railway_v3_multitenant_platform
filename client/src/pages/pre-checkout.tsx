@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation, useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/ui/authContext";
 import { z } from "zod";
@@ -685,24 +685,43 @@ function PreCheckoutPage({
 
                   <div className="flex items-start space-x-3 mt-6">
                     <Checkbox
-                      id="privacy-policy"
+                      id="legal-acceptance"
                       checked={privacyAccepted}
                       onCheckedChange={(checked) => setPrivacyAccepted(checked === true)}
-                      data-testid="checkbox-privacy-policy"
+                      data-testid="checkbox-legal-acceptance"
                     />
                     <label
-                      htmlFor="privacy-policy"
+                      htmlFor="legal-acceptance"
                       className="text-sm leading-tight cursor-pointer"
                     >
-                      {t("preCheckout.privacyPolicyAcceptance")}{" "}
-                      <a
-                        href="/legal/privacy-policy"
+                      {t("preCheckout.legalAcceptancePrefix")}{" "}
+                      <Link
+                        to="/terms-of-service"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary underline hover:no-underline"
                       >
-                        {t("preCheckout.privacyPolicyLink")}
-                      </a>
+                        {t("preCheckout.termsLink")}
+                      </Link>{" "}
+                      {t("preCheckout.legalAcceptanceAnd")}{" "}
+                      <Link
+                        to="/privacy-policy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline hover:no-underline"
+                      >
+                        {t("preCheckout.privacyLink")}
+                      </Link>
+                      {t("preCheckout.legalAcceptanceBillingPrefix")}{" "}
+                      <Link
+                        to="/billing-subscription-policy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline hover:no-underline"
+                      >
+                        {t("preCheckout.billingLink")}
+                      </Link>
+                      {t("preCheckout.legalAcceptanceSuffix")}
                     </label>
                   </div>
 

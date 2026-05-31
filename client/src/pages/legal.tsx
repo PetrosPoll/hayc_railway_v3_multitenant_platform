@@ -86,7 +86,7 @@ export default function Legal() {
           </p>
           <p className="text-sm text-white/80">
             <strong className="text-white">{t("legalPages.email")}:</strong> support@hayc.gr<br />
-            <strong className="text-white">{t("legalPages.address")}:</strong> Chlois 27, Marousi, Athens, 15126, Greece
+            <strong className="text-white">{t("legalPages.address")}:</strong> {t("legalPages.companyAddress")}
           </p>
         </div>
       </div>

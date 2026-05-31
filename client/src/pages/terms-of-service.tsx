@@ -33,11 +33,11 @@ export default function TermsOfService() {
         <div className="bg-white/5 border border-white/10 rounded-lg p-5 sm:p-8 backdrop-blur-sm prose prose-invert max-w-none">
           <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-white font-brand">{t("legalPages.terms.title")}</h1>
 
-          <p className="text-sm text-white/50 mb-8">{t("legalPages.lastUpdated", { date: "November 2025" })}</p>
+          <p className="text-sm text-white/50 mb-8">{t("legalPages.lastUpdated", { date: "May 2026" })}</p>
 
           <div className="mb-6">
             <p className="text-white/80"><strong className="text-white">{t("legalPages.operator")}:</strong> Petros Pollakis (Sole Proprietor)</p>
-            <p className="text-white/80"><strong className="text-white">{t("legalPages.address")}:</strong> Chlois 27, Marousi, Athens, 15126, Greece</p>
+            <p className="text-white/80"><strong className="text-white">{t("legalPages.address")}:</strong> {t("legalPages.companyAddress")}</p>
             <p className="text-white/80"><strong className="text-white">{t("legalPages.vatNumber")}:</strong> 161537871</p>
             <p className="text-white/80"><strong className="text-white">{t("legalPages.email")}:</strong> support@hayc.gr</p>
           </div>
@@ -98,7 +98,10 @@ export default function TermsOfService() {
 
           <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.terms.s17")}</h2>
           <p className="text-white/80">support@hayc.gr<br />
-          Chlois 27, Marousi, Athens, 15126, Greece</p>
+          {t("legalPages.companyAddress")}</p>
+
+          <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.terms.s18")}</h2>
+          <p className="text-white/80">{t("legalPages.terms.p18")}</p>
         </div>
       </div>
     </div>

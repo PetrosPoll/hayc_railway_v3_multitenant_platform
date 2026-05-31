@@ -112,6 +112,7 @@ export function Footer() {
           <div className="self-stretch flex flex-col justify-start items-start gap-3">
             <div className="self-stretch text-white text-base font-bold font-brand leading-7">{t("footer.legal")}</div>
             <div className="self-stretch flex flex-col justify-start items-start gap-3">
+              <Link to="/legal" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.legalInformation")}</Link>
               <Link to="/terms-of-service" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.termsOfService")}</Link>
               <Link to="/privacy-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.privacyPolicy")}</Link>
               <Link to="/cookie-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.cookiePolicy")}</Link>
@@ -202,6 +203,7 @@ export function Footer() {
         <div className="flex-1 self-stretch pt-11 flex flex-col justify-start items-start gap-6">
           <p className="text-white text-base font-bold font-brand leading-7">{t("footer.legal")}</p>
           <div className="flex flex-col justify-start items-start gap-3">
+            <Link to="/legal" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.legalInformation")}</Link>
             <Link to="/terms-of-service" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.termsOfService")}</Link>
             <Link to="/privacy-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.privacyPolicy")}</Link>
             <Link to="/cookie-policy" className="text-white text-base font-normal font-brand leading-6 hover:opacity-70 transition-opacity">{t("footer.links.cookiePolicy")}</Link>

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import {
@@ -538,15 +539,34 @@ export default function StepSummary({
                           {field.value && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                         </button>
                         <span className="text-white/70 text-xs font-normal font-brand leading-5">
-                          {t("getStarted.summary.privacyAcceptance")}{" "}
-                          <a
-                            href="/privacy-policy"
+                          {t("getStarted.summary.legalAcceptancePrefix")}{" "}
+                          <Link
+                            to="/terms-of-service"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#ED4C14] underline"
+                          >
+                            {t("getStarted.summary.termsLink")}
+                          </Link>{" "}
+                          {t("getStarted.summary.legalAcceptanceAnd")}{" "}
+                          <Link
+                            to="/privacy-policy"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-[#ED4C14] underline"
                           >
                             {t("getStarted.summary.privacyPolicyLink")}
-                          </a>
+                          </Link>
+                          {t("getStarted.summary.legalAcceptanceBillingPrefix")}{" "}
+                          <Link
+                            to="/billing-subscription-policy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#ED4C14] underline"
+                          >
+                            {t("getStarted.summary.billingLink")}
+                          </Link>
+                          {t("getStarted.summary.legalAcceptanceSuffix")}
                         </span>
                       </div>
                     </FormItem>
