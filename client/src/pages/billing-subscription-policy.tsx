@@ -21,6 +21,8 @@ export default function BillingSubscriptionPolicy() {
         <div className="bg-white/5 border border-white/10 rounded-lg p-5 sm:p-8 backdrop-blur-sm prose prose-invert max-w-none">
           <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-white font-brand">{t("legalPages.billing.title")}</h1>
 
+          <p className="text-sm text-white/50 mb-8">{t("legalPages.lastUpdated", { date: "May 2026" })}</p>
+
           <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.billing.s1")}</h2>
           <p className="text-white/80">{t("legalPages.billing.p1")}</p>
 
@@ -38,6 +40,12 @@ export default function BillingSubscriptionPolicy() {
 
           <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.billing.s6")}</h2>
           <p className="text-white/80">{t("legalPages.billing.p6")}</p>
+
+          <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.billing.s7")}</h2>
+          <p className="text-white/80">{t("legalPages.billing.p7")}</p>
+
+          <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.billing.s8")}</h2>
+          <p className="text-white/80">{t("legalPages.billing.p8")}</p>
         </div>
       </div>
     </div>
