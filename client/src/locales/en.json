@@ -3575,6 +3575,34 @@
         "errorDesc": "Failed to reset password. Please try again.",
         "validateError": "Failed to validate reset link"
     },
+    "cookieConsent": {
+        "title": "We use cookies",
+        "description": "We use essential cookies to run hayc.gr. With your consent, we also use analytics and marketing cookies. Read our",
+        "cookiePolicyLink": "Cookie Policy",
+        "privacyPolicyLink": "Privacy Policy",
+        "and": "and",
+        "acceptAll": "Accept all",
+        "rejectNonEssential": "Reject non-essential",
+        "customize": "Manage preferences",
+        "preferencesTitle": "Cookie preferences",
+        "preferencesDescription": "Choose which optional cookies you allow. Essential cookies are always active because the site needs them to function.",
+        "savePreferences": "Save preferences",
+        "cancel": "Cancel",
+        "categories": {
+            "necessary": {
+                "title": "Essential",
+                "description": "Required for security, session management, and storing your cookie choices."
+            },
+            "analytics": {
+                "title": "Analytics",
+                "description": "Help us understand how hayc.gr is used (Google Analytics)."
+            },
+            "marketing": {
+                "title": "Marketing",
+                "description": "Used to measure ad performance and reach relevant audiences (Meta Pixel)."
+            }
+        }
+    },
     "legalPages": {
         "backToHome": "Back to Home",
         "lastUpdated": "Last updated: {{date}}",
@@ -3688,16 +3716,43 @@
         "cookie": {
             "title": "Cookie Policy",
             "s1": "1. Types of Cookies",
-            "p1": "Strictly necessary, preferences, analytics (Google Analytics + internal platform analytics). No advertising cookies currently.",
+            "p1": "We use strictly necessary cookies for core site functionality and to store your consent choices. With your consent, we also use analytics cookies (Google Analytics) and marketing cookies (Meta Pixel).",
             "s2": "2. Cookie Consent",
-            "p2": "Users can accept, reject, or manage preferences via the banner.",
+            "p2": "When you first visit hayc.gr, a banner lets you accept all cookies, reject non-essential cookies, or manage your preferences by category. Non-essential cookies are only loaded after you consent. You can change your choices at any time from our Cookie Policy page.",
             "s3": "3. Example Cookie Table",
             "s4": "4. Contact",
             "p4": "support@hayc.gr",
+            "managePreferences": "Manage cookie preferences",
             "colName": "Cookie Name",
             "colType": "Type",
             "colProvider": "Provider",
-            "colDuration": "Duration"
+            "colDuration": "Duration",
+            "rows": {
+                "consent": {
+                    "name": "hayc_cookie_consent (localStorage)",
+                    "type": "Essential (consent storage)",
+                    "provider": "hayc",
+                    "duration": "1 year"
+                },
+                "ga": {
+                    "name": "_ga",
+                    "type": "Analytics",
+                    "provider": "Google",
+                    "duration": "13 months"
+                },
+                "gid": {
+                    "name": "_gid",
+                    "type": "Analytics",
+                    "provider": "Google",
+                    "duration": "24 hours"
+                },
+                "fbp": {
+                    "name": "_fbp",
+                    "type": "Marketing",
+                    "provider": "Meta",
+                    "duration": "3 months"
+                }
+            }
         },
         "billing": {
             "title": "Billing & Subscription Policy",

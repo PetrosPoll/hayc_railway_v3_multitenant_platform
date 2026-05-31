@@ -64,6 +64,7 @@ import AdminTags from "./pages/admin-tags";
 import AdminTemplates from "./pages/admin-templates";
 import AdminEmailBuilder from "./pages/admin-email-builder";
 import UnsubscribePage from "./pages/unsubscribe";
+import { CookieConsentProvider } from "@/components/ui/cookie-consent";
 
 // Footer wrapper component that conditionally renders footer
 function ConditionalFooter() {
@@ -310,10 +311,12 @@ function App() {
         <AuthProvider>
           <Router>
             <ScrollToTop />
-            <AppLoader>
-              <AppContent />
-              <Toaster />
-            </AppLoader>
+            <CookieConsentProvider>
+              <AppLoader>
+                <AppContent />
+                <Toaster />
+              </AppLoader>
+            </CookieConsentProvider>
           </Router>
         </AuthProvider>
       </QueryClientProvider>

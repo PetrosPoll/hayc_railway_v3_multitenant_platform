@@ -3575,6 +3575,34 @@
         "errorDesc": "Αποτυχία επαναφοράς κωδικού. Παρακαλώ δοκιμάστε ξανά.",
         "validateError": "Αποτυχία επικύρωσης συνδέσμου επαναφοράς"
     },
+    "cookieConsent": {
+        "title": "Χρησιμοποιούμε cookies",
+        "description": "Χρησιμοποιούμε απαραίτητα cookies για τη λειτουργία του hayc.gr. Με τη συγκατάθεσή σας, χρησιμοποιούμε επίσης cookies analytics και marketing. Διαβάστε την",
+        "cookiePolicyLink": "Πολιτική Cookies",
+        "privacyPolicyLink": "Πολιτική Απορρήτου",
+        "and": "και την",
+        "acceptAll": "Αποδοχή όλων",
+        "rejectNonEssential": "Απόρριψη μη απαραίτητων",
+        "customize": "Διαχείριση προτιμήσεων",
+        "preferencesTitle": "Προτιμήσεις cookies",
+        "preferencesDescription": "Επιλέξτε ποια προαιρετικά cookies επιτρέπετε. Τα απαραίτητα cookies είναι πάντα ενεργά, γιατί το site τα χρειάζεται για να λειτουργεί.",
+        "savePreferences": "Αποθήκευση προτιμήσεων",
+        "cancel": "Ακύρωση",
+        "categories": {
+            "necessary": {
+                "title": "Απαραίτητα",
+                "description": "Απαιτούνται για ασφάλεια, διαχείριση session και αποθήκευση των επιλογών σας για cookies."
+            },
+            "analytics": {
+                "title": "Analytics",
+                "description": "Μας βοηθούν να κατανοούμε πώς χρησιμοποιείται το hayc.gr (Google Analytics)."
+            },
+            "marketing": {
+                "title": "Marketing",
+                "description": "Χρησιμοποιούνται για μέτρηση διαφημίσεων και σχετικό κοινό (Meta Pixel)."
+            }
+        }
+    },
     "legalPages": {
         "backToHome": "Επιστροφή στην Αρχική",
         "lastUpdated": "Τελευταία ενημέρωση: {{date}}",
@@ -3688,16 +3716,43 @@
         "cookie": {
             "title": "Πολιτική Cookies",
             "s1": "1. Τύποι Cookies",
-            "p1": "Απαραίτητα, προτιμήσεων, αναλυτικά (Google Analytics + εσωτερικά αναλυτικά πλατφόρμας). Δεν χρησιμοποιούνται προς το παρόν cookies διαφήμισης.",
+            "p1": "Χρησιμοποιούμε απαραίτητα cookies για βασική λειτουργία του site και αποθήκευση των επιλογών συγκατάθεσής σας. Με τη συγκατάθεσή σας, χρησιμοποιούμε επίσης cookies analytics (Google Analytics) και marketing (Meta Pixel).",
             "s2": "2. Συγκατάθεση Cookies",
-            "p2": "Οι χρήστες μπορούν να αποδεχτούν, να απορρίψουν ή να διαχειριστούν τις προτιμήσεις μέσω του banner.",
+            "p2": "Όταν επισκέπτεστε για πρώτη φορά το hayc.gr, εμφανίζεται banner όπου μπορείτε να αποδεχτείτε όλα τα cookies, να απορρίψετε τα μη απαραίτητα ή να διαχειριστείτε τις προτιμήσεις ανά κατηγορία. Τα μη απαραίτητα cookies φορτώνονται μόνο μετά τη συγκατάθεσή σας. Μπορείτε να αλλάξετε τις επιλογές σας ανά πάσα στιγμή από τη σελίδα Πολιτικής Cookies.",
             "s3": "3. Παράδειγμα Πίνακα Cookies",
             "s4": "4. Επικοινωνία",
             "p4": "support@hayc.gr",
+            "managePreferences": "Διαχείριση προτιμήσεων cookies",
             "colName": "Όνομα Cookie",
             "colType": "Τύπος",
             "colProvider": "Πάροχος",
-            "colDuration": "Διάρκεια"
+            "colDuration": "Διάρκεια",
+            "rows": {
+                "consent": {
+                    "name": "hayc_cookie_consent (localStorage)",
+                    "type": "Απαραίτητο (αποθήκευση συγκατάθεσης)",
+                    "provider": "hayc",
+                    "duration": "1 έτος"
+                },
+                "ga": {
+                    "name": "_ga",
+                    "type": "Analytics",
+                    "provider": "Google",
+                    "duration": "13 μήνες"
+                },
+                "gid": {
+                    "name": "_gid",
+                    "type": "Analytics",
+                    "provider": "Google",
+                    "duration": "24 ώρες"
+                },
+                "fbp": {
+                    "name": "_fbp",
+                    "type": "Marketing",
+                    "provider": "Meta",
+                    "duration": "3 μήνες"
+                }
+            }
         },
         "billing": {
             "title": "Πολιτική Χρέωσης & Συνδρομής",
