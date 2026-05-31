@@ -3607,7 +3607,7 @@
             "s2": "2. Services",
             "p2": "hayc provides subscription-based website services including setup, hosting, updates, maintenance, change requests, and add-ons (\"Services\"). Your scope is defined by your selected plan, add-ons, and these Terms.",
             "s3": "3. Subscription Term & Auto-Renewal",
-            "p3": "Your subscription remains active and renews automatically until you cancel it from your dashboard on the hayc platform. You authorize recurring charges to your payment method. If a payment fails, Stripe retries up to 8 times over 14 days. After that, your website may be suspended until payment succeeds.",
+            "p3": "Your subscription remains active and renews automatically until you cancel it from your dashboard on the hayc platform. You authorize recurring charges to your payment method. If a payment fails, Stripe retries up to 8 times over 14 days. After that, your website may be suspended. Your website will be reactivated when your subscription restarts on the hayc platform and payment succeeds.",
             "s4": "4. Pricing, Taxes & Annual Discounts",
             "p4": "Prices exclude VAT unless stated. VAT is added based on billing region. Annual plans include a 20% discount (rounded). Price changes require 30 days' notice.",
             "s5": "5. Deliverables & Change Requests",
