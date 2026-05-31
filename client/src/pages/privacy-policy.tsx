@@ -27,12 +27,14 @@ export default function PrivacyPolicy() {
             <p className="text-white/80"><strong className="text-white">{t("legalPages.dataController")}:</strong> Petros Pollakis, Sole Proprietor (hayc)</p>
             <p className="text-white/80"><strong className="text-white">{t("legalPages.email")}:</strong> support@hayc.gr</p>
             <p className="text-white/80"><strong className="text-white">{t("legalPages.address")}:</strong> {t("legalPages.companyAddress")}</p>
+            <p className="text-white/60 text-sm mt-3">{t("legalPages.controllerContactNote")}</p>
           </div>
 
           <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.privacy.s1")}</h2>
           <p className="text-white/80">{t("legalPages.privacy.p1")}</p>
 
           <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.privacy.s2")}</h2>
+          <p className="text-white/80 mb-4">{t("legalPages.privacy.p2_intro")}</p>
           <ul className="text-white/80">
             <li>{t("legalPages.privacy.p2_1")}</li>
             <li>{t("legalPages.privacy.p2_2")}</li>
@@ -70,7 +72,8 @@ export default function PrivacyPolicy() {
           </ul>
 
           <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.privacy.s7")}</h2>
-          <p className="text-white/80">{t("legalPages.privacy.p7")}</p>
+          <p className="text-white/80 mb-4">{t("legalPages.privacy.p7")}</p>
+          <p className="text-white/80">{t("legalPages.privacy.p7_2")}</p>
 
           <h2 className="text-xl sm:text-2xl font-semibold mt-8 mb-4 text-white font-brand">{t("legalPages.privacy.s8")}</h2>
           <p className="text-white/80">{t("legalPages.privacy.p8")}</p>
