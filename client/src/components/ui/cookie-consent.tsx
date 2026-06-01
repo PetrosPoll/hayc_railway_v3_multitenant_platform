@@ -59,7 +59,7 @@ function CategoryRow({
     <div className="flex items-start justify-between gap-4 rounded-lg border border-white/10 bg-white/5 p-4">
       <div className="space-y-1">
         <p className="text-sm font-semibold text-white font-brand">{title}</p>
-        <p className="text-sm text-white/70">{description}</p>
+        <p className="text-sm text-white/70 font-brand">{description}</p>
       </div>
       <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
     </div>
@@ -136,10 +136,10 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
           aria-label={t("cookieConsent.title")}
           data-testid="cookie-consent-banner"
         >
-          <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mx-auto flex max-w-6xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2 lg:max-w-3xl">
               <p className="text-base font-semibold text-white font-brand">{t("cookieConsent.title")}</p>
-              <p className="text-sm text-white/75">
+              <p className="text-sm text-white/75 font-brand">
                 {t("cookieConsent.description")}{" "}
                 <Link to="/cookie-policy" className="underline underline-offset-2 hover:text-white">
                   {t("cookieConsent.cookiePolicyLink")}
@@ -152,7 +152,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
               </p>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:justify-end">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap lg:flex-nowrap lg:shrink-0 lg:items-center lg:gap-3">
               <Button
                 variant="outline"
                 className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
@@ -169,7 +169,12 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
               >
                 {t("cookieConsent.rejectNonEssential")}
               </Button>
-              <Button onClick={handleAcceptAll} data-testid="button-cookie-accept">
+              <div className="hidden lg:block h-8 w-px bg-white/20" />
+              <Button
+                className="bg-[#A0BAF3] hover:opacity-80 border-0 text-[#00070f] font-brand font-semibold"
+                onClick={handleAcceptAll}
+                data-testid="button-cookie-accept"
+              >
                 {t("cookieConsent.acceptAll")}
               </Button>
             </div>
@@ -186,10 +191,13 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
           }
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#00070f] text-white sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-brand text-white">{t("cookieConsent.preferencesTitle")}</DialogTitle>
-            <DialogDescription className="text-white/70">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#00070f] text-white sm:max-w-md"
+          closeBtnClassName="h-7 w-7 min-h-0 min-w-0 sm:h-7 sm:w-7 sm:min-h-0 sm:min-w-0 right-3 top-3 sm:right-3 sm:top-3"
+        >
+          <DialogHeader className="pb-1">
+            <DialogTitle className="font-brand text-white text-lg">{t("cookieConsent.preferencesTitle")}</DialogTitle>
+            <DialogDescription className="text-white/70 font-brand text-sm">
               {t("cookieConsent.preferencesDescription")}
             </DialogDescription>
           </DialogHeader>
@@ -215,7 +223,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
             />
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+          <div className="flex flex-col gap-2 border-t border-white/10 pt-4 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"
@@ -228,7 +236,11 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
             >
               {t("cookieConsent.cancel")}
             </Button>
-            <Button onClick={handleSavePreferences} data-testid="button-cookie-save-preferences">
+            <Button
+              className="bg-[#A0BAF3] hover:opacity-80 border-0 text-[#00070f] font-brand font-semibold"
+              onClick={handleSavePreferences}
+              data-testid="button-cookie-save-preferences"
+            >
               {t("cookieConsent.savePreferences")}
             </Button>
           </div>
