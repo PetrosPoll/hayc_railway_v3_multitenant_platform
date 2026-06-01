@@ -25,6 +25,18 @@ const PRICE_ID_MAP: Record<string, { tier: SubscriptionTier; billingPeriod: "mon
 };
 
 /**
+ * Public plan slugs matching PRICE_ID_MAP / `getPrice(tier, billingPeriod)`.
+ * Use in outbound links (`/get-started?plan=<slug>&billing=<monthly|yearly>`).
+ */
+export const STRIPE_PUBLIC_PLAN_IDS = ["basic", "essential", "pro"] as const satisfies readonly SubscriptionTier[];
+
+export type StripePublicPlanSlug = (typeof STRIPE_PUBLIC_PLAN_IDS)[number];
+
+export function isStripePublicPlanSlug(slug: unknown): slug is StripePublicPlanSlug {
+  return typeof slug === "string" && (STRIPE_PUBLIC_PLAN_IDS as readonly string[]).includes(slug);
+}
+
+/**
  * Fetches all subscription prices from Stripe and saves them to database
  */
 async function fetchPricesFromStripe(): Promise<NormalizedPrice[]> {

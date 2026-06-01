@@ -702,7 +702,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   return (
     <TooltipProvider delayDuration={300}>
     <div className={`space-y-6 ${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}`} data-testid="campaigns-list">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold" data-testid="campaigns-title">
             {t("dashboard.campaigns.title")}
@@ -711,7 +711,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
             {t("dashboard.campaigns.description")}
           </p>
         </div>
-        <Button onClick={() => setShowCampaignWizard(true)} data-testid="button-create-campaign">
+        <Button onClick={() => setShowCampaignWizard(true)} data-testid="button-create-campaign" className="shrink-0">
           <Plus className="h-4 w-4 mr-2" />
           {t("dashboard.campaigns.createButton")}
         </Button>

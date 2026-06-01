@@ -68,11 +68,18 @@ import {
   Wallet,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/ui/authContext";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Subscription } from "@shared/schema";
 import { AVAILABLE_ADDONS } from "@/lib/addons";
+
+type PaymentMethodInfo = {
+  hasPaymentMethod?: boolean;
+  card?: { brand: string; last4: string };
+};
 import { BOOKING_APP_BASE_URL } from "@/lib/utils";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
@@ -360,6 +367,7 @@ export default function WebsiteDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { setUser } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -564,12 +572,13 @@ export default function WebsiteDashboard() {
       });
       if (response.ok) {
         queryClient.setQueryData(["/api/user"], null);
+        setUser(null);
         toast({
           title: t("dashboard.success") || "Success",
           description: t("dashboard.loggedOut") || "Logged out successfully",
         });
         // Use full page redirect to ensure clean logout
-        window.location.href = "/auth";
+        navigate("/auth");
       }
     } catch (error) {
       toast({
@@ -645,9 +654,11 @@ export default function WebsiteDashboard() {
   const [selectedAddOn, setSelectedAddOn] = useState<{ id: string, name: string, description: string, price: number } | null>(null);
 
   // Fetch payment method details - MUST be after confirmDialogOpen is declared
-  const { data: paymentMethod, isLoading: paymentMethodLoading } = useQuery({
+  const { data: paymentMethod, isLoading: paymentMethodLoading } = useQuery<PaymentMethodInfo>({
     queryKey: ["/api/payment-method"],
-    enabled: confirmDialogOpen,
+    enabled:
+      confirmDialogOpen ||
+      (activeSection === "billing" && billingView === "payment-info"),
   });
 
   const cancelMutation = useMutation({
@@ -667,7 +678,9 @@ export default function WebsiteDashboard() {
         description: t("dashboard.subscriptionCancelledDesc") || "Your subscription has been cancelled successfully.",
       });
       setSubscriptionToCancel(null);
-      window.location.reload();
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "stripe", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
     onError: () => {
       toast({
@@ -894,6 +907,25 @@ export default function WebsiteDashboard() {
     },
   });
 
+  // Auto-redirect to content tab when progress is complete and no tab was explicitly set
+  useEffect(() => {
+    if (!website) return;
+    if (searchParams.get("tab")) return;
+    const stages = website.stages ?? [];
+    if (stages.length === 0) return;
+    const maxStage = Math.max(...stages.map((s) => s.stageNumber));
+    const lastStage = stages.find((s) => s.stageNumber === maxStage);
+    const progressComplete = website.currentStage === maxStage && lastStage?.status === "completed";
+    if (progressComplete && website.siteId) {
+      lastTabRef.current = "content";
+      setActiveSection("content");
+      const newParams = new URLSearchParams(searchParams);
+      newParams.set("tab", "content");
+      setSearchParams(newParams, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [website]);
+
   // Load user's language preference from database when user data is loaded
   useEffect(() => {
     if (userData?.user?.language) {
@@ -990,8 +1022,18 @@ export default function WebsiteDashboard() {
 
   // Cloudinary file upload handler for change requests (with signed uploads)
   const handleChangeFileUpload = async () => {
-    if (typeof window !== 'undefined' && (window as any).cloudinary) {
-      try {
+    try {
+      await loadCloudinaryWidget();
+    } catch {
+      toast({
+        title: t("dashboard.uploadUnavailable") || "Upload Service Unavailable",
+        description: t("dashboard.uploadUnavailableDesc") || "Please try again later.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
         const accountEmail = userData?.user?.email || 'unknown-user';
         const folderName = `Website Media/${accountEmail}/${website?.domain}/Change Requests`;
 
@@ -1062,18 +1104,11 @@ export default function WebsiteDashboard() {
             }
           }
         );
-      } catch (error) {
-        console.error("Upload configuration error:", error);
-        toast({
-          title: t("dashboard.uploadError") || "Upload Error",
-          description: t("dashboard.uploadErrorDesc") || "Failed to initialize upload. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } else {
+    } catch (error) {
+      console.error("Upload configuration error:", error);
       toast({
-        title: t("dashboard.uploadUnavailable") || "Upload Service Unavailable",
-        description: t("dashboard.uploadUnavailableDesc") || "Please try again later.",
+        title: t("dashboard.uploadError") || "Upload Error",
+        description: t("dashboard.uploadErrorDesc") || "Failed to initialize upload. Please try again.",
         variant: "destructive",
       });
     }
@@ -1219,13 +1254,20 @@ export default function WebsiteDashboard() {
   });
 
   const menuItems = React.useMemo(() => {
+    const isProgressComplete = (() => {
+      if (!website?.stages || website.stages.length === 0) return false;
+      const maxStageNumber = Math.max(...website.stages.map((s) => s.stageNumber));
+      const lastStage = website.stages.find((s) => s.stageNumber === maxStageNumber);
+      return website.currentStage === maxStageNumber && lastStage?.status === "completed";
+    })();
+
     const base = [
-      { id: "progress", label: t("dashboard.progress") || "Website", icon: Settings },
+      ...(!isProgressComplete ? [{ id: "progress", label: t("dashboard.progress") || "Website", icon: Settings }] : []),
+      ...(website?.siteId ? [{ id: "content", label: t("dashboard.content"), icon: FileEdit }] : []),
+      ...(isProgressComplete ? [{ id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart }] : []),
       { id: "changes", label: t("dashboard.changes") || "Changes", icon: FileText },
       { id: "media", label: t("dashboard.media") || "Media", icon: ImageIcon },
-      ...(website?.siteId ? [{ id: "content", label: t("dashboard.content"), icon: FileEdit }] : []),
       { id: "billing", label: t("dashboard.billing") || "Billing", icon: CreditCard },
-      { id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart },
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
     ];
     const bookingItem = {
@@ -1254,7 +1296,7 @@ export default function WebsiteDashboard() {
       items.push(paymentsItem);
     }
     return [...items, ...after];
-  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, website?.siteId]);
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
 
   if (websiteLoading) {
     return (
@@ -1514,7 +1556,7 @@ export default function WebsiteDashboard() {
 
   const renderBillingOverview = () => {
     return (
-      <div className="space-y-4 space-x-4" data-testid="billing-overview">
+      <div className="space-y-4" data-testid="billing-overview">
         <h2 className="text-2xl font-bold mb-6">
           {t("dashboard.billing") || "Billing"}
         </h2>
@@ -1824,20 +1866,6 @@ export default function WebsiteDashboard() {
                             Renews on {formatDate(subscription.nextBillingDate)}{" "}
                             for{" "}
                             {(() => {
-                              // Debug logging for scheduled subscriptions
-                              if (subscription.stripeSubscriptionId?.startsWith('sub_sched_')) {
-                                console.log('🎨 [FRONTEND] Scheduled subscription pricing data:', {
-                                  subscriptionId: subscription.id,
-                                  stripeSubscriptionId: subscription.stripeSubscriptionId,
-                                  productType: subscription.productType,
-                                  price: subscription.price,
-                                  nextBillingAmount: subscription.nextBillingAmount,
-                                  discountedPrice: subscription.discountedPrice,
-                                  tier: subscription.tier,
-                                  billingPeriod: subscription.billingPeriod
-                                });
-                              }
-
                               const actualPrice = subscription.nextBillingAmount || subscription.price;
                               const standardPrice = getStandardPrice(
                                 subscription.tier,
@@ -1846,16 +1874,6 @@ export default function WebsiteDashboard() {
                                 subscription.price
                               );
                               const isDiscounted = actualPrice < standardPrice;
-
-                              // More debug logging
-                              if (subscription.stripeSubscriptionId?.startsWith('sub_sched_')) {
-                                console.log('🎨 [FRONTEND] Price comparison:', {
-                                  actualPrice,
-                                  standardPrice,
-                                  isDiscounted,
-                                  willShowDiscount: isDiscounted
-                                });
-                              }
 
                               if (isDiscounted) {
                                 return (
@@ -2077,13 +2095,22 @@ export default function WebsiteDashboard() {
                 </Button>
               ) : (
                 selectedSubscription.status === "cancelled" && (
-                  <Button
-                    variant="default"
-                    className="w-full"
-                    data-testid="button-resume-subscription"
-                  >
-                    {t("dashboard.resume") || "Resume Subscription"}
-                  </Button>
+                  // TODO: Implement self-serve resume flow (Option B - Stripe portal or
+                  // Option A - stripe.subscriptions.create with saved payment method).
+                  // Currently disabled — customer must repurchase through normal flow.
+                  <div className="w-full space-y-1">
+                    <Button
+                      variant="default"
+                      className="w-full"
+                      data-testid="button-resume-subscription"
+                      disabled={true}
+                    >
+                      {t("dashboard.resume") || "Resume Subscription"}
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      To resubscribe, please contact support or purchase a new plan.
+                    </p>
+                  </div>
                 )
               )}
             </div>
@@ -2209,6 +2236,18 @@ export default function WebsiteDashboard() {
                     {t("dashboard.managedByStripe") || "Managed by Stripe"}
                   </span>
                 </div>
+                {paymentMethodLoading ? (
+                  <div className="flex items-center gap-2 py-3 border-b text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>{t("dashboard.loading") || "Loading..."}</span>
+                  </div>
+                ) : paymentMethod?.hasPaymentMethod && paymentMethod.card ? (
+                  <p className="text-sm py-3 border-b">
+                    <span className="capitalize">{paymentMethod.card.brand}</span>
+                    {" "}
+                    ending in {paymentMethod.card.last4}
+                  </p>
+                ) : null}
                 <div className="pt-4">
                   <Button
                     onClick={() => updatePaymentMutation.mutate()}
@@ -2237,13 +2276,10 @@ export default function WebsiteDashboard() {
               </>
             ) : (
               <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">
+                <p className="text-muted-foreground">
                   {t("dashboard.noActiveSubscription") ||
                     "No active subscription found"}
                 </p>
-                <Button onClick={() => navigate("/")} variant="outline">
-                  {t("dashboard.subscribe") || "Subscribe Now"}
-                </Button>
               </div>
             )}
           </CardContent>
@@ -2544,8 +2580,19 @@ export default function WebsiteDashboard() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="2026">2026</SelectItem>
-                        <SelectItem value="2025">2025</SelectItem>
+                        {Array.from(
+                          {
+                            length: Math.max(
+                              0,
+                              new Date().getFullYear() - 2024 + 1,
+                            ),
+                          },
+                          (_, i) => new Date().getFullYear() - i,
+                        ).map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <Select
@@ -2805,7 +2852,10 @@ export default function WebsiteDashboard() {
     // Essential/Pro tier: Show analytics
     return (
       <div className="space-y-6">
-        <WebsiteAnalytics websiteId={parseInt(websiteId!)} />
+        <WebsiteAnalytics
+          websiteId={parseInt(websiteId!)}
+          tier={planSubscription?.tier ?? "essential"}
+        />
       </div>
     );
   };
@@ -3180,7 +3230,7 @@ export default function WebsiteDashboard() {
     const disabled = planSubscription?.status !== "active";
     return (
       <div data-testid="newsletter-templates-view">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
             <h2 className="text-2xl font-bold">
               {t("dashboard.emailTemplates") || "Email Templates"}
@@ -3193,7 +3243,7 @@ export default function WebsiteDashboard() {
           <Button
             onClick={() => navigate(`/websites/${websiteId}/email-builder`)}
             data-testid="button-create-new-template"
-            className={`${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}`}
+            className={`shrink-0 ${disabled ? 'pointer-events-none opacity-50 grayscale' : ''}`}
           >
             <Plus className="h-4 w-4 mr-2" />
             {t("dashboard.createNewTemplate") || "Create New Template"}
@@ -3228,6 +3278,7 @@ export default function WebsiteDashboard() {
                     navigate(`/websites/${websiteId}/email-builder`)
                   }
                   size="lg"
+                  className={`${disabled ? "pointer-events-none opacity-50 grayscale" : ""}`}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   {t("dashboard.createTemplate") || "Create Template"}
@@ -3380,7 +3431,9 @@ export default function WebsiteDashboard() {
     const mediaFolderPath = `Website Media/${userData?.user?.email}/${mediaFolderDomain}`;
 
     const handleUploadClick = async () => {
-      if (!window.cloudinary) {
+      try {
+        await loadCloudinaryWidget();
+      } catch {
         toast({
           title: t("dashboard.error"),
           description: t("dashboard.uploadWidgetNotReady"),
@@ -3742,6 +3795,10 @@ export default function WebsiteDashboard() {
       ? true // Unlimited changes before launch
       : (isUnlimited || changesUsed < changesAllowed); // Apply limit after launch
 
+    const changesContentDisabled = planSubscription?.status !== "active";
+    const canSubmitChanges =
+      !changesContentDisabled && canSubmit;
+
     return (
       <div data-testid="changes-section">
         <h2 className="text-2xl font-bold mb-6">
@@ -3752,6 +3809,28 @@ export default function WebsiteDashboard() {
             "Request changes to your website and track their status."}
         </p>
 
+        {changesContentDisabled && (
+          <Card className="mb-6 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
+            <CardContent className="py-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-amber-700 dark:text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-900 dark:text-amber-100">
+                  {t("dashboard.changesLockedInactivePlan") ||
+                    "Your website plan subscription is not active. Open Billing to reactivate or subscribe before requesting new changes."}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div
+          className={
+            changesContentDisabled
+              ? "pointer-events-none opacity-50 grayscale"
+              : ""
+          }
+          data-testid="changes-section-locked-body"
+        >
         {!isWebsiteLaunchCompleted && (
           <Card className="mb-6">
             <CardContent className="py-6">
@@ -3841,7 +3920,7 @@ export default function WebsiteDashboard() {
                   }
                   value={changeSubject}
                   onChange={(e) => setChangeSubject(e.target.value)}
-                  disabled={!canSubmit || submitChangeRequestMutation.isPending}
+                  disabled={!canSubmitChanges || submitChangeRequestMutation.isPending}
                   data-testid="input-change-subject"
                 />
               </div>
@@ -3857,7 +3936,7 @@ export default function WebsiteDashboard() {
                   }
                   value={changeMessage}
                   onChange={(e) => setChangeMessage(e.target.value)}
-                  disabled={!canSubmit || submitChangeRequestMutation.isPending}
+                  disabled={!canSubmitChanges || submitChangeRequestMutation.isPending}
                   rows={5}
                   data-testid="textarea-change-message"
                 />
@@ -3871,7 +3950,7 @@ export default function WebsiteDashboard() {
                     type="button"
                     variant="outline"
                     onClick={handleChangeFileUpload}
-                    disabled={!canSubmit || submitChangeRequestMutation.isPending}
+                    disabled={!canSubmitChanges || submitChangeRequestMutation.isPending}
                     className="w-full"
                     data-testid="button-upload-files"
                   >
@@ -3905,7 +3984,7 @@ export default function WebsiteDashboard() {
                 </div>
               </div>
 
-              {isWebsiteLaunchCompleted && !canSubmit && !isUnlimited && (
+              {isWebsiteLaunchCompleted && !canSubmitChanges && !isUnlimited && !changesContentDisabled && (
                 <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                   <AlertCircle className="h-4 w-4 text-yellow-700" />
                   <p className="text-sm text-yellow-700">
@@ -3917,7 +3996,7 @@ export default function WebsiteDashboard() {
               <Button
                 onClick={() => submitChangeRequestMutation.mutate()}
                 disabled={
-                  !canSubmit ||
+                  !canSubmitChanges ||
                   !changeSubject ||
                   !changeMessage ||
                   submitChangeRequestMutation.isPending
@@ -3940,6 +4019,7 @@ export default function WebsiteDashboard() {
             </div>
           </CardContent>
         </Card>
+        </div>
 
         {/* Change History */}
         {changeLogs.length > 0 && (
@@ -4133,6 +4213,7 @@ export default function WebsiteDashboard() {
     return (
       <DigitalProductsTab
         siteId={website.siteId}
+        websiteId={Number(websiteId)}
         listMode={digitalProductsSubView}
       />
     );
@@ -4173,7 +4254,7 @@ export default function WebsiteDashboard() {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full font-brand">
         <Sidebar>
           <SidebarContent>
             <SidebarGroup>
@@ -4229,11 +4310,11 @@ export default function WebsiteDashboard() {
 
         <SidebarInset>
           <div className="flex flex-col min-h-screen">
-            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4">
+            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
               <SidebarTrigger />
             </header>
-            <div className="flex-1 p-4 md:p-6">
-              {renderBreadcrumbs()}
+            <div className="flex-1 p-4 md:p-6 overflow-x-hidden">
+              <div className="hidden md:block">{renderBreadcrumbs()}</div>
 
               {activeSection === "progress" && (
                 <div data-testid="section-progress">
@@ -4250,23 +4331,64 @@ export default function WebsiteDashboard() {
               )}
 
               {activeSection === "content" && website?.siteId && (
-                <div data-testid="section-content" className="flex flex-col items-center justify-center h-[60vh] gap-6">
-                  <div className="text-center space-y-2">
-                    <h2 className="text-2xl font-semibold">{t("dashboard.contentEditor")}</h2>
-                    <p className="text-muted-foreground max-w-md">
-                      {t("dashboard.contentEditorDescription")}
-                    </p>
+                <div data-testid="section-content" className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-4 py-2.5">
+                    <span className="text-sm text-muted-foreground truncate">
+                      {website.siteId}.hayc.gr
+                    </span>
+                    <Button
+                      size="sm"
+                      onClick={() => setContentEditorOpen(true)}
+                      className="gap-2 shrink-0"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span className="hidden sm:inline">{t("dashboard.openContentEditor")}</span>
+                    </Button>
                   </div>
-                  <Button 
-                    size="lg" 
-                    onClick={() => setContentEditorOpen(true)}
-                    className="gap-2"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    {t("dashboard.openContentEditor")}
-                  </Button>
-                  <ContentEditor 
-                    websiteId={Number(websiteId)} 
+                  <div className="rounded-lg border overflow-hidden shadow-sm">
+                    <iframe
+                      src={`https://${website.siteId}.hayc.gr?hayc_preview=true`}
+                      className="w-full border-0 block"
+                      style={{ height: "calc(100vh - 220px)", minHeight: "500px" }}
+                      title="Site Preview"
+                      sandbox="allow-same-origin allow-scripts allow-forms"
+                      referrerPolicy="no-referrer"
+                      onLoad={(e) => {
+                        const iframe = e.currentTarget;
+                        const homeOrigin = new URL(`https://${website.siteId}.hayc.gr`).origin;
+                        try {
+                          const win = iframe.contentWindow as any;
+                          if (!win || win.__haycNavGuard) return;
+                          win.__haycNavGuard = true;
+
+                          // Layer 1: intercept anchor clicks — open external links in a new tab
+                          win.document.addEventListener(
+                            "click",
+                            (evt: MouseEvent) => {
+                              const anchor = (evt.target as Element)?.closest("a[href]");
+                              if (!anchor) return;
+                              try {
+                                const url = new URL(
+                                  (anchor as HTMLAnchorElement).href,
+                                  win.location.href
+                                );
+                                console.log("[haycNavGuard] anchor clicked", { href: url.href, sameOrigin: url.origin === homeOrigin });
+                                if (url.origin !== homeOrigin) {
+                                  evt.preventDefault();
+                                  evt.stopImmediatePropagation();
+                                  window.open(url.href, "_blank", "noopener,noreferrer");
+                                }
+                              } catch {}
+                            },
+                            true
+                          );
+
+                        } catch {}
+                      }}
+                    />
+                  </div>
+                  <ContentEditor
+                    websiteId={Number(websiteId)}
                     siteId={website.siteId}
                     open={contentEditorOpen}
                     onOpenChange={setContentEditorOpen}
@@ -4325,6 +4447,7 @@ export default function WebsiteDashboard() {
           open={hdpBrandModalOpen}
           onOpenChange={setHdpBrandModalOpen}
           siteId={website.siteId}
+          websiteId={Number(websiteId)}
           previewUrl={HDP_URL ? `${HDP_URL}?siteId=${encodeURIComponent(website.siteId)}` : ""}
         />
       ) : null}
@@ -4496,6 +4619,7 @@ export default function WebsiteDashboard() {
             currentPeriodEnd={subscriptionToUpgrade.currentPeriodEnd ? new Date(subscriptionToUpgrade.currentPeriodEnd) : undefined}
             vatNumber={subscriptionToUpgrade.vatNumber}
             invoiceType={subscriptionToUpgrade.invoiceType}
+            onPreviewFatalError={() => setSubscriptionToUpgrade(null)}
           />
         )
       )}

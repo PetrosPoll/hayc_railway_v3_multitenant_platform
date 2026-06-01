@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation, useParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/components/ui/authContext";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -20,7 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { subscriptionPlans, availableAddOns } from "@shared/schema";
-import { createCheckoutSession, checkEmailExists } from "@/lib/api";
+import { createCheckoutSession, checkEmailExists, checkUsernameAvailable } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Check } from "lucide-react";
 
@@ -106,6 +107,10 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+type PreCheckoutUserResponse = {
+  user: { email: string; username: string };
+};
+
 interface PreCheckoutPageProps {
   planId: string;
   isYearly: boolean;
@@ -121,7 +126,18 @@ function PreCheckoutPage({
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
+  const { data: apiSession } = useQuery({
+    queryKey: ["/api/user", "soft-session"],
+    queryFn: async (): Promise<PreCheckoutUserResponse | null> => {
+      const res = await fetch("/api/user", { credentials: "include" });
+      if (res.status === 401) return null;
+      if (!res.ok) throw new Error("Failed to load session");
+      return res.json();
+    },
+    retry: false,
+  });
+  const user = authUser ?? apiSession?.user ?? null;
   const { t, i18n } = useTranslation();
   //const queryClient = useQueryClient(); //Removed as it's unused and causing error
 
@@ -256,9 +272,8 @@ function PreCheckoutPage({
           const emailCheck = await checkEmailExists(formData.email);
           if (emailCheck.success && emailCheck.exists) {
             toast({
-              title: "Account already exists",
-              description:
-                "This email is registered. Sign in to continue, or use another email for a new account.",
+              title: "Unable to continue",
+              description: "If you have an existing account, please sign in. Otherwise, try a different email.",
               variant: "destructive",
             });
             setLoading(false);
@@ -270,6 +285,24 @@ function PreCheckoutPage({
         } catch (error) {
           console.error("Email check error:", error);
           // Continue with checkout if email check fails - don't block the user
+        }
+
+        try {
+          const usernameCheck = await checkUsernameAvailable(
+            formData.username.trim(),
+          );
+          if (usernameCheck.success && usernameCheck.available === false) {
+            toast({
+              title: "Username already taken",
+              description:
+                "That username is already in use. Please choose another.",
+              variant: "destructive",
+            });
+            setLoading(false);
+            return;
+          }
+        } catch (error) {
+          console.warn("Username check error:", error);
         }
       }
 
@@ -613,7 +646,9 @@ function PreCheckoutPage({
                         <span>{plan.name}</span>
                         <span>
                           €{isYearly ? plan.yearlyPrice : plan.price}
-                          {isYearly ? t("preCheckout.perYear") : t("preCheckout.perMonth")}
+                          {isYearly
+                            ? ` ${t("preCheckout.perYear")} · ${t("preCheckout.vatIncluded")}`
+                            : ` ${t("preCheckout.perMonth")} · ${t("preCheckout.vatIncluded")}`}
                         </span>
                       </div>
 
@@ -634,9 +669,9 @@ function PreCheckoutPage({
                           €{calculateTotals().totalToday.toFixed(2)}
                           {plan.setupFee > 0 && !isResumeFlow
                             ? " " + t("preCheckout.today")
-                            : (isYearly
-                                ? t("preCheckout.perYear")
-                                : t("preCheckout.perMonth"))}
+                          {isYearly
+                            ? ` ${t("preCheckout.perYear")} · ${t("preCheckout.vatIncluded")}`
+                            : ` ${t("preCheckout.perMonth")} · ${t("preCheckout.vatIncluded")}`}
                         </span>
                       </div>
 
@@ -644,7 +679,9 @@ function PreCheckoutPage({
                       {plan.setupFee > 0 && !isResumeFlow && (
                         <div className="text-sm text-muted-foreground mt-1">
                           {t("preCheckout.then")} €{calculateTotals().recurringTotal.toFixed(2)}
-                          {isYearly ? t("preCheckout.perYear") : t("preCheckout.perMonth")}
+                          {isYearly
+                            ? ` ${t("preCheckout.perYear")} · ${t("preCheckout.vatIncluded")}`
+                            : ` ${t("preCheckout.perMonth")} · ${t("preCheckout.vatIncluded")}`}
                         </div>
                       )}
                     </div>
@@ -652,24 +689,43 @@ function PreCheckoutPage({
 
                   <div className="flex items-start space-x-3 mt-6">
                     <Checkbox
-                      id="privacy-policy"
+                      id="legal-acceptance"
                       checked={privacyAccepted}
                       onCheckedChange={(checked) => setPrivacyAccepted(checked === true)}
-                      data-testid="checkbox-privacy-policy"
+                      data-testid="checkbox-legal-acceptance"
                     />
                     <label
-                      htmlFor="privacy-policy"
+                      htmlFor="legal-acceptance"
                       className="text-sm leading-tight cursor-pointer"
                     >
-                      {t("preCheckout.privacyPolicyAcceptance")}{" "}
-                      <a
-                        href="/legal/privacy-policy"
+                      {t("preCheckout.legalAcceptancePrefix")}{" "}
+                      <Link
+                        to="/terms-of-service"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-primary underline hover:no-underline"
                       >
-                        {t("preCheckout.privacyPolicyLink")}
-                      </a>
+                        {t("preCheckout.termsLink")}
+                      </Link>{" "}
+                      {t("preCheckout.legalAcceptanceAnd")}{" "}
+                      <Link
+                        to="/privacy-policy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline hover:no-underline"
+                      >
+                        {t("preCheckout.privacyLink")}
+                      </Link>
+                      {t("preCheckout.legalAcceptanceBillingPrefix")}{" "}
+                      <Link
+                        to="/billing-subscription-policy"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline hover:no-underline"
+                      >
+                        {t("preCheckout.billingLink")}
+                      </Link>
+                      {t("preCheckout.legalAcceptanceSuffix")}
                     </label>
                   </div>
 
@@ -779,6 +835,7 @@ function PreCheckoutPage({
 }
 
 export default function PreCheckout() {
+  const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
   const queryParams = new URLSearchParams(location.search);
@@ -798,7 +855,7 @@ export default function PreCheckout() {
         <p className="mt-2 text-muted-foreground">
           {t("preCheckout.selectPlanFirst")}
         </p>
-        <Button onClick={() => (window.location.href = "/")} className="mt-4">
+        <Button onClick={() => navigate("/")} className="mt-4">
           {t("preCheckout.viewPlans")}
         </Button>
       </div>

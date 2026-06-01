@@ -1,10 +1,8 @@
-
-import { useState, useRef } from "react";
+﻿import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -16,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Mail, Phone, MapPin, Facebook, Twitter, Instagram, Linkedin } from "lucide-react";
+import { Mail, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { getStoredUTMParams } from "@/lib/utm";
@@ -31,6 +30,8 @@ const contactFormSchema = z.object({
 type ContactFormValues = z.infer<typeof contactFormSchema>;
 
 export default function ContactPage() {
+  const [bgLoaded, setBgLoaded] = useState(false);
+  const [privacyChecked, setPrivacyChecked] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string>("");
   const turnstileRef = useRef<any>(null);
@@ -50,8 +51,8 @@ export default function ContactPage() {
   const onSubmit = async (data: ContactFormValues) => {
     if (!turnstileToken) {
       toast({
-        title: "Error",
-        description: "Please complete the security verification",
+        title: t("contact.page.toast.errorTitle"),
+        description: t("contact.page.toast.turnstileError"),
         variant: "destructive",
       });
       return;
@@ -78,15 +79,14 @@ export default function ContactPage() {
       }
 
       toast({
-        title: "Success",
+        title: t("contact.page.toast.successTitle"),
         description: t("contact.form.success"),
       });
-      
-      // Track Facebook Pixel Lead event
-      if (typeof window.fbq === 'function') {
-        window.fbq('track', 'Lead');
+
+      if (typeof window.fbq === "function") {
+        window.fbq("track", "Lead");
       }
-      
+
       form.reset();
       setTurnstileToken("");
       turnstileRef.current?.reset();
@@ -96,7 +96,6 @@ export default function ContactPage() {
         description: error instanceof Error ? error.message : t("contact.form.error"),
         variant: "destructive",
       });
-      // Reset turnstile on error
       setTurnstileToken("");
       turnstileRef.current?.reset();
     } finally {
@@ -105,171 +104,199 @@ export default function ContactPage() {
   };
 
   return (
-    <div className="container mx-auto px-4 mt-[70px] py-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-[#182B53] mb-4">{t("contact.title")}</h1>
-          <p className="text-gray-600">{t("contact.subtitle")}</p>
+    <div className="min-h-screen bg-black pt-[70px] lg:pt-0">
+      <div className="relative bg-cover bg-center bg-no-repeat">
+        <img
+          src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_desktop.png"
+          srcSet="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_mobile.png 767w, https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/contact_main_desktop.png 768w"
+          sizes="(max-width: 767px) 100vw, 100vw"
+          alt=""
+          aria-hidden="true"
+          fetchpriority="high"
+          className={`absolute inset-0 z-0 w-full h-full object-cover object-center pointer-events-none transition-opacity duration-300 ${bgLoaded ? "opacity-100" : "opacity-0"}`}
+          onLoad={() => setBgLoaded(true)}
+        />
+      {/* Contact Page Header */}
+      <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col justify-center items-center gap-3">
+        <h1 className="w-full text-center text-4xl lg:text-6xl font-semibold font-brand" style={{ maxWidth: "768px" }}>
+          <span className="text-white">{t("contact.page.titlePrefix")} </span>
+          <span className="text-[#ED4C14]">{t("contact.page.titleHighlight")}</span>
+        </h1>
+        <p className="text-center text-white text-lg font-medium font-brand w-full">
+          {t("contact.page.subtitle")}
+        </p>
+      </section>
+
+      {/* Contact Form Section */}
+      <section className="relative z-10 w-full px-4 py-12 lg:px-16 lg:py-24 flex flex-col lg:flex-row justify-start items-start gap-6">
+        {/* Left — Contact Information card */}
+        <div className="w-full lg:w-96 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12 flex-shrink-0">
+          <span className="text-white text-xl lg:text-2xl font-medium font-brand leading-7">{t("contact.page.info.title")}</span>
+
+          <div className="w-48 flex flex-col justify-start items-start gap-6">
+            <div className="flex items-center gap-6">
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/mail_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
+              <span className="text-white text-lg font-medium font-brand">info@hayc.gr</span>
+            </div>
+            <div className="flex items-center gap-6">
+              <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/map_pin_icon.svg" alt="location" loading="lazy" className="w-6 h-6" />
+              <span className="text-white text-lg font-medium font-brand">Athens, Greece</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <span className="text-slate-100 text-lg font-medium font-brand">{t("contact.page.info.socialTitle")}</span>
+            <div className="flex items-center gap-6">
+              <a href="https://www.instagram.com/hayc_websites/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/insta_icon.svg" alt="Instagram" loading="lazy" className="w-6 h-6" />
+              </a>
+              <a href="https://www.linkedin.com/company/hayc/" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/linkedin_icon.svg" alt="LinkedIn" loading="lazy" className="w-6 h-6" />
+              </a>
+              <a href="https://www.facebook.com/haycWebsites" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+                <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/facebook_icon.svg" alt="Facebook" loading="lazy" className="w-6 h-6" />
+              </a>
+            </div>
+          </div>
         </div>
-        
-        <div className="grid lg:grid-cols-2 gap-12">
-          {/* Left Column - Contact Info */}
-          <div className="space-y-8">
-            <Card className="p-6">
-              <h2 className="text-2xl font-semibold text-[#182B53] mb-6">{t("contact.contactInformation")}</h2>
-              
-              <div className="space-y-6">
+
+        {/* Right — Send us a message card */}
+        <div className="w-full flex-1 p-3.5 lg:p-6 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[20px] shadow-[0px_5px_6.5px_-32px_rgba(0,0,0,0.15)] outline outline-1 outline-offset-[-1px] outline-zinc-800/80 flex flex-col justify-start items-start gap-12">
+          <span className="text-white text-xl lg:text-2xl font-medium font-brand leading-7">{t("contact.page.form.title")}</span>
+
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="w-full flex flex-col gap-8">
+              <div className="w-full flex flex-col gap-6">
+                {/* Full Name */}
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem className="w-full flex flex-col gap-1.5">
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">{t("contact.page.form.fullName")}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder={t("contact.page.form.fullNamePlaceholder")}
+                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Email */}
-                <div className="flex items-center space-x-4">
-                  <div className="bg-[#182B53] rounded-full p-3">
-                    <Mail className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-[#182B53]">{t("contact.emailUs")}</h3>
-                    <a 
-                      href="mailto:info@hayc.gr" 
-                      className="text-gray-600 hover:text-[#182B53] transition-colors"
-                    >
-                      info@hayc.gr
-                    </a>
-                  </div>
-                </div>
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem className="w-full flex flex-col gap-1.5">
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">{t("contact.page.form.email")}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="you@company.com"
+                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                {/* Location */}
-                <div className="flex items-center space-x-4">
-                  <div className="bg-[#182B53] rounded-full p-3">
-                    <MapPin className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-[#182B53]">{t("contact.ourLocation")}</h3>
-                    <p className="text-gray-600">{t("contact.location")}</p>
-                  </div>
-                </div>
-              </div>
-            </Card>
+                {/* Subject */}
+                <FormField
+                  control={form.control}
+                  name="subject"
+                  render={({ field }) => (
+                    <FormItem className="w-full flex flex-col gap-1.5">
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">{t("contact.page.form.subject")}</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="text"
+                          placeholder={t("contact.page.form.subjectPlaceholder")}
+                          className="w-full px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-            {/* Social Media */}
-            <Card className="p-6">
-              <h2 className="text-xl font-semibold text-[#182B53] mb-4">{t("contact.socialMedia")}</h2>
-              <div className="flex space-x-4">
-                <a 
-                  href="https://www.facebook.com/haycWebsites"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#182B53] hover:text-blue-700 rounded-full p-3 transition-colors"
-                >
-                  <Facebook className="h-5 w-5" />
-                </a>
-                <a 
-                  href="https://www.instagram.com/hayc_websites/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#182B53] hover:text-blue-700 rounded-full p-3 transition-colors"
-                >
-                  <Instagram className="h-5 w-5" />
-                </a>
-              </div>
-            </Card>
-          </div>
+                {/* Message */}
+                <FormField
+                  control={form.control}
+                  name="message"
+                  render={({ field }) => (
+                    <FormItem className="w-full flex flex-col gap-1.5">
+                      <FormLabel className="text-slate-100 text-base font-normal font-brand leading-6">{t("contact.page.form.message")}</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={6}
+                          className="w-full px-3.5 py-2.5 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 bg-transparent text-slate-100 text-sm font-normal font-brand leading-5 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          {/* Right Column - Contact Form */}
-          <div>
-            <Card className="p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <Mail className="h-6 w-6 text-[#182B53]" />
-                <h2 className="text-2xl font-bold text-[#182B53]">{t("contact.sendMessage")}</h2>
-              </div>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("contact.form.name")}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={t("contact.form.name")} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                {/* Privacy checkbox */}
+                <div className="flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPrivacyChecked((v) => !v)}
+                    className={cn(
+                      "w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-colors mt-0.5",
+                      privacyChecked ? "bg-[#ED4C14] border-[#ED4C14]" : "bg-transparent border-neutral-500"
                     )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("contact.form.email")}</FormLabel>
-                        <FormControl>
-                          <Input placeholder="your.email@example.com" type="email" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="subject"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("contact.form.subject")}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={t("contact.form.subject")} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="message"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("contact.form.message")}</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder={t("contact.form.message")}
-                            className="min-h-[150px]"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <div className="flex justify-center" data-testid="turnstile-container">
-                    <Turnstile
-                      ref={turnstileRef}
-                      siteKey="0x4AAAAAACCS5AVJwke-jjgf"
-                      onSuccess={setTurnstileToken}
-                      onError={() => {
-                        setTurnstileToken("");
-                        toast({
-                          title: "Error",
-                          description: "Security verification failed. Please try again.",
-                          variant: "destructive",
-                        });
-                      }}
-                      onExpire={() => setTurnstileToken("")}
-                    />
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    disabled={isSubmitting || !turnstileToken}
-                    className="w-full bg-[#182B53] hover:bg-blue-700"
-                    data-testid="button-submit"
                   >
-                    {isSubmitting ? t("contact.form.sending") : t("contact.form.submit")}
-                  </Button>
-                </form>
-              </Form>
-            </Card>
-          </div>
+                    {privacyChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                  </button>
+                  <span className="text-slate-100 text-sm font-normal font-brand leading-5">
+                    {t("contact.page.form.privacyPolicy")}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex justify-center" data-testid="turnstile-container">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey="0x4AAAAAACCS5AVJwke-jjgf"
+                  onSuccess={setTurnstileToken}
+                  onError={() => {
+                    setTurnstileToken("");
+                    toast({
+                      title: t("contact.page.toast.errorTitle"),
+                      description: t("contact.page.toast.turnstileFailed"),
+                      variant: "destructive",
+                    });
+                  }}
+                  onExpire={() => setTurnstileToken("")}
+                />
+              </div>
+
+              {/* Submit button */}
+              <Button
+                type="submit"
+                disabled={isSubmitting || !turnstileToken}
+                className="w-full px-5 py-3 bg-[#ED4C14] rounded-lg shadow-[0px_1px_2px_0px_rgba(10,13,18,0.05)] flex justify-center items-center gap-2 hover:opacity-80 transition-opacity text-slate-100 text-base font-semibold font-brand leading-5 border-0"
+                data-testid="button-submit"
+              >
+                {isSubmitting ? t("contact.form.sending") : t("contact.page.form.submit")}
+              </Button>
+            </form>
+          </Form>
         </div>
+      </section>
       </div>
     </div>
   );
 }
+
+

@@ -35,8 +35,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { OnboardingFormResponse } from "@shared/schema"
+import { SubmissionDetailDialog } from "@/components/ui/admin-get-started-submissions"
 import { ENVATO_TEMPLATES } from "@/data/envato-templates"
 import { formatOnboardingValue } from "@/lib/onboarding-formatters"
+import { formatGsValue } from "@/lib/get-started-formatters"
 
 
 type WebsiteStage = {
@@ -80,6 +82,7 @@ function WebsiteProgressRowActions({
   website,
   canManageWebsites,
   onOpenOnboarding,
+  onOpenGetStartedForm,
   onOpenAnalyticsDialog,
   onOpenNewsletterDialog,
   onRequestDelete,
@@ -90,6 +93,7 @@ function WebsiteProgressRowActions({
   website: Website
   canManageWebsites?: boolean
   onOpenOnboarding: () => void
+  onOpenGetStartedForm?: () => void
   onOpenAnalyticsDialog: () => void
   onOpenNewsletterDialog: () => void
   onRequestDelete: () => void
@@ -130,19 +134,25 @@ function WebsiteProgressRowActions({
           <FileText className="h-4 w-4" />
           View onboarding form
         </DropdownMenuItem>
+        {onOpenGetStartedForm && (
+          <DropdownMenuItem onSelect={onOpenGetStartedForm}>
+            <FileText className="h-4 w-4" />
+            View get-started form
+          </DropdownMenuItem>
+        )}
         <DropdownMenuItem
           onSelect={() => onOpenAnalyticsDialog()}
           data-testid={`menu-view-analytics-${website.id}`}
         >
           <BarChart3 className="h-4 w-4" />
-          View analytics code
+          Analytics integration
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={() => onOpenNewsletterDialog()}
           data-testid={`menu-view-newsletter-${website.id}`}
         >
           <Mail className="h-4 w-4" />
-          View newsletter code
+          Newsletter integration
         </DropdownMenuItem>
         {canManageWebsites ? (
           <>
@@ -211,6 +221,7 @@ function AnalyticsTrackingCode({
   variant?: "accordion" | "dialog";
 }) {
   const [copied, setCopied] = useState(false);
+  const [showWordPressCode, setShowWordPressCode] = useState(false);
   const isDialog = variant === "dialog";
   const boxClass = isDialog
     ? "mt-0 p-4 border rounded-lg bg-muted/50"
@@ -259,52 +270,94 @@ function AnalyticsTrackingCode({
 
   return (
     <div className={boxClass}>
-      <div
-        className={`flex items-center mb-3 ${isDialog ? "justify-end" : "justify-between"}`}
-      >
-        {!isDialog && (
+      {!isDialog && (
+        <div className="flex items-center mb-3 justify-between">
           <h3 className="font-semibold text-lg">Analytics Tracking Code</h3>
-        )}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={copyToClipboard}
-          className="gap-2"
-        >
-          {copied ? (
-            <>
-              <Check className="h-4 w-4" />
-              Copied!
-            </>
-          ) : (
-            "Copy Code"
-          )}
-        </Button>
-      </div>
-      
-      <div className="space-y-3">
-        <div>
-          <Label className="text-sm font-medium">API Key:</Label>
-          <code className="block mt-1 p-2 bg-background rounded text-xs font-mono break-all">
-            {analyticsData.key.apiKey}
+        </div>
+      )}
+
+      <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+        <div className="flex items-center gap-2 mb-2">
+          <h4 className="font-semibold text-sm">React Website (HAYC Template)</h4>
+          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+            Active
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          Analytics tracking is built into the React website template via the
+          <code className="mx-1 px-1 py-0.5 bg-background rounded font-mono">
+            useAnalytics
           </code>
-        </div>
-        
-        <div>
-          <Label className="text-sm font-medium">
-            Add this code to functions.php (API key is already embedded):
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1 mb-2">
-            Copy and paste this entire PHP code block into your theme's functions.php file. The API key is automatically included, so no additional setup is needed.
-          </p>
-          <pre className="mt-1 p-3 bg-background rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-            {analyticsData.phpTrackingCode || analyticsData.trackingScript}
-          </pre>
-        </div>
-        
-        <p className="text-xs text-muted-foreground">
-          This will automatically add analytics tracking to all pages. No need to handle the API key separately - it's already in the code above.
+          hook located at{" "}
+          <code className="px-1 py-0.5 bg-background rounded font-mono">
+            src/hayc/use-analytics.ts
+          </code>
+          . It fires a pageview event automatically on every route change using
+          the site's <code className="mx-1 px-1 py-0.5 bg-background rounded font-mono">
+            siteId
+          </code>
+          — no API key or additional setup is needed in the site code. To enable
+          it, call <code className="mx-1 px-1 py-0.5 bg-background rounded font-mono">
+            useAnalytics()
+          </code>{" "}
+          once inside a component that is a child of{" "}
+          <code className="px-1 py-0.5 bg-background rounded font-mono">
+            BrowserRouter
+          </code>.
         </p>
+      </div>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowWordPressCode((v) => !v)}
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+        >
+          <span>{showWordPressCode ? "▾" : "▸"}</span>
+          <span>WordPress integration (legacy)</span>
+        </button>
+
+        {showWordPressCode && (
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copyToClipboard}
+              className="gap-2"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Copied!
+                </>
+              ) : (
+                "Copy Code"
+              )}
+            </Button>
+            <div>
+              <Label className="text-sm font-medium">API Key:</Label>
+              <code className="block mt-1 p-2 bg-background rounded text-xs font-mono break-all">
+                {analyticsData.key.apiKey}
+              </code>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">
+                Add this code to functions.php (API key is already embedded):
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-2">
+                Copy and paste this entire PHP code block into your theme's functions.php file. The API key is automatically included, so no additional setup is needed.
+              </p>
+              <pre className="mt-1 p-3 bg-background rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                {analyticsData.phpTrackingCode || analyticsData.trackingScript}
+              </pre>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              This will automatically add analytics tracking to all pages. No need to handle the API key separately - it's already in the code above.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -321,6 +374,7 @@ function NewsletterIntegrationCode({
 }) {
   const [copied, setCopied] = useState(false);
   const [copiedApiKey, setCopiedApiKey] = useState(false);
+  const [showWordPressCode, setShowWordPressCode] = useState(false);
   const isDialog = variant === "dialog";
   const boxClass = isDialog
     ? "mt-0 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20"
@@ -406,92 +460,148 @@ on_sent_ok: "fetch('${apiEndpoint}', {
         </div>
       )}
 
-      <div className="space-y-4">
-        <div>
-          <Label className="text-sm font-medium">API Key (same as analytics):</Label>
-          <div className="flex items-center gap-2 mt-1">
-            <code className="flex-1 p-2 bg-background rounded text-xs font-mono break-all">
-              {analyticsData.key.apiKey}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyApiKeyToClipboard}
-              className="gap-2 flex-shrink-0"
-            >
-              {copiedApiKey ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy
-                </>
-              )}
-            </Button>
-          </div>
+      <div className="mb-6 p-4 border rounded-lg bg-muted/30">
+        <div className="flex items-center gap-2 mb-2">
+          <h4 className="font-semibold text-sm">React Website (HAYC Template)</h4>
+          <span className="text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+            Active
+          </span>
         </div>
-        
-        <div>
-          <Label className="text-sm font-medium">
-            Contact Form 7 Integration for functions.php:
-          </Label>
-          <p className="text-xs text-muted-foreground mt-1 mb-2">
-            Copy and paste this PHP code into your theme's functions.php file. Users will be able to opt-in to the newsletter by checking a checkbox in the form. The API key is already embedded in the code.
-          </p>
-          <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-800 mb-2">
-            <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">Required: Add a checkbox to your Contact Form 7</p>
-            <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
-              Add a checkbox field with the name <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded">newsletter-subscribe</code> to your form. You can customize the label text to any language.
-            </p>
-            <p className="text-xs font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
-              [checkbox newsletter-subscribe "Subscribe to our newsletter"]
-            </p>
-            <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-              Example in Greek: <span className="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Εγγραφή στο newsletter</span>
-            </p>
-          </div>
-          <div className="relative">
-            <pre className="p-3 bg-background rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
-              {analyticsData.phpNewsletterCode || contactForm7Code}
-            </pre>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={copyCodeToClipboard}
-              className="absolute top-2 right-2 gap-2"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-4 w-4" />
-                  Copy
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
-        <div className="p-3 bg-background/50 rounded border-l-4 border-blue-500">
-          <p className="text-sm font-medium mb-2">How it works:</p>
-          <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
-            <li>Add the checkbox <code className="bg-background px-1 rounded">[checkbox newsletter-subscribe "Subscribe to our newsletter"]</code> to your Contact Form 7</li>
-            <li>When someone checks the checkbox and submits the form, they are immediately subscribed to the newsletter</li>
-            <li>Subscribers automatically appear in the "Contact Form Subscribers" group</li>
-            <li>The user can then send newsletters to all subscribers from their dashboard</li>
-            <li>Duplicate emails are automatically handled - existing subscribers won't be added twice</li>
-          </ul>
-        </div>
-        
-        <p className="text-xs text-muted-foreground">
-          API Endpoint: <code className="bg-background px-1 py-0.5 rounded">{apiEndpoint}</code>
+        <p className="text-xs text-muted-foreground leading-relaxed">
+          The React website template has two built-in newsletter integration points:
         </p>
+        <ul className="text-xs text-muted-foreground space-y-2 list-disc list-inside mt-2">
+          <li>
+            <code className="px-1 py-0.5 bg-background rounded font-mono">
+              src/components/ContactForm.tsx
+            </code>
+            {" "}— the contact form fires a call to{" "}
+            <code className="px-1 py-0.5 bg-background rounded font-mono">
+              /api/newsletter/subscribe
+            </code>
+            {" "}on every submission using the site's{" "}
+            <code className="px-1 py-0.5 bg-background rounded font-mono">siteId</code>
+            . The visitor controls their subscription via a toggle checkbox
+            before submitting.
+          </li>
+          <li>
+            <code className="px-1 py-0.5 bg-background rounded font-mono">
+              src/components/NewsletterForm.tsx
+            </code>
+            {" "}— a standalone email-only subscription form for use in footers
+            or dedicated sections. Accepts only an email address, uses the same{" "}
+            <code className="px-1 py-0.5 bg-background rounded font-mono">siteId</code>
+            {" "}lookup, and includes a honeypot field. Drop{" "}
+            <code className="px-1 py-0.5 bg-background rounded font-mono">
+              {"<NewsletterForm />"}
+            </code>
+            {" "}anywhere on a page to use it.
+          </li>
+        </ul>
+        <p className="text-xs text-muted-foreground mt-2">
+          No API key or additional setup is needed for either component.
+        </p>
+      </div>
+
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowWordPressCode((v) => !v)}
+          className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
+        >
+          <span>{showWordPressCode ? "▾" : "▸"}</span>
+          <span>WordPress / Contact Form 7 integration (legacy)</span>
+        </button>
+
+        {showWordPressCode && (
+          <div className="space-y-4">
+            <div>
+              <Label className="text-sm font-medium">API Key (same as analytics):</Label>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="flex-1 p-2 bg-background rounded text-xs font-mono break-all">
+                  {analyticsData.key.apiKey}
+                </code>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyApiKeyToClipboard}
+                  className="gap-2 flex-shrink-0"
+                >
+                  {copiedApiKey ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">
+                Contact Form 7 Integration for functions.php:
+              </Label>
+              <p className="text-xs text-muted-foreground mt-1 mb-2">
+                Copy and paste this PHP code into your theme's functions.php file. Users will be able to opt-in to the newsletter by checking a checkbox in the form. The API key is already embedded in the code.
+              </p>
+              <div className="p-2 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-200 dark:border-blue-800 mb-2">
+                <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-1">Required: Add a checkbox to your Contact Form 7</p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                  Add a checkbox field with the name <code className="bg-blue-100 dark:bg-blue-900 px-1 py-0.5 rounded">newsletter-subscribe</code> to your form. You can customize the label text to any language.
+                </p>
+                <p className="text-xs font-mono bg-blue-100 dark:bg-blue-900 p-2 rounded">
+                  [checkbox newsletter-subscribe "Subscribe to our newsletter"]
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                  Example in Greek: <span className="font-mono bg-blue-100 dark:bg-blue-900 px-1 rounded">Εγγραφή στο newsletter</span>
+                </p>
+              </div>
+              <div className="relative">
+                <pre className="p-3 bg-background rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">
+                  {analyticsData.phpNewsletterCode || contactForm7Code}
+                </pre>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyCodeToClipboard}
+                  className="absolute top-2 right-2 gap-2"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="p-3 bg-background/50 rounded border-l-4 border-blue-500">
+              <p className="text-sm font-medium mb-2">How it works:</p>
+              <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                <li>Add the checkbox <code className="bg-background px-1 rounded">[checkbox newsletter-subscribe "Subscribe to our newsletter"]</code> to your Contact Form 7</li>
+                <li>When someone checks the checkbox and submits the form, they are immediately subscribed to the newsletter</li>
+                <li>Subscribers automatically appear in the "Contact Form Subscribers" group</li>
+                <li>The user can then send newsletters to all subscribers from their dashboard</li>
+                <li>Duplicate emails are automatically handled - existing subscribers won't be added twice</li>
+              </ul>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              API Endpoint: <code className="bg-background px-1 py-0.5 rounded">{apiEndpoint}</code>
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -669,7 +779,7 @@ function BonusEmailsSection({ websiteId, bonusEmails, bonusEmailsExpiry }: {
 
 function ContactFormConfigSection({ website }: { website: Website }) {
   const queryClient = useQueryClient();
-  const [apiUrl, setApiUrl] = useState("https://api.hayc.gr");
+  const [apiUrl, setApiUrl] = useState("https://hayc.gr");
   const { data } = useQuery({
     queryKey: ["/api/websites", website.id, "site-config"],
     queryFn: async () => {
@@ -730,7 +840,7 @@ function ContactFormConfigSection({ website }: { website: Website }) {
           type="url"
           value={apiUrl}
           onChange={(e) => setApiUrl(e.target.value)}
-          placeholder="https://api.hayc.gr"
+          placeholder="https://hayc.gr"
           className="flex-1 min-w-[200px] h-8"
         />
         <Button
@@ -759,6 +869,9 @@ export function AdminWebsiteProgress() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<number | null>(null)
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false)
+  const [onboardingDialogView, setOnboardingDialogView] = useState<"onboarding" | "get-started">("onboarding")
+  const [gsWebsiteProgressId, setGsWebsiteProgressId] = useState<number | null>(null)
+  const [isGsDialogOpen, setIsGsDialogOpen] = useState(false)
   const [editingDomainId, setEditingDomainId] = useState<number | null>(null)
   const [editedDomainValue, setEditedDomainValue] = useState("")
   const [editingSiteId, setEditingSiteId] = useState<number | null>(null)
@@ -848,6 +961,57 @@ export function AdminWebsiteProgress() {
     },
     enabled: !!selectedWebsiteId && isOnboardingDialogOpen,
   })
+
+  const { data: gsSubmissionResponse } = useQuery({
+    queryKey: ["/api/admin/get-started-submissions", "by-website", gsWebsiteProgressId],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/get-started-submissions?websiteProgressId=${gsWebsiteProgressId}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!gsWebsiteProgressId && isGsDialogOpen,
+  });
+
+  const gsSubmission = gsSubmissionResponse?.submissions?.[0] ?? null;
+
+  // Also fetch get-started submission when the onboarding dialog opens, so we can show both side by side
+  const { data: onboardingDialogGsResponse, isLoading: isLoadingOnboardingGs } = useQuery({
+    queryKey: ["/api/admin/get-started-submissions", "for-onboarding-dialog", selectedWebsiteId],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/get-started-submissions?websiteProgressId=${selectedWebsiteId}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!selectedWebsiteId && isOnboardingDialogOpen,
+  });
+
+  const onboardingDialogGsSubmission = onboardingDialogGsResponse?.submissions?.[0] ?? null;
+
+  // Auto-switch to get-started tab when only a get-started submission exists (no old onboarding form)
+  useEffect(() => {
+    if (!isLoadingOnboarding && !isLoadingOnboardingGs && !onboardingResponse && onboardingDialogGsSubmission) {
+      setOnboardingDialogView("get-started");
+    }
+  }, [isLoadingOnboarding, isLoadingOnboardingGs, onboardingResponse, onboardingDialogGsSubmission]);
+
+  const { data: gsPresenceResponse } = useQuery({
+    queryKey: ["/api/admin/get-started-submissions/presence"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/get-started-submissions/presence", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+  });
+
+  const gsPresenceMap: Map<number, string> = new Map(
+    (gsPresenceResponse?.presence ?? []).map((p: { websiteProgressId: number; status: string }) => [p.websiteProgressId, p.status])
+  );
 
   const createWebsiteMutation = useMutation({
     mutationFn: async ({ userId, domain, currentStage, stages }: { userId: number, domain: string, currentStage: number, stages: string[] }) => {
@@ -1393,6 +1557,18 @@ export function AdminWebsiteProgress() {
                             ? "Form: Draft"
                             : `Form: ${website.onboardingStatus}`}
                       </span>
+                    ) : gsPresenceMap.has(website.id) ? (
+                      <span
+                        className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
+                          gsPresenceMap.get(website.id) === "completed" || gsPresenceMap.get(website.id) === "paid"
+                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                            : gsPresenceMap.get(website.id) === "in_progress" || gsPresenceMap.get(website.id) === "pending_payment"
+                              ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300"
+                        }`}
+                      >
+                        {`Get-started: ${gsPresenceMap.get(website.id)}`}
+                      </span>
                     ) : (
                       <span className="text-xs text-muted-foreground whitespace-nowrap">
                         No onboarding form
@@ -1406,7 +1582,12 @@ export function AdminWebsiteProgress() {
                       canManageWebsites={userPermissions?.canManageWebsites}
                       onOpenOnboarding={() => {
                         setSelectedWebsiteId(website.id);
+                        setOnboardingDialogView("onboarding");
                         setIsOnboardingDialogOpen(true);
+                      }}
+                      onOpenGetStartedForm={() => {
+                        setGsWebsiteProgressId(website.id);
+                        setIsGsDialogOpen(true);
                       }}
                       onOpenAnalyticsDialog={() =>
                         setIntegrationCodeDialog({
@@ -2151,7 +2332,7 @@ export function AdminWebsiteProgress() {
           <DialogHeader>
             <DialogTitle>
               {integrationCodeDialog?.panel === "analytics"
-                ? "Analytics tracking code"
+                ? "Analytics integration"
                 : "Newsletter integration"}
             </DialogTitle>
             <DialogDescription>{integrationCodeDialog?.domain}</DialogDescription>
@@ -2173,25 +2354,137 @@ export function AdminWebsiteProgress() {
         </DialogContent>
       </Dialog>
 
+      {/* Get Started Form Dialog */}
+      <SubmissionDetailDialog
+        submissionId={gsSubmission?.id ?? null}
+        open={isGsDialogOpen}
+        onClose={() => setIsGsDialogOpen(false)}
+      />
+
       {/* Onboarding Form Response Dialog */}
       <Dialog open={isOnboardingDialogOpen} onOpenChange={setIsOnboardingDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Onboarding Form Details</DialogTitle>
+            <DialogTitle>Form Details</DialogTitle>
             <DialogDescription>
-              Complete onboarding form submission details for this website project
+              Onboarding data for this website project
             </DialogDescription>
           </DialogHeader>
-          
-          {isLoadingOnboarding ? (
+
+          {/* Tab switcher — only rendered when both form types exist */}
+          {(onboardingResponse || onboardingDialogGsSubmission) && (
+            <div className="flex gap-2 border-b pb-2">
+              {onboardingResponse && (
+                <button
+                  onClick={() => setOnboardingDialogView("onboarding")}
+                  className={`text-sm px-3 py-1 rounded-t font-medium transition-colors ${
+                    onboardingDialogView === "onboarding"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Onboarding Form {onboardingResponse.id ? `#${onboardingResponse.id}` : ""}
+                </button>
+              )}
+              {onboardingDialogGsSubmission && (
+                <button
+                  onClick={() => setOnboardingDialogView("get-started")}
+                  className={`text-sm px-3 py-1 rounded-t font-medium transition-colors ${
+                    onboardingDialogView === "get-started"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Get-started Submission #{onboardingDialogGsSubmission.id}
+                </button>
+              )}
+            </div>
+          )}
+
+          {(isLoadingOnboarding || isLoadingOnboardingGs) ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : !onboardingResponse ? (
+          ) : !onboardingResponse && !onboardingDialogGsSubmission ? (
             <div className="text-center py-8 text-muted-foreground">
-              No onboarding form response found for this website.
+              No form data found for this website.
             </div>
-          ) : (
+          ) : onboardingDialogView === "get-started" && onboardingDialogGsSubmission ? (
+            (() => {
+              const s = onboardingDialogGsSubmission;
+              const Row = ({ label, field, value }: { label: string; field: string; value: unknown }) => {
+                const display = formatGsValue(field, value, t);
+                if (display === "—") return null;
+                return <div><Label className="text-sm font-medium">{label}</Label><p className="text-sm">{display}</p></div>;
+              };
+              return (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Account</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Full Name" field="fullName" value={s.fullName} />
+                      <Row label="Email" field="email" value={s.email} />
+                      <Row label="Phone" field="contactPhone" value={s.contactPhone} />
+                      <Row label="VAT Number" field="vatNumber" value={s.vatNumber} />
+                      <Row label="Document Type" field="documentType" value={s.documentType} />
+                      <Row label="City" field="city" value={s.city} />
+                      <Row label="Street" field="street" value={s.street ? `${s.street} ${s.streetNumber ?? ""}`.trim() : null} />
+                      <Row label="Postal Code" field="postalCode" value={s.postalCode} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Plan</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Selected Plan" field="selectedPlan" value={s.selectedPlan} />
+                      <Row label="Billing Period" field="billingPeriod" value={s.billingPeriod} />
+                      <Row label="Status" field="status" value={s.status} />
+                      <Row label="Current Step" field="currentStep" value={s.currentStep} />
+                      <Row label="Website Progress ID" field="websiteProgressId" value={s.websiteProgressId} />
+                      <Row label="Submission ID" field="submissionId" value={s.submissionId} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Pre-checkout</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Business Type" field="businessType" value={s.businessType} />
+                      <Row label="Website Goals" field="websiteGoals" value={s.websiteGoals} />
+                      <Row label="Suggested Structure" field="suggestedStructure" value={s.suggestedStructure} />
+                      <Row label="Suggested Addons" field="suggestedAddons" value={s.suggestedAddons} />
+                      <Row label="Selected Addons" field="selectedAddons" value={s.selectedAddons} />
+                      <Row label="Design Direction" field="designDirection" value={s.designDirection} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Onboarding (Steps 6–9)</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Business Name" field="businessName" value={s.businessName} />
+                      <Row label="Business Description" field="businessDescription" value={s.businessDescription} />
+                      <Row label="Services" field="services" value={s.services} />
+                      <Row label="Had Website Before" field="hadWebsiteBefore" value={s.hadWebsiteBefore} />
+                      <Row label="Previous Platform" field="previousWebsitePlatform" value={s.previousWebsitePlatform} />
+                      <Row label="Self Description" field="selfDescription" value={s.selfDescription} />
+                      <Row label="Biggest Concerns" field="biggestConcerns" value={s.biggestConcerns} />
+                      <Row label="Heard About Us" field="heardAboutUs" value={s.heardAboutUs} />
+                      <Row label="Confirmed Pages" field="confirmedPages" value={s.confirmedPages} />
+                      <Row label="Pages Notes" field="pagesNotes" value={s.pagesNotes} />
+                      <Row label="Website Content" field="websiteContent" value={s.websiteContent} />
+                      <Row label="Success Vision" field="successVision" value={s.successVision} />
+                      <Row label="Media URLs" field="mediaUrls" value={s.mediaUrls?.length ? `${s.mediaUrls.length} file(s)` : null} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Meta</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <Row label="Session ID" field="sessionId" value={s.sessionId} />
+                      <Row label="Language" field="websiteLanguage" value={s.websiteLanguage} />
+                      <Row label="Created At" field="createdAt" value={s.createdAt ? new Date(s.createdAt).toLocaleString() : null} />
+                      <Row label="Updated At" field="updatedAt" value={s.updatedAt ? new Date(s.updatedAt).toLocaleString() : null} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()
+          ) : onboardingResponse ? (
             <div className="space-y-6">
               {/* Business Information */}
               <div>
@@ -2524,8 +2817,8 @@ export function AdminWebsiteProgress() {
                 </div>
               </div>
             </div>
-          )}
-          
+          ) : null}
+
           <DialogFooter>
             <Button onClick={() => setIsOnboardingDialogOpen(false)}>Close</Button>
           </DialogFooter>

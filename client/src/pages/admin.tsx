@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { subscriptions, UserRole, RolePermissions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import {
   Table,
   TableBody,
@@ -58,6 +59,7 @@ import { TipsManagement } from "@/components/ui/tips-management";
 import { AdminWebsiteChanges } from "@/components/ui/admin-website-changes";
 import { CancelledDueToPaymentFailureList } from "@/components/admin-cancelled-payment-failures";
 import { AdminWebsiteInvoices } from "@/components/ui/admin-website-invoices";
+import AdminGetStartedSubmissions from "@/components/ui/admin-get-started-submissions";
 import { Switch } from "@/components/ui/switch";
 import { RoleManagement } from "@/components/ui/role-management";
 import {
@@ -166,12 +168,6 @@ interface BackfillCancelledAtResponse {
     errored: number;
   };
   logs: string[];
-}
-
-declare global {
-  interface Window {
-    cloudinary: any;
-  }
 }
 
 const formatMonth = (month: string) => {
@@ -997,10 +993,20 @@ export default function AdminDashboard() {
     [updatePdf, toast],
   );
 
-  const handleUploadClick = (
+  const handleUploadClick = async (
     id: number,
     type: "subscription" | "transaction" | "website",
   ) => {
+    try {
+      await loadCloudinaryWidget();
+    } catch {
+      toast({
+        title: "Error",
+        description: "Upload widget failed to load. Please refresh and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
     const widget = initializeCloudinaryWidget(id, type);
     widget.open();
   };
@@ -1266,6 +1272,9 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                     <TabsTrigger value="invoices" className="w-full justify-start rounded-md px-3 py-2.5">
                       Invoices
+                    </TabsTrigger>
+                    <TabsTrigger value="get-started" className="w-full justify-start rounded-md px-3 py-2.5">
+                      Get Started
                     </TabsTrigger>
                     <TabsTrigger value="calendar" className="w-full justify-start rounded-md px-3 py-2.5">
                       Calendar
@@ -2193,6 +2202,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="invoices" className="mt-0">
               <AdminWebsiteInvoices />
+            </TabsContent>
+            <TabsContent value="get-started" className="mt-0">
+              <AdminGetStartedSubmissions />
             </TabsContent>
             <TabsContent value="calendar" className="mt-0">
               <section>

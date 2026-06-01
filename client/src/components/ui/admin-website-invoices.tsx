@@ -31,12 +31,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { Download, Upload, Trash2, ChevronDown, ChevronRight, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Info, Pencil, RefreshCw, Plus } from "lucide-react";
-
-declare global {
-  interface Window {
-    cloudinary: any;
-  }
-}
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 
 export function AdminWebsiteInvoices() {
   const { toast } = useToast();
@@ -142,15 +137,16 @@ export function AdminWebsiteInvoices() {
   });
 
   // Fetch website billing (per-website, survives subscription sync)
+  const websiteIdForBilling = expandedWebsiteId || selectedWebsiteForBilling;
   const { data: billingData, isLoading: billingLoading } = useQuery({
-    queryKey: ["/api/admin/websites", selectedWebsiteForBilling, "billing"],
+    queryKey: ["/api/admin/websites", websiteIdForBilling, "billing"],
     queryFn: async () => {
-      if (!selectedWebsiteForBilling) return null;
-      const response = await fetch(`/api/admin/websites/${selectedWebsiteForBilling}/billing`, { credentials: "include" });
+      if (!websiteIdForBilling) return null;
+      const response = await fetch(`/api/admin/websites/${websiteIdForBilling}/billing`, { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch billing");
       return response.json();
     },
-    enabled: !!selectedWebsiteForBilling && billingInfoDialogOpen,
+    enabled: !!websiteIdForBilling,
   });
 
   // Update website billing mutation (saves to website_progress, not subscription)
@@ -679,7 +675,17 @@ export function AdminWebsiteInvoices() {
       cloudinaryConfig.apiKey = configData.apiKey;
       cloudinaryConfig.cloudName = configData.cloudName;
 
-      // Open Cloudinary upload widget
+      try {
+        await loadCloudinaryWidget();
+      } catch {
+        toast({
+          title: "Upload Service Unavailable",
+          description: "Please refresh the page and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (window.cloudinary) {
         const widget = window.cloudinary.createUploadWidget(
           {
@@ -1544,7 +1550,11 @@ export function AdminWebsiteInvoices() {
                                 const invoiceType = invoice.description?.toLowerCase().includes('add-on') ? 'Addon' : 'Plan';
                                 const subscriptions = (subscriptionsData as any[]) || [];
                                 const planSubscription = subscriptions.find((sub: any) => sub.productType === "plan");
-                                const canCreateWithWrapp = planSubscription?.classificationType && planSubscription?.invoiceTypeCode && planSubscription?.productName;
+                                // Mirror server-side priority: website billing first, subscription billing as fallback
+                                const canCreateWithWrapp =
+                                  (billingData?.classificationType || planSubscription?.classificationType) &&
+                                  (billingData?.invoiceTypeCode || planSubscription?.invoiceTypeCode) &&
+                                  (billingData?.productName || planSubscription?.productName);
                                 return (
                                 <TableRow key={invoice.id}>
                                   <TableCell>

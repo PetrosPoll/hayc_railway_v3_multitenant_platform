@@ -88,14 +88,18 @@ export function UpgradeRequestDialog({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-md">
+          <DialogHeader className="sr-only">
+            <DialogTitle>{t("dashboard.upgradeModal.successTitle")}</DialogTitle>
+            <DialogDescription>{t("dashboard.upgradeModal.successDescription")}</DialogDescription>
+          </DialogHeader>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <div className="rounded-full bg-green-100 p-3 mb-4">
               <CheckCircle2 className="h-12 w-12 text-green-600" />
             </div>
 
-            <h3 className="text-xl font-semibold mb-2">
+            <p className="text-xl font-semibold mb-2">
               {t("dashboard.upgradeModal.successTitle")}
-            </h3>
+            </p>
 
             <p className="text-muted-foreground">
               {t("dashboard.upgradeModal.successDescription")}

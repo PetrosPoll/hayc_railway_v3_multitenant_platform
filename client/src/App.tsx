@@ -1,25 +1,31 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n';
 import React, { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
+import { AppLoader } from "@/components/ui/app-loader";
 import { NavMenu } from "@/components/ui/nav-menu";
 import { Footer } from "@/components/ui/footer";
 import { AuthProvider, useAuth } from "@/components/ui/authContext";
 import { ProtectedRoute } from "@/components/ui/protected-route";
+import { PublicOnlyRoute } from "@/components/ui/public-only-route";
 import { AdminRoute } from "@/components/ui/admin-route";
 import { queryClient } from "./lib/queryClient";
 import { initializeUTMCapture } from "./lib/utm";
 
 // Page imports
-import Onboarding from "./pages/onboarding";
-import OnboardingLogoSuccess from "./pages/onboarding-logo-success";
+import GetStarted from "./pages/get-started";
+import GetStartedSuccess from "./pages/get-started-success";
+import GetStartedOnboarding from "./pages/get-started-onboarding";
+import GetStartedQuickQuestions from "./pages/get-started-quick-questions";
+import GetStartedWebsiteStructure from "./pages/get-started-website-structure";
+import GetStartedContentMedia from "./pages/get-started-content-media";
 import Contact from "./pages/contact";
 import About from "./pages/about";
 import Templates from "./pages/templates";
+import Pricing from "./pages/pricing";
 import TemplateDetail from "./pages/template-detail";
-import PreCheckout from "./pages/pre-checkout";
 import UpgradeConfirmation from "./pages/upgrade-confirmation";
 import Success from "./pages/success";
 import WebsiteCreation from "./pages/website-creation";
@@ -58,16 +64,24 @@ import AdminTags from "./pages/admin-tags";
 import AdminTemplates from "./pages/admin-templates";
 import AdminEmailBuilder from "./pages/admin-email-builder";
 import UnsubscribePage from "./pages/unsubscribe";
+import { CookieConsentProvider } from "@/components/ui/cookie-consent";
 
 // Footer wrapper component that conditionally renders footer
 function ConditionalFooter() {
   const { user } = useAuth();
   const location = useLocation();
 
-  // Hide footer for authenticated users on dashboard or onboarding page, and on email builder
+  if (user) {
+    return null;
+  }
+
   if (
-    (user && (location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/'))) ||
-    location.pathname === '/onboarding' ||
+    location.pathname === '/profile' ||
+    location.pathname === '/get-started' ||
+    location.pathname === '/get-started/onboarding' ||
+    location.pathname === '/get-started/onboarding/quick-questions' ||
+    location.pathname === '/get-started/onboarding/website-structure' ||
+    location.pathname === '/get-started/onboarding/content-media' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
     location.pathname === '/reviews-program' ||
@@ -87,7 +101,11 @@ function ConditionalNavMenu() {
 
   // Hide navigation for onboarding, website-creation landing pages, website dashboard pages, and email builder
   if (
-    location.pathname === '/onboarding' ||
+    location.pathname === '/get-started' ||
+    location.pathname === '/get-started/onboarding' ||
+    location.pathname === '/get-started/onboarding/quick-questions' ||
+    location.pathname === '/get-started/onboarding/website-structure' ||
+    location.pathname === '/get-started/onboarding/content-media' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call' ||
     location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
     location.pathname.startsWith('/dashboard/website/') ||
@@ -106,130 +124,59 @@ function ProtectedReviewsProgram() {
   return <ReviewsProgram />;
 }
 
-// Global scroll positions storage (outside component to persist between renders)
-const scrollPositionsStorage = {
-  positions: new Map(),
-
-  save: (path, position) => {
-    scrollPositionsStorage.positions.set(path, position);
-    sessionStorage.setItem('scrollPositions', JSON.stringify(Array.from(scrollPositionsStorage.positions.entries())));
-  },
-
-  get: (path) => {
-    const position = scrollPositionsStorage.positions.get(path);
-    return position;
-  },
-
-  load: () => {
-    const savedPositions = sessionStorage.getItem('scrollPositions');
-    if (savedPositions) {
-      const positions = new Map(JSON.parse(savedPositions));
-      scrollPositionsStorage.positions = positions;
-    }
-  }
-};
-
-// Custom scroll management component
-function ScrollManager() {
-  const location = useLocation();
+/** Scroll to top on every client-side route change (pathname or query). */
+function ScrollToTop() {
+  const { pathname, search } = useLocation();
 
   useEffect(() => {
-    // Load saved positions on mount
-    scrollPositionsStorage.load();
-
-    // Disable browser's automatic scroll restoration
-    if ('scrollRestoration' in window.history) {
-      window.history.scrollRestoration = 'manual';
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
     }
-
-    let isNavigating = false;
-
-    // Store scroll position before navigation
-    const handleBeforeUnload = () => {
-      const currentPath = window.location.pathname + window.location.search;
-      scrollPositionsStorage.save(currentPath, window.scrollY);
-    };
-
-    // Handle browser navigation (back/forward) - just for logging
-    const handlePopState = (event) => {
-      console.log('🔙 Browser back/forward detected');
-      isNavigating = true;
-
-      setTimeout(() => {
-        isNavigating = false;
-      }, 150);
-    };
-
-    // Listen for scroll to save position
-    const handleScroll = () => {
-      if (!isNavigating) {
-        const currentPath = location.pathname + location.search;
-        scrollPositionsStorage.save(currentPath, window.scrollY);
-      }
-    };
-
-    // Save current scroll position when leaving page
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        const currentPath = location.pathname + location.search;
-        scrollPositionsStorage.save(currentPath, window.scrollY);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('scroll', handleScroll);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [location]);
-
-  useEffect(() => {
-    // Handle route changes (this runs after navigation)
-    const currentPath = location.pathname + location.search;
-
-    // Always check for saved position first
-    const savedPosition = scrollPositionsStorage.get(currentPath);
-
-    // Immediately restore scroll position to prevent flash
-    if (savedPosition !== undefined && savedPosition > 0) {
-      // Set scroll position immediately
-      window.scrollTo(0, savedPosition);
-      // And again on next frame to ensure it sticks
-      requestAnimationFrame(() => {
-        window.scrollTo(0, savedPosition);
-      });
-    } else {
-      window.scrollTo(0, 0);
-    }
-  }, [location]);
+    window.scrollTo(0, 0);
+  }, [pathname, search]);
 
   return null;
 }
 
 // Wrapper component to use hooks that need Router context
 function AppContent() {
-  const location = useLocation();
-
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col overflow-x-hidden w-full">
       {/* Conditionally render NavMenu */}
       <ConditionalNavMenu />
       <div className="flex-1">
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/about" element={<About />} />
+          <Route path="/" element={<PublicOnlyRoute><Home /></PublicOnlyRoute>} />
+          <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
+          <Route path="/contact" element={<PublicOnlyRoute><Contact /></PublicOnlyRoute>} />
+          <Route path="/about" element={<PublicOnlyRoute><About /></PublicOnlyRoute>} />
           <Route path="/success" element={<Success />} />
-          <Route path="/pre-checkout/:planId" element={<PreCheckout />} />
-          <Route path="/templates" element={<Templates />} />
-          <Route path="/templates/:id" element={<TemplateDetail />} />
+          <Route path="/get-started" element={<GetStarted />} />
+          <Route path="/get-started/success" element={<GetStartedSuccess />} />
+          <Route path="/get-started/onboarding" element={
+            <ProtectedRoute>
+              <GetStartedOnboarding />
+            </ProtectedRoute>
+          } />
+          <Route path="/get-started/onboarding/quick-questions" element={
+            <ProtectedRoute>
+              <GetStartedQuickQuestions />
+            </ProtectedRoute>
+          } />
+          <Route path="/get-started/onboarding/website-structure" element={
+            <ProtectedRoute>
+              <GetStartedWebsiteStructure />
+            </ProtectedRoute>
+          } />
+          <Route path="/get-started/onboarding/content-media" element={
+            <ProtectedRoute>
+              <GetStartedContentMedia />
+            </ProtectedRoute>
+          } />
+          <Route path="/pre-checkout/:planId" element={<Navigate to="/get-started" replace />} />
+          <Route path="/templates" element={<PublicOnlyRoute><Templates /></PublicOnlyRoute>} />
+          <Route path="/pricing" element={<PublicOnlyRoute><Pricing /></PublicOnlyRoute>} />
+          <Route path="/templates/:id" element={<PublicOnlyRoute><TemplateDetail /></PublicOnlyRoute>} />
           <Route path="/fast-and-affordable-websites-book-a-call" element={<WebsiteCreation />} />
           <Route path="/fast-and-affordable-websites-book-a-call-en" element={<WebsiteCreationEN />} />
           <Route
@@ -311,16 +258,8 @@ function AppContent() {
               <UpgradeConfirmation />
             </ProtectedRoute>
           } />
-          <Route path="/onboarding" element={
-            <ProtectedRoute>
-              <Onboarding />
-            </ProtectedRoute>
-          } />
-          <Route path="/onboarding-logo-success" element={
-            <ProtectedRoute>
-              <OnboardingLogoSuccess />
-            </ProtectedRoute>
-          } />
+          <Route path="/onboarding" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/onboarding-logo-success" element={<Navigate to="/dashboard" replace />} />
           <Route path="/cancel-subscription-feedback" element={
             <ProtectedRoute>
               <CancelSubscriptionFeedback />
@@ -371,9 +310,13 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <Router>
-            <ScrollManager />
-            <AppContent />
-            <Toaster />
+            <ScrollToTop />
+            <CookieConsentProvider>
+              <AppLoader>
+                <AppContent />
+                <Toaster />
+              </AppLoader>
+            </CookieConsentProvider>
           </Router>
         </AuthProvider>
       </QueryClientProvider>

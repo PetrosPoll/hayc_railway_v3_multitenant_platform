@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 import type { Template } from "@shared/schema";
@@ -21,7 +21,10 @@ export function TemplatePreviewModal({ template, open, onOpenChange }: TemplateP
           <div className="flex flex-col h-full">
             {/* Header */}
             <div className="border-b px-6 py-4 flex items-center justify-between bg-background">
-              <h2 className="text-2xl font-bold">{template.name}</h2>
+              <DialogTitle className="text-2xl font-bold">{template.name}</DialogTitle>
+              <DialogDescription className="sr-only">
+                Preview of {template.name} template
+              </DialogDescription>
               {/* <Button
                 variant="ghost"
                 size="icon"

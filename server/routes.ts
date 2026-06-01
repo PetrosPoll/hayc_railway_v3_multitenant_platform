@@ -32,6 +32,7 @@ import {
   websiteChanges,
   websiteChangeLogs,
   onboardingFormResponses,
+  getStartedSubmissions,
   newsletterSubscribers as newsletterSubscribersTable,
   appSettings,
   emailTemplates,
@@ -302,6 +303,12 @@ const ADDON_PRICE_MAP = availableAddOnsWithPriceIds.reduce((map, addon) => {
   return map;
 }, {} as Record<string, string>);
 
+// Map client-side display names → schema IDs (client stores display names in selectedAddons)
+const ADDON_DISPLAY_NAME_TO_ID: Record<string, string> = {
+  "Booking Integration": "booking",
+  "HDP": "lms",
+};
+
 // Mapping of add-on IDs to their yearly price environment variable names
 const ADDON_YEARLY_ENV_KEYS: Record<string, string> = {
   'lms': 'STRIPE_LMS_ADDON_YEARLY_PRICE_ID',
@@ -409,6 +416,21 @@ async function verifyPriceCurrencies(
   }
 
   return { price, setupFee, currency: price.currency };
+}
+
+/** If preferred username is taken, append a random suffix so webhook user creation does not fail on unique constraint. */
+async function allocateUniqueUsernameForCheckout(preferred: string): Promise<string> {
+  const base = preferred.trim().slice(0, 48);
+  if (!base) {
+    throw new Error("Invalid username from checkout metadata");
+  }
+  let candidate = base;
+  for (let attempt = 0; attempt < 32; attempt++) {
+    const existing = await storage.getUserByUsername(candidate);
+    if (!existing) return candidate;
+    candidate = `${base}_${randomBytes(3).toString("hex")}`.slice(0, 63);
+  }
+  throw new Error("Could not allocate unique username after retries");
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -576,6 +598,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         error: "Failed to check email" 
+      });
+    }
+  });
+
+  // Check if username is already taken (new-account checkout / registration)
+  app.post("/api/check-username", async (req, res) => {
+    try {
+      const usernameSchema = z.object({
+        username: z.string().min(3).max(50).trim(),
+      });
+      const validationResult = usernameSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid username",
+          details: validationResult.error.errors,
+        });
+      }
+      const taken = await storage.getUserByUsername(validationResult.data.username);
+      res.json({
+        success: true,
+        available: !taken,
+      });
+    } catch (err) {
+      console.error("Username check error:", err);
+      res.status(500).json({
+        success: false,
+        error: "Failed to check username",
       });
     }
   });
@@ -758,14 +808,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         customer: stripeSubscription.customer as string,
                         subscription: subscription.stripeSubscriptionId,
                       });
-                      
+
                       if (upcomingInvoice) {
-                        // amount_due is in cents, so it's ready to use
-                        nextBillingAmount = upcomingInvoice.amount_due;
+                        const lineItem = upcomingInvoice.lines.data.find(
+                          (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                        );
+                        nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
                       }
                     } catch (invoiceError) {
                       console.error("[/api/user] Error fetching upcoming invoice:", invoiceError);
-                      // If we can't get the upcoming invoice, use the subscription price as fallback
                       nextBillingAmount = price;
                     }
                   }
@@ -1115,10 +1166,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         customer: stripeSubscription.customer as string,
                         subscription: subscription.stripeSubscriptionId,
                       });
-                      
+
                       if (upcomingInvoice) {
-                        nextBillingAmount = upcomingInvoice.amount_due;
-                        console.log(`[/api/subscriptions Mode 1] Upcoming invoice: ${nextBillingAmount} cents`);
+                        const lineItem = upcomingInvoice.lines.data.find(
+                          (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                        );
+                        nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
+                        console.log(`[/api/subscriptions Mode 1] Upcoming invoice line item: ${nextBillingAmount} cents`);
                       }
                     } catch (invoiceError) {
                       console.error("[/api/subscriptions Mode 1] Error fetching upcoming invoice:", invoiceError);
@@ -1241,14 +1295,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     customer: stripeSubscription.customer as string,
                     subscription: subscription.stripeSubscriptionId,
                   });
-                  
+
                   if (upcomingInvoice) {
-                    // amount_due is in cents, so it's ready to use
-                    nextBillingAmount = upcomingInvoice.amount_due;
+                    const lineItem = upcomingInvoice.lines.data.find(
+                      (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                    );
+                    nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
                   }
                 } catch (invoiceError) {
                   console.error("[/api/subscriptions Mode 2] Error fetching upcoming invoice:", invoiceError);
-                  // If we can't get the upcoming invoice, use the subscription price as fallback
                   nextBillingAmount = price;
                 }
               }
@@ -2220,6 +2275,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingUser = await storage.getUserByEmail(body.email);
         let stripeCustomerId = existingUser?.stripeCustomerId;
 
+        // New email = new account path: username must be globally unique (webhook uses it for insert)
+        if (!existingUser) {
+          const usernameTaken = await storage.getUserByUsername(body.username.trim());
+          if (usernameTaken) {
+            return res.status(400).json({
+              error: "Username already taken",
+              code: "USERNAME_TAKEN",
+            });
+          }
+        }
+
         // Create line items array with base subscription and conditionally setup fee
         const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
@@ -2308,6 +2374,758 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? err.message
             : "Failed to create checkout session",
       });
+    }
+  });
+
+  const publicGetStartedLimiter = rateLimit({
+    windowMs: 30 * 60 * 1000,
+    max: 10,
+    message: "Too many requests from this IP, please try again later",
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  app.post("/public/get-started", publicGetStartedLimiter, async (req, res) => {
+    const schema = z.object({
+      email: z.string().email(),
+      fullName: z.string().min(2),
+      phone: z.string().optional(),
+      password: z.string().min(6).optional(),
+      planId: z.enum(["basic", "essential", "pro"]),
+      billingPeriod: z.enum(["monthly", "yearly"]),
+      invoiceType: z.enum(["invoice", "receipt"]).default("invoice"),
+      vatNumber: z.string().nullable().optional(),
+      city: z.string().nullable().optional(),
+      street: z.string().nullable().optional(),
+      streetNumber: z.string().nullable().optional(),
+      postalCode: z.string().nullable().optional(),
+      addOns: z.array(z.string()).optional(),
+      language: z.string().optional(),
+    });
+
+    try {
+      const body = schema.parse(req.body);
+
+      const { price, setupFee } = await verifyPriceCurrencies(
+        body.planId,
+        body.billingPeriod,
+      );
+
+      const existingUser = await storage.getUserByEmail(body.email);
+      const stripeCustomerId = existingUser?.stripeCustomerId;
+
+      const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+
+      lineItems.push({
+        price: setupFee.id,
+        quantity: 1,
+      });
+
+      lineItems.push({
+        price: price.id,
+        quantity: 1,
+      });
+
+      if (body.addOns && body.addOns.length > 0) {
+        console.log("📦 Processing add-ons:", body.addOns);
+        body.addOns.forEach((rawAddonId) => {
+          const addonId = ADDON_DISPLAY_NAME_TO_ID[rawAddonId] ?? rawAddonId;
+          const priceId = body.billingPeriod === "yearly"
+            ? (ADDON_YEARLY_PRICE_MAP[addonId]?.priceId ?? ADDON_PRICE_MAP[addonId])
+            : ADDON_PRICE_MAP[addonId];
+          console.log(`  - Add-on "${rawAddonId}" -> "${addonId}" (${body.billingPeriod}) -> Price ID: ${priceId}`);
+          if (priceId) {
+            lineItems.push({
+              price: priceId,
+              quantity: 1,
+            });
+          } else {
+            console.warn(`Unknown add-on ID: ${addonId} (raw: ${rawAddonId})`);
+          }
+        });
+      }
+
+      console.log(
+        "🛒 Final line items being sent to Stripe:",
+        JSON.stringify(lineItems, null, 2),
+      );
+
+      const getStartedSessionId = crypto.randomUUID();
+
+      const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+        payment_method_types: ["card"],
+        line_items: lineItems,
+        mode: "subscription",
+        success_url: `${req.protocol}://${req.get("host")}/get-started/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${req.protocol}://${req.get("host")}/get-started`,
+        metadata: {
+          getStartedSessionId: getStartedSessionId,
+          username: body.fullName,
+          phone: body.phone || "",
+          planId: body.planId,
+          billingPeriod: body.billingPeriod,
+          password: body.password || "",
+          vatNumber: (body.vatNumber ?? "").trim(),
+          city: (body.city ?? "").trim(),
+          street: (body.street ?? "").trim(),
+          number: (body.streetNumber ?? "").trim(),
+          postalCode: (body.postalCode ?? "").trim(),
+          invoiceType: body.invoiceType || "invoice",
+          addOns: body.addOns ? JSON.stringify(body.addOns) : "",
+          language: body.language || "en",
+          isResume: "false",
+        },
+      };
+
+      if (stripeCustomerId) {
+        sessionConfig.customer = stripeCustomerId;
+      } else {
+        sessionConfig.customer_email = body.email;
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionConfig);
+
+      res.json({ url: session.url, sessionId: getStartedSessionId });
+    } catch (err) {
+      console.error("Get-started checkout error:", err);
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  });
+
+  app.patch("/api/get-started/:sessionId", async (req, res) => {
+    const schema = z.object({
+      // Pre-checkout fields (steps 1–4, flushed from localStorage on onboarding mount)
+      businessType: z.string().optional(),
+      websiteGoals: z.array(z.string()).optional(),
+      websiteGoalOther: z.string().nullable().optional(),
+      suggestedStructure: z.array(z.string()).optional(),
+      suggestedAddons: z.array(z.string()).optional(),
+      selectedAddons: z.array(z.string()).optional(),
+      designDirection: z.string().optional(),
+      businessName: z.string().optional(),
+      businessDescription: z.string().nullable().optional(),
+      services: z.string().nullable().optional(),
+      hadWebsiteBefore: z
+        .enum(["yes_worked_well", "yes_no_results", "no_first_time"])
+        .nullable()
+        .optional(),
+      previousWebsitePlatform: z
+        .enum([
+          "wix",
+          "squarespace",
+          "wordpress",
+          "webflow",
+          "someone_built_it",
+          "other",
+        ])
+        .nullable()
+        .optional(),
+      selfDescription: z
+        .enum(["know_exactly", "rough_idea", "need_guidance"])
+        .nullable()
+        .optional(),
+      biggestConcerns: z.array(z.string()).optional(),
+      heardAboutUs: z.array(z.string()).optional(),
+      confirmedPages: z.array(z.string()).optional(),
+      pagesNotes: z.string().nullable().optional(),
+      websiteContent: z.string().nullable().optional(),
+      successVision: z.string().nullable().optional(),
+      mediaUrls: z
+        .array(
+          z.object({
+            url: z.string(),
+            name: z.string(),
+            publicId: z.string(),
+          }),
+        )
+        .optional(),
+      currentStep: z.number().int().min(6).max(9).optional(),
+    });
+
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const sessionId = req.params.sessionId;
+      const body = schema.parse(req.body);
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.sessionId, sessionId))
+        .then((rows) => rows[0]);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      if (submission.email !== req.user.email) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (submission.status === "completed") {
+        // Allow mediaUrls update even on completed submissions
+        if (body.mediaUrls === undefined) {
+          return res.status(400).json({ error: "Submission already completed" });
+        }
+      }
+
+      if (submission.status !== "paid" && submission.status !== "draft" && submission.status !== "completed") {
+        return res.status(400).json({ error: "Submission not editable" });
+      }
+
+      const updatePayload: Record<string, unknown> = {
+        // Only set status to draft if not already completed
+        ...(submission.status !== "completed" ? { status: "draft" } : {}),
+        updatedAt: new Date(),
+      };
+
+      if (body.businessType !== undefined) {
+        updatePayload.businessType = body.businessType;
+      }
+      if (body.websiteGoals !== undefined) {
+        updatePayload.websiteGoals = body.websiteGoals;
+      }
+      if (body.websiteGoalOther !== undefined) {
+        updatePayload.websiteGoalOther = body.websiteGoalOther;
+      }
+
+      if (body.suggestedStructure !== undefined) {
+        updatePayload.suggestedStructure = body.suggestedStructure;
+      }
+      if (body.suggestedAddons !== undefined) {
+        updatePayload.suggestedAddons = body.suggestedAddons;
+      }
+      if (body.selectedAddons !== undefined) {
+        updatePayload.selectedAddons = body.selectedAddons;
+      }
+      if (body.designDirection !== undefined) {
+        updatePayload.designDirection = body.designDirection;
+      }
+      if (body.businessName !== undefined) {
+        updatePayload.businessName = body.businessName;
+      }
+      if (body.businessDescription !== undefined) {
+        updatePayload.businessDescription = body.businessDescription;
+      }
+      if (body.services !== undefined) {
+        updatePayload.services = body.services;
+      }
+      if (body.hadWebsiteBefore !== undefined) {
+        updatePayload.hadWebsiteBefore = body.hadWebsiteBefore;
+      }
+      if (body.previousWebsitePlatform !== undefined) {
+        updatePayload.previousWebsitePlatform = body.previousWebsitePlatform;
+      }
+      if (body.selfDescription !== undefined) {
+        updatePayload.selfDescription = body.selfDescription;
+      }
+      if (body.biggestConcerns !== undefined) {
+        updatePayload.biggestConcerns = body.biggestConcerns;
+      }
+      if (body.heardAboutUs !== undefined) {
+        updatePayload.heardAboutUs = body.heardAboutUs;
+      }
+      if (body.confirmedPages !== undefined) {
+        updatePayload.confirmedPages = body.confirmedPages;
+      }
+      if (body.pagesNotes !== undefined) {
+        updatePayload.pagesNotes = body.pagesNotes;
+      }
+      if (body.websiteContent !== undefined) {
+        updatePayload.websiteContent = body.websiteContent;
+      }
+      if (body.successVision !== undefined) {
+        updatePayload.successVision = body.successVision;
+      }
+      if (body.mediaUrls !== undefined) {
+        updatePayload.mediaUrls = body.mediaUrls;
+      }
+      if (body.currentStep !== undefined) {
+        updatePayload.currentStep = body.currentStep;
+      }
+
+      await db
+        .update(getStartedSubmissions)
+        .set(updatePayload)
+        .where(eq(getStartedSubmissions.sessionId, sessionId));
+
+      res.json({ success: true });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res
+          .status(400)
+          .json({ error: "Invalid request data", details: err.errors });
+      }
+      console.error("Get-started PATCH error:", err);
+      res.status(500).json({ error: "Failed to save progress" });
+    }
+  });
+
+  // GET /api/get-started/pending — returns latest incomplete submission for logged-in user
+  app.get("/api/get-started/pending", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(req.user!.id);
+      if (!user?.email) return res.json({ submission: null });
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(
+          and(
+            eq(getStartedSubmissions.email, user.email),
+            or(
+              eq(getStartedSubmissions.status, "draft"),
+              eq(getStartedSubmissions.status, "paid"),
+            ),
+          ),
+        )
+        .orderBy(desc(getStartedSubmissions.updatedAt))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+
+      let resumePath = "/get-started/onboarding";
+      if (submission) {
+        switch (submission.currentStep) {
+          case 6:
+            resumePath = "/get-started/onboarding";
+            break;
+          case 7:
+            resumePath = "/get-started/onboarding/quick-questions";
+            break;
+          case 8:
+            resumePath = "/get-started/onboarding/website-structure";
+            break;
+          case 9:
+            resumePath = "/get-started/onboarding/content-media";
+            break;
+          default:
+            resumePath = "/get-started/onboarding";
+        }
+      }
+
+      return res.json({ submission, resumePath });
+    } catch (err) {
+      console.error("GET /api/get-started/pending error:", err);
+      return res.status(500).json({ error: "Failed to fetch pending submission" });
+    }
+  });
+
+  app.get("/api/get-started/:sessionId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const sessionId = req.params.sessionId;
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.sessionId, sessionId))
+        .then((rows) => rows[0]);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      if (submission.email !== req.user.email) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      res.json({ submission });
+    } catch (err) {
+      console.error("Get-started GET error:", err);
+      res.status(500).json({ error: "Failed to load submission" });
+    }
+  });
+
+  app.post("/api/get-started/:sessionId/complete", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const sessionId = req.params.sessionId;
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.sessionId, sessionId))
+        .then((rows) => rows[0]);
+
+      if (!submission) {
+        return res.status(404).json({ error: "Submission not found" });
+      }
+
+      if (submission.email !== req.user.email) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (submission.status === "completed") {
+        return res
+          .status(400)
+          .json({ error: "Submission already completed" });
+      }
+
+      if (submission.status !== "paid" && submission.status !== "draft") {
+        return res
+          .status(400)
+          .json({ error: "Submission not ready for completion" });
+      }
+
+      const { generateUniqueIdentifier } = await import("../shared/utils.js");
+      let domain = "";
+      let isUnique = false;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!isUnique && attempts < maxAttempts) {
+        domain = generateUniqueIdentifier();
+        const existing = await db
+          .select()
+          .from(websiteProgress)
+          .where(eq(websiteProgress.domain, domain))
+          .limit(1);
+        if (existing.length === 0) isUnique = true;
+        attempts++;
+      }
+
+      if (!isUnique) {
+        throw new Error("Failed to generate unique domain identifier");
+      }
+
+      const projectName =
+        submission.businessName || submission.fullName || "My Website";
+
+      const pendingWebsiteProgress = await db
+        .select()
+        .from(websiteProgress)
+        .where(
+          and(
+            eq(websiteProgress.userId, req.user.id),
+            like(websiteProgress.domain, "%.pending-onboarding"),
+          ),
+        )
+        .orderBy(desc(websiteProgress.createdAt))
+        .limit(1);
+
+      let websiteProgressEntry;
+
+      if (pendingWebsiteProgress.length > 0) {
+        const updatedResult = await db
+          .update(websiteProgress)
+          .set({
+            domain,
+            projectName,
+            websiteLanguage: submission.websiteLanguage || "en",
+            currentStage: 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(websiteProgress.id, pendingWebsiteProgress[0].id))
+          .returning();
+        websiteProgressEntry = updatedResult[0];
+      } else {
+        const insertResult = await db
+          .insert(websiteProgress)
+          .values({
+            userId: req.user.id,
+            domain,
+            projectName,
+            websiteLanguage: submission.websiteLanguage || "en",
+            currentStage: 1,
+          })
+          .returning();
+        websiteProgressEntry = insertResult[0];
+
+        await storage.createSystemTagsForWebsite(websiteProgressEntry.id);
+
+        await db
+          .update(subscriptionsTable)
+          .set({ websiteProgressId: websiteProgressEntry.id })
+          .where(
+            and(
+              eq(subscriptionsTable.userId, req.user.id),
+              eq(subscriptionsTable.productType, "plan"),
+              eq(subscriptionsTable.status, "active"),
+              isNull(subscriptionsTable.websiteProgressId),
+            ),
+          );
+      }
+
+      // Link any addon subscriptions that share the same Stripe subscription as the plan
+      const linkedPlan = await db
+        .select()
+        .from(subscriptionsTable)
+        .where(
+          and(
+            eq(subscriptionsTable.userId, req.user.id),
+            eq(subscriptionsTable.productType, "plan"),
+            eq(subscriptionsTable.websiteProgressId, websiteProgressEntry.id),
+          ),
+        )
+        .then((rows) => rows[0]);
+
+      if (linkedPlan?.stripeSubscriptionId) {
+        const linkedAddons = await db
+          .update(subscriptionsTable)
+          .set({ websiteProgressId: websiteProgressEntry.id })
+          .where(
+            and(
+              eq(subscriptionsTable.stripeSubscriptionId, linkedPlan.stripeSubscriptionId),
+              eq(subscriptionsTable.userId, req.user.id),
+              eq(subscriptionsTable.productType, "addon"),
+              isNull(subscriptionsTable.websiteProgressId),
+            ),
+          )
+          .returning();
+
+        if (linkedAddons.length > 0) {
+          console.log("✅ [GET-STARTED COMPLETE] Linked addon subscriptions to website:", {
+            websiteProgressId: websiteProgressEntry.id,
+            addonIds: linkedAddons.map((a) => a.id),
+            addonProductIds: linkedAddons.map((a) => a.productId),
+          });
+        }
+      }
+
+      // Create draft invoices for all subscriptions linked to this website (initial purchase)
+      try {
+        const allLinkedSubscriptions = await db
+          .select()
+          .from(subscriptionsTable)
+          .where(
+            and(
+              eq(subscriptionsTable.userId, req.user.id),
+              eq(subscriptionsTable.websiteProgressId, websiteProgressEntry.id),
+              eq(subscriptionsTable.status, 'active'),
+            )
+          );
+
+        if (allLinkedSubscriptions.length > 0 && allLinkedSubscriptions[0].stripeSubscriptionId) {
+          const stripeSubscription = await stripe.subscriptions.retrieve(
+            allLinkedSubscriptions[0].stripeSubscriptionId,
+            { expand: ['latest_invoice.payment_intent'] }
+          );
+
+          const latestInvoice = stripeSubscription.latest_invoice as Stripe.Invoice;
+
+          if (latestInvoice && latestInvoice.paid && latestInvoice.amount_paid > 0) {
+            const now = new Date();
+            const invoiceMonth = now.getMonth() + 1;
+            const invoiceYear = now.getFullYear();
+
+            let paymentIntentId: string | null = null;
+            if (latestInvoice.payment_intent) {
+              paymentIntentId = typeof latestInvoice.payment_intent === 'string'
+                ? latestInvoice.payment_intent
+                : (latestInvoice.payment_intent as Stripe.PaymentIntent).id;
+            }
+
+            for (const sub of allLinkedSubscriptions) {
+              const lineItem = latestInvoice.lines.data.find(
+                (line) => line.subscription_item === sub.stripeSubscriptionItemId
+              );
+              const amount = lineItem ? lineItem.amount : 0;
+
+              if (amount <= 0) continue;
+
+              const existingInvoice = await db
+                .select()
+                .from(websiteInvoices)
+                .where(
+                  and(
+                    eq(websiteInvoices.subscriptionId, sub.id),
+                    eq(websiteInvoices.websiteProgressId, websiteProgressEntry.id),
+                    sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
+                    sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`
+                  )
+                )
+                .limit(1)
+                .then((rows) => rows[0]);
+
+              if (existingInvoice) continue;
+
+              let invoiceTitle: string;
+              let invoiceDescription: string;
+
+              if (sub.productType === 'plan') {
+                const tierName = sub.tier ? sub.tier.charAt(0).toUpperCase() + sub.tier.slice(1) : 'Plan';
+                const billingPeriod = sub.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
+                const planName = subscriptionPlans[sub.tier as keyof typeof subscriptionPlans]?.name || tierName;
+                invoiceTitle = `Invoice for ${planName} Plan (${billingPeriod})`;
+                invoiceDescription = `Subscription plan - ${planName} (${billingPeriod})`;
+              } else if (sub.productType === 'addon') {
+                const addOn = availableAddOns.find((a) => a.id === sub.productId);
+                const addOnName = addOn?.name || 'Add-on';
+                invoiceTitle = `Invoice for ${addOnName}`;
+                invoiceDescription = `Add-on - ${addOnName}`;
+              } else {
+                invoiceTitle = 'Invoice for Subscription';
+                invoiceDescription = 'Initial payment';
+              }
+
+              await createDraftInvoice({
+                websiteProgressId: websiteProgressEntry.id,
+                subscriptionId: sub.id,
+                paymentIntentId,
+                title: invoiceTitle,
+                description: invoiceDescription,
+                amount,
+                currency: (latestInvoice.currency || 'eur').toUpperCase(),
+                context: `initial purchase via get-started (${sub.productType})`,
+              });
+            }
+          }
+        }
+      } catch (invoiceError) {
+        console.error('[GET-STARTED COMPLETE] Error creating invoice drafts:', invoiceError);
+      }
+
+      const defaultStages = [
+        {
+          title: "Welcome & Project Setup",
+          description:
+            "Welcome to hayc! We're setting up your website project and preparing everything based on your onboarding form.",
+        },
+        {
+          title: "Content Review & Organization",
+          description:
+            "We're reviewing the information, text, and materials you provided to structure your website effectively.",
+        },
+        {
+          title: "Design & Website Creation",
+          description:
+            "Our team is building your website's layout and design according to your preferences and chosen template.",
+        },
+        {
+          title: "Content & Media Integration",
+          description:
+            "We're adding your business content, photos, and other media to bring your website to life.",
+        },
+        {
+          title: "Connections & Integrations",
+          description:
+            "We're connecting your website with essential tools — domain, email, analytics, social media, newsletter, and other integrations.",
+        },
+        {
+          title: "Responsive Optimization & Final Checks",
+          description:
+            "We ensure your website looks and works perfectly on all devices (mobile, tablet, and desktop) and perform the final quality review.",
+        },
+        {
+          title: "Website Launch",
+          description:
+            "Your website is now live! We activate ongoing support and monthly updates to keep everything running smoothly.",
+        },
+      ];
+
+      for (let i = 0; i < defaultStages.length; i++) {
+        await db.insert(websiteStages).values({
+          websiteProgressId: websiteProgressEntry.id,
+          stageNumber: i + 1,
+          title: defaultStages[i].title,
+          description: defaultStages[i].description,
+          status: i === 0 ? "in-progress" : "pending",
+        });
+      }
+
+      const submissionId = `ONBOARD_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      await db
+        .update(getStartedSubmissions)
+        .set({
+          status: "completed",
+          submissionId,
+          websiteProgressId: websiteProgressEntry.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(getStartedSubmissions.sessionId, sessionId));
+
+      res.json({
+        success: true,
+        submissionId,
+        websiteProgressId: websiteProgressEntry.id,
+        domain,
+      });
+
+      setImmediate(async () => {
+        const preferredLanguage = getPreferredLanguage(req);
+        const submittedAt = new Date().toLocaleString();
+        const contactName = submission.fullName || submission.email;
+        const businessName = submission.businessName || "";
+
+        try {
+          const userEmailHtml = loadTemplate(
+            "onboarding-form-confirmation.html",
+            {
+              contactName,
+              businessName,
+              email: submission.email,
+              domain,
+              submissionId,
+              submittedAt,
+            },
+            preferredLanguage,
+          );
+          await Promise.race([
+            sendSystemEmail({
+              from: process.env.EMAIL_FROM || "",
+              to: submission.email,
+              replyTo: "support@hayc.gr",
+              subject: "🎉 Your website project has been created - hayc",
+              html: userEmailHtml,
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Email timeout")), 10000),
+            ),
+          ]);
+        } catch (emailError) {
+          console.error(
+            "Failed to send user confirmation email:",
+            emailError,
+          );
+        }
+
+        try {
+          const dashboardUrl = `${process.env.VITE_APP_URL || "https://hayc.gr"}/admin`;
+          const adminEmailHtml = loadTemplate(
+            "admin-onboarding-form-notification.html",
+            {
+              fullName: contactName,
+              businessName,
+              email: submission.email,
+              submittedAt,
+              dashboardUrl,
+            },
+            "en",
+          );
+          await Promise.race([
+            sendSystemEmail({
+              from: process.env.EMAIL_FROM || "",
+              to: "development@hayc.gr",
+              subject: `🚀 New Website Project Created - ${businessName}`,
+              html: adminEmailHtml,
+            }),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Email timeout")), 10000),
+            ),
+          ]);
+        } catch (emailError) {
+          console.error(
+            "Failed to send admin notification email:",
+            emailError,
+          );
+        }
+      });
+    } catch (err) {
+      console.error("Get-started complete error:", err);
+      res.status(500).json({ error: "Failed to complete submission" });
     }
   });
 
@@ -2957,7 +3775,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .json({ error: "Missing username" });
             }
 
-            console.log('✅ Username exists, continuing plan purchase...');
+            console.log(
+              "✅ Plan purchase: username present in session metadata, continuing...",
+            );
             const planId = session.metadata.planId as SubscriptionTier;
 
             // Get customer details from Stripe
@@ -2986,8 +3806,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             } else {
               try {
+                const resolvedUsername = await allocateUniqueUsernameForCheckout(
+                  session.metadata.username,
+                );
+                if (resolvedUsername !== session.metadata.username.trim()) {
+                  console.log(
+                    `ℹ️ Username "${session.metadata.username}" was taken; registered as "${resolvedUsername}"`,
+                  );
+                }
                 user = await storage.createUser({
-                  username: session.metadata.username,
+                  username: resolvedUsername,
                   email: customerEmail,
                   phone: session.metadata.phone || null,
                   stripeCustomerId: session.customer as string,
@@ -2996,9 +3824,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   password: await hashPassword(session.metadata.password || ""),
                   language: session.metadata.language || "en",
                 });
-              } catch (userCreateError) {
-                console.error('❌ Failed to create user:', userCreateError);
-                throw userCreateError;
+              } catch (userCreateError: any) {
+                // If duplicate email (Stripe webhook retry), fall back to existing user
+                const isDuplicateEmail =
+                  userCreateError?.cause?.code === '23505' ||
+                  userCreateError?.message?.includes('duplicate key') ||
+                  userCreateError?.message?.includes('users_email_unique');
+
+                if (isDuplicateEmail) {
+                  console.log('ℹ️ User already exists (webhook retry), falling back to existing user');
+                  user = await storage.getUserByEmail(customerEmail);
+                  if (!user) {
+                    console.error('❌ Could not find user after duplicate email error');
+                    throw userCreateError;
+                  }
+                  // Update stripeCustomerId if missing
+                  if (!user.stripeCustomerId) {
+                    user = await storage.updateUser(user.id, {
+                      stripeCustomerId: session.customer as string,
+                      role: UserRole.SUBSCRIBER,
+                    });
+                  }
+                } else {
+                  console.error('❌ Failed to create user:', userCreateError);
+                  throw userCreateError;
+                }
               }
 
               // Send registration welcome email for new users (fire-and-forget)
@@ -3006,7 +3856,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 type: 'subscription',
                 emailType: 'registered',
                 data: {
-                  username: session.metadata.username,
+                  username: user.username,
                   email: customerEmail,
                   plan: planId,
                   registrationDate: new Date().toLocaleDateString(),
@@ -3196,6 +4046,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
 
+            }
+
+            // New get-started flow: create get_started_submissions row on confirmed payment
+            if (session.metadata?.getStartedSessionId) {
+              try {
+                await db.insert(getStartedSubmissions).values({
+                  sessionId: session.metadata.getStartedSessionId,
+                  status: "paid",
+                  checkoutSessionId: session.id,
+                  email: customerEmail,
+                  fullName: session.metadata.username || null,
+                  contactPhone: session.metadata.phone || null,
+                  selectedPlan: session.metadata.planId || null,
+                  billingPeriod: session.metadata.billingPeriod || null,
+                  documentType: session.metadata.invoiceType || null,
+                  vatNumber: session.metadata.vatNumber || null,
+                  city: session.metadata.city || null,
+                  street: session.metadata.street || null,
+                  streetNumber: session.metadata.number || null,
+                  postalCode: session.metadata.postalCode || null,
+                  selectedAddons: session.metadata.addOns
+                    ? JSON.parse(session.metadata.addOns)
+                    : [],
+                  websiteLanguage: session.metadata.language || "en",
+                });
+                console.log(
+                  "✅ Created get_started_submissions row for session:",
+                  session.metadata.getStartedSessionId,
+                );
+              } catch (getStartedError) {
+                // Log but do not fail the webhook — subscription was already created successfully
+                console.error(
+                  "❌ Failed to create get_started_submissions row:",
+                  getStartedError,
+                );
+              }
             }
 
             // Copy invoice VAT from Stripe session metadata to users.vat_number (subscription row also stores it).
@@ -3551,59 +4437,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 currency: invoice.currency
               });
 
-              // Check if transaction already exists by Stripe invoice ID
-              const existingTransaction = await db
-                .select()
-                .from(transactionsTable)
-                .where(eq(transactionsTable.stripeInvoiceId, invoice.id))
-                .limit(1);
-
-              if (existingTransaction.length > 0) {
-                console.log('⏭️  Transaction already exists for invoice:', invoice.id);
-                break;
-              }
-
-              // Find the subscription in our database
-              let dbSubscription = await db
+              // Find ALL local subscriptions sharing this Stripe subscription ID
+              let dbSubscriptions = await db
                 .select()
                 .from(subscriptionsTable)
-                .where(eq(subscriptionsTable.stripeSubscriptionId, invoice.subscription as string))
-                .limit(1);
+                .where(eq(subscriptionsTable.stripeSubscriptionId, invoice.subscription as string));
 
-              // If not found, check if this subscription came from a schedule
-              if (dbSubscription.length === 0) {
+              // If none found, check if this subscription came from a schedule
+              if (dbSubscriptions.length === 0) {
                 try {
-                  // Fetch the subscription from Stripe to check if it has a schedule
                   const stripeSubscription = await stripe.subscriptions.retrieve(invoice.subscription as string);
-                  
+
                   if (stripeSubscription.schedule) {
                     console.log(`🔄 Subscription ${invoice.subscription} came from schedule ${stripeSubscription.schedule}`);
-                    
-                    // Look for a subscription with the schedule ID
+
                     const scheduleSubscription = await db
                       .select()
                       .from(subscriptionsTable)
                       .where(eq(subscriptionsTable.stripeSubscriptionId, stripeSubscription.schedule as string))
                       .limit(1);
-                    
+
                     if (scheduleSubscription.length > 0) {
                       console.log(`✅ Found subscription with schedule ID, updating to real subscription ID`);
-                      
-                      // Extract tier and price from the Stripe subscription
+
                       let updatedTier = scheduleSubscription[0].tier;
                       let updatedPrice = scheduleSubscription[0].price;
-                      
+
                       if (stripeSubscription.items.data.length > 0) {
                         const subscriptionItem = stripeSubscription.items.data[0];
-                        const priceId = typeof subscriptionItem.price.id === 'string' ? subscriptionItem.price.id : subscriptionItem.price.id;
-                        
-                        // Check if this is an add-on
+                        const priceId = subscriptionItem.price.id;
+
                         if (PRICE_TO_ADDON_MAP[priceId]) {
-                          const addonId = PRICE_TO_ADDON_MAP[priceId];
-                          updatedTier = addonId; // For add-ons, tier is the add-on ID
-                          console.log(`Detected add-on from activated schedule: ${addonId}`);
+                          updatedTier = PRICE_TO_ADDON_MAP[priceId];
+                          console.log(`Detected add-on from activated schedule: ${updatedTier}`);
                         } else {
-                          // Check if it's a plan subscription
                           for (const [tierKey, prices] of Object.entries(SUBSCRIPTION_PRICES)) {
                             if (priceId === prices.monthly || priceId === prices.yearly) {
                               updatedTier = tierKey as SubscriptionTier;
@@ -3612,32 +4479,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             }
                           }
                         }
-                        
-                        // Extract price amount
+
                         if (subscriptionItem.price.unit_amount) {
                           updatedPrice = subscriptionItem.price.unit_amount;
-                          console.log(`Extracted price from activated schedule: ${updatedPrice}`);
                         }
                       }
-                      
-                      // Update the schedule ID to the real subscription ID, plus tier and price
+
                       await db
                         .update(subscriptionsTable)
-                        .set({ 
+                        .set({
                           stripeSubscriptionId: invoice.subscription as string,
                           tier: updatedTier,
-                          price: updatedPrice
+                          price: updatedPrice,
                         })
                         .where(eq(subscriptionsTable.id, scheduleSubscription[0].id));
-                      
-                      // Reload the subscription
-                      dbSubscription = await db
+
+                      dbSubscriptions = await db
                         .select()
                         .from(subscriptionsTable)
-                        .where(eq(subscriptionsTable.id, scheduleSubscription[0].id))
-                        .limit(1);
-                      
-                      console.log(`🔄 Updated subscription ${scheduleSubscription[0].id} from schedule ${stripeSubscription.schedule} to subscription ${invoice.subscription} with tier: ${updatedTier}, price: ${updatedPrice}`);
+                        .where(eq(subscriptionsTable.id, scheduleSubscription[0].id));
+
+                      console.log(`🔄 Updated subscription ${scheduleSubscription[0].id} from schedule to ${invoice.subscription}`);
                     }
                   }
                 } catch (scheduleError) {
@@ -3645,173 +4507,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
 
-              if (dbSubscription.length > 0) {
-                const subscription = dbSubscription[0];
-                
-                // Fetch website domain for logging
-                let websiteDomain = 'unknown';
-                if (subscription.websiteProgressId) {
-                  try {
-                    const website = await db
-                      .select({ domain: websiteProgress.domain })
-                      .from(websiteProgress)
-                      .where(eq(websiteProgress.id, subscription.websiteProgressId))
-                      .limit(1)
-                      .then((rows) => rows[0]);
-                    if (website) {
-                      websiteDomain = website.domain;
-                    }
-                  } catch (err) {
-                    // Ignore error, use default
-                  }
-                }
-                
-                console.log('📋 [WEBHOOK] Processing invoice for subscription:', {
-                  dbSubscriptionId: subscription.id,
-                  stripeSubscriptionId: invoice.subscription,
-                  websiteProgressId: subscription.websiteProgressId,
-                  websiteDomain: websiteDomain,
-                  productType: subscription.productType,
-                  amount: invoice.amount_paid,
-                  currency: invoice.currency
-                });
-                
-                // Get the actual payment timestamp
-                const paidAt = invoice.status_transitions?.paid_at 
+              if (dbSubscriptions.length > 0) {
+                const paidAt = invoice.status_transitions?.paid_at
                   ? new Date(invoice.status_transitions.paid_at * 1000)
                   : new Date(invoice.created * 1000);
 
-                // Create new transaction with Stripe invoice ID and paid_at timestamp
-                // Note: pdfUrl is set to null - admin will upload custom invoice from Cloudinary
-                await storage.createTransaction({
-                  subscriptionId: subscription.id,
-                  amount: invoice.amount_paid,
-                  currency: invoice.currency,
-                  status: 'paid',
-                  pdfUrl: null,
-                  stripeInvoiceId: invoice.id,
-                  paidAt: paidAt,
-                  createdAt: paidAt, // Use the actual payment date as createdAt
-                });
-
-                console.log('✅ [WEBHOOK] Transaction created for invoice:', invoice.id);
-
-                // Create invoice draft for recurring payments (both plans and addons)
-                // This handles monthly/yearly renewals, not the initial purchase
-                // Initial purchase invoice is created in /initialize endpoint
-                if (subscription.websiteProgressId && subscription.id) {
-                  try {
-                    // Check if invoice draft already exists for this subscription + this billing period
-                    // Use invoice date to determine the billing period (month/year)
-                    const invoiceDate = new Date(invoice.created * 1000);
-                    const invoiceMonth = invoiceDate.getMonth() + 1; // 1-12
-                    const invoiceYear = invoiceDate.getFullYear();
-
-                    const existingInvoice = await db
-                      .select()
-                      .from(websiteInvoices)
-                      .where(
-                        and(
-                          eq(websiteInvoices.subscriptionId, subscription.id),
-                          eq(websiteInvoices.websiteProgressId, subscription.websiteProgressId),
-                          // Check if invoice exists for this month/year
-                          sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
-                          sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`
-                        )
-                      )
-                      .limit(1)
-                      .then((rows) => rows[0]);
-
-                    if (!existingInvoice && invoice.amount_paid > 0) {
-                      // Fetch website domain for logging
-                      let websiteDomain = 'unknown';
-                      try {
-                        const website = await db
-                          .select({ domain: websiteProgress.domain })
-                          .from(websiteProgress)
-                          .where(eq(websiteProgress.id, subscription.websiteProgressId))
-                          .limit(1)
-                          .then((rows) => rows[0]);
-                        if (website) {
-                          websiteDomain = website.domain;
-                        }
-                      } catch (err) {
-                        // Ignore error, use default
-                      }
-                      
-                      console.log('🔵 [WEBHOOK] Creating invoice draft for recurring payment:', {
-                        subscriptionId: subscription.id,
-                        websiteProgressId: subscription.websiteProgressId,
-                        websiteDomain: websiteDomain,
-                        productType: subscription.productType,
-                        amount: invoice.amount_paid,
-                        currency: invoice.currency
-                      });
-
-                      // Get payment intent from invoice
-                      let paymentIntentId: string | null = null;
-                      if (invoice.payment_intent) {
-                        paymentIntentId = typeof invoice.payment_intent === 'string'
-                          ? invoice.payment_intent
-                          : invoice.payment_intent.id;
-                      }
-
-                      // Determine invoice title and description based on product type
-                      let invoiceTitle: string;
-                      let invoiceDescription: string;
-
-                      if (subscription.productType === 'plan') {
-                        const tierName = subscription.tier 
-                          ? subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)
-                          : 'Plan';
-                        const billingPeriod = subscription.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
-                        const planName = subscriptionPlans[subscription.tier as keyof typeof subscriptionPlans]?.name || tierName;
-                        invoiceTitle = `Invoice for ${planName} Plan (${billingPeriod})`;
-                        invoiceDescription = `Subscription plan - ${planName} (${billingPeriod})`;
-                      } else if (subscription.productType === 'addon') {
-                        const addOn = availableAddOns.find(a => a.id === subscription.productId);
-                        const addOnName = addOn?.name || "Add-on";
-                        invoiceTitle = `Invoice for ${addOnName}`;
-                        invoiceDescription = `Add-on purchase - ${addOnName}`;
-                      } else {
-                        invoiceTitle = `Invoice for Subscription`;
-                        invoiceDescription = `Recurring payment`;
-                      }
-
-                      await createDraftInvoice({
-                        websiteProgressId: subscription.websiteProgressId,
-                        subscriptionId: subscription.id,
-                        paymentIntentId,
-                        title: invoiceTitle,
-                        description: invoiceDescription,
-                        amount: invoice.amount_paid,
-                        currency: (invoice.currency || 'eur').toUpperCase(),
-                        context: `recurring payment via webhook (${subscription.productType})`,
-                      });
-
-                      console.log('✅ [WEBHOOK] Invoice draft created for recurring payment:', {
-                        websiteDomain: websiteDomain,
-                        invoiceTitle: invoiceTitle,
-                        amount: invoice.amount_paid
-                      });
-                    } else if (existingInvoice) {
-                      console.log('🔵 [WEBHOOK] Invoice draft already exists for this billing period, skipping creation');
-                    } else {
-                      console.log('🔵 [WEBHOOK] Invoice amount is 0, skipping invoice draft creation');
-                    }
-                  } catch (invoiceError) {
-                    console.error('❌ [WEBHOOK] Error creating invoice draft:', invoiceError);
-                    // Don't fail the entire webhook if invoice creation fails
-                  }
-                } else {
-                  console.log('🔵 [WEBHOOK] Subscription has no websiteProgressId, skipping invoice draft creation');
+                let paymentIntentId: string | null = null;
+                if (invoice.payment_intent) {
+                  paymentIntentId = typeof invoice.payment_intent === 'string'
+                    ? invoice.payment_intent
+                    : invoice.payment_intent.id;
                 }
-                console.log('✅ Transaction created for invoice:', invoice.id);
-                
-                // Also settle any existing obligation for this invoice
+
+                // Settle obligation once per invoice (not per subscription item)
                 const existingObligation = await storage.getObligationsByStripeInvoiceId(invoice.id);
                 if (existingObligation) {
-                  // Create a settlement record
                   await storage.createPaymentSettlement({
                     obligationId: existingObligation.id,
                     amountPaid: invoice.amount_paid,
@@ -3823,6 +4533,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                   await storage.markObligationSettled(existingObligation.id);
                   console.log('✅ Obligation settled for invoice:', invoice.id);
+                }
+
+                // Process each subscription separately with its own per-item amount
+                for (const subscription of dbSubscriptions) {
+                  // Per-subscription transaction dedup check
+                  const existingTransaction = await db
+                    .select()
+                    .from(transactionsTable)
+                    .where(
+                      and(
+                        eq(transactionsTable.stripeInvoiceId, invoice.id),
+                        eq(transactionsTable.subscriptionId, subscription.id),
+                      )
+                    )
+                    .limit(1);
+
+                  if (existingTransaction.length > 0) {
+                    console.log(`⏭️  Transaction already exists for invoice ${invoice.id} / subscription ${subscription.id}, skipping`);
+                    continue;
+                  }
+
+                  // Resolve per-item amount from invoice line items
+                  const lineItem = invoice.lines.data.find(
+                    (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                  );
+                  const itemAmount = lineItem ? lineItem.amount : invoice.amount_paid;
+
+                  console.log('📋 [WEBHOOK] Processing invoice for subscription:', {
+                    dbSubscriptionId: subscription.id,
+                    productType: subscription.productType,
+                    websiteProgressId: subscription.websiteProgressId,
+                    itemAmount,
+                  });
+
+                  await storage.createTransaction({
+                    subscriptionId: subscription.id,
+                    amount: itemAmount,
+                    currency: invoice.currency,
+                    status: 'paid',
+                    pdfUrl: null,
+                    stripeInvoiceId: invoice.id,
+                    paidAt: paidAt,
+                    createdAt: paidAt,
+                  });
+
+                  console.log(`✅ [WEBHOOK] Transaction created for subscription ${subscription.id}, amount: ${itemAmount}`);
+
+                  if (subscription.websiteProgressId && subscription.id) {
+                    try {
+                      const invoiceDate = new Date(invoice.created * 1000);
+                      const invoiceMonth = invoiceDate.getMonth() + 1;
+                      const invoiceYear = invoiceDate.getFullYear();
+
+                      const existingInvoice = await db
+                        .select()
+                        .from(websiteInvoices)
+                        .where(
+                          and(
+                            eq(websiteInvoices.subscriptionId, subscription.id),
+                            eq(websiteInvoices.websiteProgressId, subscription.websiteProgressId),
+                            sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
+                            sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`
+                          )
+                        )
+                        .limit(1)
+                        .then((rows) => rows[0]);
+
+                      if (!existingInvoice && itemAmount > 0) {
+                        let invoiceTitle: string;
+                        let invoiceDescription: string;
+
+                        if (subscription.productType === 'plan') {
+                          const tierName = subscription.tier
+                            ? subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)
+                            : 'Plan';
+                          const billingPeriod = subscription.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
+                          const planName = subscriptionPlans[subscription.tier as keyof typeof subscriptionPlans]?.name || tierName;
+                          invoiceTitle = `Invoice for ${planName} Plan (${billingPeriod})`;
+                          invoiceDescription = `Subscription plan - ${planName} (${billingPeriod})`;
+                        } else if (subscription.productType === 'addon') {
+                          const addOn = availableAddOns.find(a => a.id === subscription.productId);
+                          const addOnName = addOn?.name || 'Add-on';
+                          invoiceTitle = `Invoice for ${addOnName}`;
+                          invoiceDescription = `Add-on purchase - ${addOnName}`;
+                        } else {
+                          invoiceTitle = `Invoice for Subscription`;
+                          invoiceDescription = `Recurring payment`;
+                        }
+
+                        await createDraftInvoice({
+                          websiteProgressId: subscription.websiteProgressId,
+                          subscriptionId: subscription.id,
+                          paymentIntentId,
+                          title: invoiceTitle,
+                          description: invoiceDescription,
+                          amount: itemAmount,
+                          currency: (invoice.currency || 'eur').toUpperCase(),
+                          context: `recurring payment via webhook (${subscription.productType})`,
+                        });
+
+                        console.log(`✅ [WEBHOOK] Invoice draft created for subscription ${subscription.id} (${subscription.productType}), amount: ${itemAmount}`);
+                      } else if (existingInvoice) {
+                        console.log(`🔵 [WEBHOOK] Invoice draft already exists for subscription ${subscription.id}, skipping`);
+                      }
+                    } catch (invoiceError) {
+                      console.error(`❌ [WEBHOOK] Error creating invoice draft for subscription ${subscription.id}:`, invoiceError);
+                    }
+                  } else {
+                    console.log(`🔵 [WEBHOOK] Subscription ${subscription.id} has no websiteProgressId, skipping invoice draft`);
+                  }
                 }
               } else {
                 console.log('⚠️  No local subscription found for Stripe subscription:', invoice.subscription);
@@ -4169,6 +4989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: session.customer_details?.email,
         status: session.payment_status === "paid" ? "complete" : "pending",
         subscriptionId: localSubscriptionId,
+        metadata: session.metadata ?? {},
       };
       
       console.log('📤 [SESSION] Returning session data:', {
@@ -4252,14 +5073,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .json({ error: "User or Stripe customer not found" });
       }
 
-      // Get Stripe subscriptions with expanded data
-      const stripeSubscriptions = await stripe.subscriptions.list({
-        customer: currentUser.stripeCustomerId,
-        status: "active",
-        expand: ["data.items", "data.items.data.price"],
-      });
-
-      // Get our local subscription to find matching Stripe subscription
+      // Get our local subscription record
       const userSubscriptions = await storage.getUserSubscriptions(
         currentUser.id,
       );
@@ -4271,41 +5085,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Subscription not found" });
       }
 
-      // Find matching Stripe subscription by checking all tier price IDs
-      let stripeSubscription = null;
-      let foundTier = null;
+      if (!localSubscription.stripeSubscriptionId) {
+        return res.status(400).json({ error: "No Stripe subscription ID found for this subscription" });
+      }
 
-      for (const stripeSub of stripeSubscriptions.data) {
-        const priceId = stripeSub.items.data[0]?.price.id;
-        if (!priceId) continue;
+      // Retrieve the Stripe subscription directly by ID
+      const stripeSubscription = await stripe.subscriptions.retrieve(
+        localSubscription.stripeSubscriptionId,
+      );
 
-        // Check against all subscription tiers and billing periods
-        for (const [tierKey, prices] of Object.entries(SUBSCRIPTION_PRICES)) {
-          if (priceId === prices.monthly || priceId === prices.yearly) {
-            stripeSubscription = stripeSub;
-            foundTier = tierKey;
-            break;
-          }
+      if (!stripeSubscription || stripeSubscription.status !== "active") {
+        return res.status(404).json({ error: "Stripe subscription not found or not active" });
+      }
+
+      const accessUntil = new Date(stripeSubscription.current_period_end * 1000);
+
+      if (localSubscription.productType === "addon") {
+        // Addon: remove only this item from the Stripe subscription so the plan stays active.
+        // If this is somehow the last item, fall back to cancelling the whole subscription.
+        if (!localSubscription.stripeSubscriptionItemId) {
+          return res.status(400).json({ error: "No Stripe subscription item ID found for this addon" });
         }
-        if (stripeSubscription) break;
+        if (stripeSubscription.items.data.length === 1) {
+          await stripe.subscriptions.cancel(stripeSubscription.id);
+          await db
+            .update(subscriptionsTable)
+            .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+            .where(
+              and(
+                eq(subscriptionsTable.userId, currentUser.id),
+                eq(subscriptionsTable.stripeSubscriptionId, localSubscription.stripeSubscriptionId),
+              ),
+            );
+        } else {
+          await stripe.subscriptionItems.del(localSubscription.stripeSubscriptionItemId);
+          await db
+            .update(subscriptionsTable)
+            .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+            .where(eq(subscriptionsTable.id, subscriptionId));
+        }
+      } else {
+        // Plan: cancel the entire Stripe subscription — this also removes all addons.
+        await stripe.subscriptions.cancel(stripeSubscription.id);
+        await db
+          .update(subscriptionsTable)
+          .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+          .where(
+            and(
+              eq(subscriptionsTable.userId, currentUser.id),
+              eq(subscriptionsTable.stripeSubscriptionId, localSubscription.stripeSubscriptionId),
+            ),
+          );
       }
-
-      if (!stripeSubscription) {
-        return res.status(404).json({ error: "Stripe subscription not found" });
-      }
-
-      // Cancel only this specific subscription
-      await stripe.subscriptions.cancel(stripeSubscription.id);
-
-      // Update local subscription status to cancelled instead of deleting
-      await db
-        .update(subscriptionsTable)
-        .set({
-          status: "cancelled",
-          cancellationReason: "User requested cancellation",
-          accessUntil: new Date(stripeSubscription.current_period_end * 1000),
-        })
-        .where(eq(subscriptionsTable.id, subscriptionId));
 
       // Get fresh subscriptions
       const subscriptions = await storage.getUserSubscriptions(currentUser.id);
@@ -5456,7 +6287,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           userId: user.id,
           requestDate: new Date().toLocaleDateString(),
-          facebookUrl: "https://www.facebook.com/haycWebsites/reviews",
+          facebookUrl: "https://www.facebook.com/haycWebsites",
           trustpilotUrl: "https://www.trustpilot.com/review/hayc.gr",
           g2Url: "https://www.g2.com/products/hayc/reviews",
         },
@@ -5638,9 +6469,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
               .set({ websiteProgressId: websiteProgressEntry.id })
               .where(eq(subscriptionsTable.id, subscriptionIdNum));
 
+            // Also link addon subscriptions that share the same Stripe subscription
+            if (subscription.stripeSubscriptionId) {
+              const linkedAddons = await db
+                .update(subscriptionsTable)
+                .set({ websiteProgressId: websiteProgressEntry.id })
+                .where(
+                  and(
+                    eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+                    eq(subscriptionsTable.userId, req.user.id),
+                    eq(subscriptionsTable.productType, 'addon'),
+                    isNull(subscriptionsTable.websiteProgressId)
+                  )
+                )
+                .returning();
+
+              if (linkedAddons.length > 0) {
+                console.log('✅ [ONBOARDING INITIALIZE] Linked addon subscriptions to new website:', {
+                  websiteProgressId: websiteProgressEntry.id,
+                  addonIds: linkedAddons.map(a => a.id),
+                  addonProductIds: linkedAddons.map(a => a.productId)
+                });
+              }
+            }
+
             // Create system tags for new website
             await storage.createSystemTagsForWebsite(websiteProgressEntry.id);
-            
+
             console.log('✅ [ONBOARDING INITIALIZE] New website created for new purchase:', {
               websiteProgressId: websiteProgressEntry.id,
               domain: websiteProgressEntry.domain,
@@ -5690,9 +6545,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .set({ websiteProgressId: websiteProgressEntry.id })
             .where(eq(subscriptionsTable.id, subscriptionIdNum));
 
+          // Also link addon subscriptions that share the same Stripe subscription
+          if (subscription.stripeSubscriptionId) {
+            const linkedAddons = await db
+              .update(subscriptionsTable)
+              .set({ websiteProgressId: websiteProgressEntry.id })
+              .where(
+                and(
+                  eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+                  eq(subscriptionsTable.userId, req.user.id),
+                  eq(subscriptionsTable.productType, 'addon'),
+                  isNull(subscriptionsTable.websiteProgressId)
+                )
+              )
+              .returning();
+
+            if (linkedAddons.length > 0) {
+              console.log('✅ [ONBOARDING INITIALIZE] Linked addon subscriptions to website:', {
+                websiteProgressId: websiteProgressEntry.id,
+                addonIds: linkedAddons.map(a => a.id),
+                addonProductIds: linkedAddons.map(a => a.productId)
+              });
+            }
+          }
+
           // Create system tags for new website
           await storage.createSystemTagsForWebsite(websiteProgressEntry.id);
-          
+
           console.log('✅ [ONBOARDING INITIALIZE] New website created and linked:', {
             websiteProgressId: websiteProgressEntry.id,
             domain: websiteProgressEntry.domain,
@@ -13002,6 +13881,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
           customDomain: websiteProgress.customDomain,
+          createdAt: websiteProgress.createdAt,
+          updatedAt: websiteProgress.updatedAt,
         })
         .from(websiteProgress)
         .leftJoin(users, eq(websiteProgress.userId, users.id));
@@ -13048,6 +13929,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Get get_started_submissions data for new-flow websites
+      const websiteIds = websites.map(w => w.id);
+      const getStartedRows = websiteIds.length > 0
+        ? await db
+            .select({
+              websiteProgressId: getStartedSubmissions.websiteProgressId,
+              status: getStartedSubmissions.status,
+              designDirection: getStartedSubmissions.designDirection,
+            })
+            .from(getStartedSubmissions)
+            .where(inArray(getStartedSubmissions.websiteProgressId, websiteIds))
+        : [];
+
+      const getStartedMap = new Map<number, { status: string; designDirection: string | null }>();
+      for (const row of getStartedRows) {
+        if (row.websiteProgressId !== null) {
+          getStartedMap.set(row.websiteProgressId, {
+            status: row.status,
+            designDirection: row.designDirection ?? null,
+          });
+        }
+      }
+
       // Get stages and subscription status for each website
       const websitesWithStages = await Promise.all(
         websites.map(async (website) => {
@@ -13085,13 +13989,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .limit(1)
             .then(rows => rows[0] || null);
 
-          return { 
-            ...website, 
+          const gs = getStartedMap.get(website.id);
+
+          // selectedTemplateId: old-flow from onboardingFormResponses, new-flow from designDirection
+          const selectedTemplateId =
+            templateIdMap.get(website.id) ??
+            (gs?.designDirection && gs.designDirection !== "auto"
+              ? (gs.designDirection && /^\d+$/.test(gs.designDirection) ? parseInt(gs.designDirection, 10) : null)
+              : null);
+
+          // onboardingStatus: old-flow from onboardingFormResponses, new-flow from get_started_submissions
+          const onboardingStatus = statusMap.get(website.id) ?? gs?.status ?? null;
+
+          return {
+            ...website,
             stages,
             subscriptionStatus: subscription?.status || null,
             subscriptionTier: subscription?.tier || null,
-            selectedTemplateId: templateIdMap.get(website.id) || null,
-            onboardingStatus: statusMap.get(website.id) || null
+            selectedTemplateId,
+            onboardingStatus,
           };
         }),
       );
@@ -13163,7 +14079,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(websiteStages.websiteProgressId, website.id))
         .orderBy(websiteStages.stageNumber);
 
-      res.json({ ...website, stages });
+      // Get selectedTemplateId and onboardingStatus from old-flow (onboardingFormResponses)
+      const onboardingRow = await db
+        .select({
+          selectedTemplateId: onboardingFormResponses.selectedTemplateId,
+          status: onboardingFormResponses.status,
+        })
+        .from(onboardingFormResponses)
+        .where(eq(onboardingFormResponses.websiteProgressId, websiteId))
+        .orderBy(desc(onboardingFormResponses.id))
+        .limit(1)
+        .then(rows => rows[0] ?? null);
+
+      // Get data from new-flow (get_started_submissions)
+      const gsRow = await db
+        .select({
+          status: getStartedSubmissions.status,
+          designDirection: getStartedSubmissions.designDirection,
+        })
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.websiteProgressId, websiteId))
+        .limit(1)
+        .then(rows => rows[0] ?? null);
+
+      const selectedTemplateId =
+        onboardingRow?.selectedTemplateId ??
+        (gsRow?.designDirection && gsRow.designDirection !== "auto"
+          ? (gsRow.designDirection && /^\d+$/.test(gsRow.designDirection) ? parseInt(gsRow.designDirection, 10) : null)
+          : null);
+
+      const onboardingStatus = onboardingRow?.status ?? gsRow?.status ?? null;
+
+      res.json({
+        ...website,
+        stages,
+        selectedTemplateId,
+        onboardingStatus,
+      });
     } catch (err) {
       console.error("Error fetching website:", err);
       res.status(500).json({ error: "Failed to fetch website" });
@@ -13416,7 +14368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ? (existingConfig.siteConfig as Record<string, unknown>)
             : {}),
           siteId: website.siteId,
-          apiUrl: "https://hayc.gr",
+          apiUrl: apiUrl.trim() || "https://hayc.gr",
         },
       };
       await putConfig(website.siteId, updatedConfig, { skipHistory: true });
@@ -13732,6 +14684,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // List all get-started submissions (Admin only)
+  app.get("/api/admin/get-started-submissions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const status = req.query.status as string | undefined;
+      const websiteProgressId = req.query.websiteProgressId
+        ? parseInt(req.query.websiteProgressId as string)
+        : undefined;
+      const page = parseInt((req.query.page as string) ?? "1");
+      const limit = 20;
+      const offset = (page - 1) * limit;
+
+      const baseCondition =
+        status && websiteProgressId
+          ? and(eq(getStartedSubmissions.status, status), eq(getStartedSubmissions.websiteProgressId, websiteProgressId))
+          : status
+          ? eq(getStartedSubmissions.status, status)
+          : websiteProgressId
+          ? eq(getStartedSubmissions.websiteProgressId, websiteProgressId)
+          : undefined;
+
+      const submissions = await db
+        .select({
+          id: getStartedSubmissions.id,
+          sessionId: getStartedSubmissions.sessionId,
+          submissionId: getStartedSubmissions.submissionId,
+          status: getStartedSubmissions.status,
+          email: getStartedSubmissions.email,
+          fullName: getStartedSubmissions.fullName,
+          selectedPlan: getStartedSubmissions.selectedPlan,
+          billingPeriod: getStartedSubmissions.billingPeriod,
+          businessType: getStartedSubmissions.businessType,
+          currentStep: getStartedSubmissions.currentStep,
+          websiteProgressId: getStartedSubmissions.websiteProgressId,
+          createdAt: getStartedSubmissions.createdAt,
+          updatedAt: getStartedSubmissions.updatedAt,
+        })
+        .from(getStartedSubmissions)
+        .where(baseCondition)
+        .orderBy(desc(getStartedSubmissions.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      const totalCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(getStartedSubmissions)
+        .where(baseCondition)
+        .then((rows) => Number(rows[0]?.count ?? 0));
+
+      return res.json({
+        submissions,
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          pages: Math.ceil(totalCount / limit),
+        },
+      });
+    } catch (err) {
+      console.error("GET /api/admin/get-started-submissions error:", err);
+      return res.status(500).json({ error: "Failed to fetch submissions" });
+    }
+  });
+
+  // Lightweight presence map: which websiteProgressIds have a get-started submission (Admin only)
+  app.get("/api/admin/get-started-submissions/presence", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const rows = await db
+        .select({
+          websiteProgressId: getStartedSubmissions.websiteProgressId,
+          status: getStartedSubmissions.status,
+        })
+        .from(getStartedSubmissions)
+        .where(sql`${getStartedSubmissions.websiteProgressId} is not null`)
+        .orderBy(desc(getStartedSubmissions.createdAt));
+
+      // Keep only the most recent submission per websiteProgressId
+      const seen = new Set<number>();
+      const presence: { websiteProgressId: number; status: string }[] = [];
+      for (const row of rows) {
+        if (row.websiteProgressId && !seen.has(row.websiteProgressId)) {
+          seen.add(row.websiteProgressId);
+          presence.push({ websiteProgressId: row.websiteProgressId, status: row.status ?? "" });
+        }
+      }
+
+      return res.json({ presence });
+    } catch (err) {
+      console.error("GET /api/admin/get-started-submissions/presence error:", err);
+      return res.status(500).json({ error: "Failed to fetch presence" });
+    }
+  });
+
+  // Get single get-started submission by ID (Admin only)
+  app.get("/api/admin/get-started-submissions/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ error: "Invalid ID" });
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.id, id))
+        .then((rows) => rows[0] ?? null);
+
+      if (!submission) return res.status(404).json({ error: "Submission not found" });
+
+      return res.json({ submission });
+    } catch (err) {
+      console.error("GET /api/admin/get-started-submissions/:id error:", err);
+      return res.status(500).json({ error: "Failed to fetch submission" });
+    }
+  });
+
   // Get customer's own onboarding form responses
   app.get("/api/websites/:id/onboarding-form", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -13771,6 +14860,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching customer onboarding form response:", err);
       res.status(500).json({ error: "Failed to fetch onboarding form response" });
+    }
+  });
+
+  // Get customer's own get-started submission for a website
+  app.get("/api/websites/:id/get-started-submission", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const websiteId = parseInt(req.params.id);
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      if (website.userId !== req.user.id) {
+        return res.status(403).json({ error: "Not authorized to view this website's submission" });
+      }
+
+      const submission = await db
+        .select()
+        .from(getStartedSubmissions)
+        .where(eq(getStartedSubmissions.websiteProgressId, websiteId))
+        .orderBy(desc(getStartedSubmissions.createdAt))
+        .limit(1)
+        .then((rows) => rows[0] ?? null);
+
+      if (!submission) {
+        return res.status(404).json({ error: "No get-started submission found for this website" });
+      }
+
+      res.json({ submission });
+    } catch (err) {
+      console.error("Error fetching customer get-started submission:", err);
+      res.status(500).json({ error: "Failed to fetch get-started submission" });
     }
   });
 
@@ -15299,7 +16430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: email,
           reviewText: "Great service, very professional!",
           reviewDate: new Date().toLocaleDateString(),
-          facebookUrl: "https://www.facebook.com/haycWebsites/reviews",
+          facebookUrl: "https://www.facebook.com/haycWebsites",
           trustpilotUrl: "https://www.trustpilot.com/review/hayc.gr",
           g2Url: "https://www.g2.com/products/hayc/reviews",
           requestDate: new Date().toLocaleDateString(),
@@ -15387,6 +16518,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: subscriptionsTable.id,
           userId: subscriptionsTable.userId,
           tier: subscriptionsTable.tier,
+          productType: subscriptionsTable.productType,
+          stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
+          stripeSubscriptionItemId: subscriptionsTable.stripeSubscriptionItemId,
           userEmail: users.email,
           username: users.username,
           language: users.language,
@@ -15402,44 +16536,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Subscription not found" });
       }
 
-      if (!subscription.stripeCustomerId) {
-        return res.status(400).json({ error: "No Stripe customer ID found" });
+      if (!subscription.stripeSubscriptionId) {
+        return res.status(400).json({ error: "No Stripe subscription ID found for this subscription" });
       }
 
-      // Get Stripe subscriptions for this customer
-      const stripeSubscriptions = await stripe.subscriptions.list({
-        customer: subscription.stripeCustomerId,
-        status: "active",
-      });
+      // Retrieve the Stripe subscription directly by ID
+      const stripeSubscription = await stripe.subscriptions.retrieve(
+        subscription.stripeSubscriptionId,
+      );
 
-      // Find matching Stripe subscription by tier
-      const stripeSubscription = stripeSubscriptions.data.find((stripeSub) => {
-        const priceId = stripeSub.items.data[0]?.price.id;
-        return (
-          priceId ===
-            SUBSCRIPTION_PRICES[subscription.tier as SubscriptionTier]
-              ?.monthly ||
-          priceId ===
-            SUBSCRIPTION_PRICES[subscription.tier as SubscriptionTier]?.yearly
-        );
-      });
-
-      if (!stripeSubscription) {
-        return res.status(404).json({ error: "Stripe subscription not found" });
+      if (!stripeSubscription || stripeSubscription.status !== "active") {
+        return res.status(404).json({ error: "Stripe subscription not found or not active" });
       }
 
-      // Cancel the Stripe subscription
-      await stripe.subscriptions.cancel(stripeSubscription.id);
+      const accessUntil = new Date(stripeSubscription.current_period_end * 1000);
 
-      // Update local subscription status
-      await db
-        .update(subscriptionsTable)
-        .set({
-          status: "cancelled",
-          cancellationReason: reason,
-          accessUntil: new Date(stripeSubscription.current_period_end * 1000),
-        })
-        .where(eq(subscriptionsTable.id, subscriptionId));
+      if (subscription.productType === "addon") {
+        // Addon: remove only this item from the Stripe subscription so the plan stays active.
+        // If this is somehow the last item, fall back to cancelling the whole subscription.
+        if (!subscription.stripeSubscriptionItemId) {
+          return res.status(400).json({ error: "No Stripe subscription item ID found for this addon" });
+        }
+        if (stripeSubscription.items.data.length === 1) {
+          await stripe.subscriptions.cancel(stripeSubscription.id);
+          await db
+            .update(subscriptionsTable)
+            .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+            .where(
+              and(
+                eq(subscriptionsTable.userId, subscription.userId),
+                eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+              ),
+            );
+        } else {
+          await stripe.subscriptionItems.del(subscription.stripeSubscriptionItemId);
+          await db
+            .update(subscriptionsTable)
+            .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+            .where(eq(subscriptionsTable.id, subscriptionId));
+        }
+      } else {
+        // Plan: cancel the entire Stripe subscription — this also removes all addons.
+        await stripe.subscriptions.cancel(stripeSubscription.id);
+        await db
+          .update(subscriptionsTable)
+          .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+          .where(
+            and(
+              eq(subscriptionsTable.userId, subscription.userId),
+              eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+            ),
+          );
+      }
 
       // Fetch website info if subscription is linked to a website
       let websiteDomain = null;
@@ -15912,18 +17060,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let currency = "EUR";
 
       // Use Stripe's preview invoice for both plans and add-ons with yearly pricing
-      const upcomingInvoice = await stripe.invoices.retrieveUpcoming({
-        customer: currentUser.stripeCustomerId,
-        subscription: stripeSubscription.id,
-        subscription_items: [
-          {
-            id: stripeSubscription.items.data[0].id,
-            price: yearlyPriceId!,
-          },
-        ],
-        subscription_proration_behavior: "create_prorations",
-        subscription_proration_date: Math.floor(Date.now() / 1000),
-      });
+      let upcomingInvoice: Stripe.UpcomingInvoice;
+      try {
+        upcomingInvoice = await stripe.invoices.retrieveUpcoming({
+          customer: currentUser.stripeCustomerId,
+          subscription: stripeSubscription.id,
+          subscription_items: [
+            {
+              id: stripeSubscription.items.data[0].id,
+              price: yearlyPriceId!,
+            },
+          ],
+          subscription_proration_behavior: "create_prorations",
+          subscription_proration_date: Math.floor(Date.now() / 1000),
+        });
+      } catch (upcomingErr: any) {
+        if (
+          upcomingErr?.type === "StripeInvalidRequestError" &&
+          upcomingErr?.code === "invoice_upcoming_none"
+        ) {
+          return res.status(400).json({
+            error: "subscription_not_active",
+            message:
+              "This subscription is no longer active and cannot be upgraded.",
+          });
+        }
+        throw upcomingErr;
+      }
 
       // Find the proration line items
       for (const line of upcomingInvoice.lines.data) {
@@ -19289,13 +20452,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.header("Access-Control-Allow-Headers", "Content-Type");
     
     try {
-      const { key, type, page, referrer, timestamp, sessionId, deviceType } = req.body;
+      const { key, siteId, type, page, referrer, timestamp, sessionId, deviceType, metadata } = req.body;
 
-      if (!key || !type || !page) {
+      if ((!key && !siteId) || !type || !page) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      const analyticsKey = await storage.getAnalyticsKeyByApiKey(key);
+      let analyticsKey;
+      if (key) {
+        analyticsKey = await storage.getAnalyticsKeyByApiKey(key);
+      } else {
+        const website = await storage.getWebsiteProgressBySiteId(siteId);
+        if (website) {
+          analyticsKey = await storage.getAnalyticsKeyByWebsiteId(website.id);
+        }
+      }
       if (!analyticsKey || !analyticsKey.isActive) {
         return res.status(401).json({ error: "Invalid or inactive API key" });
       }
@@ -19313,6 +20484,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date(timestamp || Date.now()),
         sessionId: sessionId || null,
         deviceType: deviceType || null,
+        metadata: metadata || null,
       });
 
       res.status(200).json({ success: true });
@@ -19535,7 +20707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Rate limiter for public contact form - 2 per 30 minutes per IP
   const publicContactLimiter = rateLimit({
     windowMs: 30 * 60 * 1000,
-    max: 2,
+    max: 10,
     message: "Too many contact form submissions from this IP, please try again later",
     standardHeaders: true,
     legacyHeaders: false,
@@ -19549,6 +20721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name?: string;
         email?: string;
         message?: string;
+        phone?: string;
         _hp?: string;
       };
 
@@ -19583,6 +20756,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: String(msg) });
       }
       const { siteId, name, email, message } = parseResult.data;
+      const phone = body.phone;
 
       const [website] = await db
         .select()
@@ -19624,6 +20798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           name: escapeHtml(name),
           email: escapeHtml(email),
+          phone: phone ?? "N/A",
           message: escapeHtml(message),
           siteLabel: escapeHtml(siteLabel),
         },
@@ -19673,6 +20848,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({ success: true });
     } catch (err) {
       console.error("[public/contact] error:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Rate limiter for Hayc own newsletter — tighter than the tenant one
+  const haycNewsletterLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 5,
+    message: "Too many subscription requests from this IP, please try again later",
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+
+  // Public endpoint for the Hayc main-website footer newsletter sign-up.
+  // Stores submissions in admin_contacts (Hayc's own list, not a tenant's).
+  app.post("/api/hayc/newsletter-subscribe", haycNewsletterLimiter, async (req, res) => {
+    try {
+      // Honeypot — bots fill hidden fields, real users don't
+      if (req.body?._hp) {
+        return res.status(200).json({ success: true });
+      }
+
+      const { email, firstName, lastName } = req.body as {
+        email?: string;
+        firstName?: string;
+        lastName?: string;
+      };
+
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // Silent success on duplicate to prevent email enumeration
+      const existing = await db
+        .select({ id: adminContacts.id })
+        .from(adminContacts)
+        .where(eq(adminContacts.email, normalizedEmail))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return res.status(200).json({ success: true });
+      }
+
+      await db.insert(adminContacts).values({
+        email: normalizedEmail,
+        firstName: firstName?.trim() || null,
+        lastName: lastName?.trim() || null,
+        status: "subscribed",
+      });
+
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      console.error("[hayc/newsletter-subscribe] error:", err);
       return res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -20876,10 +22111,6 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(400).json({ error: "Request body must be a non-null object" });
       }
 
-      if (req.body?.siteConfig) {
-        req.body.siteConfig.apiUrl = 'https://hayc.gr';
-      }
-
       await putConfig(website.siteId, req.body);
       res.json({ success: true });
     } catch (error: any) {
@@ -21055,8 +22286,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     logoUrl: z.string(),
     primaryColor: z.string(),
     primaryForeground: z.string(),
-    fontFamily: z.enum(["Inter", "Roboto", "Lato", "Montserrat", "Playfair Display", "Poppins"]),
+    fontFamily: z.enum(["Inter", "Roboto", "Open Sans", "Lato", "Noto Sans", "Source Sans 3", "Nunito", "Raleway", "Playfair Display", "Merriweather"]),
     borderRadius: z.enum(["0px", "4px", "8px", "16px", "9999px"]),
+    defaultLanguage: z.enum(["el", "en"]).optional(),
   });
 
   app.get("/api/hdp/brand/:siteId", async (req, res) => {

@@ -11,6 +11,11 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requiredRole, redirectAdminsToAdmin = false }: ProtectedRouteProps) {
+  const isMock =
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get("mock") === "true";
+  if (isMock) return <>{children}</>;
+
   const { user, isLoading } = useAuth();
 
   // Show loading while checking authentication

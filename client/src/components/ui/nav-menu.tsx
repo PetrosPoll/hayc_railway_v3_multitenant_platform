@@ -1,13 +1,13 @@
-import { Link, useLocation } from "react-router-dom";
+﻿import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "./button";
-import { Home, User, LogOut, Shield, Menu } from "lucide-react";
+import { Home, User, LogOut, Shield } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { User as UserType } from "@shared/schema";
 import { logout } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/ui/authContext";
 
 interface UserResponse {
@@ -26,31 +26,50 @@ interface Subscription {
 
 export function NavMenu() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const { user: authUser } = useAuth();
+  const { user: authUser, setUser: setAuthUser } = useAuth();
   const { data: userData } = useQuery<UserResponse>({
     queryKey: ["/api/user"],
   });
   const user = authUser ?? userData?.user;
+  const isLoggedOut = !user;
+  const logoHref = user ? "/dashboard" : "/";
+  const logoWordmarkFill = user ? "#00398e" : "#ffffff";
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { t, i18n } = useTranslation();
+
+  const isHomePage = pathname === "/";
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const update = () => {
+      setScrolled(window.scrollY >= 72);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    return () => window.removeEventListener("scroll", update);
+  }, [pathname]);
+
+  const isTransparent = (isHomePage || pathname === "/contact" || pathname === "/templates" || pathname === "/pricing" || pathname === "/about") && !scrolled && !user;
 
   const handleLogout = async () => {
     try {
       await logout();
       queryClient.setQueryData(["/api/user"], null);
+      setAuthUser(null);
       setIsOpen(false);
       toast({
-        title: "Logged out successfully",
-        description: "You have been logged out of your account",
+        title: t("nav.logoutSuccessTitle"),
+        description: t("nav.logoutSuccessDescription"),
       });
       // Redirect after successful logout
-      window.location.href = "/auth";
+      navigate("/auth");
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to logout. Please try again.",
+        title: t("nav.logoutErrorTitle"),
+        description: t("nav.logoutErrorDescription"),
         variant: "destructive",
       });
     }
@@ -60,7 +79,7 @@ export function NavMenu() {
     <>
       <div className="flex items-center space-x-4">
         <div className="flex items-center">
-          <Link to="/" className="flex items-center me-16">
+          <Link to={logoHref} className="flex items-center me-16">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               xmlnsXlink="http://www.w3.org/1999/xlink"
@@ -106,28 +125,28 @@ export function NavMenu() {
                       data-name="Path 902"
                       d="M61.828,22.27V38.076H53.823V23.5c0-4.465-2.052-6.518-5.594-6.518-3.849,0-6.619,2.362-6.619,7.441V38.076H33.6V0H41.61V13.34a12.138,12.138,0,0,1,8.775-3.285c6.517,0,11.444,3.8,11.444,12.215"
                       transform="translate(-6.611 0)"
-                      fill="#00398e"
+                      fill={logoWordmarkFill}
                     ></path>
                     <path
                       id="Path_903"
                       data-name="Path 903"
                       d="M102.242,12.917v27.61H94.6v-3.18c-2,2.41-4.927,3.591-8.622,3.591-7.8,0-13.8-5.542-13.8-14.214s6-14.216,13.8-14.216a10.606,10.606,0,0,1,8.263,3.338V12.917ZM94.39,26.723c0-4.774-3.079-7.648-7.03-7.648-4,0-7.082,2.874-7.082,7.648s3.079,7.646,7.082,7.646c3.951,0,7.03-2.873,7.03-7.646"
                       transform="translate(-14.197 -2.46)"
-                      fill="#00398e"
+                      fill={logoWordmarkFill}
                     ></path>
                     <path
                       id="Path_904"
                       data-name="Path 904"
                       d="M140.745,13.019V37.388c0,10.264-5.388,14.983-15.037,14.983-5.08,0-10.006-1.282-13.187-3.8l3.182-5.747a15.335,15.335,0,0,0,9.339,3.079c5.388,0,7.7-2.514,7.7-7.494V37.49a11.314,11.314,0,0,1-8.159,3.183c-6.928,0-11.8-3.849-11.8-12.42V13.019h8.006V27.072c0,4.67,2.053,6.723,5.594,6.723,3.7,0,6.364-2.362,6.364-7.44V13.019Z"
                       transform="translate(-22.135 -2.561)"
-                      fill="#00398e"
+                      fill={logoWordmarkFill}
                     ></path>
                     <path
                       id="Path_905"
                       data-name="Path 905"
                       d="M149.683,26.724c0-8.315,6.414-14.214,15.395-14.214,5.8,0,10.366,2.513,12.367,7.03l-6.209,3.335a6.881,6.881,0,0,0-6.209-3.8c-4.054,0-7.236,2.821-7.236,7.646s3.182,7.646,7.236,7.646a6.794,6.794,0,0,0,6.209-3.8l6.209,3.386c-2,4.414-6.569,6.979-12.367,6.979-8.981,0-15.395-5.9-15.395-14.214"
                       transform="translate(-29.445 -2.461)"
-                      fill="#00398e"
+                      fill={logoWordmarkFill}
                     ></path>
                   </g>
                 </g>
@@ -142,10 +161,13 @@ export function NavMenu() {
             <Link to="/">
               <Button
                 variant={pathname === "/" ? "default" : "ghost"}
-                className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/"
-                    ? "bg-[#182B53] text-white"
-                    : "text-[#182B53] hover:bg-accent"
-                  }`}
+                className={
+                  pathname === "/"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-brand leading-5 border-0"
+                    : isLoggedOut
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
               >
                 {t("nav.home")}
               </Button>
@@ -154,22 +176,43 @@ export function NavMenu() {
             <Link to="/templates">
               <Button
                 variant={pathname === "/templates" ? "default" : "ghost"}
-                className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/templates"
-                    ? "bg-[#182B53] text-white"
-                    : "text-[#182B53] hover:bg-accent"
-                  }`}
+                className={
+                  pathname === "/templates"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-brand leading-5 border-0"
+                    : isLoggedOut
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
               >
                 {t("nav.templates")}
+              </Button>
+            </Link>
+
+            <Link to="/pricing">
+              <Button
+                variant={pathname === "/pricing" ? "default" : "ghost"}
+                className={
+                  pathname === "/pricing"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-brand leading-5 border-0"
+                    : isLoggedOut
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
+              >
+                {t("nav.pricing")}
               </Button>
             </Link>
 
             <Link to="/about">
               <Button
                 variant={pathname === "/about" ? "default" : "ghost"}
-                className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/about"
-                    ? "bg-[#182B53] text-white"
-                    : "text-[#182B53] hover:bg-accent"
-                  }`}
+                className={
+                  pathname === "/about"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-brand leading-5 border-0"
+                    : isLoggedOut
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
               >
                 {t("nav.about")}
               </Button>
@@ -178,10 +221,13 @@ export function NavMenu() {
             <Link to="/contact">
               <Button
                 variant={pathname === "/contact" ? "default" : "ghost"}
-                className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/contact"
-                    ? "bg-[#182B53] text-white"
-                    : "text-[#182B53] hover:bg-accent"
-                  }`}
+                className={
+                  pathname === "/contact"
+                    ? "h-10 px-3.5 py-2.5 bg-[#EFF6FF] text-[#172554] rounded-[10px] text-base font-medium font-brand leading-5 border-0"
+                    : isLoggedOut
+                      ? "h-10 px-3.5 py-2.5 text-white/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-white hover:opacity-100"
+                      : "h-10 px-3.5 py-2.5 text-[#172554]/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 bg-transparent hover:!bg-transparent hover:text-[#172554] hover:opacity-100"
+                }
               >
                 {t("nav.contact")}
               </Button>
@@ -213,10 +259,11 @@ export function NavMenu() {
                 <Link to="/dashboard">
                   <Button
                     variant={pathname === "/dashboard" ? "default" : "ghost"}
-                    className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/dashboard"
-                        ? "bg-[#182B53] text-white"
-                        : "text-[#182B53] hover:bg-accent"
-                      }`}
+                    className={
+                      pathname === "/dashboard"
+                        ? "h-10 px-3.5 py-2.5 bg-[#182B53] text-white rounded-[10px] text-base font-medium font-brand leading-5 border-0 cursor-pointer hover:!opacity-100 hover:bg-[#182B53] hover:text-white"
+                        : "h-10 px-3.5 py-2.5 bg-transparent text-[#172554]/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 hover:text-[#172554] hover:opacity-100"
+                    }
                   >
                     <User className="h-4 w-4 mr-2" />
                     {t("nav.dashboard")}
@@ -225,13 +272,14 @@ export function NavMenu() {
                 <Link to="/profile">
                   <Button
                     variant={pathname === "/profile" ? "default" : "ghost"}
-                    className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/profile"
-                      ? "bg-[#182B53] text-white"
-                      : "text-[#182B53] hover:bg-accent"
-                      }`}
+                    className={
+                      pathname === "/profile"
+                        ? "h-10 px-3.5 py-2.5 bg-[#182B53] text-white rounded-[10px] text-base font-medium font-brand leading-5 border-0 cursor-pointer hover:!opacity-100 hover:bg-[#182B53] hover:text-white"
+                        : "h-10 px-3.5 py-2.5 bg-transparent text-[#172554]/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 hover:text-[#172554] hover:opacity-100"
+                    }
                   >
                     <User className="h-4 w-4 mr-2" />
-                    {t("nav.myAccount") || "My Account"}
+                    {t("nav.myAccount")}
                   </Button>
                 </Link>
               </>
@@ -239,7 +287,7 @@ export function NavMenu() {
             <Button
               variant="ghost"
               onClick={handleLogout}
-              className="w-full md:w-auto justify-start md:justify-center border-0 text-[#182B53] hover:bg-accent"
+              className="h-10 px-3.5 py-2.5 bg-transparent text-[#172554]/70 rounded-[10px] text-base font-medium font-brand leading-5 border-0 hover:text-[#172554] hover:opacity-100"
             >
               <LogOut className="h-4 w-4 mr-2" />
               {t("actions.logout")}
@@ -249,10 +297,7 @@ export function NavMenu() {
           <Link to="/auth">
             <Button
               variant={pathname === "/auth" ? "default" : "ghost"}
-              className={`w-full md:w-auto justify-start md:justify-center border-0 ${pathname === "/auth"
-                  ? "bg-[#182B53] text-white"
-                  : "text-[#182B53] hover:bg-accent"
-                }`}
+              className="bg-[#182B53] text-white rounded-[10px] h-10 px-3.5 py-2.5 text-base font-medium font-brand leading-5 border-0 hover:opacity-80"
             >
               <User className="h-4 w-4 mr-2" />
               {t("actions.login")}
@@ -267,8 +312,12 @@ export function NavMenu() {
                 i18n.changeLanguage("en");
                 localStorage.setItem("language", "en");
               }}
-              className={`px-2 py-1 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center justify-center ${i18n.language === "en" ? "border-primary" : ""}`}
-              aria-label="English"
+              className={
+                i18n.language === "en"
+                  ? "h-10 p-2.5 rounded-[5px] outline outline-2 outline-offset-[-1px] outline-white flex items-center justify-center bg-transparent hover:opacity-80"
+                  : "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-zinc-300 flex items-center justify-center bg-transparent hover:opacity-80"
+              }
+              aria-label={t("nav.languageEnglishAria")}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
                 <clipPath id="uk1"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
@@ -287,8 +336,12 @@ export function NavMenu() {
                 i18n.changeLanguage("gr");
                 localStorage.setItem("language", "gr");
               }}
-              className={`px-2 py-1 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center justify-center ${i18n.language === "gr" ? "border-primary" : ""}`}
-              aria-label="Greek"
+              className={
+                i18n.language === "gr"
+                  ? "h-10 p-2.5 rounded-[5px] outline outline-2 outline-offset-[-1px] outline-white flex items-center justify-center bg-transparent hover:opacity-80"
+                  : "h-10 p-2.5 rounded-[5px] outline outline-1 outline-offset-[-1px] outline-zinc-300 flex items-center justify-center bg-transparent hover:opacity-80"
+              }
+              aria-label={t("nav.languageGreekAria")}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
                 <rect fill="#0D5EAF" width="27" height="18"/>
@@ -304,20 +357,21 @@ export function NavMenu() {
   );
 
   return (
-    <nav className="border-b fixed w-full bg-background z-50">
-      <div className="container px-4 h-16 flex items-center mx-auto justify-end">
+    <nav
+      className={`fixed w-full z-50 font-brand ${isLoggedOut ? (isTransparent ? "bg-transparent" : "bg-black") : "bg-white border-b border-border"}`}
+    >
+      <div className="container mx-auto px-0 md:px-16 py-0 md:py-6 flex justify-between items-center w-full">
         {/* Mobile Menu */}
-        <div className="md:hidden flex justify-between w-full gap-3">
-          {/* Logo - only show when menu is closed */}
-          {!isOpen && (
-            <Link to="/" className="flex items-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                xmlns:xlink="http://www.w3.org/1999/xlink"
-                width="5em"
-                height="2.5em"
-                viewBox="0 0 148 49.81"
-              >
+        <div className="md:hidden flex justify-between items-center w-full px-4 py-6">
+          {/* Logo */}
+          <Link to={logoHref} className="flex items-center">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              xmlnsXlink="http://www.w3.org/1999/xlink"
+              width="6em"
+              height="3em"
+              viewBox="0 0 148 49.81"
+            >
                 <defs>
                   <clipPath id="clip-path-mobile-header">
                     <rect
@@ -356,55 +410,61 @@ export function NavMenu() {
                         data-name="Path 902"
                         d="M61.828,22.27V38.076H53.823V23.5c0-4.465-2.052-6.518-5.594-6.518-3.849,0-6.619,2.362-6.619,7.441V38.076H33.6V0H41.61V13.34a12.138,12.138,0,0,1,8.775-3.285c6.517,0,11.444,3.8,11.444,12.215"
                         transform="translate(-6.611 0)"
-                        fill="#00398e"
+                        fill={logoWordmarkFill}
                       ></path>
                       <path
                         id="Path_903"
                         data-name="Path 903"
                         d="M102.242,12.917v27.61H94.6v-3.18c-2,2.41-4.927,3.591-8.622,3.591-7.8,0-13.8-5.542-13.8-14.214s6-14.216,13.8-14.216a10.606,10.606,0,0,1,8.263,3.338V12.917ZM94.39,26.723c0-4.774-3.079-7.648-7.03-7.648-4,0-7.082,2.874-7.082,7.648s3.079,7.646,7.082,7.646c3.951,0,7.03-2.873,7.03-7.646"
                         transform="translate(-14.197 -2.46)"
-                        fill="#00398e"
+                        fill={logoWordmarkFill}
                       ></path>
                       <path
                         id="Path_904"
-                        data-name="Path 904"
+                        data-name="Path_904"
                         d="M140.745,13.019V37.388c0,10.264-5.388,14.983-15.037,14.983-5.08,0-10.006-1.282-13.187-3.8l3.182-5.747a15.335,15.335,0,0,0,9.339,3.079c5.388,0,7.7-2.514,7.7-7.494V37.49a11.314,11.314,0,0,1-8.159,3.183c-6.928,0-11.8-3.849-11.8-12.42V13.019h8.006V27.072c0,4.67,2.053,6.723,5.594,6.723,3.7,0,6.364-2.362,6.364-7.44V13.019Z"
                         transform="translate(-22.135 -2.561)"
-                        fill="#00398e"
+                        fill={logoWordmarkFill}
                       ></path>
                       <path
                         id="Path_905"
                         data-name="Path 905"
                         d="M149.683,26.724c0-8.315,6.414-14.214,15.395-14.214,5.8,0,10.366,2.513,12.367,7.03l-6.209,3.335a6.881,6.881,0,0,0-6.209-3.8c-4.054,0-7.236,2.821-7.236,7.646s3.182,7.646,7.236,7.646a6.794,6.794,0,0,0,6.209-3.8l6.209,3.386c-2,4.414-6.569,6.979-12.367,6.979-8.981,0-15.395-5.9-15.395-14.214"
                         transform="translate(-29.445 -2.461)"
-                        fill="#00398e"
+                        fill={logoWordmarkFill}
                       ></path>
                     </g>
                   </g>
                 </g>
-              </svg>
-            </Link>
-          )}
+            </svg>
+          </Link>
 
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Menu className="h-6 w-6" />
-              </Button>
+              <button
+                type="button"
+                className="w-11 h-11 px-2.5 pt-2.5 pb-1.5 flex flex-col justify-center items-center gap-1.5"
+              >
+                <span className={`w-full border-t-2 ${isLoggedOut ? "border-white" : "border-[#182B53]"}`} />
+                <span className={`w-full border-t-2 ${isLoggedOut ? "border-white" : "border-[#182B53]"}`} />
+                <span className={`w-full border-t-2 ${isLoggedOut ? "border-white" : "border-[#182B53]"}`} />
+              </button>
             </SheetTrigger>
             <SheetContent
               side="left"
-              className="w-[80%] sm:w-[385px] flex flex-col gap-4 pt-8"
+              className="mobile-drawer-panel w-[80%] sm:w-[385px] flex flex-col gap-4 pt-8"
+              aria-describedby={undefined}
             >
+              <SheetTitle className="sr-only">{t("nav.mobileMenuTitle")}</SheetTitle>
               <div className="flex items-center mb-6">
                 <Link
-                  to="/"
+                  to={logoHref}
                   className="flex items-center"
                   onClick={() => setIsOpen(false)}
                 >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
-                    xmlns:xlink="http://www.w3.org/1999/xlink"
+                    xmlnsXlink="http://www.w3.org/1999/xlink"
                     width="6em"
                     height="3em"
                     viewBox="0 0 148 49.81"
@@ -447,28 +507,28 @@ export function NavMenu() {
                             data-name="Path 902"
                             d="M61.828,22.27V38.076H53.823V23.5c0-4.465-2.052-6.518-5.594-6.518-3.849,0-6.619,2.362-6.619,7.441V38.076H33.6V0H41.61V13.34a12.138,12.138,0,0,1,8.775-3.285c6.517,0,11.444,3.8,11.444,12.215"
                             transform="translate(-6.611 0)"
-                            fill="#00398e"
+                            fill={logoWordmarkFill}
                           ></path>
                           <path
                             id="Path_903"
                             data-name="Path 903"
                             d="M102.242,12.917v27.61H94.6v-3.18c-2,2.41-4.927,3.591-8.622,3.591-7.8,0-13.8-5.542-13.8-14.214s6-14.216,13.8-14.216a10.606,10.606,0,0,1,8.263,3.338V12.917ZM94.39,26.723c0-4.774-3.079-7.648-7.03-7.648-4,0-7.082,2.874-7.082,7.648s3.079,7.646,7.082,7.646c3.951,0,7.03-2.873,7.03-7.646"
                             transform="translate(-14.197 -2.46)"
-                            fill="#00398e"
+                            fill={logoWordmarkFill}
                           ></path>
                           <path
                             id="Path_904"
                             data-name="Path 904"
                             d="M140.745,13.019V37.388c0,10.264-5.388,14.983-15.037,14.983-5.08,0-10.006-1.282-13.187-3.8l3.182-5.747a15.335,15.335,0,0,0,9.339,3.079c5.388,0,7.7-2.514,7.7-7.494V37.49a11.314,11.314,0,0,1-8.159,3.183c-6.928,0-11.8-3.849-11.8-12.42V13.019h8.006V27.072c0,4.67,2.053,6.723,5.594,6.723,3.7,0,6.364-2.362,6.364-7.44V13.019Z"
                             transform="translate(-22.135 -2.561)"
-                            fill="#00398e"
+                            fill={logoWordmarkFill}
                           ></path>
                           <path
                             id="Path_905"
                             data-name="Path 905"
                             d="M149.683,26.724c0-8.315,6.414-14.214,15.395-14.214,5.8,0,10.366,2.513,12.367,7.03l-6.209,3.335a6.881,6.881,0,0,0-6.209-3.8c-4.054,0-7.236,2.821-7.236,7.646s3.182,7.646,7.236,7.646a6.794,6.794,0,0,0,6.209-3.8l6.209,3.386c-2,4.414-6.569,6.979-12.367,6.979-8.981,0-15.395-5.9-15.395-14.214"
                             transform="translate(-29.445 -2.461)"
-                            fill="#00398e"
+                            fill={logoWordmarkFill}
                           ></path>
                         </g>
                       </g>
@@ -478,7 +538,7 @@ export function NavMenu() {
               </div>
 
               {/* Mobile Navigation Links */}
-              <div className="flex flex-col gap-4">
+              <div className="mobile-drawer-nav flex flex-col gap-4">
                 {!user &&
                   pathname !== "/dashboard" &&
                   pathname !== "/reviews-program" && (
@@ -491,7 +551,7 @@ export function NavMenu() {
                             : "text-[#182B53] hover:bg-accent"
                           }`}
                       >
-                        <Home className="h-4 w-4 mr-2" />
+                        {/* <Home className="h-4 w-4 mr-2" /> */}
                         {t("nav.home")}
                       </Button>
                     </Link>
@@ -517,6 +577,18 @@ export function NavMenu() {
                           }`}
                       >
                         {t("nav.templates")}
+                      </Button>
+                    </Link>
+
+                    <Link to="/pricing" onClick={() => setIsOpen(false)}>
+                      <Button
+                        variant={pathname === "/pricing" ? "default" : "ghost"}
+                        className={`w-full justify-start border-0 ${pathname === "/pricing"
+                            ? "bg-[#182B53] text-white"
+                            : "text-[#182B53] hover:bg-accent"
+                          }`}
+                      >
+                        {t("nav.pricing")}
                       </Button>
                     </Link>
 
@@ -575,7 +647,7 @@ export function NavMenu() {
                               }`}
                           >
                             <User className="h-4 w-4 mr-2" />
-                            {t("nav.myAccount") || "My Account"}
+                            {t("nav.myAccount")}
                           </Button>
                         </Link>
                       </>
@@ -605,7 +677,7 @@ export function NavMenu() {
                 )}
 
                 {!user && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="mobile-drawer-language mt-4 pt-4 border-t border-gray-200">
                     <p className="text-sm text-gray-600 mb-2">{t("nav.languages")}</p>
                     <div className="flex flex-col gap-2">
                       <button
@@ -614,8 +686,8 @@ export function NavMenu() {
                           localStorage.setItem("language", "en");
                           setIsOpen(false);
                         }}
-                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "en" ? "border-primary bg-accent" : ""}`}
-                        aria-label="English"
+                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "en" ? "language-selected" : ""}`}
+                        aria-label={t("nav.languageEnglishAria")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 30" width="24" height="16">
                           <clipPath id="uk-mobile1"><path d="M0,0 v30 h60 v-30 z"/></clipPath>
@@ -628,7 +700,7 @@ export function NavMenu() {
                             <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
                           </g>
                         </svg>
-                        English
+                        {t("nav.languageEnglishLabel")}
                       </button>
                       <button
                         onClick={() => {
@@ -636,8 +708,8 @@ export function NavMenu() {
                           localStorage.setItem("language", "gr");
                           setIsOpen(false);
                         }}
-                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "gr" ? "border-primary bg-accent" : ""}`}
-                        aria-label="Greek"
+                        className={`px-3 py-2 text-sm rounded bg-background border text-[#182B53] hover:bg-accent flex items-center gap-2 ${i18n.language === "gr" ? "language-selected" : ""}`}
+                        aria-label={t("nav.languageGreekAria")}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" width="24" height="16">
                           <rect fill="#0D5EAF" width="27" height="18"/>
@@ -645,7 +717,7 @@ export function NavMenu() {
                           <rect fill="#0D5EAF" width="10" height="10"/>
                           <path fill="#FFF" d="M0,4h10v2H0zM4,0h2v10H4z"/>
                         </svg>
-                        Ελληνικά
+                        {t("nav.languageGreekLabel")}
                       </button>
                     </div>
                   </div>
@@ -663,3 +735,4 @@ export function NavMenu() {
     </nav>
   );
 }
+

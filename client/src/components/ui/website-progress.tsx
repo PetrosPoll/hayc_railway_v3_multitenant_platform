@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Loader2, MessageSquare, FileText, Pencil } from "lucide-react";
@@ -25,8 +25,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/components/ui/authContext";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { OnboardingFormResponse, RolePermissions } from "@shared/schema";
 import { formatOnboardingValue, getFieldLabel } from "@/lib/onboarding-formatters";
+import { formatGsValue } from "@/lib/get-started-formatters";
 
 type Stage = {
   id: number;
@@ -78,6 +80,7 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [isOnboardingDialogOpen, setIsOnboardingDialogOpen] = useState(false);
+  const [onboardingDialogView, setOnboardingDialogView] = useState<"onboarding" | "get-started">("onboarding");
   const [editingDomain, setEditingDomain] = useState(false);
   const [domainValue, setDomainValue] = useState("");
   
@@ -142,6 +145,29 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
     },
     enabled: !!websiteId && isOnboardingDialogOpen,
   });
+
+  const { data: gsSubmissionResponse, isLoading: isLoadingGs } = useQuery({
+    queryKey: ["/api/websites", websiteId, "get-started-submission"],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/websites/${websiteId}/get-started-submission`,
+        { credentials: "include" }
+      );
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!websiteId && isOnboardingDialogOpen,
+  });
+
+  const gsSubmission = gsSubmissionResponse?.submission ?? null;
+
+  // Auto-switch to get-started tab when only a get-started submission exists
+  useEffect(() => {
+    if (!isLoadingOnboarding && !isLoadingGs && !onboardingResponse && gsSubmission) {
+      setOnboardingDialogView("get-started");
+    }
+  }, [isLoadingOnboarding, isLoadingGs, onboardingResponse, gsSubmission]);
 
   const updateDomainMutation = useMutation({
     mutationFn: async (newDomain: string) => {
@@ -307,7 +333,7 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
             </div>
             <Button
               variant="outline"
-              onClick={() => setIsOnboardingDialogOpen(true)}
+              onClick={() => { setOnboardingDialogView("onboarding"); setIsOnboardingDialogOpen(true); }}
               data-testid="button-view-onboarding"
             >
               <FileText className="w-4 h-4 mr-2" />
@@ -389,11 +415,21 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
                           {stage.waiting_info}
                         </p>
                         <Button
-                          onClick={() => {
-                            if (typeof window !== 'undefined' && (window as any).cloudinary) {
+                          onClick={async () => {
+                            try {
+                              await loadCloudinaryWidget();
+                            } catch {
+                              toast({
+                                title: t("websiteProgress.uploadServiceUnavailable") || "Upload Service Unavailable",
+                                description: t("websiteProgress.uploadServiceDescription") || "Please refresh the page and try again.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+                            {
                               const accountEmail = user?.email || 'unknown-user';
                               const folderName = `Client Files/${accountEmail}/${website?.domain}/Website Progress`;
-                              
+
                               (window as any).cloudinary.openUploadWidget(
                                 {
                                   cloudName: "dem12vqtl",
@@ -420,12 +456,6 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
                                   }
                                 }
                               );
-                            } else {
-                              toast({
-                                title: t("websiteProgress.uploadServiceUnavailable") || "Upload Service Unavailable",
-                                description: t("websiteProgress.uploadServiceDescription") || "Please refresh the page and try again.",
-                                variant: "destructive",
-                              });
                             }
                           }}
                           className="mt-2 text-white"
@@ -454,16 +484,91 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
               {t("websiteProgress.onboardingFormDialog.description") || "View the information submitted in your onboarding form"}
             </DialogDescription>
           </DialogHeader>
-          
-          {isLoadingOnboarding ? (
+
+          {/* Tab switcher — shown when both form types have data */}
+          {(onboardingResponse || gsSubmission) && (
+            <div className="flex gap-2 border-b pb-2">
+              {onboardingResponse && (
+                <button
+                  onClick={() => setOnboardingDialogView("onboarding")}
+                  className={`text-sm px-3 py-1 rounded-t font-medium transition-colors ${
+                    onboardingDialogView === "onboarding"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Onboarding Form {onboardingResponse.id ? `#${onboardingResponse.id}` : ""}
+                </button>
+              )}
+              {gsSubmission && (
+                <button
+                  onClick={() => setOnboardingDialogView("get-started")}
+                  className={`text-sm px-3 py-1 rounded-t font-medium transition-colors ${
+                    onboardingDialogView === "get-started"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Get-started Submission #{gsSubmission.id}
+                </button>
+              )}
+            </div>
+          )}
+
+          {(isLoadingOnboarding || isLoadingGs) ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-          ) : !onboardingResponse ? (
+          ) : !onboardingResponse && !gsSubmission ? (
             <div className="text-center py-8 text-muted-foreground">
               {t("websiteProgress.onboardingFormDialog.noData") || "No onboarding form data available for this website"}
             </div>
-          ) : (
+          ) : onboardingDialogView === "get-started" && gsSubmission ? (
+            (() => {
+              const s = gsSubmission;
+              const Row = ({ label, field, value }: { label: string; field: string; value: unknown }) => {
+                const display = formatGsValue(field, value, t);
+                if (display === "—") return null;
+                return (
+                  <div className="border-b pb-3">
+                    <h4 className="font-medium text-sm text-muted-foreground mb-1">{label}</h4>
+                    <p className="text-sm">{display}</p>
+                  </div>
+                );
+              };
+              return (
+                <div className="space-y-4">
+                  <Row label="Full Name" field="fullName" value={s.fullName} />
+                  <Row label="Email" field="email" value={s.email} />
+                  <Row label="Phone" field="contactPhone" value={s.contactPhone} />
+                  <Row label="VAT Number" field="vatNumber" value={s.vatNumber} />
+                  <Row label="City" field="city" value={s.city} />
+                  <Row label="Street" field="street" value={s.street ? `${s.street} ${s.streetNumber ?? ""}`.trim() : null} />
+                  <Row label="Postal Code" field="postalCode" value={s.postalCode} />
+                  <Row label="Selected Plan" field="selectedPlan" value={s.selectedPlan} />
+                  <Row label="Billing Period" field="billingPeriod" value={s.billingPeriod} />
+                  <Row label="Status" field="status" value={s.status} />
+                  <Row label="Business Type" field="businessType" value={s.businessType} />
+                  <Row label="Website Goals" field="websiteGoals" value={s.websiteGoals} />
+                  <Row label="Design Direction" field="designDirection" value={s.designDirection} />
+                  <Row label="Business Name" field="businessName" value={s.businessName} />
+                  <Row label="Business Description" field="businessDescription" value={s.businessDescription} />
+                  <Row label="Services" field="services" value={s.services} />
+                  <Row label="Self Description" field="selfDescription" value={s.selfDescription} />
+                  <Row label="Biggest Concerns" field="biggestConcerns" value={s.biggestConcerns} />
+                  <Row label="Had Website Before" field="hadWebsiteBefore" value={s.hadWebsiteBefore} />
+                  <Row label="Previous Platform" field="previousWebsitePlatform" value={s.previousWebsitePlatform} />
+                  <Row label="Heard About Us" field="heardAboutUs" value={s.heardAboutUs} />
+                  <Row label="Confirmed Pages" field="confirmedPages" value={s.confirmedPages} />
+                  <Row label="Website Content" field="websiteContent" value={s.websiteContent} />
+                  <Row label="Success Vision" field="successVision" value={s.successVision} />
+                  <Row label="Submission ID" field="submissionId" value={s.submissionId} />
+                  <Row label="Website Progress ID" field="websiteProgressId" value={s.websiteProgressId} />
+                  <Row label="Created At" field="createdAt" value={s.createdAt ? new Date(s.createdAt).toLocaleString() : null} />
+                </div>
+              );
+            })()
+          ) : onboardingResponse ? (
             <div className="space-y-4">
               {/* Display Website Language first if available */}
               {website?.websiteLanguage && (
@@ -472,42 +577,32 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
                     {t("onboarding.websiteLanguage") || "Website Language"}
                   </h4>
                   <p className="text-sm">
-                    {website.websiteLanguage === 'en' 
+                    {website.websiteLanguage === 'en'
                       ? (t("onboarding.english") || "English")
                       : (t("onboarding.greek") || "Greek")}
                   </p>
                 </div>
               )}
-              
+
               {/* Display onboarding form fields */}
               {Object.entries(onboardingResponse).map(([key, value]) => {
-                // Skip internal fields
                 if (key === 'id' || key === 'userId' || key === 'websiteProgressId' || key === 'createdAt' || key === 'businessLogoPublicId') return null;
-                
-                // Skip empty/null/undefined values
-                if (value === null || value === undefined || value === '' || 
-                    (Array.isArray(value) && value.length === 0)) {
-                  return null;
-                }
-
-                // Format the value using the helper
+                if (value === null || value === undefined || value === '' ||
+                    (Array.isArray(value) && value.length === 0)) return null;
                 const formattedValue = formatOnboardingValue(key, value, t);
                 if (!formattedValue) return null;
-                
                 return (
                   <div key={key} className="border-b pb-3">
                     <h4 className="font-medium text-sm text-muted-foreground mb-1">
                       {getFieldLabel(key, t)}
                     </h4>
-                    <p className="text-sm">
-                      {formattedValue}
-                    </p>
+                    <p className="text-sm">{formattedValue}</p>
                   </div>
                 );
               })}
             </div>
-          )}
-          
+          ) : null}
+
           <DialogFooter>
             <Button onClick={() => setIsOnboardingDialogOpen(false)} data-testid="button-close-onboarding">
               {t("websiteProgress.onboardingFormDialog.close") || "Close"}

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,13 +9,24 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 
-export type HdpFontFamily = "Inter" | "Roboto" | "Lato" | "Montserrat" | "Playfair Display" | "Poppins";
+export type HdpFontFamily =
+  | "Inter"
+  | "Roboto"
+  | "Open Sans"
+  | "Lato"
+  | "Noto Sans"
+  | "Source Sans 3"
+  | "Nunito"
+  | "Raleway"
+  | "Playfair Display"
+  | "Merriweather";
 export type HdpBorderRadius = "0px" | "4px" | "8px" | "16px" | "9999px";
 
 interface HdpBrandModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   siteId: string;
+  websiteId: string | number;
   previewUrl?: string;
 }
 
@@ -25,9 +37,26 @@ interface HdpBrandFormState {
   primaryForeground: string;
   fontFamily: HdpFontFamily;
   borderRadius: HdpBorderRadius;
+  defaultLanguage: "el" | "en";
 }
 
-const FONT_FAMILIES: HdpFontFamily[] = ["Inter", "Roboto", "Lato", "Montserrat", "Playfair Display", "Poppins"];
+const HDP_LANGUAGES: Array<{ value: "el" | "en"; label: string }> = [
+  { value: "el", label: "Ελληνικά (Greek)" },
+  { value: "en", label: "English" },
+];
+
+const FONT_FAMILIES: HdpFontFamily[] = [
+  "Inter",
+  "Roboto",
+  "Open Sans",
+  "Lato",
+  "Noto Sans",
+  "Source Sans 3",
+  "Nunito",
+  "Raleway",
+  "Playfair Display",
+  "Merriweather",
+];
 const BORDER_RADII: Array<{ value: HdpBorderRadius; labelKey: string }> = [
   { value: "0px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.none" },
   { value: "4px", labelKey: "digitalProductsManagement.brandModal.borderRadiusOptions.small" },
@@ -43,6 +72,7 @@ const DEFAULT_FORM: HdpBrandFormState = {
   primaryForeground: "#FFFFFF",
   fontFamily: "Inter",
   borderRadius: "8px",
+  defaultLanguage: "el",
 };
 
 function normalizeHexColor(input: string, fallback: string) {
@@ -125,14 +155,28 @@ function pickBrandRoot(brandJson: any) {
   );
 }
 
-export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBrandModalProps) {
+export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUrl }: HdpBrandModalProps) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isPickingImage, setIsPickingImage] = useState(false);
   const [form, setForm] = useState<HdpBrandFormState>(DEFAULT_FORM);
 
   const canSave = useMemo(() => open && !isLoading && !isSaving && !!siteId, [open, isLoading, isSaving, siteId]);
+
+  useEffect(() => {
+    const id = "hdp-brand-modal-fonts";
+    if (document.getElementById(id)) return;
+    const families = FONT_FAMILIES.map(
+      (f) => `family=${encodeURIComponent(f)}:wght@400;600`
+    ).join("&");
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = `https://fonts.googleapis.com/css2?${families}&display=swap`;
+    document.head.appendChild(link);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -220,6 +264,11 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
               DEFAULT_FORM.borderRadius,
             DEFAULT_FORM.borderRadius
           ),
+          defaultLanguage: (
+            getFirstString(brandRoot, ["defaultLanguage", "default_language"]) === "en"
+              ? "en"
+              : "el"
+          ),
         };
 
         if (cancelled) return;
@@ -258,6 +307,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
           primaryForeground: form.primaryForeground,
           fontFamily: form.fontFamily,
           borderRadius: form.borderRadius,
+          defaultLanguage: form.defaultLanguage,
         }),
       });
 
@@ -280,128 +330,167 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>{t("digitalProductsManagement.brandModal.title")}</DialogTitle>
-          <DialogDescription>
-            {t("digitalProductsManagement.brandModal.subtitle")}
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[600px] flex flex-col max-h-[90dvh] p-0 gap-0">
+        <div className="shrink-0 px-6 pt-6 pb-4 pr-14">
+          <DialogHeader className="text-left">
+            <DialogTitle>{t("digitalProductsManagement.brandModal.title")}</DialogTitle>
+            <DialogDescription>
+              {t("digitalProductsManagement.brandModal.subtitle")}
+            </DialogDescription>
+          </DialogHeader>
+        </div>
 
-        {isLoading ? (
-          <div className="flex items-center justify-center py-10" data-testid="hdp-brand-loading">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="hdp-brand-name">{t("digitalProductsManagement.brandModal.fields.brandName")}</Label>
-              <Input
-                id="hdp-brand-name"
-                value={form.brandName}
-                onChange={(e) => setForm((prev) => ({ ...prev, brandName: e.target.value }))}
-                placeholder={t("digitalProductsManagement.brandModal.placeholders.brandName")}
-                disabled={isSaving}
-              />
+        <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-2">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-10" data-testid="hdp-brand-loading">
+              <Loader2 className="h-8 w-8 animate-spin" />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="hdp-brand-logo-url">
-                {t("digitalProductsManagement.brandModal.fields.logoUrl")}
-              </Label>
-              <Input
-                id="hdp-brand-logo-url"
-                value={form.logoUrl}
-                onChange={(e) => setForm((prev) => ({ ...prev, logoUrl: e.target.value }))}
-                placeholder={t("digitalProductsManagement.brandModal.placeholders.logoUrl")}
-                disabled={isSaving}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("digitalProductsManagement.brandModal.fields.primaryColor")}</Label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={form.primaryColor}
-                  onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: normalizeHexColor(e.target.value, prev.primaryColor) }))}
-                  className="h-10 w-12 p-0 border border-input rounded-md bg-background"
-                  disabled={isSaving}
-                />
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="hdp-brand-name">{t("digitalProductsManagement.brandModal.fields.brandName")}</Label>
                 <Input
-                  type="text"
-                  value={form.primaryColor}
-                  onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: normalizeHexColor(e.target.value, prev.primaryColor) }))}
+                  id="hdp-brand-name"
+                  value={form.brandName}
+                  onChange={(e) => setForm((prev) => ({ ...prev, brandName: e.target.value }))}
+                  placeholder={t("digitalProductsManagement.brandModal.placeholders.brandName")}
                   disabled={isSaving}
                 />
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <Label>{t("digitalProductsManagement.brandModal.fields.textColorOnPrimary")}</Label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={form.primaryForeground}
-                  onChange={(e) => setForm((prev) => ({ ...prev, primaryForeground: normalizeHexColor(e.target.value, prev.primaryForeground) }))}
-                  className="h-10 w-12 p-0 border border-input rounded-md bg-background"
-                  disabled={isSaving}
-                />
-                <Input
-                  type="text"
-                  value={form.primaryForeground}
-                  onChange={(e) => setForm((prev) => ({ ...prev, primaryForeground: normalizeHexColor(e.target.value, prev.primaryForeground) }))}
-                  disabled={isSaving}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("digitalProductsManagement.brandModal.fields.fontFamily")}</Label>
-              <Select
-                value={form.fontFamily}
-                onValueChange={(val) => setForm((prev) => ({ ...prev, fontFamily: val as HdpFontFamily }))}
-                disabled={isSaving}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={t("digitalProductsManagement.brandModal.placeholders.selectFont")} />
-                </SelectTrigger>
-                <SelectContent>
-                  {FONT_FAMILIES.map((font) => (
-                    <SelectItem key={font} value={font}>
-                      <span style={{ fontFamily: font }}>{font}</span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t("digitalProductsManagement.brandModal.fields.borderRadius")}</Label>
-              <Select
-                value={form.borderRadius}
-                onValueChange={(val) => setForm((prev) => ({ ...prev, borderRadius: val as HdpBorderRadius }))}
-                disabled={isSaving}
-              >
-                <SelectTrigger>
-                  <SelectValue
-                    placeholder={t("digitalProductsManagement.brandModal.placeholders.selectBorderRadius")}
+              <div className="space-y-2">
+                <Label htmlFor="hdp-brand-logo-url">
+                  {t("digitalProductsManagement.brandModal.fields.logoUrl")}
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="hdp-brand-logo-url"
+                    value={form.logoUrl}
+                    readOnly
+                    placeholder="No image selected"
+                    className="min-w-0 flex-1 bg-muted/50"
+                    disabled={isSaving}
                   />
-                </SelectTrigger>
-                <SelectContent>
-                  {BORDER_RADII.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {t(opt.labelKey)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        )}
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={() => setIsPickingImage(true)}
+                  >
+                    Pick Image
+                  </Button>
+                </div>
+              </div>
 
-        <DialogFooter className="gap-2 sm:gap-0">
+              <div className="space-y-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.primaryColor")}</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={form.primaryColor}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: normalizeHexColor(e.target.value, prev.primaryColor) }))}
+                    className="h-10 w-12 shrink-0 p-0 border border-input rounded-md bg-background"
+                    disabled={isSaving}
+                  />
+                  <Input
+                    type="text"
+                    value={form.primaryColor}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryColor: normalizeHexColor(e.target.value, prev.primaryColor) }))}
+                    className="min-w-0 flex-1"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.textColorOnPrimary")}</Label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={form.primaryForeground}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryForeground: normalizeHexColor(e.target.value, prev.primaryForeground) }))}
+                    className="h-10 w-12 shrink-0 p-0 border border-input rounded-md bg-background"
+                    disabled={isSaving}
+                  />
+                  <Input
+                    type="text"
+                    value={form.primaryForeground}
+                    onChange={(e) => setForm((prev) => ({ ...prev, primaryForeground: normalizeHexColor(e.target.value, prev.primaryForeground) }))}
+                    className="min-w-0 flex-1"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.fontFamily")}</Label>
+                <Select
+                  value={form.fontFamily}
+                  onValueChange={(val) => setForm((prev) => ({ ...prev, fontFamily: val as HdpFontFamily }))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={t("digitalProductsManagement.brandModal.placeholders.selectFont")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FONT_FAMILIES.map((font) => (
+                      <SelectItem key={font} value={font}>
+                        <span style={{ fontFamily: font }}>{font}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.defaultLanguage")}</Label>
+                <Select
+                  value={form.defaultLanguage}
+                  onValueChange={(val) => setForm((prev) => ({ ...prev, defaultLanguage: val as "el" | "en" }))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select default language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {HDP_LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2 pb-2">
+                <Label>{t("digitalProductsManagement.brandModal.fields.borderRadius")}</Label>
+                <Select
+                  value={form.borderRadius}
+                  onValueChange={(val) => setForm((prev) => ({ ...prev, borderRadius: val as HdpBorderRadius }))}
+                  disabled={isSaving}
+                >
+                  <SelectTrigger>
+                    <SelectValue
+                      placeholder={t("digitalProductsManagement.brandModal.placeholders.selectBorderRadius")}
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BORDER_RADII.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {t(opt.labelKey)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="shrink-0 gap-2 px-6 py-4 border-t flex-col-reverse sm:flex-row sm:justify-end">
           {previewUrl ? (
             <Button
               type="button"
@@ -433,6 +522,17 @@ export function HdpBrandModal({ open, onOpenChange, siteId, previewUrl }: HdpBra
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <PickImageFromMediaDialog
+      open={isPickingImage}
+      onClose={() => setIsPickingImage(false)}
+      onSelect={(url) => {
+        setForm((f) => ({ ...f, logoUrl: url }));
+        setIsPickingImage(false);
+      }}
+      websiteId={websiteId}
+      currentFieldUrl={form.logoUrl}
+    />
+    </>
   );
 }
 

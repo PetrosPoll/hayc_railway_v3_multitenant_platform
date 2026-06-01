@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, Users, Eye, TrendingUp, ExternalLink, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BarChart3, BarChart2, Clock, Users, Eye, TrendingUp, ExternalLink, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {
   Select,
@@ -29,6 +29,7 @@ import {
 interface WebsiteAnalyticsProps {
   websiteId: number;
   disabled?: boolean;
+  tier?: string;
 }
 
 interface AnalyticsData {
@@ -46,6 +47,23 @@ interface AnalyticsData {
     visitors: number;
     sessions: number;
   }[];
+  scrollDepthStats: { depth: number; count: number }[];
+  topOutboundClicks: { url: string; count: number }[];
+  topFileDownloads: { file: string; count: number }[];
+  topNotFoundPages: { page: string; count: number }[];
+  formSubmissions: { form: string; count: number }[];
+  formStarts: { form: string; count: number }[];
+  formAbandons: { form: string; count: number }[];
+  formConversions: {
+    form: string;
+    starts: number;
+    submits: number;
+    abandons: number;
+    conversionRate: number | null;
+  }[];
+  hourlyTraffic: { hour: number; count: number }[];
+  returningVisitors: number;
+  newVisitors: number;
 }
 
 const COLORS = {
@@ -58,14 +76,14 @@ const COLORS = {
   sources: ["#3b82f6", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#6366f1"],
 };
 
-export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalyticsProps) {
+export function WebsiteAnalytics({ websiteId, disabled = true, tier }: WebsiteAnalyticsProps) {
   const { t } = useTranslation();
   const [dateRange, setDateRange] = useState<string>("90");
 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - parseInt(dateRange));
 
-  const { data, isLoading } = useQuery<AnalyticsData>({
+  const { data, isLoading, refetch } = useQuery<AnalyticsData>({
     queryKey: ["/api/analytics", websiteId, dateRange],
     queryFn: async () => {
       const response = await fetch(
@@ -83,6 +101,17 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
             deviceBreakdown: [],
             trafficSources: [],
             dailyStats: [],
+            scrollDepthStats: [],
+            topOutboundClicks: [],
+            topFileDownloads: [],
+            topNotFoundPages: [],
+            formSubmissions: [],
+            formStarts: [],
+            formAbandons: [],
+            formConversions: [],
+            hourlyTraffic: [],
+            returningVisitors: 0,
+            newVisitors: 0,
           };
         }
         throw new Error("Failed to fetch analytics");
@@ -90,6 +119,8 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
       return response.json();
     },
     enabled: !!websiteId,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   if (isLoading) {
@@ -112,10 +143,19 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
 
   const hasData = data && (data.pageviews > 0 || data.uniqueVisitors > 0);
 
+  const scrollDepthStats = data?.scrollDepthStats ?? [];
+  const topOutboundClicks = data?.topOutboundClicks ?? [];
+  const topFileDownloads = data?.topFileDownloads ?? [];
+  const topNotFoundPagesSafe = data?.topNotFoundPages ?? [];
+  const formConversions = data?.formConversions ?? [];
+  const hourlyTraffic = data?.hourlyTraffic ?? [];
+  const returningVisitors = data?.returningVisitors ?? 0;
+  const newVisitors = data?.newVisitors ?? 0;
+
   return (
     <div className={`space-y-6`}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold flex items-center gap-2">
             <BarChart3 className="h-6 w-6" />
@@ -128,7 +168,16 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
             {t("dashboard.analyticsData.subtitle")}
           </p>
         </div>
-        <Select value={dateRange} onValueChange={setDateRange}>
+        <Select
+          value={dateRange}
+          onValueChange={(value) => {
+            if (value === dateRange) {
+              void refetch({ throwOnError: false });
+              return;
+            }
+            setDateRange(value);
+          }}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue />
           </SelectTrigger>
@@ -393,6 +442,310 @@ export function WebsiteAnalytics({ websiteId, disabled = true }: WebsiteAnalytic
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Scroll Depth</CardTitle>
+              <CardDescription>How far visitors scroll on average</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {scrollDepthStats.every(s => s.count === 0) ? (
+                <p className="text-sm text-muted-foreground">No scroll data yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {scrollDepthStats.map(({ depth, count }) => (
+                    <div key={depth} className="flex items-center gap-3">
+                      <span className="text-sm w-12 text-muted-foreground">{depth}%</span>
+                      <div className="flex-1 bg-muted rounded-full h-2">
+                        <div
+                          className="bg-primary h-2 rounded-full"
+                          style={{
+                            width: `${Math.max(...scrollDepthStats.map(s => s.count)) > 0
+                              ? (count / Math.max(...scrollDepthStats.map(s => s.count))) * 100
+                              : 0}%`
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm w-8 text-right">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Top Outbound Clicks</CardTitle>
+                <CardDescription>External links clicked by visitors</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {topOutboundClicks.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No outbound clicks yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {topOutboundClicks.map(({ url, count }) => (
+                      <div key={url} className="flex items-center justify-between">
+                        <span className="text-sm truncate max-w-[200px] text-muted-foreground">{url}</span>
+                        <span className="text-sm font-medium ml-2">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">File Downloads</CardTitle>
+                <CardDescription>Files downloaded by visitors</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {topFileDownloads.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No file downloads yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {topFileDownloads.map(({ file, count }) => (
+                      <div key={file} className="flex items-center justify-between">
+                        <span className="text-sm truncate max-w-[200px] text-muted-foreground">{file}</span>
+                        <span className="text-sm font-medium ml-2">{count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">404 Errors</CardTitle>
+              <CardDescription>Pages visitors tried to access but don't exist</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {topNotFoundPagesSafe.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No 404 errors recorded</p>
+              ) : (
+                <div className="space-y-2">
+                  {topNotFoundPagesSafe.map(({ page, count }) => (
+                    <div key={page} className="flex items-center justify-between">
+                      <span className="text-sm font-mono text-muted-foreground">{page}</span>
+                      <span className="text-sm font-medium ml-2">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {tier === "pro" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Form Analytics</CardTitle>
+                <CardDescription>Starts, submissions, abandons and conversion rates</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {formConversions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No form data yet</p>
+                ) : (
+                  <div className="space-y-4">
+                    {formConversions.map(({ form, starts, submits, abandons, conversionRate }) => (
+                      <div key={form} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium capitalize">{form} form</span>
+                          {conversionRate !== null && (
+                            <span className="text-sm font-medium">
+                              {conversionRate}% conversion
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="text-center p-2 bg-muted rounded">
+                            <p className="text-lg font-semibold">{starts}</p>
+                            <p className="text-xs text-muted-foreground">Started</p>
+                          </div>
+                          <div className="text-center p-2 bg-muted rounded">
+                            <p className="text-lg font-semibold">{submits}</p>
+                            <p className="text-xs text-muted-foreground">Submitted</p>
+                          </div>
+                          <div className="text-center p-2 bg-muted rounded">
+                            <p className="text-lg font-semibold">{abandons}</p>
+                            <p className="text-xs text-muted-foreground">Abandoned</p>
+                          </div>
+                        </div>
+                        {conversionRate !== null && (
+                          <div className="w-full bg-muted rounded-full h-1.5 mt-1">
+                            <div
+                              className="bg-primary h-1.5 rounded-full"
+                              style={{ width: `${conversionRate}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  Form Analytics
+                </CardTitle>
+                <CardDescription>
+                  Starts, submissions, abandons and conversion rates
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center gap-3 py-4 text-center">
+                  <div className="rounded-full bg-blue-100 p-3">
+                    <BarChart2 className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <p className="text-sm font-medium">Available on Pro plan</p>
+                  <p className="text-xs text-muted-foreground">
+                    Track form starts, submissions, abandons and conversion
+                    rates to understand how visitors interact with your forms.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {tier === "pro" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  Traffic by Hour
+                </CardTitle>
+                <CardDescription>
+                  What time of day visitors come to your site
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {hourlyTraffic.every(h => h.count === 0) ? (
+                  <p className="text-sm text-muted-foreground">No data yet</p>
+                ) : (
+                  <div className="flex items-end gap-1 h-24">
+                    {hourlyTraffic.map(({ hour, count }) => {
+                      const max = Math.max(...hourlyTraffic.map(h => h.count));
+                      const height = max > 0 ? (count / max) * 100 : 0;
+                      return (
+                        <div
+                          key={hour}
+                          className="flex-1 flex flex-col items-center gap-1"
+                          title={`${hour}:00 — ${count} visits`}
+                        >
+                          <div
+                            className="w-full bg-primary rounded-sm"
+                            style={{ height: `${height}%`, minHeight: count > 0 ? "2px" : "0" }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex justify-between mt-1">
+                  <span className="text-xs text-muted-foreground">12am</span>
+                  <span className="text-xs text-muted-foreground">6am</span>
+                  <span className="text-xs text-muted-foreground">12pm</span>
+                  <span className="text-xs text-muted-foreground">6pm</span>
+                  <span className="text-xs text-muted-foreground">11pm</span>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">Traffic by Hour</CardTitle>
+                <CardDescription>What time of day visitors come to your site</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center gap-3 py-4 text-center">
+                  <div className="rounded-full bg-blue-100 p-3">
+                    <Clock className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <p className="text-sm font-medium">Available on Pro plan</p>
+                  <p className="text-xs text-muted-foreground">
+                    Discover what time of day your visitors are most active
+                    to optimize your content and campaigns.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {tier === "pro" ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">
+                  New vs Returning Visitors
+                </CardTitle>
+                <CardDescription>
+                  First-time visitors compared to returning ones
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {newVisitors === 0 && returningVisitors === 0 ? (
+                  <p className="text-sm text-muted-foreground">No visitor data yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm w-20 text-muted-foreground">New</span>
+                      <div className="flex-1 bg-muted rounded-full h-2">
+                        <div
+                          className="bg-primary h-2 rounded-full"
+                          style={{
+                            width: `${newVisitors + returningVisitors > 0
+                              ? (newVisitors / (newVisitors + returningVisitors)) * 100
+                              : 0}%`
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm w-8 text-right">{newVisitors}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm w-20 text-muted-foreground">Returning</span>
+                      <div className="flex-1 bg-muted rounded-full h-2">
+                        <div
+                          className="bg-blue-400 h-2 rounded-full"
+                          style={{
+                            width: `${newVisitors + returningVisitors > 0
+                              ? (returningVisitors / (newVisitors + returningVisitors)) * 100
+                              : 0}%`
+                          }}
+                        />
+                      </div>
+                      <span className="text-sm w-8 text-right">{returningVisitors}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground pt-1">
+                      {newVisitors + returningVisitors} total unique visitors
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium">New vs Returning Visitors</CardTitle>
+                <CardDescription>First-time visitors compared to returning ones</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col items-center gap-3 py-4 text-center">
+                  <div className="rounded-full bg-blue-100 p-3">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <p className="text-sm font-medium">Available on Pro plan</p>
+                  <p className="text-xs text-muted-foreground">
+                    Understand whether your marketing is attracting new visitors
+                    or building a loyal returning audience.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

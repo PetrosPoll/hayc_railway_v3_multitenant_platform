@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,6 +37,12 @@ const tagFormSchema = z.object({
 
 type TagFormData = z.infer<typeof tagFormSchema>;
 
+const CREATE_TAG_FORM_DEFAULTS: TagFormData = {
+  name: "",
+  description: "",
+  color: "#ef4444",
+};
+
 const defaultColors = [
   "#ef4444", // red
   "#f97316", // orange
@@ -73,12 +79,13 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
 
   const form = useForm<TagFormData>({
     resolver: zodResolver(tagFormSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-      color: defaultColors[0],
-    },
+    defaultValues: CREATE_TAG_FORM_DEFAULTS,
   });
+
+  useEffect(() => {
+    if (!showAddDialog) return;
+    form.reset(CREATE_TAG_FORM_DEFAULTS);
+  }, [showAddDialog]);
 
   // Create tag mutation
   const createTagMutation = useMutation({
@@ -95,7 +102,7 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
         description: "Tag has been created successfully",
       });
       setShowAddDialog(false);
-      form.reset();
+      form.reset(CREATE_TAG_FORM_DEFAULTS);
     },
     onError: () => {
       toast({
@@ -168,7 +175,7 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
     form.reset({
       name: tag.name,
       description: tag.description || "",
-      color: tag.color || defaultColors[0],
+      color: tag.color || CREATE_TAG_FORM_DEFAULTS.color,
     });
     setShowEditDialog(true);
   };
@@ -215,10 +222,7 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
               </CardDescription>
             </div>
             <Button
-              onClick={() => {
-                form.reset();
-                setShowAddDialog(true);
-              }}
+              onClick={() => setShowAddDialog(true)}
               data-testid="button-add-tag"
             >
               <Plus className="w-4 h-4 mr-2" />

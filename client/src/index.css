@@ -2,6 +2,59 @@
 @tailwind components;
 @tailwind utilities;
 
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+.mobile-drawer-panel {
+  background: #00070f;
+  color: #eff6ff;
+  border-right: 1px solid rgba(239, 246, 255, 0.2);
+}
+
+.mobile-drawer-panel [data-radix-dialog-close] {
+  color: rgba(239, 246, 255, 0.75);
+}
+
+.mobile-drawer-panel .mobile-drawer-nav button {
+  background: transparent;
+  color: #eff6ff !important;
+  border-color: transparent;
+}
+
+.mobile-drawer-panel .mobile-drawer-nav button:hover {
+  background: rgba(160, 186, 243, 0.14);
+}
+
+.mobile-drawer-panel .mobile-drawer-nav button[class*="bg-[#182B53]"] {
+  background: #182b53;
+  color: #eff6ff !important;
+}
+
+.mobile-drawer-panel .mobile-drawer-language {
+  border-top-color: rgba(239, 246, 255, 0.2);
+}
+
+.mobile-drawer-panel .mobile-drawer-language p {
+  color: rgba(239, 246, 255, 0.75);
+}
+
+.mobile-drawer-panel .mobile-drawer-language button {
+  background: transparent !important;
+  color: #eff6ff !important;
+  border-color: rgba(239, 246, 255, 0.3) !important;
+}
+
+.mobile-drawer-panel .mobile-drawer-language button:hover {
+  background: rgba(160, 186, 243, 0.12) !important;
+}
+
+.mobile-drawer-panel .mobile-drawer-language button.language-selected {
+  border-color: #ffffff !important;
+  border-width: 2px !important;
+}
+
 @keyframes progress-indeterminate {
   0% {
     transform: translateX(-100%);
@@ -40,4 +93,136 @@
   background-color: hsl(var(--primary) / 0.04);
   border-radius: 0 6px 6px 0;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+@keyframes scroll-left {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes scroll-right {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+.animate-scroll-left {
+  animation: scroll-left 880s linear infinite;
+}
+
+.animate-scroll-right {
+  animation: scroll-right 880s linear infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+
+@keyframes hero-preview-desk-center-in {
+  from {
+    opacity: 0.82;
+    transform: translateX(18%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes hero-preview-desk-from-old-center {
+  from {
+    opacity: 0.88;
+    transform: translateX(12%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes hero-preview-desk-from-edge {
+  from {
+    opacity: 0.85;
+    transform: translateX(14%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.hero-preview-desk-slot-center {
+  animation: hero-preview-desk-center-in 700ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+.hero-preview-desk-slot-left {
+  animation: hero-preview-desk-from-old-center 700ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+.hero-preview-desk-slot-right {
+  animation: hero-preview-desk-from-edge 700ms cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+@keyframes testimonial-deck-exit-left {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(-15%, 0, 0) scale(0.97);
+    opacity: 0;
+  }
+}
+
+@keyframes testimonial-deck-exit-right {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(15%, 0, 0) scale(0.97);
+    opacity: 0;
+  }
+}
+
+.animate-testimonial-deck-exit-left {
+  animation: testimonial-deck-exit-left 380ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+.animate-testimonial-deck-exit-right {
+  animation: testimonial-deck-exit-right 380ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-testimonial-deck-exit-left,
+  .animate-testimonial-deck-exit-right {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Override Chrome autofill background color */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #000 inset !important;
+  box-shadow: 0 0 0 1000px #000 inset !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  caret-color: #f1f5f9;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+@keyframes pulse-orange {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(237, 76, 20, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(237, 76, 20, 0); }
+}
+
+@keyframes pulse-white {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.1); }
+  50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); }
 }

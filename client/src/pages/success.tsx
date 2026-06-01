@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useSearchParams, Navigate } from "react-router-dom";
+import { useSearchParams, Navigate, useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 export default function Success() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [errorKey, setErrorKey] = useState<string | null>(null);
@@ -41,17 +42,7 @@ export default function Success() {
             credentials: 'include'
           });
 
-          // Redirect to onboarding with subscription ID if available
-          const subscriptionParam = sessionData.subscriptionId 
-            ? `?subscriptionId=${sessionData.subscriptionId}` 
-            : '';
-          
-          console.log('🔵 [SUCCESS PAGE] Redirecting to onboarding:', {
-            subscriptionId: sessionData.subscriptionId,
-            url: `/onboarding${subscriptionParam}`
-          });
-          
-          window.location.href = `/onboarding${subscriptionParam}`;
+          navigate('/dashboard');
         } else {
           setErrorKey("payment.paymentNotCompleted");
           setLoading(false);

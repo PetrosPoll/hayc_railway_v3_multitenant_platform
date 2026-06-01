@@ -50,6 +50,8 @@ export default function EmailBuilderPage() {
   const selectedTemplateRef = useRef<number | null>(null);
   const [testEmail, setTestEmail] = useState("");
   const [testFromEmail, setTestFromEmail] = useState("");
+  const [testEmailError, setTestEmailError] = useState("");
+  const [testFromEmailError, setTestFromEmailError] = useState("");
   const [testSubject, setTestSubject] = useState("Test Email");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [showExitConfirmDialog, setShowExitConfirmDialog] = useState(false);
@@ -213,7 +215,13 @@ export default function EmailBuilderPage() {
   }, [templates, editorReady, toast]);
 
   const saveTemplateMutation = useMutation({
-    mutationFn: async (data: { name: string; html: string; design: string; thumbnail?: string; category?: string }) => {
+    mutationFn: async (data: {
+      name: string;
+      html: string;
+      design: string;
+      thumbnail?: string;
+      category?: string | null;
+    }) => {
       let response;
       // Use ref to get current template ID (avoids stale closure issues)
       const currentTemplateId = selectedTemplateRef.current;
@@ -614,7 +622,8 @@ export default function EmailBuilderPage() {
           html: html,
           design: JSON.stringify(validDesign),
           thumbnail: thumbnail || undefined,
-          category: templateCategory || undefined,
+          category:
+            templateCategory.trim() === "" ? null : templateCategory.trim(),
         });
 
         // Get the template ID from the response (or use existing one if updating)
@@ -646,7 +655,8 @@ export default function EmailBuilderPage() {
         html: html,
         design: JSON.stringify(validDesign),
         thumbnail: thumbnail || undefined,
-        category: templateCategory || undefined,
+        category:
+          templateCategory.trim() === "" ? null : templateCategory.trim(),
       });
     }
   };
@@ -901,6 +911,12 @@ export default function EmailBuilderPage() {
     });
   };
 
+  const isValidEmailFormat = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  };
+
   const handleSendTestEmail = () => {
     const html = sessionStorage.getItem('testEmailHtml');
     if (!html) {
@@ -912,7 +928,30 @@ export default function EmailBuilderPage() {
       return;
     }
 
-    if (!testEmail || !testFromEmail || !testSubject) {
+    const recipientTrimmed = testEmail.trim();
+    let nextRecipientError = "";
+    if (!recipientTrimmed) {
+      nextRecipientError = "Recipient email is required";
+    } else if (!isValidEmailFormat(testEmail)) {
+      nextRecipientError = "Please enter a valid email address";
+    }
+
+    const fromTrimmed = testFromEmail.trim();
+    let nextFromError = "";
+    if (!fromTrimmed) {
+      nextFromError = "From email is required";
+    } else if (!isValidEmailFormat(testFromEmail)) {
+      nextFromError = "Please enter a valid email address";
+    }
+
+    setTestEmailError(nextRecipientError);
+    setTestFromEmailError(nextFromError);
+
+    if (nextRecipientError || nextFromError) {
+      return;
+    }
+
+    if (!testSubject) {
       toast({
         title: "Error",
         description: "Please fill in all fields",
@@ -922,8 +961,8 @@ export default function EmailBuilderPage() {
     }
 
     sendTestEmailMutation.mutate({
-      toEmail: testEmail,
-      fromEmail: testFromEmail,
+      toEmail: recipientTrimmed,
+      fromEmail: fromTrimmed,
       subject: testSubject,
       html,
     });
@@ -948,7 +987,8 @@ export default function EmailBuilderPage() {
           name: templateName,
           html: html,
           design: JSON.stringify(design),
-          category: templateCategory || undefined,
+          category:
+            templateCategory.trim() === "" ? null : templateCategory.trim(),
         }, {
           onSuccess: () => {
             navigate(`/dashboard/website/${websiteId}?tab=newsletter`);
@@ -1113,12 +1153,12 @@ export default function EmailBuilderPage() {
                     value: [
                       {
                         name: 'Facebook',
-                        url: 'https://facebook.com',
+                        url: 'https://www.facebook.com/haycWebsites',
                         icon: 'https://cdn.tools.unlayer.com/social/icons/circle-black/facebook.png'
                       },
                       {
                         name: 'Instagram',
-                        url: 'https://instagram.com',
+                        url: 'https://www.instagram.com/hayc_websites/',
                         icon: 'https://cdn.tools.unlayer.com/social/icons/circle-black/instagram.png'
                       },
                       {
@@ -1128,7 +1168,7 @@ export default function EmailBuilderPage() {
                       },
                       {
                         name: 'LinkedIn',
-                        url: 'https://linkedin.com',
+                        url: 'https://www.linkedin.com/company/hayc/',
                         icon: 'https://cdn.tools.unlayer.com/social/icons/circle-black/linkedin.png'
                       },
                       {
@@ -1373,7 +1413,16 @@ export default function EmailBuilderPage() {
       </Dialog>
 
       {/* Send Test Email Dialog */}
-      <Dialog open={showTestEmailDialog} onOpenChange={setShowTestEmailDialog}>
+      <Dialog
+        open={showTestEmailDialog}
+        onOpenChange={(open) => {
+          setShowTestEmailDialog(open);
+          if (!open) {
+            setTestEmailError("");
+            setTestFromEmailError("");
+          }
+        }}
+      >
         <DialogContent data-testid="dialog-send-test-email">
           <DialogHeader>
             <DialogTitle>Send Test Email</DialogTitle>
@@ -1389,9 +1438,18 @@ export default function EmailBuilderPage() {
                 type="email"
                 placeholder="your@email.com"
                 value={testEmail}
-                onChange={(e) => setTestEmail(e.target.value)}
+                onChange={(e) => {
+                  setTestEmail(e.target.value);
+                  setTestEmailError("");
+                }}
                 data-testid="input-test-email"
+                aria-invalid={!!testEmailError}
               />
+              {testEmailError ? (
+                <p className="text-sm text-destructive" data-testid="error-test-email">
+                  {testEmailError}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="from-email">From Email (must be verified in AWS SES)</Label>
@@ -1400,9 +1458,18 @@ export default function EmailBuilderPage() {
                 type="email"
                 placeholder="noreply@yourdomain.com"
                 value={testFromEmail}
-                onChange={(e) => setTestFromEmail(e.target.value)}
+                onChange={(e) => {
+                  setTestFromEmail(e.target.value);
+                  setTestFromEmailError("");
+                }}
                 data-testid="input-from-email"
+                aria-invalid={!!testFromEmailError}
               />
+              {testFromEmailError ? (
+                <p className="text-sm text-destructive" data-testid="error-from-email">
+                  {testFromEmailError}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor="test-subject">Subject</Label>

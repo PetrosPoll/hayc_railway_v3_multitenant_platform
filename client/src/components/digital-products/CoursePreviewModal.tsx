@@ -28,7 +28,7 @@ export function CoursePreviewModal({ open, onOpenChange, src }: CoursePreviewMod
             <iframe
               src={src}
               title="HDP widget preview"
-              className="block w-full min-h-[500px] flex-1 border-0 rounded-md bg-muted"
+              className="block w-full min-h-[300px] sm:min-h-[500px] flex-1 border-0 rounded-md bg-muted"
             />
           ) : null}
         </div>
