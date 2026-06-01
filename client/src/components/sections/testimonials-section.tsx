@@ -324,7 +324,7 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.basedOn")}</span>
-                <span className="text-white text-lg font-medium font-brand">5</span>
+                <span className="text-white text-lg font-medium font-brand">6</span>
                 <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.reviews")}</span>
               </div>
             </div>
@@ -349,7 +349,7 @@ export function TestimonialsSection({ className }: TestimonialsSectionProps) {
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.basedOn")}</span>
-                <span className="text-white text-lg font-medium font-brand">5</span>
+                <span className="text-white text-lg font-medium font-brand">12</span>
                 <span className="text-white text-lg font-medium font-brand">{t("home.testimonialsSection.platforms.common.reviews")}</span>
               </div>
             </div>
