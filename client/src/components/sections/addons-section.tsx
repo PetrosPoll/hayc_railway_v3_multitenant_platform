@@ -50,6 +50,15 @@ export function AddonsSection() {
       "https://res.cloudinary.com/dem12vqtl/video/upload/v1778710769/analytics_addon_y5gll4.mp4",
   };
 
+  const ADDON_IMAGES: Record<string, string> = {
+    "home.addonsSection.categories.businessTools.title":
+      "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1780415099/Screenshot_2026-06-02_at_6.35.44_PM_bukgwx.png",
+    "home.addonsSection.categories.educationContent.title":
+      "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1780415099/Screenshot_2026-06-02_at_6.38.12_PM_po7h9h.png",
+    "home.addonsSection.categories.newsletter.title":
+      "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/v1780415508/Screenshot_2026-06-02_at_6.51.17_PM_wk0a0w.png",
+  };
+
   return (
     <section className="w-full px-4 md:px-16 py-12 md:py-24 bg-black overflow-hidden relative">
       {/* <div className="hidden md:flex absolute right-[340px] top-1/2 -translate-y-1/2 w-[400px] h-[400px] items-center justify-center pointer-events-none z-0">
@@ -143,6 +152,13 @@ export function AddonsSection() {
                             playsInline
                             preload="metadata"
                           />
+                        ) : ADDON_IMAGES[cat.titleKey] ? (
+                          <img
+                            src={ADDON_IMAGES[cat.titleKey]}
+                            alt={t(cat.titleKey)}
+                            loading="lazy"
+                            className="w-full h-auto rounded-[20px]"
+                          />
                         ) : (
                           <div className="w-full h-[320px] bg-neutral-700/30 rounded-[20px]" />
                         )}
@@ -168,6 +184,14 @@ export function AddonsSection() {
               muted
               playsInline
               preload="auto"
+            />
+          ) : openAddon && ADDON_IMAGES[openAddon] ? (
+            <img
+              key={openAddon}
+              src={ADDON_IMAGES[openAddon]}
+              alt={t(openAddon)}
+              loading="lazy"
+              className="w-full h-auto"
             />
           ) : (
             <div className="w-full h-full bg-neutral-700/30 rounded-[20px]" />
