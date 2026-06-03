@@ -2,15 +2,17 @@ import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import type { WizardValues } from "@/pages/get-started";
+import type { Template } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
+import { TemplatePreviewModal } from "@/components/TemplatePreviewModal";
 import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Search,
+  Eye,
 } from "lucide-react";
 
 const WIZARD_BUSINESS_TYPE_TO_KEY: Record<string, string> = {
@@ -116,9 +118,11 @@ interface TemplateCardProps {
   template: (typeof ENVATO_TEMPLATES)[number];
   isSelected: boolean;
   onSelect: () => void;
+  onPreview: () => void;
 }
 
-function TemplateCard({ template, isSelected, onSelect }: TemplateCardProps) {
+function TemplateCard({ template, isSelected, onSelect, onPreview }: TemplateCardProps) {
+  const { t } = useTranslation();
   return (
     <button
       type="button"
@@ -151,6 +155,16 @@ function TemplateCard({ template, isSelected, onSelect }: TemplateCardProps) {
             </svg>
           </div>
         )}
+        <div className="absolute inset-0 rounded-[10px] bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-end p-2">
+          <div
+            role="button"
+            onClick={(e) => { e.stopPropagation(); onPreview(); }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/60 outline outline-1 outline-white/30 cursor-pointer hover:bg-black/80 transition-colors"
+          >
+            <Eye className="w-4 h-4 text-white" />
+            <span className="text-white text-sm font-medium font-brand">{t("templates.page.preview")}</span>
+          </div>
+        </div>
       </div>
       <span className="text-white text-base font-semibold font-brand px-1">
         {template.name}
@@ -173,8 +187,9 @@ export default function StepChooseDesign({
   const { t } = useTranslation();
 
   const [showBrowser, setShowBrowser] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [industryOpen, setIndustryOpen] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState<(typeof ENVATO_TEMPLATES)[number] | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [selectedIndustry, setSelectedIndustry] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -197,17 +212,12 @@ export default function StepChooseDesign({
     return pickRandom(pool, 6, seed);
   }, [businessType, goals, seed]);
 
-  // Full browser — all templates, filtered by search + category
+  // Full browser — all templates, filtered by category
   const filteredTemplates = useMemo(() => {
     return ENVATO_TEMPLATES.filter((t) => {
-      const matchesSearch =
-        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory =
-        !selectedCategory || t.category === selectedCategory;
-      return matchesSearch && matchesCategory;
+      return !selectedCategory || t.category === selectedCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [selectedCategory]);
 
   const orderedTemplates = useMemo(() => {
     if (selectedCategory) return filteredTemplates;
@@ -288,6 +298,7 @@ export default function StepChooseDesign({
             template={template}
             isSelected={selectedDesign === String(template.id)}
             onSelect={() => form.setValue("selectedDesign", String(template.id))}
+            onPreview={() => { setPreviewTemplate(template); setIsPreviewOpen(true); }}
           />
         ))}
       </div>
@@ -316,21 +327,6 @@ export default function StepChooseDesign({
               {t("getStarted.chooseDesign.browseAll")}
             </span>
             <div className="flex-1 h-px bg-white/10" />
-          </div>
-
-          {/* Search bar */}
-          <div className="w-full p-4 bg-gradient-to-br from-neutral-700/5 to-neutral-700/20 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white/30 flex items-center gap-4">
-            <Search className="w-5 h-5 text-white/50 flex-shrink-0" />
-            <input
-              type="text"
-              placeholder={t("templates.page.searchPlaceholder")}
-              className="flex-1 bg-transparent text-white text-sm font-normal font-brand leading-5 placeholder:text-white/50 outline-none"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-            />
           </div>
 
           {/* Category filter */}
@@ -389,6 +385,7 @@ export default function StepChooseDesign({
                 template={template}
                 isSelected={selectedDesign === String(template.id)}
                 onSelect={() => form.setValue("selectedDesign", String(template.id))}
+                onPreview={() => { setPreviewTemplate(template); setIsPreviewOpen(true); }}
               />
             ))}
           </div>
@@ -460,6 +457,15 @@ export default function StepChooseDesign({
           </div>
         </div>
       )}
+
+      <TemplatePreviewModal
+        template={previewTemplate as unknown as Template | null}
+        open={isPreviewOpen}
+        onOpenChange={(open) => {
+          setIsPreviewOpen(open);
+          if (!open) setPreviewTemplate(null);
+        }}
+      />
 
       {/* Navigation */}
       <div className="w-full flex items-center justify-between gap-4 pt-2">
