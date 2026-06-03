@@ -670,7 +670,6 @@ export const availableAddOns = [
     name: "Booking System",
     description: "Complete appointment and reservation booking system",
     price: 10,
-    yearlyPrice: 120,
     image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/booking-add-on-icon.svg",
   },
   {
@@ -678,23 +677,13 @@ export const availableAddOns = [
     name: "Learning Management System",
     description: "Full-featured LMS for courses and educational content",
     price: 10,
-    yearlyPrice: 120,
     image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/lms-add-on-icon.svg",
-  },
-  {
-    id: "payments",
-    name: "Online Payments",
-    description: "Secure online payment processing and e-commerce features",
-    price: 10,
-    // yearlyPrice: 120,
-    image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/online-payment-add-on-icon.svg",
   },
   {
     id: "realestate",
     name: "Real Estate Platform",
     description: "Property listing and management system for real estate",
     price: 10,
-    yearlyPrice: 120,
     image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/real-estate-add-on-icon.svg",
     purchasable: false,
   },
@@ -703,7 +692,6 @@ export const availableAddOns = [
     name: "Transport Booking",
     description: "Transportation booking and management system",
     price: 10,
-    yearlyPrice: 120,
     image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/transport-booking-add-on-icon.svg",
     purchasable: false,
   },
@@ -711,16 +699,14 @@ export const availableAddOns = [
     id: "newsletter",
     name: "Increase Newsletter Limits (15000 emails / month)",
     description: "Expand your newsletter subscriber capacity",
-    price: 10, // or whatever price
-    yearlyPrice: 120,
+    price: 10,
     image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/Newsletter-icon.png",
   },
   {
     id: "newsletter_100",
     name: "Increase Newsletter Limits (100000 emails / month)",
     description: "Expand your newsletter subscriber capacity",
-    price: 35, // or whatever price
-    yearlyPrice: 120,
+    price: 35,
     image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/Newsletter-icon.png",
   },
 ];

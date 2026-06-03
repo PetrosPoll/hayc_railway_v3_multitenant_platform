@@ -32,6 +32,21 @@ export function getPrice(
 }
 
 /**
+ * Helper function to get price for a specific add-on and billing period
+ * unitAmount is in euros (already converted from cents)
+ */
+export function getAddonPrice(
+  prices: StripePrice[] | undefined,
+  addonId: string,
+  billingPeriod: "monthly" | "yearly"
+): StripePrice | undefined {
+  if (!prices) return undefined;
+  return prices.find(
+    (p) => p.tier === addonId && p.billingPeriod === billingPeriod
+  );
+}
+
+/**
  * Helper function to calculate savings when switching to yearly
  */
 export function calculateYearlySavings(

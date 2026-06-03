@@ -73,7 +73,7 @@ html, body {
   }
 
   body {
-    @apply font-sans antialiased bg-background text-[#182B53];
+    @apply font-brand antialiased bg-background text-[#182B53];
   }
 }
 

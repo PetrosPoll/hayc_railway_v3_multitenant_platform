@@ -16,7 +16,7 @@ import { subscriptionPlans, availableAddOns } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, TrendingUp, Calendar, DollarSign, Tag, Check, X } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
-import { usePricing, getPrice, calculateYearlySavings } from "@/hooks/use-pricing";
+import { usePricing, getPrice, getAddonPrice, calculateYearlySavings } from "@/hooks/use-pricing";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface UpgradePreview {
@@ -247,18 +247,15 @@ export function UpgradeToYearlyDialog({
 
   // Get add-on info from schema when tier is an add-on
   const addonConfig = !plan ? availableAddOns.find(a => a.id === tier) : undefined;
-  const addonHasYearlyPrice = addonConfig && 'yearlyPrice' in addonConfig;
-  
+  const addonYearlyPriceData = addonConfig ? getAddonPrice(prices, addonConfig.id, 'yearly') : undefined;
+  const addonHasYearlyPrice = !!addonYearlyPriceData;
+
   let addonMonthlyPrice: number | undefined = undefined;
   let addonYearlyPrice: number | undefined = undefined;
 
   if (!plan && addonConfig) {
-    // Always use schema monthly price for add-ons
-    addonMonthlyPrice = addonConfig.price;
-    // Use schema yearly price if defined, otherwise default to monthly * 12 (no discount)
-    addonYearlyPrice = addonHasYearlyPrice 
-      ? (addonConfig as any).yearlyPrice 
-      : addonConfig.price * 12;
+    addonMonthlyPrice = getAddonPrice(prices, addonConfig.id, 'monthly')?.unitAmount ?? addonConfig.price;
+    addonYearlyPrice = addonYearlyPriceData?.unitAmount ?? addonConfig.price * 12;
   } else if (!plan && subscriptionData?.price) {
     // Fallback to subscription data if no schema config
     addonMonthlyPrice = subscriptionData.billingPeriod === "yearly"

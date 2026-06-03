@@ -274,23 +274,19 @@ function getAvailableAddOnsWithPriceIds() {
       priceId: process.env.STRIPE_LMS_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[2], // payments
-      priceId: process.env.STRIPE_PAYMENTS_ADDON_PRICE_ID || "",
-    },
-    {
-      ...availableAddOns[3], // realestate
+      ...availableAddOns[2], // realestate
       priceId: process.env.STRIPE_REALESTATE_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[4], // transport
+      ...availableAddOns[3], // transport
       priceId: process.env.STRIPE_TRANSPORT_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[5], // newsletter 15k
+      ...availableAddOns[4], // newsletter 15k
       priceId: process.env.STRIPE_NEWSLETTER_ADDON_PRICE_ID || "",
     },
     {
-      ...availableAddOns[6], // newsletter 100k
+      ...availableAddOns[5], // newsletter 100k
       priceId: process.env.STRIPE_NEWSLETTER_EMAILS_100K_ADDON_MONTHLY_PRICE_ID || "",
     },
   ];
@@ -332,7 +328,7 @@ function getAddonYearlyConfig(addonId: string): { priceId: string; yearlyPrice: 
   if (!priceId) return null;
   
   const addon = availableAddOns.find(a => a.id === addonId);
-  const yearlyPrice = (addon && 'yearlyPrice' in addon ? addon.yearlyPrice : 120) as number;
+  const yearlyPrice = addon ? addon.price * 10 : 0;
   
   return { priceId, yearlyPrice };
 }
@@ -18997,9 +18993,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Map add-on ID to Stripe price ID
-      const priceId = ADDON_PRICE_MAP[addOnId];
-      
+      // Map add-on ID to Stripe price ID based on billing period
+      const priceId = billingPeriod === 'yearly'
+        ? (ADDON_YEARLY_PRICE_MAP[addOnId]?.priceId || ADDON_PRICE_MAP[addOnId])
+        : ADDON_PRICE_MAP[addOnId];
+
       if (!priceId) {
         return res.status(400).json({ error: `Invalid add-on ID: ${addOnId}` });
       }
@@ -19039,6 +19037,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           websiteProgressId: websiteProgressId.toString(),
           addOnId: addOnId,
           isAddonOnly: 'true',
+          billingPeriod: billingPeriod,
         },
       }, {
         idempotencyKey: idempotencyKey,
@@ -19059,6 +19058,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           currentPeriodEnd: new Date(subscription.current_period_end * 1000),
           productType: 'addon',
           productId: addOnId,
+          billingPeriod: billingPeriod,
           websiteProgressId: parseInt(websiteProgressId),
         })
         .returning();

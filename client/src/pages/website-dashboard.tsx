@@ -73,6 +73,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Subscription } from "@shared/schema";
 import { AVAILABLE_ADDONS } from "@/lib/addons";
+import { usePricing, getAddonPrice } from "@/hooks/use-pricing";
 
 type PaymentMethodInfo = {
   hasPaymentMethod?: boolean;
@@ -597,7 +598,7 @@ export default function WebsiteDashboard() {
         body: JSON.stringify({
           addOnId,
           websiteProgressId: Number(websiteId),
-          billingPeriod: "monthly",
+          billingPeriod: addonBillingPeriod,
         }),
         credentials: "include",
       });
@@ -613,6 +614,7 @@ export default function WebsiteDashboard() {
     onSuccess: (data) => {
       setConfirmDialogOpen(false);
       setSelectedAddOn(null);
+      setAddonBillingPeriod('monthly');
       toast({
         title: t("dashboard.success") || "Success",
         description:
@@ -652,6 +654,10 @@ export default function WebsiteDashboard() {
   // Add-on confirmation dialog state
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [selectedAddOn, setSelectedAddOn] = useState<{ id: string, name: string, description: string, price: number } | null>(null);
+  const [addonBillingPeriod, setAddonBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const [discoverBillingPeriod, setDiscoverBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+
+  const { data: stripePrices, isLoading: pricingLoading } = usePricing();
 
   // Fetch payment method details - MUST be after confirmDialogOpen is declared
   const { data: paymentMethod, isLoading: paymentMethodLoading } = useQuery<PaymentMethodInfo>({
@@ -2072,8 +2078,8 @@ export default function WebsiteDashboard() {
             <div className="pt-2 space-y-2">
               {selectedSubscription.status === "active" &&
                 selectedSubscription.billingPeriod === "monthly" &&
-                (selectedSubscription.productType !== "addon" || 
-                  AVAILABLE_ADDONS.find(a => a.id === (selectedSubscription.productId || selectedSubscription.tier) && 'yearlyPrice' in a)) && (
+                (selectedSubscription.productType !== "addon" ||
+                  getAddonPrice(stripePrices, selectedSubscription.productId || selectedSubscription.tier || '', 'yearly')) && (
                   <Button
                     variant="outline"
                     className="w-full upgrade-subscription"
@@ -4082,10 +4088,29 @@ export default function WebsiteDashboard() {
         <h2 className="text-2xl font-bold mb-2">
           {t("dashboard.discover") || "Discover"}
         </h2>
-        <p className="text-muted-foreground mb-6">
-          {t("dashboard.addOnsDesc") ||
-            "Enhance your website with premium features"}
-        </p>
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-muted-foreground">
+            {t("dashboard.addOnsDesc") ||
+              "Enhance your website with premium features"}
+          </p>
+          <div className="flex rounded-md border overflow-hidden text-sm flex-shrink-0 ml-4">
+            <button
+              type="button"
+              onClick={() => setDiscoverBillingPeriod('monthly')}
+              className={`px-3 py-1.5 transition-colors ${discoverBillingPeriod === 'monthly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
+            >
+              Monthly
+            </button>
+            <button
+              type="button"
+              onClick={() => setDiscoverBillingPeriod('yearly')}
+              disabled={pricingLoading}
+              className={`px-3 py-1.5 border-l transition-colors ${discoverBillingPeriod === 'yearly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-muted'} disabled:opacity-50`}
+            >
+              Yearly
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {AVAILABLE_ADDONS.filter((addon) => {
@@ -4144,13 +4169,18 @@ export default function WebsiteDashboard() {
                     ) : (
                       <>
                         <div className="flex items-baseline">
-                          <span className="text-2xl font-bold">{addon.price}€</span>
-                          <span className="text-muted-foreground text-sm">/month</span>
+                          <span className="text-2xl font-bold">
+                            {getAddonPrice(stripePrices, addon.id, discoverBillingPeriod)?.unitAmount ?? addon.price}€
+                          </span>
+                          <span className="text-muted-foreground text-sm">
+                            /{discoverBillingPeriod === 'yearly' && getAddonPrice(stripePrices, addon.id, 'yearly') ? 'year' : 'month'}
+                          </span>
                         </div>
                         <Button
                           onClick={() => {
                             if (!isPurchased) {
                               setSelectedAddOn(addon);
+                              setAddonBillingPeriod(discoverBillingPeriod);
                               setConfirmDialogOpen(true);
                             }
                           }}
@@ -4643,7 +4673,10 @@ export default function WebsiteDashboard() {
       <Dialog open={confirmDialogOpen} onOpenChange={(open) => {
         if (!purchaseAddOnMutation.isPending) {
           setConfirmDialogOpen(open);
-          if (!open) setSelectedAddOn(null);
+          if (!open) {
+            setSelectedAddOn(null);
+            setAddonBillingPeriod('monthly');
+          }
         }
       }}>
         <DialogContent data-testid="dialog-addon-confirm">
@@ -4663,9 +4696,34 @@ export default function WebsiteDashboard() {
                 <p className="text-sm text-muted-foreground mb-3">
                   {selectedAddOn.description}
                 </p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold">€{selectedAddOn.price}</span>
-                  <span className="text-muted-foreground">/month</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-bold">
+                      €{getAddonPrice(stripePrices, selectedAddOn.id, addonBillingPeriod)?.unitAmount ?? selectedAddOn.price}
+                    </span>
+                    <span className="text-muted-foreground">
+                      /{addonBillingPeriod === 'yearly' ? 'year' : 'month'}
+                    </span>
+                  </div>
+                  <div className="flex rounded-md border overflow-hidden text-sm">
+                    <button
+                      type="button"
+                      onClick={() => setAddonBillingPeriod('monthly')}
+                      className={`px-3 py-1 transition-colors ${addonBillingPeriod === 'monthly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
+                    >
+                      Monthly
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (getAddonPrice(stripePrices, selectedAddOn.id, 'yearly')) setAddonBillingPeriod('yearly');
+                      }}
+                      disabled={!getAddonPrice(stripePrices, selectedAddOn.id, 'yearly')}
+                      className={`px-3 py-1 border-l transition-colors ${addonBillingPeriod === 'yearly' ? 'bg-primary text-primary-foreground' : 'bg-transparent text-muted-foreground hover:bg-muted'} disabled:opacity-40 disabled:cursor-not-allowed`}
+                    >
+                      Yearly
+                    </button>
+                  </div>
                 </div>
               </div>
 

@@ -7,21 +7,31 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 export interface NormalizedPrice {
-  tier: SubscriptionTier;
+  tier: string;
   billingPeriod: "monthly" | "yearly";
   priceId: string;
   unitAmount: number;
   currency: string;
 }
 
-// Map of known price IDs from environment variables to tier and billing period
-const PRICE_ID_MAP: Record<string, { tier: SubscriptionTier; billingPeriod: "monthly" | "yearly" }> = {
+// Map of known price IDs from environment variables to tier/addonId and billing period
+const PRICE_ID_MAP: Record<string, { tier: string; billingPeriod: "monthly" | "yearly" }> = {
+  // Subscription plans
   [process.env.STRIPE_BASIC_MONTHLY_PRICE_ID || ""]: { tier: "basic", billingPeriod: "monthly" },
   [process.env.STRIPE_BASIC_YEARLY_PRICE_ID || ""]: { tier: "basic", billingPeriod: "yearly" },
   [process.env.STRIPE_ESSENTIAL_MONTHLY_PRICE_ID || ""]: { tier: "essential", billingPeriod: "monthly" },
   [process.env.STRIPE_ESSENTIAL_YEARLY_PRICE_ID || ""]: { tier: "essential", billingPeriod: "yearly" },
   [process.env.STRIPE_PRO_MONTHLY_PRICE_ID || ""]: { tier: "pro", billingPeriod: "monthly" },
   [process.env.STRIPE_PRO_YEARLY_PRICE_ID || ""]: { tier: "pro", billingPeriod: "yearly" },
+  // Add-ons
+  [process.env.STRIPE_BOOKING_ADDON_PRICE_ID || ""]: { tier: "booking", billingPeriod: "monthly" },
+  [process.env.STRIPE_BOOKING_ADDON_YEARLY_PRICE_ID || ""]: { tier: "booking", billingPeriod: "yearly" },
+  [process.env.STRIPE_LMS_ADDON_PRICE_ID || ""]: { tier: "lms", billingPeriod: "monthly" },
+  [process.env.STRIPE_LMS_ADDON_YEARLY_PRICE_ID || ""]: { tier: "lms", billingPeriod: "yearly" },
+  [process.env.STRIPE_NEWSLETTER_ADDON_PRICE_ID || ""]: { tier: "newsletter", billingPeriod: "monthly" },
+  [process.env.STRIPE_NEWSLETTER_ADDON_YEARLY_PRICE_ID || ""]: { tier: "newsletter", billingPeriod: "yearly" },
+  [process.env.STRIPE_NEWSLETTER_EMAILS_100K_ADDON_MONTHLY_PRICE_ID || ""]: { tier: "newsletter_100", billingPeriod: "monthly" },
+  [process.env.STRIPE_NEWSLETTER_100K_ADDON_YEARLY_PRICE_ID || ""]: { tier: "newsletter_100", billingPeriod: "yearly" },
 };
 
 /**
@@ -111,23 +121,33 @@ export async function getPrices(forceRefresh = false): Promise<NormalizedPrice[]
   // Try to get prices from database first
   try {
     const dbPrices = await storage.getAllStripePrices();
-    
+
     if (dbPrices.length > 0) {
-      console.log(`📦 Loaded ${dbPrices.length} prices from database`);
-      return dbPrices.map(p => ({
-        tier: p.tier as SubscriptionTier,
-        billingPeriod: p.billingPeriod as "monthly" | "yearly",
-        priceId: p.priceId,
-        unitAmount: p.unitAmount / 100, // Convert from cents to euros
-        currency: p.currency,
-      }));
+      // Verify every configured price ID is cached — if any are missing, the map
+      // was extended since the last fetch (e.g. add-ons were added) and we need a refresh.
+      const dbPriceIds = new Set(dbPrices.map(p => p.priceId));
+      const expectedPriceIds = Object.keys(PRICE_ID_MAP).filter(id => id !== "");
+      const allCached = expectedPriceIds.every(id => dbPriceIds.has(id));
+
+      if (allCached) {
+        console.log(`📦 Loaded ${dbPrices.length} prices from database`);
+        return dbPrices.map(p => ({
+          tier: p.tier,
+          billingPeriod: p.billingPeriod as "monthly" | "yearly",
+          priceId: p.priceId,
+          unitAmount: p.unitAmount / 100,
+          currency: p.currency,
+        }));
+      }
+
+      console.log(`🔄 Pricing cache is incomplete (${dbPrices.length} cached, ${expectedPriceIds.length} expected) — refreshing from Stripe...`);
     }
   } catch (error) {
     console.error("⚠️ Error loading prices from database:", error);
   }
 
-  // Database is empty, fetch from Stripe
-  console.log("📥 No prices in database, fetching from Stripe...");
+  // DB is empty or incomplete — fetch from Stripe
+  console.log("📥 Fetching prices from Stripe...");
   return await fetchPricesFromStripe();
 }
 
