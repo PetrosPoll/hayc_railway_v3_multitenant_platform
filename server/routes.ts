@@ -20722,6 +20722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email?: string;
         message?: string;
         phone?: string;
+        age?: string | number;
         _hp?: string;
       };
 
@@ -20757,6 +20758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { siteId, name, email, message } = parseResult.data;
       const phone = body.phone;
+      const age = body.age !== undefined ? String(body.age) : undefined;
 
       const [website] = await db
         .select()
@@ -20799,6 +20801,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: escapeHtml(name),
           email: escapeHtml(email),
           phone: phone ?? "N/A",
+          age: age ?? "N/A",
           message: escapeHtml(message),
           siteLabel: escapeHtml(siteLabel),
         },
