@@ -107,13 +107,6 @@ export default function PricingPage() {
       pro: t("pricing.comparison.analytics.pro"),
     },
     {
-      feature: t("pricing.comparison.addons.feature"),
-      description: t("pricing.comparison.addons.description"),
-      basic: t("pricing.comparison.addons.basic"),
-      essential: t("pricing.comparison.addons.essential"),
-      pro: t("pricing.comparison.addons.pro"),
-    },
-    {
       feature: t("pricing.comparison.support.feature"),
       description: t("pricing.comparison.support.description"),
       basic: t("pricing.comparison.support.basic"),
@@ -322,14 +315,9 @@ export default function PricingPage() {
 
         <div className="relative z-10 w-full flex flex-col items-center gap-12 pt-4">
           <div className="w-full flex flex-col items-center gap-4">
-            <button
-              type="button"
-              className="px-6 py-3.5 bg-[#EFF6FF] rounded-lg flex justify-center items-center"
-            >
-              <span className="text-center text-[#0C275F] text-base font-semibold font-brand leading-5">
-                {t("pricing.comparePlans")}
-              </span>
-            </button>
+            <h2 className="text-center text-[#EFF6FF] text-2xl leading-8 lg:text-4xl lg:leading-tight font-semibold font-brand">
+              {t("pricing.comparePlans")}
+            </h2>
 
             <div className="w-full rounded-[20px] outline outline-1 outline-offset-[-1px] outline-white/30 overflow-hidden">
             {/* Mobile table */}

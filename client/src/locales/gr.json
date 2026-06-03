@@ -154,16 +154,16 @@
             "emailMarketing": {
                 "feature": "Email Marketing (emails / μήνα)",
                 "description": "Όρια αποστολής newsletter που περιλαμβάνονται στο πλάνο σας.",
-                "basic": "Essential",
-                "essential": "Basic",
-                "pro": "Advanced"
+                "basic": "1.000 emails / μήνα",
+                "essential": "3.000 emails / μήνα",
+                "pro": "10.000 emails / μήνα"
             },
             "analytics": {
                 "feature": "Analytics",
                 "description": "Στατιστικά επισκεψιμότητας για να καταλαβαίνετε τι λειτουργεί",
-                "basic": "1.000",
-                "essential": "3.000",
-                "pro": "10.000"
+                "basic": "-",
+                "essential": "Βασικό",
+                "pro": "Προχωρημένο"
             },
             "addons": {
                 "feature": "Add-ons",
@@ -175,9 +175,9 @@
             "support": {
                 "feature": "Υποστήριξη",
                 "description": "Βοήθεια όταν τη χρειάζεστε, στα Ελληνικά και Αγγλικά.",
-                "basic": "+10€ / μήνα",
-                "essential": "+10€ / μήνα",
-                "pro": "Συμπεριλαμβάνεται"
+                "basic": "Email Υποστήριξη (GR/EN)",
+                "essential": "Email Υποστήριξη (GR/EN)",
+                "pro": "Τηλεφωνική Υποστήριξη (εργάσιμες ώρες)"
             }
         }
     },

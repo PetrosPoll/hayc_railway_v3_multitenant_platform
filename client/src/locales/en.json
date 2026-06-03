@@ -154,16 +154,16 @@
             "emailMarketing": {
                 "feature": "Email Marketing (emails / month)",
                 "description": "Newsletter sending limits included in your plan.",
-                "basic": "Essential",
-                "essential": "Basic",
-                "pro": "Advanced"
+                "basic": "1,000 emails / month",
+                "essential": "3,000 emails / month",
+                "pro": "10,000 emails / month"
             },
             "analytics": {
                 "feature": "Analytics",
                 "description": "Traffic insights to understand what's working",
-                "basic": "1,000",
-                "essential": "3,000",
-                "pro": "10,000"
+                "basic": "-",
+                "essential": "Essential",
+                "pro": "Advanced"
             },
             "addons": {
                 "feature": "Add-ons",
@@ -175,9 +175,9 @@
             "support": {
                 "feature": "Support",
                 "description": "Help when you need it, in Greek and English.",
-                "basic": "+10€ / month each",
-                "essential": "+10€ / month each",
-                "pro": "Included"
+                "basic": "Email Support (GR/EN)",
+                "essential": "Email Support (GR/EN)",
+                "pro": "Phone Support (business hours)"
             }
         }
     },
