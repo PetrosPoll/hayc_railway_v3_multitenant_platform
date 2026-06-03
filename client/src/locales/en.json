@@ -3257,11 +3257,14 @@
             "addonsLine": "Selected add-ons",
             "setupFeeLine": "One-time setup fee",
             "payTodayLine": "Pay Today",
-            "payTodayNote": "Includes the one-time setup fee and your first month",
-            "payTodayNoteYearly": "Includes the one-time setup fee and your first year",
+            "payTodayNote": "This is the amount you pay on the first month of your subscription.",
+            "payTodayNoteYearly": "This is the amount you pay on the first year of your subscription.",
             "subscriptionContinues": "Your subscription continues at {{amount}}€/mo until changed or cancelled.",
             "subscriptionContinuesYearly": "Your subscription continues at {{amount}}€/yr until changed or cancelled.",
-            "continueToPayment": "Continue to Payment"
+            "continueToPayment": "Continue to Payment",
+            "deliverySpeedTitle": "Delivery Speed",
+            "speedUpDev": "Get your website delivered in 4 days instead of 10",
+            "speedDevLine": "Express delivery"
         },
         "onboarding": {
             "title": "Add your services",

@@ -1,10 +1,12 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
+import { useQuery } from "@tanstack/react-query";
 import type { UseFormReturn } from "react-hook-form";
 import { PLANS, WIZARD_BILLING_PERIODS, type WizardValues } from "@/pages/get-started";
 import { FormControl, FormField, FormItem } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import { Calendar, Check, LayoutGrid, RefreshCcw } from "lucide-react";
+import { usePricing, getPrice, getAddonPrice } from "@/hooks/use-pricing";
 
 const ICON_TODAY    = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779920606/card-tick_bowfis.svg";
 const ICON_CALENDAR = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779349753/calendar_orange_yt37oa.svg";
@@ -13,10 +15,26 @@ const ICON_INFO     = "https://res.cloudinary.com/dem12vqtl/image/upload/v177992
 
 const SETUP_FEE = 99;
 
-const ADDON_PRICE_MAP: Record<string, number> = {
+// Display-name → add-on ID (for Stripe price lookup)
+const ADDON_ID_MAP: Record<string, string> = {
+  "Booking Integration": "booking",
+  "HDP": "lms",
+};
+
+// Fallbacks used while Stripe prices are loading
+const ADDON_MONTHLY_FALLBACK: Record<string, number> = {
   "Booking Integration": 10,
   "HDP": 10,
 };
+const ADDON_YEARLY_FALLBACK: Record<string, number> = {
+  "Booking Integration": 120,
+  "HDP": 120,
+};
+const PLAN_FALLBACKS = {
+  basic:     { monthly: 34,  yearly: 326  },
+  essential: { monthly: 39,  yearly: 372  },
+  pro:       { monthly: 200, yearly: 1920 },
+} as const;
 
 const ADDON_I18N_KEY_MAP: Record<string, string> = {
   "Booking Integration": "bookingIntegration",
@@ -28,21 +46,10 @@ const ADDON_ICON: Record<string, React.ReactNode> = {
   "HDP": <LayoutGrid className="w-5 h-5 text-[#ED4C14]" />,
 };
 
-const ADDON_YEARLY_PRICE_MAP: Record<string, number> = {
-  "Booking Integration": 120,
-  "HDP": 120,
-};
-
-const PLAN_CONFIG: {
-  id: (typeof PLANS)[number];
-  monthlyPrice: number;
-  yearlyPrice: number;
-  yearlyPricePerMonth: number;
-  recommended: boolean;
-}[] = [
-  { id: "basic",     monthlyPrice: 34,  yearlyPrice: 326,  yearlyPricePerMonth: 27,  recommended: false },
-  { id: "essential", monthlyPrice: 39,  yearlyPrice: 372,  yearlyPricePerMonth: 31,  recommended: true  },
-  { id: "pro",       monthlyPrice: 200, yearlyPrice: 1920, yearlyPricePerMonth: 160, recommended: false },
+const PLAN_CONFIG: { id: (typeof PLANS)[number]; recommended: boolean }[] = [
+  { id: "basic",     recommended: false },
+  { id: "essential", recommended: true  },
+  { id: "pro",       recommended: false },
 ];
 
 interface StepPricingProps {
@@ -64,15 +71,41 @@ export default function StepPricing({
   const billingPeriod  = form.watch("billingPeriod") ?? "monthly";
   const selectedAddons = form.watch("selectedAddons") ?? [];
 
+  const { data: stripePrices } = usePricing();
+
+  const { data: speedDevData } = useQuery<{ unitAmount: number | null; priceId: string | null }>({
+    queryKey: ["/api/speed-dev-price"],
+    staleTime: 15 * 60 * 1000,
+  });
+  const speedUpDevChecked = form.watch("speedUpDev") ?? false;
+
+  const planMonthly = (id: string): number =>
+    getPrice(stripePrices, id as "basic" | "essential" | "pro", "monthly")?.unitAmount
+      ?? PLAN_FALLBACKS[id as keyof typeof PLAN_FALLBACKS]?.monthly ?? 0;
+
+  const planYearly = (id: string): number =>
+    getPrice(stripePrices, id as "basic" | "essential" | "pro", "yearly")?.unitAmount
+      ?? PLAN_FALLBACKS[id as keyof typeof PLAN_FALLBACKS]?.yearly ?? 0;
+
+  const planYearlyPerMonth = (id: string): number => Math.round(planYearly(id) / 12);
+
+  const addonMonthly = (name: string): number =>
+    getAddonPrice(stripePrices, ADDON_ID_MAP[name] ?? name, "monthly")?.unitAmount
+      ?? ADDON_MONTHLY_FALLBACK[name] ?? 0;
+
+  const addonYearly = (name: string): number =>
+    getAddonPrice(stripePrices, ADDON_ID_MAP[name] ?? name, "yearly")?.unitAmount
+      ?? ADDON_YEARLY_FALLBACK[name] ?? addonMonthly(name) * 12;
+
   const isYearly     = billingPeriod === "yearly";
-  const planConfig   = PLAN_CONFIG.find((p) => p.id === selectedPlanId) ?? PLAN_CONFIG[1];
-  const basePrice    = isYearly ? planConfig.yearlyPricePerMonth : planConfig.monthlyPrice;
-  const addonsTotal  = selectedAddons.reduce((sum, a) => sum + (ADDON_PRICE_MAP[a] ?? 0), 0);
+  const basePrice    = isYearly ? planYearlyPerMonth(selectedPlanId) : planMonthly(selectedPlanId);
+  const addonsTotal  = selectedAddons.reduce((sum, a) => sum + addonMonthly(a), 0);
   const monthlyTotal = basePrice + addonsTotal;
 
-  const yearlyAddonsTotal = selectedAddons.reduce((sum, a) => sum + (ADDON_YEARLY_PRICE_MAP[a] ?? (ADDON_PRICE_MAP[a] ?? 0) * 12), 0);
-  const billingTotal = isYearly ? planConfig.yearlyPrice + yearlyAddonsTotal : monthlyTotal;
-  const payToday     = SETUP_FEE + billingTotal;
+  const yearlyAddonsTotal = selectedAddons.reduce((sum, a) => sum + addonYearly(a), 0);
+  const billingTotal = isYearly ? planYearly(selectedPlanId) + yearlyAddonsTotal : monthlyTotal;
+  const speedDevFee  = speedUpDevChecked && speedDevData?.unitAmount ? speedDevData.unitAmount : 0;
+  const payToday     = SETUP_FEE + billingTotal + speedDevFee;
 
   const nextBillingDate = new Date();
   if (isYearly) {
@@ -223,9 +256,9 @@ export default function StepPricing({
                       <div className="flex flex-col gap-3">
                         {PLAN_CONFIG.map((plan) => {
                           const isSelected   = field.value === plan.id;
-                          const displayPrice = billingPeriod === "yearly"
-                            ? plan.yearlyPricePerMonth
-                            : plan.monthlyPrice;
+                          const displayPrice = isYearly
+                            ? planYearlyPerMonth(plan.id)
+                            : planMonthly(plan.id);
                           return (
                             <button
                               key={plan.id}
@@ -314,11 +347,49 @@ export default function StepPricing({
                       </span>
                     </div>
                     <span className="text-white text-base font-normal font-brand leading-6">
-                      +{isYearly ? (ADDON_YEARLY_PRICE_MAP[addon] ?? (ADDON_PRICE_MAP[addon] ?? 0) * 12) : (ADDON_PRICE_MAP[addon] ?? 0)}€/{isYearly ? "yr" : "mo"}
+                      {isYearly ? addonYearly(addon) : addonMonthly(addon)}€/{isYearly ? "yr" : "mo"}
                     </span>
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* ── Delivery Speed ── */}
+          {speedDevData?.unitAmount != null && (
+            <div className="flex flex-col gap-3">
+              <div className="text-white text-lg font-medium font-brand">
+                {t("getStarted.pricing.deliverySpeedTitle")}
+              </div>
+              <button
+                type="button"
+                onClick={() => form.setValue("speedUpDev", !speedUpDevChecked)}
+                className={cn(
+                  "w-full px-3.5 py-3 rounded-[10px] text-left",
+                  "outline outline-1 outline-offset-[-1px] outline-blue-50/20",
+                  "inline-flex items-center gap-3",
+                  "border-0 cursor-pointer transition-all",
+                  speedUpDevChecked
+                    ? "bg-[radial-gradient(ellipse_141.42%_177.70%_at_100%_100%,rgba(237,76,20,0.50)_0%,rgba(237,76,20,0)_77%)]"
+                    : "bg-[radial-gradient(ellipse_141.42%_177.70%_at_100%_100%,rgba(237,76,20,0.02)_0%,rgba(237,76,20,0.04)_50%,rgba(237,76,20,0.01)_100%)]",
+                )}
+              >
+                {speedUpDevChecked ? (
+                  <div className="w-5 h-5 flex-shrink-0 bg-[#ED4C14] rounded-full flex items-center justify-center">
+                    <Check className="w-3 h-3 text-black" strokeWidth={3} />
+                  </div>
+                ) : (
+                  <div className="w-5 h-5 flex-shrink-0 rounded-full border border-white" />
+                )}
+                <div className="flex-1 flex justify-between items-center gap-2 min-w-0">
+                  <span className="text-white text-sm font-normal font-brand leading-5">
+                    {t("getStarted.pricing.speedUpDev")}
+                  </span>
+                  <span className="text-white text-base font-normal font-brand leading-6 whitespace-nowrap flex-shrink-0">
+                    {speedDevData.unitAmount}€
+                  </span>
+                </div>
+              </button>
             </div>
           )}
 
@@ -341,7 +412,7 @@ export default function StepPricing({
                         {t("getStarted.pricing.basePlanLine", { plan: planLabel })}
                       </span>
                       <span className="text-white text-sm font-normal font-brand leading-5 tabular-nums">
-                        {isYearly ? `${planConfig.yearlyPrice}€/yr` : `${basePrice}€/mo`}
+                        {isYearly ? `${planYearly(selectedPlanId)}€/yr` : `${basePrice}€/mo`}
                       </span>
                     </div>
                     {addonsTotal > 0 && (
@@ -350,7 +421,17 @@ export default function StepPricing({
                           {t("getStarted.pricing.addonsLine")}
                         </span>
                         <span className="text-white text-sm font-normal font-brand leading-5 tabular-nums">
-                          +{isYearly ? yearlyAddonsTotal : addonsTotal}€/{isYearly ? "yr" : "mo"}
+                          {isYearly ? yearlyAddonsTotal : addonsTotal}€/{isYearly ? "yr" : "mo"}
+                        </span>
+                      </div>
+                    )}
+                    {speedDevFee > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-white text-sm font-normal font-brand leading-5">
+                          {t("getStarted.pricing.speedDevLine")}
+                        </span>
+                        <span className="text-white text-sm font-normal font-brand leading-5 tabular-nums">
+                          {speedDevFee}€
                         </span>
                       </div>
                     )}

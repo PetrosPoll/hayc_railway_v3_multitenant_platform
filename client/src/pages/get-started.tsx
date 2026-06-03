@@ -85,6 +85,7 @@ const wizardSchema = z.object({
   suggestedAddons: z.array(z.string()).optional(),
   selectedAddons: z.array(z.string()).optional(),
   suggestedStructure: z.array(z.string()).optional(),
+  speedUpDev: z.boolean().optional().default(false),
 });
 
 export type WizardValues = z.infer<typeof wizardSchema>;
@@ -457,6 +458,7 @@ export default function GetStarted() {
           postalCode: values.documentType === "invoice" ? (values.postalCode ?? "") : "",
           addOns: values.selectedAddons ?? [],
           language: i18n.language,
+          speedUpDev: values.speedUpDev ?? false,
         }),
       });
 

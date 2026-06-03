@@ -486,6 +486,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public endpoint to fetch the speed-up-development one-time price from Stripe
+  app.get("/api/speed-dev-price", async (_req, res) => {
+    const priceId = process.env.STRIPE_SPEED_DEV_PRICE_ID;
+    if (!priceId) return res.json({ unitAmount: null, priceId: null });
+    try {
+      const price = await stripe.prices.retrieve(priceId);
+      res.json({
+        priceId: price.id,
+        unitAmount: price.unit_amount ? price.unit_amount / 100 : null,
+      });
+    } catch (err) {
+      console.error("Error fetching speed dev price:", err);
+      res.status(500).json({ error: "Failed to fetch price" });
+    }
+  });
+
   // Admin-only endpoint to refresh pricing from Stripe
   app.post("/api/pricing/refresh", async (req, res) => {
     try {
@@ -2397,6 +2413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       postalCode: z.string().nullable().optional(),
       addOns: z.array(z.string()).optional(),
       language: z.string().optional(),
+      speedUpDev: z.boolean().optional().default(false),
     });
 
     try {
@@ -2412,16 +2429,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [];
 
-      lineItems.push({
-        price: setupFee.id,
-        quantity: 1,
-      });
-
+      // 1. Base plan (recurring)
       lineItems.push({
         price: price.id,
         quantity: 1,
       });
 
+      // 2. Add-ons (recurring)
       if (body.addOns && body.addOns.length > 0) {
         console.log("📦 Processing add-ons:", body.addOns);
         body.addOns.forEach((rawAddonId) => {
@@ -2439,6 +2453,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.warn(`Unknown add-on ID: ${addonId} (raw: ${rawAddonId})`);
           }
         });
+      }
+
+      // 3. Setup fee (one-time, mandatory)
+      lineItems.push({
+        price: setupFee.id,
+        quantity: 1,
+      });
+
+      // 4. Speed-up development (one-time, optional)
+      if (body.speedUpDev && process.env.STRIPE_SPEED_DEV_PRICE_ID) {
+        lineItems.push({
+          price: process.env.STRIPE_SPEED_DEV_PRICE_ID,
+          quantity: 1,
+        });
+        console.log("⚡ Speed-up development fee added to line items");
       }
 
       console.log(
@@ -2470,6 +2499,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           addOns: body.addOns ? JSON.stringify(body.addOns) : "",
           language: body.language || "en",
           isResume: "false",
+          speedUpDev: body.speedUpDev ? "true" : "false",
         },
       };
 

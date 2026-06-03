@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
+import { usePricing, getPrice } from "@/hooks/use-pricing";
 
 export default function PricingPage() {
   const { t } = useTranslation();
@@ -11,13 +12,30 @@ export default function PricingPage() {
   const [billing, setBilling] = useState<"monthly" | "annually">("monthly");
   const [mobileComparisonPlan, setMobileComparisonPlan] = useState<"basic" | "essential" | "pro">("basic");
 
+  const { data: stripePrices } = usePricing();
+
+  const FALLBACK_PRICES = {
+    basic:     { monthly: 34,  annualPerMonth: 27  },
+    essential: { monthly: 39,  annualPerMonth: 31  },
+    pro:       { monthly: 200, annualPerMonth: 160 },
+  };
+
+  const displayPrice = (tier: "basic" | "essential" | "pro", period: "monthly" | "annually") => {
+    const stripePeriod = period === "annually" ? "yearly" : "monthly";
+    const price = getPrice(stripePrices, tier, stripePeriod);
+    if (price) {
+      const amount = period === "annually" ? Math.round(price.unitAmount / 12) : price.unitAmount;
+      return `${amount}€`;
+    }
+    const fb = FALLBACK_PRICES[tier];
+    return `${period === "annually" ? fb.annualPerMonth : fb.monthly}€`;
+  };
+
   const plans = [
     {
       tier: "basic" as const,
       name: t("pricing.plans.basic.name"),
       tagline: t("pricing.plans.basic.tagline"),
-      monthlyPrice: "34€",
-      annualPrice: "27€",
       features: [
         t("pricing.plans.basic.features.0"),
         t("pricing.plans.basic.features.1"),
@@ -31,8 +49,6 @@ export default function PricingPage() {
       tier: "essential" as const,
       name: t("pricing.plans.essential.name"),
       tagline: t("pricing.plans.essential.tagline"),
-      monthlyPrice: "39€",
-      annualPrice: "31€",
       features: [
         t("pricing.plans.essential.features.0"),
         t("pricing.plans.essential.features.1"),
@@ -47,8 +63,6 @@ export default function PricingPage() {
       tier: "pro" as const,
       name: t("pricing.plans.pro.name"),
       tagline: t("pricing.plans.pro.tagline"),
-      monthlyPrice: "200€",
-      annualPrice: "160€",
       features: [
         t("pricing.plans.pro.features.0"),
         t("pricing.plans.pro.features.1"),
@@ -115,8 +129,7 @@ export default function PricingPage() {
     },
   ];
 
-  const mobileComparisonPrice =
-    mobileComparisonPlan === "basic" ? "34€" : mobileComparisonPlan === "essential" ? "39€" : "200€";
+  const mobileComparisonPrice = displayPrice(mobileComparisonPlan, billing);
 
   return (
     <div className="w-full bg-black min-h-screen flex flex-col items-center gap-4">
@@ -219,7 +232,7 @@ export default function PricingPage() {
                     <div className="flex-1 flex flex-col">
                       <div className="flex items-end gap-1.5">
                         <span className="text-white text-5xl font-semibold font-brand leading-[70px]">
-                          {billing === "monthly" ? plan.monthlyPrice : plan.annualPrice}
+                          {displayPrice(plan.tier, billing)}
                         </span>
                         <span className="text-white/80 text-sm font-normal font-brand leading-5 mb-3">
                           {t("pricing.perMonth")} · {t("pricing.vatIncluded")}
@@ -397,7 +410,7 @@ export default function PricingPage() {
               <div className="flex-1 flex flex-col">
                 <div className="p-5 border-r border-zinc-800 flex justify-between items-end">
                   <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.basic.name")}</span>
-                  <span className="text-white text-sm font-normal font-brand leading-5">34€</span>
+                  <span className="text-white text-sm font-normal font-brand leading-5">{displayPrice("basic", billing)}</span>
                 </div>
                 {comparisonRows.map((row, i) => (
                   <div key={i} className="h-36 px-5 py-6 outline outline-1 outline-offset-[-1px] outline-zinc-800 flex flex-col justify-center items-center gap-2.5">
@@ -410,7 +423,7 @@ export default function PricingPage() {
               <div className="flex-1 flex flex-col">
                 <div className="p-5 border-r border-zinc-800 flex justify-between items-end">
                   <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.essential.name")}</span>
-                  <span className="text-white text-sm font-normal font-brand leading-5">39€</span>
+                  <span className="text-white text-sm font-normal font-brand leading-5">{displayPrice("essential", billing)}</span>
                 </div>
                 {comparisonRows.map((row, i) => (
                   <div key={i} className="h-36 px-5 py-6 outline outline-1 outline-offset-[-1px] outline-zinc-800 flex flex-col justify-center items-center gap-2.5">
@@ -423,7 +436,7 @@ export default function PricingPage() {
               <div className="flex-1 flex flex-col">
                 <div className="p-5 flex justify-between items-end">
                   <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.pro.name")}</span>
-                  <span className="text-white text-sm font-normal font-brand leading-5">200€</span>
+                  <span className="text-white text-sm font-normal font-brand leading-5">{displayPrice("pro", billing)}</span>
                 </div>
                 {comparisonRows.map((row, i) => (
                   <div key={i} className="h-36 px-5 py-6 border-l border-t border-b border-zinc-800 flex flex-col justify-center items-center gap-2.5">
