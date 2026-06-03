@@ -9,14 +9,6 @@ const AGRICULTURE_TEMPLATES = [
   },
   {
     id: 2,
-    name: "Orgarium",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937539/orgarium_yfdghu.png",
-    description: "Professional template for corporate websites",
-    category: "Agriculture",
-    externalUrl: "https://orgarium-react.vercel.app/",
-  },
-  {
-    id: 3,
     name: "Agrofarm",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937524/agrofarm_yydlgl.png",
     description: "Professional template for corporate websites",
@@ -24,7 +16,7 @@ const AGRICULTURE_TEMPLATES = [
     externalUrl: "https://htmldemo.zcubethemes.com/agrofarm/services.html",
   },
   {
-    id: 4,
+    id: 3,
     name: "Slando",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937540/slando_g9nxxu.png",
     description: "Professional template for corporate websites",
@@ -32,7 +24,7 @@ const AGRICULTURE_TEMPLATES = [
     externalUrl: "https://themazine.com/mr/slando/index.html",
   },
   {
-    id: 5,
+    id: 4,
     name: "Laon",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937542/laonwine_r9ujbu.png",
     description: "Professional template for corporate websites",
@@ -40,7 +32,7 @@ const AGRICULTURE_TEMPLATES = [
     externalUrl: "https://laonwine-html.themerex.net/index.html",
   },
   {
-    id: 6,
+    id: 5,
     name: "Zengarden",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937543/zengarden_c3p4qn.png",
     description: "Professional template for corporate websites",
@@ -48,7 +40,7 @@ const AGRICULTURE_TEMPLATES = [
     externalUrl: "https://themedemo.foundstrap.com/zengarden/index.html",
   },
   {
-    id: 7,
+    id: 6,
     name: "Brikkho",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937538/brikkho_yjhcxr.png",
     description: "Professional template for corporate websites",
@@ -56,7 +48,7 @@ const AGRICULTURE_TEMPLATES = [
     externalUrl: "https://webheady.com/brikkho/index.html",
   },
   {
-    id: 8,
+    id: 7,
     name: "Landi",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937528/landi_pvlcaf.png",
     description: "Professional template for corporate websites",
@@ -64,7 +56,7 @@ const AGRICULTURE_TEMPLATES = [
     externalUrl: "https://twinkletheme.com/themeforest/html/landi/index.html",
   },
   {
-    id: 9,
+    id: 8,
     name: "Gardnma",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937539/gardnma_f4arjy.png",
     description: "Professional template for corporate websites",
@@ -72,7 +64,7 @@ const AGRICULTURE_TEMPLATES = [
     externalUrl: "https://weblayout.mnsithub.com/html/webplateone/gardnma/index.html",
   },
   {
-    id: 10,
+    id: 9,
     name: "Leaflife",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761937534/leaflife_xglrn6.png",
     description: "Professional template for corporate websites",
@@ -83,7 +75,7 @@ const AGRICULTURE_TEMPLATES = [
 
 const REAL_ESTATE_TEMPLATES = [
   {
-    id: 11,
+    id: 10,
     name: "Estate Guide",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942133/axiomthemes_vog4we.png",
     description: "Professional template for corporate websites",
@@ -91,15 +83,7 @@ const REAL_ESTATE_TEMPLATES = [
     externalUrl: "https://estate-html.axiomthemes.com/index.html",
   },
   {
-    id: 12,
-    name: "Land Estate",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942139/landestate_yj2nnj.png",
-    description: "Professional template for corporate websites",
-    category: "real_estate",
-    externalUrl: "https://themazine.com/thewp/landestate/#",
-  },
-  {
-    id: 13,
+    id: 11,
     name: "Realvilla",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942141/realvilla_uis54a.png",
     description: "Professional template for corporate websites",
@@ -107,7 +91,7 @@ const REAL_ESTATE_TEMPLATES = [
     externalUrl: "https://htmldesigntemplates.com/html/realvilla/index.html",
   },
   {
-    id: 14,
+    id: 12,
     name: "Reales",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942144/reales_kozjrx.png",
     description: "Professional template for corporate websites",
@@ -115,7 +99,7 @@ const REAL_ESTATE_TEMPLATES = [
     externalUrl: "https://tanshcreative.com/reales-lp-preview/index.html",
   },
   {
-    id: 15,
+    id: 13,
     name: "Relxtower",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942143/relxtower_wimktz.png",
     description: "Professional template for corporate websites",
@@ -123,7 +107,7 @@ const REAL_ESTATE_TEMPLATES = [
     externalUrl: "https://htmldemo.zcubethemes.com/relxtower/index.html",
   },
   {
-    id: 16,
+    id: 14,
     name: "Realtor",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942139/realtor_jccfz9.png",
     description: "Professional template for corporate websites",
@@ -131,7 +115,7 @@ const REAL_ESTATE_TEMPLATES = [
     externalUrl: "https://demoxml.com/html/realtor/index.html",
   },
   {
-    id: 17,
+    id: 15,
     name: "Lalan",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942140/lalan_x2udn3.png",
     description: "Professional template for corporate websites",
@@ -139,23 +123,7 @@ const REAL_ESTATE_TEMPLATES = [
     externalUrl: "https://demo.zytheme.com/lalan/index.html",
   },
   {
-    id: 18,
-    name: "Rofaria",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942130/rofaria_rfsyue.png",
-    description: "Professional template for corporate websites",
-    category: "real_estate",
-    externalUrl: "https://html.rometheme.net/rofaria/index.html",
-  },
-  // {
-  //   id: 19,
-  //   name: "Palace",
-  //   preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942135/palace_nwhgiw.png",
-  //   description: "Professional template for corporate websites",
-  //   category: "real_estate",
-  //   externalUrl: "https://demo.themeim.com/html/palace/index.html",
-  // },
-  {
-    id: 20,
+    id: 16,
     name: "Jagga",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942134/jagga_ykx55w.png",
     description: "Professional template for corporate websites",
@@ -166,7 +134,7 @@ const REAL_ESTATE_TEMPLATES = [
 
 const PROFESSIONAL_SERVICES_TEMPLATES = [
   {
-    id: 21,
+    id: 17,
     name: "Constimes",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941748/constimes_tyivbo.png",
     description: "Professional template for corporate websites",
@@ -174,7 +142,7 @@ const PROFESSIONAL_SERVICES_TEMPLATES = [
     externalUrl: "https://techsometimes.com/products/html/constimes/index.html",
   },
   {
-    id: 22,
+    id: 18,
     name: "Binuza",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941743/binuza_x1yzz9.png",
     description: "Professional template for corporate websites",
@@ -182,7 +150,7 @@ const PROFESSIONAL_SERVICES_TEMPLATES = [
     externalUrl: "https://demo.bytelabx.com/html/binuza/index.html",
   },
   {
-    id: 23,
+    id: 19,
     name: "Consulthub",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941750/consulthub_cf9gr5.png",
     description: "Professional template for corporate websites",
@@ -190,15 +158,7 @@ const PROFESSIONAL_SERVICES_TEMPLATES = [
     externalUrl: "https://st.ourhtmldemo.com/new/consulthub/index.html",
   },
   {
-    id: 24,
-    name: "Consulting",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941752/consulting_c6ihun.png",
-    description: "Professional template for corporate websites",
-    category: "professional_services",
-    externalUrl: "https://freebw.com/templates/consulting-v1/index1.html",
-  },
-  {
-    id: 25,
+    id: 20,
     name: "Aball",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941742/aball_uemgb3.png",
     description: "Professional template for corporate websites",
@@ -206,7 +166,7 @@ const PROFESSIONAL_SERVICES_TEMPLATES = [
     externalUrl: "https://html.quomodosoft.com/aball/aball/index.html",
   },
   {
-    id: 26,
+    id: 21,
     name: "Pixlab",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941751/pixlab_vwckmn.png",
     description: "Professional template for corporate websites",
@@ -214,42 +174,18 @@ const PROFESSIONAL_SERVICES_TEMPLATES = [
     externalUrl: "https://wpriverthemes.com/HTML/pixlab/index-2.html",
   },
   {
-    id: 27,
+    id: 22,
     name: "Bizan",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941751/bizan_p2nkqg.png",
     description: "Professional template for corporate websites",
     category: "professional_services",
     externalUrl: "https://html.rrdevs.net/bizan/index-3.html",
-  },
-  {
-    id: 28,
-    name: "Cinkes",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941746/cinkes_rx1yyb.png",
-    description: "Professional template for corporate websites",
-    category: "professional_services",
-    externalUrl: "https://themephi.net/template/cinkes/ltr-demo/index.html",
-  },
-  {
-    id: 29,
-    name: "Alpha",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941744/alpha_lxrirm.png",
-    description: "Professional template for corporate websites",
-    category: "professional_services",
-    externalUrl: "https://demo.epic-webdesign.com/tf-alpha/index.html",
-  },
-  {
-    id: 30,
-    name: "Zeniqs",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941748/zeniqs_mttjzt.png",
-    description: "Professional template for corporate websites",
-    category: "professional_services",
-    externalUrl: "https://themephi.net/template/zeniqsh/zeniqs/index.html",
   }
 ];
 
 const HEALTH_WELLNESS_TEMPLATES = [
   {
-    id: 31,
+    id: 23,
     name: "Doctor",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942084/doctor_krccli.png",
     description: "Professional template for corporate websites",
@@ -257,7 +193,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://demoxml.com/html/doctor/index.html",
   },
   {
-    id: 32,
+    id: 24,
     name: "Medihub",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942081/medihub_ixeacj.png",
     description: "Professional template for corporate websites",
@@ -265,7 +201,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://validthemes.net/site-template/medihub/",
   },
   {
-    id: 33,
+    id: 25,
     name: "Medihub 2.0",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942078/medihub2_xkhv3e.png",
     description: "Professional template for corporate websites",
@@ -273,7 +209,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://validthemes.net/site-template/medihub/index-2.html",
   },
   {
-    id: 34,
+    id: 26,
     name: "Healthcare",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942074/healthcare_demo9_ik3cgo.png",
     description: "Professional template for corporate websites",
@@ -281,7 +217,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://kamleshyadav.com/html/healthcare/bootstrap5/demo9/index.html",
   },
   {
-    id: 35,
+    id: 27,
     name: "Healthcare 2.0",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942075/healthcare_c4bh9f.png",
     description: "Professional template for corporate websites",
@@ -289,7 +225,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://kamleshyadav.com/html/healthcare/bootstrap5/healthcare/index.html",
   },
   {
-    id: 36,
+    id: 28,
     name: "Healthcare 3.0",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942073/healthcare_index_new_hhwnf7.png",
     description: "Professional template for corporate websites",
@@ -297,7 +233,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://kamleshyadav.com/html/healthcare/bootstrap5/index_new.html",
   },
   {
-    id: 37,
+    id: 29,
     name: "Medica",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942074/Medica_b68s4c.png",
     description: "Professional template for corporate websites",
@@ -305,7 +241,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://html.tonatheme.com/2023/Medica/index.html",
   },
   {
-    id: 38,
+    id: 30,
     name: "Medisch",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942076/medisch_gw6swv.png",
     description: "Professional template for corporate websites",
@@ -313,7 +249,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://webstrot.com/html/medisch/medisch/index.html",
   },
   {
-    id: 39,
+    id: 31,
     name: "Mediz Hospital",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942069/mediz_wsqbn4.png",
     description: "Professional template for corporate websites",
@@ -321,7 +257,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
     externalUrl: "https://max-themes.net/demos/mediz/hospital/index.html",
   },
   {
-    id: 40,
+    id: 32,
     name: "Mediz Clinic",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942081/clinic_yhnitf.png",
     description: "Professional template for corporate websites",
@@ -332,7 +268,7 @@ const HEALTH_WELLNESS_TEMPLATES = [
 
 const EDUCATION_COACHING_TEMPLATES = [
   {
-    id: 41,
+    id: 33,
     name: "Education Center",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941655/themerex_eciwi1.png",
     description: "Professional template for corporate websites",
@@ -340,7 +276,7 @@ const EDUCATION_COACHING_TEMPLATES = [
     externalUrl: "https://education-html.themerex.net/index.html",
   },
   {
-    id: 42,
+    id: 34,
     name: "Edutech",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941650/edu_jyxefb.png",
     description: "Professional template for corporate websites",
@@ -348,7 +284,7 @@ const EDUCATION_COACHING_TEMPLATES = [
     externalUrl: "https://themazine.com/html/edu/index.html",
   },
   {
-    id: 43,
+    id: 35,
     name: "Nosei",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941654/devsaidul_juhgfj.png",
     description: "Professional template for corporate websites",
@@ -356,7 +292,7 @@ const EDUCATION_COACHING_TEMPLATES = [
     externalUrl: "https://devsaidul.com/tf/index.html",
   },
   {
-    id: 44,
+    id: 36,
     name: "Kingster",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941655/kingster_t7l5ue.png",
     description: "Professional template for corporate websites",
@@ -364,15 +300,7 @@ const EDUCATION_COACHING_TEMPLATES = [
     externalUrl: "https://max-themes.net/demos/kingster/kingster/index.html",
   },
   {
-    id: 45,
-    name: "Trainer",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941659/trainer_sh3gs3.png",
-    description: "Professional template for corporate websites",
-    category: "education_coaching",
-    externalUrl: "http://html.rudhisasmito.com/trainer/index.html",
-  },
-  {
-    id: 46,
+    id: 37,
     name: "Etreeks",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941650/etreeks_iul6nu.png",
     description: "Professional template for corporate websites",
@@ -380,7 +308,7 @@ const EDUCATION_COACHING_TEMPLATES = [
     externalUrl: "https://jthemes.net/themes/html/etreeks/files/demo-2.html",
   },
   {
-    id: 47,
+    id: 38,
     name: "Melanie",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941651/melanie_t1l3hb.png",
     description: "Professional template for corporate websites",
@@ -388,7 +316,7 @@ const EDUCATION_COACHING_TEMPLATES = [
     externalUrl: "https://melanie-hanson-html.themerex.net/index.html",
   },
   {
-    id: 48,
+    id: 39,
     name: "Cpcos",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941647/Cpcos_ixe3bu.png",
     description: "Professional template for corporate websites",
@@ -396,7 +324,7 @@ const EDUCATION_COACHING_TEMPLATES = [
     externalUrl: "https://themazine.com/html/Cpcos/index-3.html",
   },
   {
-    id: 49,
+    id: 40,
     name: "Samantha",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941656/samantha_xadhda.png",
     description: "Professional template for corporate websites",
@@ -404,7 +332,7 @@ const EDUCATION_COACHING_TEMPLATES = [
     externalUrl: "https://bslthemes.com/html/samantha/index.html",
   },
   {
-    id: 50,
+    id: 41,
     name: "Edumax",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941649/edumax_wrjwmt.png",
     description: "Professional template for corporate websites",
@@ -415,7 +343,7 @@ const EDUCATION_COACHING_TEMPLATES = [
 
 const TOURISM_HOSPITALITY_TEMPLATES = [
   {
-    id: 51,
+    id: 42,
     name: "Nilachol",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942229/nilachol_g0m2ej.png",
     description: "Professional template for corporate websites",
@@ -423,7 +351,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://wp.hostlin.com/nilachol/index.html",
   },
   {
-    id: 52,
+    id: 43,
     name: "Atoli",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942222/atoli_emxluh.png",
     description: "Professional template for corporate websites",
@@ -431,7 +359,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://templates.hibootstrap.com/atoli/default/book.html",
   },
   {
-    id: 53,
+    id: 44,
     name: "Seaside",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942238/seaside_lbldrz.png",
     description: "Professional template for corporate websites",
@@ -439,7 +367,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://www.madebydesignesia.com/themes/seaside/02-index.html",
   },
   {
-    id: 54,
+    id: 45,
     name: "Paradise",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942230/paradise_swovze.png",
     description: "Professional template for corporate websites",
@@ -447,7 +375,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://www.ansonika.com/paradise/html-menu-5/index.html#0",
   },
   {
-    id: 55,
+    id: 46,
     name: "Dahotel",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942225/dahotel_c6beqf.png",
     description: "Professional template for corporate websites",
@@ -455,7 +383,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://htmldemo.zcubethemes.com/dahotel/index.html",
   },
   {
-    id: 56,
+    id: 47,
     name: "Myhotel",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942230/myhotel_glplgn.png",
     description: "Professional template for corporate websites",
@@ -463,7 +391,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://demoxml.com/html/myhotel/index.html",
   },
   {
-    id: 57,
+    id: 48,
     name: "Zante",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942222/zante_vw2jpu.png",
     description: "Professional template for corporate websites",
@@ -471,7 +399,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://preview.eagle-themes.com/html/zante/index.html",
   },
   {
-    id: 58,
+    id: 49,
     name: "Hostily",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942226/hostily_g2eavd.png",
     description: "Professional template for corporate websites",
@@ -479,7 +407,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://html.nextwpcook.com/hostily/index.html",
   },
   {
-    id: 59,
+    id: 50,
     name: "Royellaa",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942233/royellaa_yqjb2p.png",
     description: "Professional template for corporate websites",
@@ -487,7 +415,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
     externalUrl: "https://royellaa.netlify.app/",
   },
   {
-    id: 60,
+    id: 51,
     name: "Leluxe",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942227/leluxe_edyir5.png",
     description: "Professional template for corporate websites",
@@ -498,7 +426,7 @@ const TOURISM_HOSPITALITY_TEMPLATES = [
 
 const RESTAURANTS_FOOD_TEMPLATES = [
   {
-    id: 61,
+    id: 52,
     name: "Bistro",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942187/bistro_gyjuny.png",
     description: "Professional template for corporate websites",
@@ -506,7 +434,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://www.themesindustry.com/html/bistro/index.html",
   },
   {
-    id: 62,
+    id: 53,
     name: "Craft",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942176/craft_bzm0st.png",
     description: "Professional template for corporate websites",
@@ -514,7 +442,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://max-themes.net/demos/craft/index.html",
   },
   {
-    id: 63,
+    id: 54,
     name: "Cafert",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942173/cafert_aqrvz2.png",
     description: "Professional template for corporate websites",
@@ -522,7 +450,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://html.merku.love/cafert/index.html",
   },
   {
-    id: 64,
+    id: 55,
     name: "Kaffen",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942192/kaffen_glnn8q.png",
     description: "Professional template for corporate websites",
@@ -530,7 +458,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://bslthemes.com/html/kaffen/index-2.html",
   },
   {
-    id: 65,
+    id: 56,
     name: "Bruin",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942188/bruin_dxmfkp.png",
     description: "Professional template for corporate websites",
@@ -538,7 +466,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://htmldemo.zcubethemes.com/bruin/index.html",
   },
   {
-    id: 66,
+    id: 57,
     name: "Dina",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942189/dina_nu6pj8.png",
     description: "Professional template for corporate websites",
@@ -546,7 +474,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://matchthemes.com/demohtml/dina/index.html",
   },
   {
-    id: 67,
+    id: 58,
     name: "Yummye",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942180/yummye_h9wryw.png",
     description: "Professional template for corporate websites",
@@ -554,7 +482,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://htmldemo.zcubethemes.com/yummye/index.html",
   },
   {
-    id: 68,
+    id: 59,
     name: "Restaurant",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942193/restaurant_upicku.png",
     description: "Professional template for corporate websites",
@@ -562,7 +490,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://demoxml.com/html/restaurant/index.html",
   },
   {
-    id: 69,
+    id: 60,
     name: "Dbento",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942191/dbento_rgioch.png",
     description: "Professional template for corporate websites",
@@ -570,7 +498,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
     externalUrl: "https://on3-step.com/tf/dbento/dbento/index.html",
   },
   {
-    id: 70,
+    id: 61,
     name: "Restory",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761942180/restory-demo_l3uzya.png",
     description: "Professional template for corporate websites",
@@ -581,7 +509,7 @@ const RESTAURANTS_FOOD_TEMPLATES = [
 
 const TRANSPORTATION_TEMPLATES = [
   {
-    id: 71,
+    id: 62,
     name: "Fixa",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941725/fixa_autr8r.png",
     description: "Professional template for corporate websites",
@@ -589,7 +517,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://templates.hibootstrap.com/fixa/default/index.html",
   },
   {
-    id: 72,
+    id: 63,
     name: "Translo",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941732/netlify_fnc5ih.png",
     description: "Professional template for corporate websites",
@@ -597,7 +525,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://translo-next.netlify.app/",
   },
   {
-    id: 73,
+    id: 64,
     name: "Logitrans",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941730/logitranshtml_splwds.png",
     description: "Professional template for corporate websites",
@@ -605,7 +533,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://html.themesawesome.com/logitranshtml/index.html#",
   },
   {
-    id: 74,
+    id: 65,
     name: "Quriar",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941732/quriar_dsbovc.png",
     description: "Professional template for corporate websites",
@@ -613,7 +541,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://demo.bytelabx.com/html/quriar/index.html",
   },
   {
-    id: 75,
+    id: 66,
     name: "Onpoint",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941728/onpoint_cx3vlb.png",
     description: "Professional template for corporate websites",
@@ -621,7 +549,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://themehealer.com/onpoint/index2.html",
   },
   {
-    id: 76,
+    id: 67,
     name: "Transpro",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941736/transpro_eficgw.png",
     description: "Professional template for corporate websites",
@@ -629,7 +557,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://www.wowtheme7.com/tf/transpro/home-2.html",
   },
   {
-    id: 77,
+    id: 68,
     name: "Global Logistics",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941731/themerex_wzzly8.png",
     description: "Professional template for corporate websites",
@@ -637,7 +565,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://gl-html.themerex.net/index.html",
   },
   {
-    id: 78,
+    id: 69,
     name: "Max Logistics",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941728/maxlogistics_rrbb5d.png",
     description: "Professional template for corporate websites",
@@ -645,7 +573,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://demoxml.com/html/maxlogistics/index.html",
   },
   {
-    id: 79,
+    id: 70,
     name: "Cargohub",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941688/cargohub_a2oonl.png",
     description: "Professional template for corporate websites",
@@ -653,7 +581,7 @@ const TRANSPORTATION_TEMPLATES = [
     externalUrl: "https://st.ourhtmldemo.com/template/cargohub/home-page-2.html",
   },
   {
-    id: 80,
+    id: 71,
     name: "Moving",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941728/moving_awkwmt.png",
     description: "Professional template for corporate websites",
@@ -664,7 +592,7 @@ const TRANSPORTATION_TEMPLATES = [
 
 const PSYCHOLOGIST_TEMPLATES = [
   {
-    id: 81,
+    id: 72,
     name: "Meciy",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941760/meciy_vxp7l6.png",
     description: "Professional template for corporate websites",
@@ -672,7 +600,7 @@ const PSYCHOLOGIST_TEMPLATES = [
     externalUrl: "https://weblayout.mnsithub.com/html/webplateone/meciy/index2.html",
   },
   {
-    id: 82,
+    id: 73,
     name: "Mindthera",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941761/mindthera_jexzad.png",
     description: "Professional template for corporate websites",
@@ -680,7 +608,7 @@ const PSYCHOLOGIST_TEMPLATES = [
     externalUrl: "https://madebydesignesia.com/themes/mindthera/index.html",
   },
   {
-    id: 83,
+    id: 74,
     name: "Sycho",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941763/sycho_vhfiut.png",
     description: "Professional template for corporate websites",
@@ -688,7 +616,7 @@ const PSYCHOLOGIST_TEMPLATES = [
     externalUrl: "https://html.storebuild.shop/sycho-prv/sycho/index.html",
   },
   {
-    id: 84,
+    id: 75,
     name: "Talking Minds",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941757/talking-minds_qpkft8.png",
     description: "Professional template for corporate websites",
@@ -696,15 +624,7 @@ const PSYCHOLOGIST_TEMPLATES = [
     externalUrl: "https://html.merku.love/talking-minds/index_1.html",
   },
   {
-    id: 85,
-    name: "Nuro",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941764/widagdos_qup4wf.png",
-    description: "Professional template for corporate websites",
-    category: "psychologist",
-    externalUrl: "https://nuro.widagdos.net/index.html",
-  },
-  {
-    id: 86,
+    id: 76,
     name: "Mind Trainer",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941755/mind_trainer_cmyunp.png",
     description: "Professional template for corporate websites",
@@ -712,7 +632,7 @@ const PSYCHOLOGIST_TEMPLATES = [
     externalUrl: "https://templates.bwlthemes.com/mind_trainer/index.html",
   },
   {
-    id: 87,
+    id: 77,
     name: "Persono",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941756/persono_stnkca.png",
     description: "Professional template for corporate websites",
@@ -720,7 +640,7 @@ const PSYCHOLOGIST_TEMPLATES = [
     externalUrl: "https://frenify.com/work/envato/frenify/html/persono/1/index.html",
   },
   {
-    id: 88,
+    id: 78,
     name: "Larry",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941754/larry-demo_ylui1w.png",
     description: "Professional template for corporate websites",
@@ -728,15 +648,7 @@ const PSYCHOLOGIST_TEMPLATES = [
     externalUrl: "https://paul-themes.com/html/larry-demo/?storefront=envato-elements",
   },
   {
-    id: 89,
-    name: "Erika",
-    preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941759/tf-erika_hruahr.png",
-    description: "Professional template for corporate websites",
-    category: "psychologist",
-    externalUrl: "https://demo.epic-webdesign.com/tf-erika/v1/",
-  },
-  {
-    id: 90,
+    id: 79,
     name: "Zoyot",
     preview: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto,w_1000/v1761941764/zoyot_viqlnj.png",
     description: "Professional template for corporate websites",
