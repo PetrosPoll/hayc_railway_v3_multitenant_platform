@@ -13,6 +13,7 @@ export default function PricingPage() {
   const [mobileComparisonPlan, setMobileComparisonPlan] = useState<"basic" | "essential" | "pro">("basic");
 
   const { data: stripePrices } = usePricing();
+  const setupFeeAmount = stripePrices?.find(p => p.tier === "setup_fee")?.unitAmount ?? 99;
 
   const FALLBACK_PRICES = {
     basic:     { monthly: 34,  annualPerMonth: 27  },
@@ -282,7 +283,7 @@ export default function PricingPage() {
                   <span className="text-white text-base font-semibold font-brand leading-5">{t("pricing.getStarted")}</span>
                 </button>
                 <p className="text-center text-white/80 text-sm font-normal font-brand leading-5">
-                  {t("pricing.setupFee")}
+                  {t("pricing.setupFee", { amount: setupFeeAmount })}
                 </p>
               </div>
             </div>

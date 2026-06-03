@@ -74,7 +74,7 @@
         "saveAnnually": "Save 20% annually",
         "whatYouGet": "What you will get",
         "getStarted": "Get Started",
-        "setupFee": "Each plan requires + 99€ setup fee",
+        "setupFee": "Each plan requires + {{amount}}€ setup fee",
         "comparePlans": "Compare plans",
         "includes": {
             "transactions": "0% transaction fees on digital products",

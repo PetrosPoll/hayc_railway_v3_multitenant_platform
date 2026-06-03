@@ -23,6 +23,8 @@ const PRICE_ID_MAP: Record<string, { tier: string; billingPeriod: "monthly" | "y
   [process.env.STRIPE_ESSENTIAL_YEARLY_PRICE_ID || ""]: { tier: "essential", billingPeriod: "yearly" },
   [process.env.STRIPE_PRO_MONTHLY_PRICE_ID || ""]: { tier: "pro", billingPeriod: "monthly" },
   [process.env.STRIPE_PRO_YEARLY_PRICE_ID || ""]: { tier: "pro", billingPeriod: "yearly" },
+  // One-time fees
+  [process.env.STRIPE_SETUP_FEE_PRICE_ID || ""]: { tier: "setup_fee", billingPeriod: "monthly" },
   // Add-ons
   [process.env.STRIPE_BOOKING_ADDON_PRICE_ID || ""]: { tier: "booking", billingPeriod: "monthly" },
   [process.env.STRIPE_BOOKING_ADDON_YEARLY_PRICE_ID || ""]: { tier: "booking", billingPeriod: "yearly" },
@@ -66,8 +68,8 @@ async function fetchPricesFromStripe(): Promise<NormalizedPrice[]> {
       try {
         const price = await stripe.prices.retrieve(priceId);
         
-        // Validate the price is active and has required data
-        if (!price.active || !price.unit_amount || !price.recurring) {
+        // Validate the price is active and has a unit amount (one-time prices have no recurring field)
+        if (!price.active || !price.unit_amount) {
           console.warn(`⚠️ Price ${priceId} is inactive or missing required data`);
           continue;
         }
