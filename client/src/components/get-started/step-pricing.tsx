@@ -13,7 +13,7 @@ const ICON_CALENDAR = "https://res.cloudinary.com/dem12vqtl/image/upload/v177934
 const ICON_TICK     = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779920576/tick-circle_ezak9k.svg";
 const ICON_INFO     = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779921150/info_circle_white_jtq4gy.svg";
 
-const SETUP_FEE = 99;
+const SETUP_FEE = 120;
 
 // Display-name → add-on ID (for Stripe price lookup)
 const ADDON_ID_MAP: Record<string, string> = {
@@ -23,16 +23,16 @@ const ADDON_ID_MAP: Record<string, string> = {
 
 // Fallbacks used while Stripe prices are loading
 const ADDON_MONTHLY_FALLBACK: Record<string, number> = {
-  "Booking Integration": 10,
-  "HDP": 10,
+  "Booking Integration": 15,
+  "HDP": 15,
 };
 const ADDON_YEARLY_FALLBACK: Record<string, number> = {
-  "Booking Integration": 120,
-  "HDP": 120,
+  "Booking Integration": 180,
+  "HDP": 180,
 };
 const PLAN_FALLBACKS = {
-  basic:     { monthly: 34,  yearly: 326  },
-  essential: { monthly: 39,  yearly: 372  },
+  basic:     { monthly: 44,  yearly: 440  },
+  essential: { monthly: 49,  yearly: 490  },
   pro:       { monthly: 200, yearly: 1920 },
 } as const;
 

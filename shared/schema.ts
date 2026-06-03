@@ -586,10 +586,10 @@ export const subscriptionPlans = {
   basic: {
     id: "basic",
     name: "Basic",
-    price: 34,
-    yearlyPrice: 326,
-    yearlyPriceInMonth: 27,
-    setupFee: 99,
+    price: 44,
+    yearlyPrice: 440,
+    yearlyPriceInMonth: 37,
+    setupFee: 120,
     changesPerMonth: 1,
     features: [
       "3 pages",
@@ -603,10 +603,10 @@ export const subscriptionPlans = {
   essential: {
     id: "essential",
     name: "Essential",
-    price: 39,
-    yearlyPrice: 372,
-    yearlyPriceInMonth: 31,
-    setupFee: 99,
+    price: 49,
+    yearlyPrice: 490,
+    yearlyPriceInMonth: 41,
+    setupFee: 120,
     changesPerMonth: 3,
     features: [
       "10 pages",
@@ -625,7 +625,7 @@ export const subscriptionPlans = {
     price: 200,
     yearlyPrice: 1920,
     yearlyPriceInMonth: 160,
-    setupFee: 99,
+    setupFee: 120,
     changesPerMonth: 5,
     features: [
       "All add-ons included for free",
@@ -669,14 +669,14 @@ export const availableAddOns = [
     id: "booking",
     name: "Booking System",
     description: "Complete appointment and reservation booking system",
-    price: 10,
+    price: 15,
     image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/booking-add-on-icon.svg",
   },
   {
     id: "lms",
     name: "Learning Management System",
     description: "Full-featured LMS for courses and educational content",
-    price: 10,
+    price: 15,
     image: "https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/lms-add-on-icon.svg",
   },
   {

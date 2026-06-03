@@ -13,11 +13,11 @@ export default function PricingPage() {
   const [mobileComparisonPlan, setMobileComparisonPlan] = useState<"basic" | "essential" | "pro">("basic");
 
   const { data: stripePrices } = usePricing();
-  const setupFeeAmount = stripePrices?.find(p => p.tier === "setup_fee")?.unitAmount ?? 99;
+  const setupFeeAmount = stripePrices?.find(p => p.tier === "setup_fee")?.unitAmount ?? 120;
 
   const FALLBACK_PRICES = {
-    basic:     { monthly: 34,  annualPerMonth: 27  },
-    essential: { monthly: 39,  annualPerMonth: 31  },
+    basic:     { monthly: 44,  annualPerMonth: 37  },
+    essential: { monthly: 49,  annualPerMonth: 41  },
     pro:       { monthly: 200, annualPerMonth: 160 },
   };
 
