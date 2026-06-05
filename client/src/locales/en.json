@@ -2560,6 +2560,28 @@
             "title": "Your website, without having to deal with it ever again",
             "subtitle": "We build it, manage it, and improve it for you — with a fixed monthly cost and zero commission on every sale."
         },
+        "variants": {
+            "version-1": {
+                "title": "A professional website for one simple monthly price — no agency bill, no surprises.",
+                "subtitle": "Fixed subscription. Hosting, updates, and support included — so you always know what you pay."
+            },
+            "version-2": {
+                "title": "Your website live in 10 days — we build it while you run your business.",
+                "subtitle": "From template to launch in days, not months. We handle build, hosting, and ongoing updates."
+            },
+            "version-3": {
+                "title": "Stop wrestling with builders and agencies — we handle your website, start to finish.",
+                "subtitle": "HAYC isn't a DIY builder. It's a done-for-you service — design, setup, hosting, and management included."
+            },
+            "version-4": {
+                "title": "The professional website your business deserves — built by a team behind 110+ live sites.",
+                "subtitle": "Modern, fast, and built to convert — with ongoing support so it keeps performing."
+            },
+            "version-5": {
+                "title": "Your website, bookings, newsletter, and digital products — one platform, one subscription.",
+                "subtitle": "Everything you need to grow online in one dashboard. We build it and keep it running."
+            }
+        },
         "form": {
             "title": "Get Started Today",
             "subtitle": "Enter your details to schedule a free consultation",

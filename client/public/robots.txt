@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+
+# Ad / conversion landing pages — not for organic search
+Disallow: /fast-and-affordable-websites-book-a-call
+Disallow: /fast-and-affordable-websites-book-a-call-en

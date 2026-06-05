@@ -29,6 +29,11 @@ import {
 } from "@/lib/landing-page-styles";
 import { LandingNewsletterOptInField } from "@/components/landing/landing-newsletter-opt-in-field";
 import { subscribeToHaycNewsletter } from "@/lib/hayc-newsletter-subscribe";
+import {
+  landingLeadSource,
+  type LandingPageVariant,
+} from "@/lib/landing-page-variants";
+import { useNoIndex } from "@/hooks/use-noindex";
 
 type LeadFormData = {
   email: string;
@@ -36,13 +41,39 @@ type LeadFormData = {
   newsletterOptIn?: boolean;
 };
 
-export default function WebsiteCreationLanding() {
+type WebsiteCreationLandingProps = {
+  variant?: LandingPageVariant;
+  forceEnglish?: boolean;
+};
+
+export function WebsiteCreationLanding({
+  variant = "default",
+  forceEnglish = false,
+}: WebsiteCreationLandingProps) {
   const navigate = useNavigate();
   const [showCalendly, setShowCalendly] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState<string>("");
   const { t, i18n } = useTranslation();
   const leadEventFired = useRef(false);
+
+  useNoIndex();
+
+  useEffect(() => {
+    if (forceEnglish) {
+      i18n.changeLanguage("en");
+      localStorage.setItem("language", "en");
+    }
+  }, [forceEnglish, i18n]);
+
+  const heroTitle =
+    variant === "default"
+      ? t("landingPage.hero.title")
+      : t(`landingPage.variants.${variant}.title`);
+  const heroSubtitle =
+    variant === "default"
+      ? t("landingPage.hero.subtitle")
+      : t(`landingPage.variants.${variant}.subtitle`);
   
   const leadSchema = z.object({
     email: z.string().email(t('landingPage.form.emailValidation')),
@@ -152,7 +183,7 @@ export default function WebsiteCreationLanding() {
         body: JSON.stringify({
           email: data.email,
           phone: data.phone,
-          source: 'website-creation-landing',
+          source: landingLeadSource(variant),
           ...(utmParams && { utm: utmParams }),
         }),
       });
@@ -385,10 +416,10 @@ export default function WebsiteCreationLanding() {
             {/* Title and Subtitle in center */}
             <div className="text-center flex-1">
               <h1 className="text-2xl md:text-4xl font-bold text-white font-brand mb-4">
-                {t('landingPage.hero.title')}
+                {heroTitle}
               </h1>
               <p className="text-lg md:text-xl text-white/70 font-brand max-w-2xl mx-auto">
-                {t('landingPage.hero.subtitle')}
+                {heroSubtitle}
               </p>
             </div>
 
@@ -856,4 +887,8 @@ export default function WebsiteCreationLanding() {
       </section>
     </div>
   );
+}
+
+export default function WebsiteCreation() {
+  return <WebsiteCreationLanding />;
 }

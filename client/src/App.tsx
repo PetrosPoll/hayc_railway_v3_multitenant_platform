@@ -28,7 +28,7 @@ import Pricing from "./pages/pricing";
 import TemplateDetail from "./pages/template-detail";
 import UpgradeConfirmation from "./pages/upgrade-confirmation";
 import Success from "./pages/success";
-import WebsiteCreation from "./pages/website-creation";
+import WebsiteCreationRoutes from "./pages/website-creation-routes";
 import WebsiteCreationEN from "./pages/website-creation-en";
 import ReviewsProgram from "./pages/reviews-program";
 import Home from "./pages/home";
@@ -82,8 +82,7 @@ function ConditionalFooter() {
     location.pathname === '/get-started/onboarding/quick-questions' ||
     location.pathname === '/get-started/onboarding/website-structure' ||
     location.pathname === '/get-started/onboarding/content-media' ||
-    location.pathname === '/fast-and-affordable-websites-book-a-call' ||
-    location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
+    location.pathname.startsWith('/fast-and-affordable-websites-book-a-call') ||
     location.pathname === '/reviews-program' ||
     location.pathname.includes('/email-builder') ||
     location.pathname.includes('/analytics') ||
@@ -106,8 +105,7 @@ function ConditionalNavMenu() {
     location.pathname === '/get-started/onboarding/quick-questions' ||
     location.pathname === '/get-started/onboarding/website-structure' ||
     location.pathname === '/get-started/onboarding/content-media' ||
-    location.pathname === '/fast-and-affordable-websites-book-a-call' ||
-    location.pathname === '/fast-and-affordable-websites-book-a-call-en' ||
+    location.pathname.startsWith('/fast-and-affordable-websites-book-a-call') ||
     location.pathname.startsWith('/dashboard/website/') ||
     location.pathname.includes('/email-builder') ||
     location.pathname.includes('/analytics') ||
@@ -177,8 +175,8 @@ function AppContent() {
           <Route path="/templates" element={<PublicOnlyRoute><Templates /></PublicOnlyRoute>} />
           <Route path="/pricing" element={<PublicOnlyRoute><Pricing /></PublicOnlyRoute>} />
           <Route path="/templates/:id" element={<PublicOnlyRoute><TemplateDetail /></PublicOnlyRoute>} />
-          <Route path="/fast-and-affordable-websites-book-a-call" element={<WebsiteCreation />} />
-          <Route path="/fast-and-affordable-websites-book-a-call-en" element={<WebsiteCreationEN />} />
+          <Route path="/fast-and-affordable-websites-book-a-call/*" element={<WebsiteCreationRoutes />} />
+          <Route path="/fast-and-affordable-websites-book-a-call-en/*" element={<WebsiteCreationEN />} />
           <Route
             path="/reviews-program"
             element={
