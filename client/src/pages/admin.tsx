@@ -737,14 +737,22 @@ export default function AdminDashboard() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Use URL as the single source of truth for active tab
-  const activeTab = searchParams.get("tab") || "users";
+  const tabFromUrl = searchParams.get("tab") || "users";
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
 
-  // Handler to update the tab in the URL
+  // Keep local tab state in sync with URL (back/forward, deep links)
+  useEffect(() => {
+    setActiveTab(tabFromUrl);
+  }, [tabFromUrl]);
+
   const handleTabChange = (newTab: string) => {
-    const newParams = new URLSearchParams(searchParams);
-    newParams.set("tab", newTab);
-    setSearchParams(newParams);
+    // Update UI immediately — URL-only control left Radix Tabs stuck after heavy tabs (e.g. invoices)
+    setActiveTab(newTab);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set("tab", newTab);
+      return next;
+    });
   };
 
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
@@ -2489,7 +2497,7 @@ export default function AdminDashboard() {
               </section>
             </TabsContent>
             <TabsContent value="invoices" className="mt-0">
-              <AdminWebsiteInvoices />
+              {activeTab === "invoices" && <AdminWebsiteInvoices />}
             </TabsContent>
             <TabsContent value="get-started" className="mt-0">
               <AdminGetStartedSubmissions />

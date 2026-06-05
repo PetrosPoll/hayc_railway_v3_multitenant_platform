@@ -319,6 +319,22 @@ export function AdminWebsiteInvoices() {
     setExpandedWebsiteId(null);
   }, [invoiceFilter]);
 
+  // Tear down dialogs/overlays on unmount so tab switches don't leave blocking portals
+  useEffect(() => {
+    return () => {
+      setUploadDialogOpen(false);
+      setBillingInfoDialogOpen(false);
+      setCreateDraftDialogOpen(false);
+      setWrappConfirmDialogOpen(false);
+      setCancelWrappDialogOpen(false);
+      setIsCloudinaryWidgetOpen(false);
+      setUploading(false);
+      document.body.style.pointerEvents = "";
+      document.body.style.overflow = "";
+      document.body.removeAttribute("data-scroll-locked");
+    };
+  }, []);
+
   // Delete invoice mutation
   const deleteInvoiceMutation = useMutation({
     mutationFn: async (invoiceId: number) => {
