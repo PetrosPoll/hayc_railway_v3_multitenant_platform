@@ -33,6 +33,8 @@ interface StripePayment {
   date: string;
   status: 'paid' | 'upcoming';
   tier?: string;
+  productType?: string;
+  productLabel?: string;
   invoiceUrl?: string;
 }
 
@@ -407,6 +409,8 @@ export function SubscriptionCalendar() {
     amount: payment.amount,
     nextPayment: new Date(payment.date),
     tier: payment.tier,
+    productType: payment.productType,
+    productLabel: payment.productLabel,
     invoiceUrl: payment.invoiceUrl,
     status: payment.status,
   }));
@@ -927,7 +931,11 @@ export function SubscriptionCalendar() {
                       <>
                         <p className="font-medium" data-testid={`text-client-${payment.id}`}>{payment.clientName}</p>
                         <p className="text-sm text-muted-foreground">{payment.email}</p>
-                        {payment.tier && <p className="text-sm">Plan: {payment.tier}</p>}
+                        {(payment as any).productLabel && (
+                          <p className="text-sm">
+                            {(payment as any).productType === 'addon' ? 'Add-on' : 'Plan'}: {(payment as any).productLabel}
+                          </p>
+                        )}
                         <div className="flex gap-2 mt-1">
                           <span className={`inline-block px-2 py-1 text-xs rounded ${
                             isOutstanding ? 'bg-yellow-100 text-yellow-800' : isPast ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'

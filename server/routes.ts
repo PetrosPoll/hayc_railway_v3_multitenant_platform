@@ -383,6 +383,62 @@ function getAddonPriceIds(addonId: string): string[] {
   return priceIds;
 }
 
+function getInvoiceLineSubscriptionItemId(line: Stripe.InvoiceLineItem): string | null {
+  const ref = line.subscription_item;
+  if (!ref) return null;
+  return typeof ref === "string" ? ref : ref.id;
+}
+
+function getSubscriptionRecordPriceIds(subscription: {
+  productType: string | null;
+  productId: string | null;
+  tier: string | null;
+}): string[] {
+  if (subscription.productType === "addon" && subscription.productId) {
+    return getAddonPriceIds(subscription.productId);
+  }
+
+  const planKey = (subscription.productType === "plan" ? subscription.productId : subscription.tier) as
+    | SubscriptionTier
+    | null;
+  if (!planKey || !(planKey in SUBSCRIPTION_PRICES)) return [];
+
+  const planPrices = SUBSCRIPTION_PRICES[planKey as keyof typeof SUBSCRIPTION_PRICES];
+  const ids: string[] = [];
+  if (planPrices.monthly) ids.push(planPrices.monthly);
+  if (planPrices.yearly) ids.push(planPrices.yearly);
+  return ids;
+}
+
+function resolveStripeSubscriptionItemId(
+  subscription: {
+    stripeSubscriptionItemId: string | null;
+    productType: string | null;
+    productId: string | null;
+    tier: string | null;
+  },
+  stripeSub: Stripe.Subscription,
+): string | null {
+  const expectedPriceIds = getSubscriptionRecordPriceIds(subscription);
+
+  // Prefer matching by product price so plan/add-on records never reuse the same item
+  if (expectedPriceIds.length > 0) {
+    const priceMatch = stripeSub.items.data.find((item) =>
+      expectedPriceIds.includes(item.price.id),
+    );
+    if (priceMatch) return priceMatch.id;
+  }
+
+  if (subscription.stripeSubscriptionItemId) {
+    const storedItem = stripeSub.items.data.find(
+      (item) => item.id === subscription.stripeSubscriptionItemId,
+    );
+    if (storedItem) return storedItem.id;
+  }
+
+  return stripeSub.items.data.length === 1 ? stripeSub.items.data[0].id : null;
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2024-06-20",
   typescript: true,
@@ -8360,6 +8416,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdfUrl: transactionsTable.pdfUrl,
           createdAt: transactionsTable.createdAt,
           tier: subscriptionsTable.tier,
+          productType: subscriptionsTable.productType,
+          productId: subscriptionsTable.productId,
           username: users.username,
           email: users.email,
         })
@@ -8370,6 +8428,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add historical transactions to payments array
       for (const transaction of historicalTransactions) {
+        const productLabel =
+          transaction.productType === 'addon' && transaction.productId
+            ? (availableAddOns.find((a) => a.id === transaction.productId)?.name || transaction.productId)
+            : transaction.tier || transaction.productId || null;
+
         payments.push({
           id: `transaction_${transaction.transactionId}`,
           type: 'stripe_invoice',
@@ -8379,6 +8442,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           date: transaction.createdAt || new Date(),
           status: 'paid',
           tier: transaction.tier,
+          productType: transaction.productType,
+          productLabel,
           invoiceUrl: transaction.pdfUrl,
         });
       }
@@ -8389,10 +8454,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           id: subscriptionsTable.id,
           userId: subscriptionsTable.userId,
           tier: subscriptionsTable.tier,
+          productType: subscriptionsTable.productType,
+          productId: subscriptionsTable.productId,
           status: subscriptionsTable.status,
           price: subscriptionsTable.price,
           billingPeriod: subscriptionsTable.billingPeriod,
           stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
+          stripeSubscriptionItemId: subscriptionsTable.stripeSubscriptionItemId,
           username: users.username,
           email: users.email,
           stripeCustomerId: users.stripeCustomerId,
@@ -8407,7 +8475,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         );
 
-      // Fetch upcoming invoices from Stripe (only for active subscriptions)
+      const siblingsCountByStripeSubId = new Map<string, number>();
+      for (const sub of activeSubscriptions) {
+        if (sub.stripeSubscriptionId) {
+          siblingsCountByStripeSubId.set(
+            sub.stripeSubscriptionId,
+            (siblingsCountByStripeSubId.get(sub.stripeSubscriptionId) ?? 0) + 1,
+          );
+        }
+      }
+
+      const stripeSubscriptionCache = new Map<string, Stripe.Subscription>();
+      const upcomingInvoiceCache = new Map<string, Stripe.Invoice | null>();
+
+      const getCachedStripeSubscription = async (stripeSubscriptionId: string) => {
+        if (!stripeSubscriptionCache.has(stripeSubscriptionId)) {
+          stripeSubscriptionCache.set(
+            stripeSubscriptionId,
+            await stripe.subscriptions.retrieve(stripeSubscriptionId),
+          );
+        }
+        return stripeSubscriptionCache.get(stripeSubscriptionId)!;
+      };
+
+      const getCachedUpcomingInvoice = async (customerId: string, stripeSubscriptionId: string) => {
+        const cacheKey = `${customerId}:${stripeSubscriptionId}`;
+        if (!upcomingInvoiceCache.has(cacheKey)) {
+          try {
+            upcomingInvoiceCache.set(
+              cacheKey,
+              await stripe.invoices.retrieveUpcoming({
+                customer: customerId,
+                subscription: stripeSubscriptionId,
+              }),
+            );
+          } catch {
+            upcomingInvoiceCache.set(cacheKey, null);
+          }
+        }
+        return upcomingInvoiceCache.get(cacheKey) ?? null;
+      };
+
+      // Fetch upcoming payments per local subscription record, keyed by Stripe subscription item
       const upcomingInvoicePromises = activeSubscriptions
         .filter(sub => sub.stripeSubscriptionId && sub.stripeCustomerId)
         .map(async (subscription) => {
@@ -8442,8 +8551,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
               
+              const productLabel =
+                subscription.productType === 'addon' && subscription.productId
+                  ? (availableAddOns.find((a) => a.id === subscription.productId)?.name || subscription.productId)
+                  : subscription.tier || subscription.productId || null;
+
               return {
-                id: `scheduled_${subscriptionId}`,
+                id: `scheduled_${subscription.stripeSubscriptionItemId}`,
                 type: 'stripe_scheduled',
                 clientName: subscription.username || subscription.email,
                 email: subscription.email,
@@ -8451,27 +8565,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 date: new Date(targetPhase.start_date * 1000),
                 status: 'scheduled',
                 tier: subscription.tier,
+                productType: subscription.productType,
+                productLabel,
               };
             }
-            
-            // Normal subscription - fetch upcoming invoice
-            const upcomingInvoice = await stripe.invoices.retrieveUpcoming({
-              customer: subscription.stripeCustomerId!,
-              subscription: subscriptionId,
-            });
 
-            if (upcomingInvoice && upcomingInvoice.amount_due > 0) {
-              return {
-                id: `upcoming_${subscriptionId}`,
-                type: 'stripe_upcoming',
-                clientName: subscription.username || subscription.email,
-                email: subscription.email,
-                amount: upcomingInvoice.amount_due / 100,
-                date: new Date(upcomingInvoice.period_end * 1000),
-                status: 'upcoming',
-                tier: subscription.tier,
-              };
+            const stripeSub = await getCachedStripeSubscription(subscriptionId);
+            const resolvedItemId = resolveStripeSubscriptionItemId(subscription, stripeSub);
+            const siblingCount = siblingsCountByStripeSubId.get(subscriptionId) ?? 1;
+            const subscriptionItemId =
+              resolvedItemId ??
+              (siblingCount === 1 ? stripeSub.items.data[0]?.id ?? null : null);
+
+            if (!subscriptionItemId) {
+              console.warn(
+                `[payment-history] Could not resolve subscription item for local subscription ${subscription.id} (stripe ${subscriptionId})`,
+              );
+              return null;
             }
+
+            const upcomingInvoice = await getCachedUpcomingInvoice(
+              subscription.stripeCustomerId!,
+              subscriptionId,
+            );
+
+            let amountCents = subscription.price ?? 0;
+            if (upcomingInvoice) {
+              const lineItem = upcomingInvoice.lines.data.find(
+                (line) => getInvoiceLineSubscriptionItemId(line) === subscriptionItemId,
+              );
+              if (lineItem && lineItem.amount > 0) {
+                amountCents = lineItem.amount;
+              } else if (siblingCount === 1 && upcomingInvoice.amount_due > 0) {
+                amountCents = upcomingInvoice.amount_due;
+              }
+            }
+
+            const billingDate = upcomingInvoice?.period_end
+              ? new Date(upcomingInvoice.period_end * 1000)
+              : stripeSub.current_period_end
+                ? new Date(stripeSub.current_period_end * 1000)
+                : null;
+
+            if (!billingDate || amountCents <= 0) {
+              return null;
+            }
+
+            const productLabel =
+              subscription.productType === 'addon' && subscription.productId
+                ? (availableAddOns.find((a) => a.id === subscription.productId)?.name || subscription.productId)
+                : subscription.tier || subscription.productId || null;
+
+            return {
+              id: `upcoming_${subscriptionItemId}`,
+              type: 'stripe_upcoming',
+              clientName: subscription.username || subscription.email,
+              email: subscription.email,
+              amount: amountCents / 100,
+              date: billingDate,
+              status: 'upcoming',
+              tier: subscription.tier,
+              productType: subscription.productType,
+              productLabel,
+              stripeSubscriptionItemId: subscriptionItemId,
+            };
           } catch (upcomingError) {
             console.error(`Error fetching upcoming invoice for ${subscription.stripeSubscriptionId}:`, upcomingError);
           }
