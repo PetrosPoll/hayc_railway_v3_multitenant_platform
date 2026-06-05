@@ -127,6 +127,13 @@
       "when": 1779967886422,
       "tag": "0017_glossy_thunderball",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780660257244,
+      "tag": "0018_nostalgic_whizzer",
+      "breakpoints": true
     }
   ]
 }

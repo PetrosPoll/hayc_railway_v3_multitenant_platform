@@ -8,6 +8,7 @@ import {
   unique,
   jsonb,
   primaryKey,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -196,6 +197,7 @@ export const subscriptions = pgTable("subscriptions", {
   emailLimitResetDate: timestamp("email_limit_reset_date").defaultNow().notNull(),
   isLegacy: boolean("is_legacy").default(false).notNull(),
   notes: text("notes"),
+  reactivationOf: integer("reactivation_of").references((): AnyPgColumn => subscriptions.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

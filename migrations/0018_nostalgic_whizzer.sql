@@ -1,0 +1,2 @@
+ALTER TABLE "subscriptions" ADD COLUMN "reactivation_of" integer;--> statement-breakpoint
+ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_reactivation_of_subscriptions_id_fk" FOREIGN KEY ("reactivation_of") REFERENCES "public"."subscriptions"("id") ON DELETE no action ON UPDATE no action;

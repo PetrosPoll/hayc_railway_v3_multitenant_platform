@@ -66,6 +66,11 @@ import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
 import { getConfig, putConfig, getConfigHistory, getConfigSnapshot, restoreConfig } from "./s3-config";
+import {
+  computeProductChurnStats,
+  filterRowsByProductType,
+  type ChurnSubscriptionRow,
+} from "./churn-stats";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 type CloudinaryResourceType = "image" | "video" | "raw";
@@ -8118,107 +8123,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const subscriptionRows = await db
         .select({
           id: subscriptionsTable.id,
+          userId: subscriptionsTable.userId,
           createdAt: subscriptionsTable.createdAt,
           status: subscriptionsTable.status,
           cancelledAt: subscriptionsTable.cancelledAt,
           accessUntil: subscriptionsTable.accessUntil,
+          productType: subscriptionsTable.productType,
+          reactivationOf: subscriptionsTable.reactivationOf,
           accountKind: users.accountKind,
         })
         .from(subscriptionsTable)
         .leftJoin(users, eq(subscriptionsTable.userId, users.id))
         .where(eq(users.accountKind, AccountKind.CUSTOMER));
 
-      type SubscriptionLifecycle = {
-        startDate: Date;
-        endDate: Date | null;
-      };
-
-      const lifecycles: SubscriptionLifecycle[] = [];
-
-      for (const row of subscriptionRows) {
-        if (!row.createdAt) continue;
-
-        const createdAt = new Date(row.createdAt);
-        const status = (row.status || "").toLowerCase();
-        const isCancelledStatus = status === "cancelled" || status === "canceled";
-        const cancelledAt = row.cancelledAt ? new Date(row.cancelledAt) : null;
-        const accessUntil = row.accessUntil ? new Date(row.accessUntil) : null;
-        const endDate = cancelledAt || (isCancelledStatus ? accessUntil : null);
-
-        lifecycles.push({
-          startDate: createdAt,
-          endDate,
-        });
-      }
-
-      const totalSubscriptionsEver = lifecycles.length;
-      const churnedSubscriptions = lifecycles.filter((s) => !!s.endDate);
-      const totalChurnedSubscriptions = churnedSubscriptions.length;
-      const totalChurnRate =
-        totalSubscriptionsEver > 0
-          ? Number(((totalChurnedSubscriptions / totalSubscriptionsEver) * 100).toFixed(2))
-          : 0;
-
-      const subscriptionCreatedAtTimestamps = lifecycles.map((s) => s.startDate.getTime());
-      const firstSubscriptionDate =
-        subscriptionCreatedAtTimestamps.length > 0
-          ? new Date(Math.min(...subscriptionCreatedAtTimestamps))
-          : null;
-
-      const monthly: Array<{
-        month: string;
-        subscriptionsAtStart: number;
-        churnedSubscriptions: number;
-        churnRate: number | null;
-      }> = [];
-
-      if (firstSubscriptionDate) {
-        const cursor = new Date(
-          Date.UTC(firstSubscriptionDate.getUTCFullYear(), firstSubscriptionDate.getUTCMonth(), 1),
-        );
-        const lastMonth = new Date(
-          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1),
-        );
-
-        while (cursor <= lastMonth) {
-          const monthStart = new Date(cursor);
-          const monthEnd = new Date(
-            Date.UTC(cursor.getUTCFullYear(), cursor.getUTCMonth() + 1, 1),
-          );
-
-          const subscriptionsAtStart = lifecycles.filter((s) => {
-            const startedBeforeMonth = s.startDate < monthStart;
-            const notEndedBeforeMonth = !s.endDate || s.endDate >= monthStart;
-            return startedBeforeMonth && notEndedBeforeMonth;
-          }).length;
-
-          const churnedInMonth = lifecycles.filter(
-            (s) =>
-              !!s.endDate &&
-              s.endDate >= monthStart &&
-              s.endDate < monthEnd,
-          ).length;
-
-          monthly.push({
-            month: `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, "0")}`,
-            subscriptionsAtStart,
-            churnedSubscriptions: churnedInMonth,
-            churnRate:
-              subscriptionsAtStart > 0
-                ? Number(((churnedInMonth / subscriptionsAtStart) * 100).toFixed(2))
-                : null,
-          });
-
-          cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-        }
-      }
+      const churnRows: ChurnSubscriptionRow[] = subscriptionRows.map((row) => ({
+        id: row.id,
+        userId: row.userId,
+        createdAt: row.createdAt,
+        status: row.status,
+        cancelledAt: row.cancelledAt,
+        accessUntil: row.accessUntil,
+        productType: row.productType,
+        reactivationOf: row.reactivationOf,
+      }));
 
       return res.json({
-        firstSubscriptionDate: firstSubscriptionDate?.toISOString() ?? null,
-        totalSubscriptionsEver,
-        totalChurnedSubscriptions,
-        totalChurnRate,
-        monthly,
+        plan: computeProductChurnStats(filterRowsByProductType(churnRows, "plan"), now),
+        addon: computeProductChurnStats(filterRowsByProductType(churnRows, "addon"), now),
       });
     } catch (err) {
       console.error("Error fetching churn stats:", err);
@@ -8912,6 +8843,108 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching user subscriptions:", err);
       res.status(500).json({ error: "Failed to fetch user subscriptions" });
+    }
+  });
+
+  // Mark a subscription as a reactivation of a previous cancelled one
+  app.patch("/api/admin/subscriptions/:id/reactivation", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canManageSubscriptions")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const subscriptionId = parseInt(req.params.id, 10);
+      const reactivationOf = req.body?.reactivationOf;
+
+      if (!Number.isFinite(subscriptionId)) {
+        return res.status(400).json({ error: "Invalid subscription ID" });
+      }
+      if (!Number.isFinite(reactivationOf)) {
+        return res.status(400).json({ error: "reactivationOf is required" });
+      }
+
+      const [currentSub] = await db
+        .select()
+        .from(subscriptionsTable)
+        .where(eq(subscriptionsTable.id, subscriptionId))
+        .limit(1);
+
+      if (!currentSub) {
+        return res.status(404).json({ error: "Subscription not found" });
+      }
+
+      const [previousSub] = await db
+        .select()
+        .from(subscriptionsTable)
+        .where(eq(subscriptionsTable.id, reactivationOf))
+        .limit(1);
+
+      if (!previousSub) {
+        return res.status(404).json({ error: "Previous subscription not found" });
+      }
+
+      if (currentSub.userId !== previousSub.userId) {
+        return res.status(400).json({ error: "Subscriptions must belong to the same customer" });
+      }
+
+      if (subscriptionId === reactivationOf) {
+        return res.status(400).json({ error: "A subscription cannot reactivate itself" });
+      }
+
+      const previousStatus = (previousSub.status || "").toLowerCase();
+      if (previousStatus !== "cancelled" && previousStatus !== "canceled") {
+        return res.status(400).json({ error: "Previous subscription must be cancelled" });
+      }
+
+      const currentStatus = (currentSub.status || "").toLowerCase();
+      if (currentStatus === "cancelled" || currentStatus === "canceled") {
+        return res.status(400).json({ error: "Only active subscriptions can be marked as reactivations" });
+      }
+
+      if (
+        currentSub.createdAt &&
+        previousSub.createdAt &&
+        new Date(currentSub.createdAt) <= new Date(previousSub.createdAt)
+      ) {
+        return res.status(400).json({
+          error: "Reactivation subscription must be newer than the cancelled one",
+        });
+      }
+
+      const currentProductType = currentSub.productType === "addon" ? "addon" : "plan";
+      const previousProductType = previousSub.productType === "addon" ? "addon" : "plan";
+      if (currentProductType !== previousProductType) {
+        return res.status(400).json({
+          error: "Plan and add-on subscriptions cannot be linked as reactivations",
+        });
+      }
+
+      const [existingLink] = await db
+        .select({ id: subscriptionsTable.id })
+        .from(subscriptionsTable)
+        .where(eq(subscriptionsTable.reactivationOf, reactivationOf))
+        .limit(1);
+
+      if (existingLink && existingLink.id !== subscriptionId) {
+        return res.status(400).json({
+          error: "This cancelled subscription is already linked to another reactivation",
+        });
+      }
+
+      const [updated] = await db
+        .update(subscriptionsTable)
+        .set({ reactivationOf })
+        .where(eq(subscriptionsTable.id, subscriptionId))
+        .returning();
+
+      return res.json({ subscription: updated });
+    } catch (err) {
+      console.error("Error marking subscription reactivation:", err);
+      return res.status(500).json({ error: "Failed to mark reactivation" });
     }
   });
 

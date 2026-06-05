@@ -130,17 +130,292 @@ interface Subscription {
   transactions?: Transaction[];
 }
 
-interface ChurnStats {
+interface ProductChurnStats {
   firstSubscriptionDate: string | null;
   totalSubscriptionsEver: number;
   totalChurnedSubscriptions: number;
   totalChurnRate: number;
+  lifetimeChurnRate: number;
+  thisYearChurnRate: number;
+  averageMonthlyChurn: number;
   monthly: Array<{
     month: string;
     subscriptionsAtStart: number;
     churnedSubscriptions: number;
     churnRate: number | null;
   }>;
+}
+
+interface ChurnStats {
+  plan: ProductChurnStats;
+  addon: ProductChurnStats;
+}
+
+const isCancelledSubscriptionStatus = (status: string | null | undefined) => {
+  const normalized = (status || "").toLowerCase();
+  return normalized === "cancelled" || normalized === "canceled";
+};
+
+const isActiveSubscriptionStatus = (status: string | null | undefined) => {
+  const normalized = (status || "").toLowerCase();
+  return normalized === "active" || normalized === "trialing" || normalized === "past_due";
+};
+
+const subscriptionProductCategory = (productType: string | null | undefined) =>
+  productType === "addon" ? "addon" : "plan";
+
+function ChurnStatisticsSection({
+  title,
+  description,
+  stats,
+}: {
+  title: string;
+  description: string;
+  stats: ProductChurnStats | undefined;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold">{title}</h3>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>First Subscription</CardDescription>
+            <CardTitle className="text-base">
+              {stats?.firstSubscriptionDate
+                ? new Date(stats.firstSubscriptionDate).toLocaleDateString("en-GB")
+                : "N/A"}
+            </CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Total Subscriptions Ever</CardDescription>
+            <CardTitle className="text-2xl">{stats?.totalSubscriptionsEver ?? 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>True Churned Subscriptions</CardDescription>
+            <CardTitle className="text-2xl">{stats?.totalChurnedSubscriptions ?? 0}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Subscription Churn Rate</CardDescription>
+            <CardTitle className="text-2xl">{(stats?.totalChurnRate ?? 0).toFixed(2)}%</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Lifetime Churn Rate</CardDescription>
+            <CardTitle className="text-2xl">{(stats?.lifetimeChurnRate ?? 0).toFixed(2)}%</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>This Year Churn Rate</CardDescription>
+            <CardTitle className="text-2xl">{(stats?.thisYearChurnRate ?? 0).toFixed(2)}%</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Average Monthly Churn</CardDescription>
+            <CardTitle className="text-2xl">{(stats?.averageMonthlyChurn ?? 0).toFixed(2)}%</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Churn</CardTitle>
+          <CardDescription>
+            True churned subscriptions divided by subscriptions active at the start of each month.
+            Reactivated cancellations are excluded.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {!stats?.monthly?.length ? (
+            <div className="text-sm text-muted-foreground">No churn data available.</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Month</TableHead>
+                  <TableHead>Subscriptions at Start</TableHead>
+                  <TableHead>Churned Subscriptions</TableHead>
+                  <TableHead>Churn Rate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {stats.monthly.map((item) => (
+                  <TableRow key={item.month}>
+                    <TableCell>{formatMonth(item.month)}</TableCell>
+                    <TableCell>{item.subscriptionsAtStart}</TableCell>
+                    <TableCell>{item.churnedSubscriptions}</TableCell>
+                    <TableCell>
+                      {item.churnRate === null ? "N/A" : `${item.churnRate.toFixed(2)}%`}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function SubscriptionReactivationAction({
+  subscription,
+  allSubscriptions,
+  userId,
+}: {
+  subscription: {
+    id: number;
+    status: string;
+    createdAt: string;
+    productType?: string | null;
+    reactivationOf?: number | null;
+    tier?: string | null;
+    productId?: string | null;
+  };
+  allSubscriptions: Array<{
+    id: number;
+    status: string;
+    createdAt: string;
+    productType?: string | null;
+    tier?: string | null;
+    productId?: string | null;
+  }>;
+  userId: number;
+}) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [selectedPreviousId, setSelectedPreviousId] = useState<string>("");
+
+  const category = subscriptionProductCategory(subscription.productType);
+  const cancelledCandidates = allSubscriptions.filter((candidate) => {
+    if (candidate.id === subscription.id) return false;
+    if (!isCancelledSubscriptionStatus(candidate.status)) return false;
+    if (subscriptionProductCategory(candidate.productType) !== category) return false;
+    return new Date(candidate.createdAt) < new Date(subscription.createdAt);
+  });
+
+  const canMarkReactivation =
+    isActiveSubscriptionStatus(subscription.status) &&
+    cancelledCandidates.length > 0;
+
+  const markReactivation = useMutation({
+    mutationFn: async (reactivationOf: number) => {
+      const response = await fetch(`/api/admin/subscriptions/${subscription.id}/reactivation`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ reactivationOf }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to mark reactivation");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/admin/users", userId, "subscriptions"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/churn-stats"] });
+      toast({
+        title: "Reactivation saved",
+        description: "This subscription is now excluded from churn metrics for the previous cancellation.",
+      });
+      setOpen(false);
+      setSelectedPreviousId("");
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to save reactivation",
+        description: error.message,
+      });
+    },
+  });
+
+  if (!canMarkReactivation && !subscription.reactivationOf) {
+    return null;
+  }
+
+  const formatSubscriptionLabel = (sub: {
+    id: number;
+    tier?: string | null;
+    productId?: string | null;
+    createdAt: string;
+    status: string;
+  }) => {
+    const name = sub.tier || sub.productId || `Subscription #${sub.id}`;
+    return `#${sub.id} — ${name} (${new Date(sub.createdAt).toLocaleDateString("en-GB")}, ${sub.status})`;
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t">
+      {subscription.reactivationOf ? (
+        <p className="text-sm text-muted-foreground">
+          Reactivation of subscription{" "}
+          <span className="font-medium text-foreground">#{subscription.reactivationOf}</span>
+        </p>
+      ) : (
+        <>
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+            Mark as Reactivation
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Mark as Reactivation</DialogTitle>
+                <DialogDescription>
+                  Link this subscription to a previous cancelled one so the earlier cancellation is
+                  excluded from churn metrics.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2">
+                <Label htmlFor={`reactivation-select-${subscription.id}`}>
+                  Previous cancelled subscription
+                </Label>
+                <Select value={selectedPreviousId} onValueChange={setSelectedPreviousId}>
+                  <SelectTrigger id={`reactivation-select-${subscription.id}`}>
+                    <SelectValue placeholder="Select cancelled subscription" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cancelledCandidates.map((candidate) => (
+                      <SelectItem key={candidate.id} value={String(candidate.id)}>
+                        {formatSubscriptionLabel(candidate)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => markReactivation.mutate(parseInt(selectedPreviousId, 10))}
+                  disabled={!selectedPreviousId || markReactivation.isPending}
+                >
+                  {markReactivation.isPending ? "Saving..." : "Save"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </>
+      )}
+    </div>
+  );
 }
 
 interface MissingCancelledAtRecord {
@@ -357,6 +632,12 @@ function UserDetailsView({ userId }: { userId: number }) {
                       </div>
                     )}
                   </div>
+
+                  <SubscriptionReactivationAction
+                    subscription={subscription}
+                    allSubscriptions={data.subscriptions}
+                    userId={userId}
+                  />
                 </div>
               ))}
             </div>
@@ -377,9 +658,10 @@ function UserDetailsView({ userId }: { userId: number }) {
               {addonSubscriptions.map((subscription: any) => (
                 <div
                   key={subscription.id}
-                  className="border rounded-lg p-3 flex flex-wrap items-center justify-between gap-2 text-sm"
+                  className="border rounded-lg p-3 text-sm"
                   data-testid={`addon-subscription-${subscription.id}`}
                 >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex flex-wrap gap-x-4 gap-y-1">
                     <span>
                       <span className="text-muted-foreground">ID</span>{" "}
@@ -433,6 +715,12 @@ function UserDetailsView({ userId }: { userId: number }) {
                       ? new Date(subscription.createdAt).toLocaleDateString()
                       : ""}
                   </span>
+                  </div>
+                  <SubscriptionReactivationAction
+                    subscription={subscription}
+                    allSubscriptions={data.subscriptions}
+                    userId={userId}
+                  />
                 </div>
               ))}
             </div>
@@ -2218,84 +2506,20 @@ export default function AdminDashboard() {
               <CancelledDueToPaymentFailureList />
             </TabsContent>
             <TabsContent value="statistics" className="mt-0">
-              <section>
-                <h2 className="text-xl font-semibold mb-4">Churn Statistics</h2>
+              <section className="space-y-10">
+                <h2 className="text-xl font-semibold">Churn Statistics</h2>
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>First Subscription</CardDescription>
-                      <CardTitle className="text-base">
-                        {churnStatsData?.firstSubscriptionDate
-                          ? new Date(churnStatsData.firstSubscriptionDate).toLocaleDateString("en-GB")
-                          : "N/A"}
-                      </CardTitle>
-                    </CardHeader>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Total Subscriptions Ever</CardDescription>
-                      <CardTitle className="text-2xl">
-                        {churnStatsData?.totalSubscriptionsEver ?? 0}
-                      </CardTitle>
-                    </CardHeader>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Total Churned Subscriptions</CardDescription>
-                      <CardTitle className="text-2xl">
-                        {churnStatsData?.totalChurnedSubscriptions ?? 0}
-                      </CardTitle>
-                    </CardHeader>
-                  </Card>
-                  <Card>
-                    <CardHeader className="pb-2">
-                      <CardDescription>Total Churn Rate</CardDescription>
-                      <CardTitle className="text-2xl">
-                        {(churnStatsData?.totalChurnRate ?? 0).toFixed(2)}%
-                      </CardTitle>
-                    </CardHeader>
-                  </Card>
-                </div>
+                <ChurnStatisticsSection
+                  title="Plan Churn"
+                  description="Hosting plan subscriptions only (product_type = plan)."
+                  stats={churnStatsData?.plan}
+                />
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Monthly Churn</CardTitle>
-                    <CardDescription>
-                      Churned subscriptions divided by subscriptions active at the start of each month.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {!churnStatsData?.monthly?.length ? (
-                      <div className="text-sm text-muted-foreground">
-                        No churn data available.
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Month</TableHead>
-                            <TableHead>Subscriptions at Start</TableHead>
-                            <TableHead>Churned Subscriptions</TableHead>
-                            <TableHead>Churn Rate</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {churnStatsData.monthly.map((item) => (
-                            <TableRow key={item.month}>
-                              <TableCell>{formatMonth(item.month)}</TableCell>
-                              <TableCell>{item.subscriptionsAtStart}</TableCell>
-                              <TableCell>{item.churnedSubscriptions}</TableCell>
-                              <TableCell>
-                                {item.churnRate === null ? "N/A" : `${item.churnRate.toFixed(2)}%`}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
+                <ChurnStatisticsSection
+                  title="Add-on Churn"
+                  description="Add-on subscriptions only (product_type = addon)."
+                  stats={churnStatsData?.addon}
+                />
 
                 <Card className="mt-6">
                   <CardHeader>
