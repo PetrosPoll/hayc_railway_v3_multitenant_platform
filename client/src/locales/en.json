@@ -2572,7 +2572,8 @@
             "successTitle": "Almost Ready!",
             "successSubtitle": "Pick a convenient time for your free consultation",
             "emailValidation": "Please enter a valid email address",
-            "phoneValidation": "Please enter a valid phone number"
+            "phoneValidation": "Please enter a valid phone number",
+            "newsletterOptIn": "I agree to receive emails about offers and updates from Hayc. (Optional)"
         },
         "reviews": {
             "title": "What Our Clients Say",

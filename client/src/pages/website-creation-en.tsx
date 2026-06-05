@@ -27,10 +27,13 @@ import {
   landingLangButtonClass,
   landingPanelClass,
 } from "@/lib/landing-page-styles";
+import { LandingNewsletterOptInField } from "@/components/landing/landing-newsletter-opt-in-field";
+import { subscribeToHaycNewsletter } from "@/lib/hayc-newsletter-subscribe";
 
 type LeadFormData = {
   email: string;
   phone: string;
+  newsletterOptIn?: boolean;
 };
 
 export default function WebsiteCreationLandingEN() {
@@ -49,6 +52,7 @@ export default function WebsiteCreationLandingEN() {
   const leadSchema = z.object({
     email: z.string().email(t('landingPage.form.emailValidation')),
     phone: z.string().min(1, t('landingPage.form.phoneValidation')),
+    newsletterOptIn: z.boolean().optional().default(false),
   });
 
   const benefits = [
@@ -136,6 +140,7 @@ export default function WebsiteCreationLandingEN() {
     defaultValues: {
       email: "",
       phone: "",
+      newsletterOptIn: false,
     },
   });
 
@@ -159,6 +164,10 @@ export default function WebsiteCreationLandingEN() {
 
       if (!response.ok) {
         throw new Error('Failed to submit lead');
+      }
+
+      if (data.newsletterOptIn && data.email) {
+        await subscribeToHaycNewsletter(data.email);
       }
 
       const result = await response.json();
@@ -468,6 +477,7 @@ export default function WebsiteCreationLandingEN() {
                               </FormItem>
                             )}
                           />
+                          <LandingNewsletterOptInField control={form.control} />
                           <Button 
                             type="submit" 
                             className={landingSubmitButtonClass}
