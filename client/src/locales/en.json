@@ -2612,8 +2612,8 @@
             "title": "Why Choose HAYC for Your Website?",
             "subtitle": "We deliver results that matter for your business",
             "benefit1": {
-                "title": "Fast Delivery in 15 Days",
-                "description": "From start to delivery in just 15 days. Your business will be online quickly without sacrificing quality."
+                "title": "Fast Delivery in 10 Days",
+                "description": "From start to delivery in just 10 days. Your business will be online quickly without sacrificing quality."
             },
             "benefit2": {
                 "title": "100% Money-Back Guarantee",
@@ -2649,12 +2649,12 @@
                 "description": "We customize your selected layout, add your content and optimize for SEO and mobile."
             },
             "step4": {
-                "title": "Launch in 15 Days",
+                "title": "Launch in 10 Days",
                 "description": "Your website goes live with continuous updates, support and new features."
             }
         },
         "cta1": {
-            "title": "Ready to Get Your Website Live in Just 15 Days?",
+            "title": "Ready to Get Your Website Live in Just 10 Days?",
             "subtitle": "Join dozens of businesses already growing with hayc. Stop wasting time and money on agencies — get a professional website, fast!",
             "button": "Get Started Today",
             "badge": "Limited Slots This Month"
@@ -2673,7 +2673,7 @@
         "faq": {
             "title": "Frequently Asked Questions",
             "question1": "How long does it take to create a website?",
-            "answer1": "We deliver each website in just 15 business days after we receive your content and preferences. Fast, professional and stress-free.",
+            "answer1": "We deliver each website in just 10 business days after we receive your content and preferences. Fast, professional and stress-free.",
             "question2": "What's included in the website package?",
             "answer2": "Your subscription covers everything: a modern responsive website, SEO-friendly setup, contact forms, social media links, analytics, hosting and continuous updates. No hidden costs.",
             "question3": "Do I own the website?",
@@ -2686,10 +2686,10 @@
             "answer6": "Yes, hosting is fully included. We manage it for you so your website stays fast, secure and always online."
         },
         "final": {
-            "title": "Get Your Website Live in Just 15 Days",
+            "title": "Get Your Website Live in Just 10 Days",
             "subtitle": "Stop overpaying agencies or struggling with DIY builders. With hayc, you get a professional website — fast, simple, and built to grow with your business.",
             "stat1": {
-                "value": "15 Days",
+                "value": "10 Days",
                 "label": "Guaranteed Delivery"
             },
             "stat2": {
@@ -2701,7 +2701,7 @@
                 "label": "Support & Updates"
             },
             "button": "Start Your Website Today",
-            "badges": "🔒 Risk-Free Guarantee • ⚡ Live in 15 Days • 🎯 Built for Growth"
+            "badges": "🔒 Risk-Free Guarantee • ⚡ Live in 10 Days • 🎯 Built for Growth"
         }
     },
     "digitalProductsManagement": {
