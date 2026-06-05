@@ -9,7 +9,7 @@ export const landingPanelClass =
   "bg-black rounded-lg outline outline-1 outline-zinc-800/80";
 export const landingFormLabelClass = "text-slate-100 text-base font-normal font-brand leading-6";
 export const landingInputClass =
-  "w-full pl-10 px-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 !bg-black text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0";
+  "w-full pl-11 pr-4 py-3 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 !bg-black text-slate-100 text-sm font-normal font-brand leading-5 placeholder:text-slate-100/50 focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-[#ED4C14] focus-visible:outline-2 transition-all border-0";
 export const landingSubmitButtonClass =
   "w-full bg-[#ED4C14] hover:bg-[#ED4C14]/90 text-[#EFF6FF] font-semibold font-brand";
 export const landingSectionTitleClass = "text-3xl font-bold mb-4 text-white font-brand";
