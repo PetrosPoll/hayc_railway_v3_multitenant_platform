@@ -31,6 +31,8 @@ export interface IStorage {
     billingPeriod?: string;
     createdAt?: Date;
     cancellationReason?: string | null;
+    cancelledAt?: Date | null;
+    accessUntil?: Date | null;
     websiteProgressId?: number | null;
   }): Promise<Subscription>;
   updateSubscriptionPdf(id: number, pdfUrl: string): Promise<Subscription>;
@@ -257,6 +259,8 @@ export class DatabaseStorage implements IStorage {
     billingPeriod?: string;
     createdAt?: Date;
     cancellationReason?: string | null;
+    cancelledAt?: Date | null;
+    accessUntil?: Date | null;
     websiteProgressId?: number | null;
   }): Promise<Subscription> {
     try {
@@ -282,6 +286,8 @@ export class DatabaseStorage implements IStorage {
           billingPeriod: data.billingPeriod || 'monthly',
           createdAt: data.createdAt || new Date(),
           cancellationReason: data.cancellationReason || null,
+          cancelledAt: data.cancelledAt ?? null,
+          accessUntil: data.accessUntil ?? null,
         })
         .returning();
 

@@ -71,6 +71,15 @@ import {
   filterRowsByProductType,
   type ChurnSubscriptionRow,
 } from "./churn-stats";
+import {
+  accessUntilFromStripePeriodEnd,
+  addonItemCancellationUpdate,
+  cancelledAtFromStripe,
+  isStripeSubscriptionCancelled,
+  normalizedSubscriptionStatus,
+  stripeCancellationUpdate,
+  stripeImportCancellationFields,
+} from "./subscription-lifecycle";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 type CloudinaryResourceType = "image" | "video" | "raw";
@@ -4302,41 +4311,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         case "customer.subscription.deleted": {
-          // This webhook is handled by the manual cancellation endpoints
-          // to avoid duplicate emails. The cancellation email is sent
-          // when the user cancels through the UI or admin panel.
-          
-          // Mark any pending/grace obligations for this subscription as stopped
+          // Cancellation emails are sent from manual cancel endpoints.
+          // This webhook keeps local lifecycle fields in sync (e.g. Stripe Dashboard cancels).
           try {
             const deletedSubscription = event.data.object as Stripe.Subscription;
-            
-            // Find our local subscription
-            const localSubscription = await db
+
+            const localSubscriptions = await db
               .select()
               .from(subscriptionsTable)
-              .where(eq(subscriptionsTable.stripeSubscriptionId, deletedSubscription.id))
-              .limit(1);
-            
-            if (localSubscription.length > 0) {
-              // Get all pending/grace obligations for this subscription and mark them as stopped
+              .where(eq(subscriptionsTable.stripeSubscriptionId, deletedSubscription.id));
+
+            for (const localSubscription of localSubscriptions) {
+              const patch: {
+                status?: string;
+                cancelledAt?: Date;
+                accessUntil?: Date | null;
+              } = {};
+
+              if (!isStripeSubscriptionCancelled(localSubscription.status)) {
+                patch.status = "cancelled";
+              }
+              if (!localSubscription.cancelledAt) {
+                patch.cancelledAt = cancelledAtFromStripe(deletedSubscription);
+              }
+              if (!localSubscription.accessUntil) {
+                patch.accessUntil = accessUntilFromStripePeriodEnd(deletedSubscription);
+              }
+
+              if (Object.keys(patch).length > 0) {
+                await db
+                  .update(subscriptionsTable)
+                  .set(patch)
+                  .where(eq(subscriptionsTable.id, localSubscription.id));
+              }
+
               const obligations = await db
                 .select()
                 .from(paymentObligations)
                 .where(
                   and(
-                    eq(paymentObligations.subscriptionId, localSubscription[0].id),
+                    eq(paymentObligations.subscriptionId, localSubscription.id),
                     inArray(paymentObligations.status, ['pending', 'grace'])
                   )
                 );
-              
+
               for (const obligation of obligations) {
                 await storage.markObligationStopped(obligation.id);
               }
-              
-              console.log(`🛑 Marked ${obligations.length} obligations as stopped for cancelled subscription ${deletedSubscription.id}`);
+
+              console.log(`🛑 Synced cancelled subscription ${deletedSubscription.id} (local #${localSubscription.id}), stopped ${obligations.length} obligations`);
             }
           } catch (error) {
-            console.error('Error handling subscription deleted for obligations:', error);
+            console.error('Error handling subscription deleted:', error);
           }
           break;
         }
@@ -4808,8 +4834,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
 
                 // Cancel the subscription in Stripe (this will trigger customer.subscription.deleted)
+                let cancelledStripeSub: Stripe.Subscription | null = null;
                 try {
-                  await stripe.subscriptions.cancel(invoice.subscription as string, {
+                  cancelledStripeSub = await stripe.subscriptions.cancel(invoice.subscription as string, {
                     prorate: false,
                   });
                   console.log('🛑 Cancelled subscription due to unpaid invoice:', invoice.subscription);
@@ -4820,10 +4847,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Update local subscription status
                 await db
                   .update(subscriptionsTable)
-                  .set({ 
-                    status: 'cancelled',
-                    cancellationReason: 'payment_failed',
-                  })
+                  .set(
+                    cancelledStripeSub
+                      ? stripeCancellationUpdate(cancelledStripeSub, {
+                          cancellationReason: "payment_failed",
+                        })
+                      : {
+                          status: "cancelled",
+                          cancellationReason: "payment_failed",
+                          cancelledAt: new Date(),
+                        },
+                  )
                   .where(eq(subscriptionsTable.id, subscription.id));
               }
             }
@@ -5129,7 +5163,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Stripe subscription not found or not active" });
       }
 
-      const accessUntil = new Date(stripeSubscription.current_period_end * 1000);
+      const accessUntil = accessUntilFromStripePeriodEnd(stripeSubscription)!;
 
       if (localSubscription.productType === "addon") {
         // Addon: remove only this item from the Stripe subscription so the plan stays active.
@@ -5138,10 +5172,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "No Stripe subscription item ID found for this addon" });
         }
         if (stripeSubscription.items.data.length === 1) {
-          await stripe.subscriptions.cancel(stripeSubscription.id);
+          const cancelledStripeSub = await stripe.subscriptions.cancel(stripeSubscription.id);
           await db
             .update(subscriptionsTable)
-            .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+            .set(
+              stripeCancellationUpdate(cancelledStripeSub, {
+                cancellationReason: "User requested cancellation",
+                accessUntil,
+              }),
+            )
             .where(
               and(
                 eq(subscriptionsTable.userId, currentUser.id),
@@ -5152,15 +5191,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await stripe.subscriptionItems.del(localSubscription.stripeSubscriptionItemId);
           await db
             .update(subscriptionsTable)
-            .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+            .set(addonItemCancellationUpdate(accessUntil))
             .where(eq(subscriptionsTable.id, subscriptionId));
         }
       } else {
         // Plan: cancel the entire Stripe subscription — this also removes all addons.
-        await stripe.subscriptions.cancel(stripeSubscription.id);
+        const cancelledStripeSub = await stripe.subscriptions.cancel(stripeSubscription.id);
         await db
           .update(subscriptionsTable)
-          .set({ status: "cancelled", cancellationReason: "User requested cancellation", accessUntil })
+          .set(
+            stripeCancellationUpdate(cancelledStripeSub, {
+              cancellationReason: "User requested cancellation",
+              accessUntil,
+            }),
+          )
           .where(
             and(
               eq(subscriptionsTable.userId, currentUser.id),
@@ -16608,7 +16652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Stripe subscription not found or not active" });
       }
 
-      const accessUntil = new Date(stripeSubscription.current_period_end * 1000);
+      const accessUntil = accessUntilFromStripePeriodEnd(stripeSubscription)!;
 
       if (subscription.productType === "addon") {
         // Addon: remove only this item from the Stripe subscription so the plan stays active.
@@ -16617,10 +16661,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "No Stripe subscription item ID found for this addon" });
         }
         if (stripeSubscription.items.data.length === 1) {
-          await stripe.subscriptions.cancel(stripeSubscription.id);
+          const cancelledStripeSub = await stripe.subscriptions.cancel(stripeSubscription.id);
           await db
             .update(subscriptionsTable)
-            .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+            .set(
+              stripeCancellationUpdate(cancelledStripeSub, {
+                cancellationReason: reason,
+                accessUntil,
+              }),
+            )
             .where(
               and(
                 eq(subscriptionsTable.userId, subscription.userId),
@@ -16631,15 +16680,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await stripe.subscriptionItems.del(subscription.stripeSubscriptionItemId);
           await db
             .update(subscriptionsTable)
-            .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+            .set(addonItemCancellationUpdate(accessUntil, reason))
             .where(eq(subscriptionsTable.id, subscriptionId));
         }
       } else {
         // Plan: cancel the entire Stripe subscription — this also removes all addons.
-        await stripe.subscriptions.cancel(stripeSubscription.id);
+        const cancelledStripeSub = await stripe.subscriptions.cancel(stripeSubscription.id);
         await db
           .update(subscriptionsTable)
-          .set({ status: "cancelled", cancellationReason: reason, accessUntil })
+          .set(
+            stripeCancellationUpdate(cancelledStripeSub, {
+              cancellationReason: reason,
+              accessUntil,
+            }),
+          )
           .where(
             and(
               eq(subscriptionsTable.userId, subscription.userId),
@@ -24173,12 +24227,13 @@ async function syncAllStripeSubscriptions(
 
       // Create subscription with preserved PDF URL, add-ons, websiteProgressId, and original Stripe creation date
       try {
+        const importCancellationFields = stripeImportCancellationFields(stripeSub);
         const subscription = await storage.createSubscription({
           userId,
           productType,
           productId,
           tier,
-          status: stripeSub.status, // This could be active, cancelled, etc.
+          status: normalizedSubscriptionStatus(stripeSub.status),
           price,
           vatNumber: null,
           pdfUrl: existingPdfUrls.get(stripeSub.id) || null,
@@ -24187,6 +24242,8 @@ async function syncAllStripeSubscriptions(
           createdAt: new Date(stripeSub.created * 1000),
           websiteProgressId: existingWebsiteProgressIds.get(stripeSub.id) || null, // Preserve website association
           stripeSubscriptionId: stripeSub.id, // Store Stripe subscription ID for future syncs
+          cancelledAt: importCancellationFields.cancelledAt ?? null,
+          accessUntil: importCancellationFields.accessUntil ?? null,
         });
 
         // Only create transactions if subscription was successfully created
