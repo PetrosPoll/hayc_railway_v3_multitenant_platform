@@ -60,10 +60,9 @@ export function WebsiteCreationLanding({
   useNoIndex();
 
   useEffect(() => {
-    if (forceEnglish) {
-      i18n.changeLanguage("en");
-      localStorage.setItem("language", "en");
-    }
+    const language = forceEnglish ? "en" : "gr";
+    i18n.changeLanguage(language);
+    localStorage.setItem("language", language);
   }, [forceEnglish, i18n]);
 
   const heroTitle =
