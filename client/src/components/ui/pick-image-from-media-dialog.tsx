@@ -19,6 +19,8 @@ export interface PickImageFromMediaDialogProps {
   websiteId: string | number;
   /** When provided, preselects the matching media item in the grid */
   currentFieldUrl?: string;
+  /** When set, only items matching this resource type are selectable. Others are shown but greyed out. */
+  accept?: "image" | "video" | "file";
 }
 
 type MediaItem = {
@@ -48,6 +50,14 @@ function extFromPathOrUrl(s: string): string {
   return m ? m[1].toLowerCase() : "";
 }
 
+function isAccepted(item: MediaItem, accept: "image" | "video" | "file" | undefined): boolean {
+  if (!accept) return true;
+  if (accept === "image") return item.resourceType === "image" || isImageMediaItem(item);
+  if (accept === "video") return item.resourceType === "video";
+  if (accept === "file") return item.resourceType === "raw";
+  return true;
+}
+
 function isImageMediaItem(m: MediaItem): boolean {
   if (m.resourceType === "image") return true;
   if (m.resourceType === "video" || m.resourceType === "raw") return false;
@@ -61,6 +71,7 @@ export function PickImageFromMediaDialog({
   onSelect,
   websiteId,
   currentFieldUrl = "",
+  accept,
 }: PickImageFromMediaDialogProps) {
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
 
@@ -141,15 +152,18 @@ export function PickImageFromMediaDialog({
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {mediaItems.map((item) => {
                   const isSelected = selectedUrl === item.url;
+                  const accepted = isAccepted(item, accept);
                   const showImagePreview =
                     item.resourceType === "image" || isImageMediaItem(item);
                   return (
                     <button
                       key={item.publicId}
                       type="button"
-                      onClick={() => setSelectedUrl(item.url)}
+                      disabled={!accepted}
+                      onClick={() => accepted && setSelectedUrl(item.url)}
                       className={cn(
-                        "group relative flex flex-col overflow-hidden rounded-md border-2 bg-muted/30 text-left transition-colors hover:bg-muted/50",
+                        "group relative flex flex-col overflow-hidden rounded-md border-2 bg-muted/30 text-left transition-colors",
+                        accepted ? "hover:bg-muted/50 cursor-pointer" : "pointer-events-none opacity-40 cursor-not-allowed",
                         isSelected
                           ? "border-primary ring-2 ring-primary ring-offset-2"
                           : "border-transparent"

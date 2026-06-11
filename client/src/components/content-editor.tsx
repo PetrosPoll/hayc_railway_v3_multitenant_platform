@@ -1359,6 +1359,14 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
           ? String(getValueAtPath(localConfig, pickImagePath) ?? "")
           : ""
       }
+      accept={(() => {
+        if (!pickImagePath) return undefined;
+        const key = pickImagePath.toLowerCase();
+        if (["video", "audio"].some((k) => key.includes(k))) return "video";
+        if (["pdf", "document", "attachment"].some((k) => key.includes(k))) return "file";
+        if (IMAGE_FIELD_KEYWORDS.some((k) => key.includes(k))) return "image";
+        return undefined;
+      })()}
     />
     </>
   );

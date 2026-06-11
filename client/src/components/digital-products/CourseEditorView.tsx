@@ -115,6 +115,7 @@ export function CourseEditorView({
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isPickingImage, setIsPickingImage] = useState(false);
+  const [isPickingPreviewVideo, setIsPickingPreviewVideo] = useState(false);
   const [resolvedTitle, setResolvedTitle] = useState(t("digitalProductsManagement.courseEditor.defaultNewCourseTitle"));
 
   useEffect(() => {
@@ -359,11 +360,18 @@ export function CourseEditorView({
 
           <div className="space-y-2">
             <Label htmlFor="course-preview-video-url">{t("digitalProductsManagement.courseEditor.fields.previewVideoUrl")}</Label>
-            <Input
-              id="course-preview-video-url"
-              value={form.previewVideoUrl}
-              onChange={(e) => setForm((prev) => ({ ...prev, previewVideoUrl: e.target.value }))}
-            />
+            <div className="flex items-center gap-2">
+              <Input
+                id="course-preview-video-url"
+                value={form.previewVideoUrl}
+                readOnly
+                placeholder="No file selected"
+                className="w-full bg-muted/50"
+              />
+              <Button type="button" variant="secondary" size="sm" onClick={() => setIsPickingPreviewVideo(true)}>
+                Pick File
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">
@@ -428,6 +436,7 @@ export function CourseEditorView({
         <TabsContent value="curriculum" className="pt-4">
           <CourseCurriculumTab
             siteId={siteId}
+            websiteId={websiteId}
             courseId={courseId}
             onTotalLessonMinutesChange={onTotalLessonMinutesChange}
             onCourseEstimatedMinutesSynced={onCourseEstimatedMinutesSynced}
@@ -462,6 +471,18 @@ export function CourseEditorView({
       }}
       websiteId={websiteId}
       currentFieldUrl={form.thumbnail}
+      accept="image"
+    />
+    <PickImageFromMediaDialog
+      open={isPickingPreviewVideo}
+      onClose={() => setIsPickingPreviewVideo(false)}
+      onSelect={(url) => {
+        setForm((f) => ({ ...f, previewVideoUrl: url }));
+        setIsPickingPreviewVideo(false);
+      }}
+      websiteId={websiteId}
+      currentFieldUrl={form.previewVideoUrl}
+      accept="video"
     />
     </>
   );

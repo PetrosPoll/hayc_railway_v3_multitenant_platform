@@ -531,6 +531,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
       }}
       websiteId={websiteId}
       currentFieldUrl={form.logoUrl}
+      accept="image"
     />
     </>
   );

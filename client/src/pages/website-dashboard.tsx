@@ -3815,6 +3815,14 @@ export default function WebsiteDashboard() {
             "Request changes to your website and track their status."}
         </p>
 
+        <div className="flex gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 mb-6 dark:border-amber-800 dark:bg-amber-950/20">
+          <Lightbulb className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            {t("dashboard.changesCmsTip") ||
+              "Tip: For changes related to text, images, or videos (e.g. updating page content, swapping photos, editing descriptions), please use the CMS tab instead. This tab is for requesting structural or functional changes to your website."}
+          </p>
+        </div>
+
         {changesContentDisabled && (
           <Card className="mb-6 border-amber-200 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900">
             <CardContent className="py-4">

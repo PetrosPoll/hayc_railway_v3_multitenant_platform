@@ -1408,6 +1408,7 @@
         "manageSubscriptionBilling": "Manage your website subscription and billing information.",
         "changes": "Changes",
         "changesDescription": "Request changes to your website and track their status.",
+        "changesCmsTip": "Tip: For changes related to text, images, or videos (e.g. updating page content, swapping photos, editing descriptions), please use the CMS tab instead. This tab is for requesting structural or functional changes to your website.",
         "changesUsage": "Changes Usage",
         "unlimited": "Unlimited",
         "limitReached": "Limit Reached",
