@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/accordion"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X, MoreHorizontal, BarChart3 } from "lucide-react"
+import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X, MoreHorizontal, BarChart3, Search } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/hooks/use-toast"
@@ -883,6 +883,7 @@ export function AdminWebsiteProgress() {
   const [editingContactEmailId, setEditingContactEmailId] = useState<number | null>(null)
   const [editedContactEmailValue, setEditedContactEmailValue] = useState("")
   const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>("desc")
+  const [siteIdSearch, setSiteIdSearch] = useState("")
   const [filterWaitingOnly, setFilterWaitingOnly] = useState(false)
   const [waitingInfoDialog, setWaitingInfoDialog] = useState<{
     isOpen: boolean;
@@ -1277,6 +1278,7 @@ export function AdminWebsiteProgress() {
   const filteredWebsites = websites
     .filter(w => !selectedUser || w.userId === selectedUser)
     .filter(w => !filterWaitingOnly || (w.stages?.some(s => s.status === 'waiting') ?? false))
+    .filter(w => !siteIdSearch.trim() || (w.siteId?.toLowerCase().includes(siteIdSearch.toLowerCase()) ?? false))
   
   // Apply sorting by completion percentage if active
   const userWebsites = sortByProgress
@@ -1308,10 +1310,10 @@ export function AdminWebsiteProgress() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
           <Select value={selectedUser?.toString() || "all"} onValueChange={(value) => setSelectedUser(value === "all" ? null : parseInt(value))}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[160px] sm:w-[200px]">
               <SelectValue placeholder="Select a user" />
             </SelectTrigger>
             <SelectContent>
@@ -1337,7 +1339,7 @@ export function AdminWebsiteProgress() {
             variant={sortByProgress ? "default" : "outline"}
             size="sm"
             onClick={handleProgressSort}
-            className="gap-2"
+            className="gap-2 shrink-0"
             data-testid="sort-by-progress"
           >
             Sort by Progress %
@@ -1345,15 +1347,32 @@ export function AdminWebsiteProgress() {
             {sortByProgress === "asc" && <ArrowUp className="h-4 w-4" />}
             {sortByProgress === "desc" && <ArrowDown className="h-4 w-4" />}
           </Button>
-          <div className="text-sm text-muted-foreground font-medium">
+          <div className="text-sm text-muted-foreground font-medium whitespace-nowrap">
             Showing {userWebsites.length} {userWebsites.length === 1 ? 'website' : 'websites'}
+          </div>
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={siteIdSearch}
+              onChange={(e) => setSiteIdSearch(e.target.value)}
+              placeholder="Search by Site ID…"
+              className="h-8 pl-8 w-40 sm:w-48 text-sm"
+            />
+            {siteIdSearch && (
+              <button
+                onClick={() => setSiteIdSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
         {userPermissions?.canManageWebsites && (
           <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="self-start shrink-0">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Website Progress
               </Button>
@@ -1473,6 +1492,25 @@ export function AdminWebsiteProgress() {
         )}
       </div>
 
+      {userWebsites.length === 0 && siteIdSearch.trim() && (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <Search className="h-10 w-10 text-muted-foreground/40 mb-3" />
+          <p className="text-sm font-medium text-muted-foreground">
+            No websites found for Site ID "<span className="font-mono">{siteIdSearch}</span>"
+          </p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            Try a different search term or{" "}
+            <button
+              onClick={() => setSiteIdSearch("")}
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              clear the search
+            </button>
+            .
+          </p>
+        </div>
+      )}
+
       <Accordion type="multiple" className="space-y-4">
         {userWebsites.map((website) => {
           const completedStages = website.stages.filter(stage => stage.status === 'completed').length
@@ -1530,8 +1568,15 @@ export function AdminWebsiteProgress() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="font-semibold text-lg truncate">
-                        {website.projectName || website.domain}
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold text-lg truncate">
+                          {website.projectName || website.domain}
+                        </div>
+                        {website.siteId && (
+                          <span className="text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 px-2 py-0.5 rounded font-mono shrink-0 whitespace-nowrap">
+                            {website.siteId}
+                          </span>
+                        )}
                       </div>
                     )}
                     {editingDomainId !== website.id && (
