@@ -65,6 +65,7 @@ function loadGoogleAnalytics(): void {
 
   const script = document.createElement("script");
   script.async = true;
+  script.defer = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
   document.head.appendChild(script);
 
@@ -103,6 +104,7 @@ function loadMetaPixel(): void {
 
     const script = document.createElement("script");
     script.async = true;
+    script.defer = true;
     script.src = "https://connect.facebook.net/en_US/fbevents.js";
     const firstScript = document.getElementsByTagName("script")[0];
     firstScript?.parentNode?.insertBefore(script, firstScript);

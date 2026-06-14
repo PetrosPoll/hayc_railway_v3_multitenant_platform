@@ -34,6 +34,7 @@ import {
   type LandingPageVariant,
 } from "@/lib/landing-page-variants";
 import { useNoIndex } from "@/hooks/use-noindex";
+import { trackLeadConversion } from "@/lib/tracking";
 
 type LeadFormData = {
   email: string;
@@ -198,10 +199,10 @@ export function WebsiteCreationLanding({
       const result = await response.json();
       console.log('Lead captured:', result);
 
-      // ✅ FIRE META LEAD EVENT (SPA-safe)
-      if (!leadEventFired.current && window.fbq) {
+      // Meta Lead + GA4 generate_lead (when consent scripts are loaded)
+      if (!leadEventFired.current) {
         setTimeout(() => {
-          window.fbq('track', 'Lead');
+          trackLeadConversion();
         }, 0);
 
         leadEventFired.current = true;

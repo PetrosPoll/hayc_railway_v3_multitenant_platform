@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from "react-route
 import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import { initializeUTMCapture } from "./lib/utm";
+import { loadKeakScript } from "./lib/load-keak";
 import LandingApp from "./LandingApp";
 import "./i18n";
 
@@ -24,6 +25,7 @@ function ScrollToTop() {
 export default function App() {
   useEffect(() => {
     initializeUTMCapture();
+    loadKeakScript();
   }, []);
 
   useEffect(() => {

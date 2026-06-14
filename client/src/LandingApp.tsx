@@ -1,21 +1,22 @@
-import { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/toaster";
-import { CookieConsentProvider } from "@/components/ui/cookie-consent";
+import { useEffect } from "react";
+import "./landing.css";
 import "@/landing-fonts";
-
-const WebsiteCreationRoutes = lazy(() => import("@/pages/website-creation-routes"));
+import WebsiteCreationRoutes from "@/pages/website-creation-routes";
+import { DeferredLandingCookieConsent } from "@/components/landing/deferred-landing-cookie-consent";
+import { applyStoredConsentIfAny } from "@/lib/tracking";
 
 type LandingAppProps = {
   forceEnglish?: boolean;
 };
 
 export default function LandingApp({ forceEnglish = false }: LandingAppProps) {
+  useEffect(() => {
+    applyStoredConsentIfAny();
+  }, []);
+
   return (
-    <CookieConsentProvider>
-      <Suspense fallback={null}>
-        <WebsiteCreationRoutes forceEnglish={forceEnglish} />
-      </Suspense>
-      <Toaster />
-    </CookieConsentProvider>
+    <DeferredLandingCookieConsent>
+      <WebsiteCreationRoutes forceEnglish={forceEnglish} />
+    </DeferredLandingCookieConsent>
   );
 }
