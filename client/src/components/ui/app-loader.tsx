@@ -1,11 +1,26 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import { useLocation } from "react-router-dom";
 import { heroReady } from "@/lib/hero-ready";
 
+function isLandingPage(pathname: string) {
+  return (
+    pathname.startsWith("/fast-and-affordable-websites-book-a-call") ||
+    pathname.startsWith("/fast-and-affordable-websites-book-a-call-en")
+  );
+}
+
 export function AppLoader({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const skipLoader = isLandingPage(location.pathname);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    if (skipLoader) {
+      setReady(true);
+      return;
+    }
+
     let cancelled = false;
 
     const timeout = window.setTimeout(() => {
@@ -29,7 +44,11 @@ export function AppLoader({ children }: { children: ReactNode }) {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, []);
+  }, [skipLoader]);
+
+  if (skipLoader) {
+    return <>{children}</>;
+  }
 
   return (
     <>
