@@ -28,6 +28,7 @@ import {
   landingPanelClass,
 } from "@/lib/landing-page-styles";
 import { LandingNewsletterOptInField } from "@/components/landing/landing-newsletter-opt-in-field";
+import { LandingVimeoEmbed } from "@/components/landing/landing-vimeo-embed";
 import { subscribeToHaycNewsletter } from "@/lib/hayc-newsletter-subscribe";
 import {
   landingLeadSource,
@@ -379,7 +380,7 @@ export function WebsiteCreationLanding({
       </div> */}
 
       {/* Hero Section */}
-      <section className={landingHeroSectionClass}>
+      <section className={`${landingHeroSectionClass} landing-hero-lcp`}>
         <div className="container mx-auto px-4">
           {/* Logo, Hero Content, and Language Switcher Row */}
           <div className="flex flex-col items-center gap-4 md:flex-row md:items-start md:justify-between md:gap-8 mb-12">
@@ -550,20 +551,11 @@ export function WebsiteCreationLanding({
             {/* 3-column responsive grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {[
-                "https://player.vimeo.com/video/1124268232",
-                "https://player.vimeo.com/video/1129865306",
-              ].map((url, i) => (
-                <div key={i} className="aspect-[9/16] rounded-lg overflow-hidden shadow-2xl">
-                  <iframe
-                    src={url}
-                    width="100%"
-                    height="100%"
-                    frameBorder="0"
-                    allow="autoplay; fullscreen; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full"
-                    title={`Customer Testimonial ${i + 1}`}
-                  ></iframe>
+                { id: "1124268232", title: "Customer Testimonial 1" },
+                { id: "1129865306", title: "Customer Testimonial 2" },
+              ].map((video) => (
+                <div key={video.id} className="aspect-[9/16] rounded-lg overflow-hidden shadow-2xl">
+                  <LandingVimeoEmbed videoId={video.id} title={video.title} />
                 </div>
               ))}
             </div>

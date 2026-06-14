@@ -13,10 +13,24 @@ export function trackLeadConversion(): void {
 export function applyStoredConsentIfAny(): void {
   if (typeof window === "undefined") return;
 
-  import("@/lib/cookie-consent").then(({ getStoredConsent, applyConsent }) => {
-    const stored = getStoredConsent();
-    if (stored) {
-      applyConsent(stored);
-    }
-  });
+  const apply = () => {
+    import("@/lib/cookie-consent").then(({ getStoredConsent, applyConsent }) => {
+      const stored = getStoredConsent();
+      if (stored) {
+        applyConsent(stored);
+      }
+    });
+  };
+
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(apply, { timeout: 4000 });
+    return;
+  }
+
+  if (document.readyState === "complete") {
+    window.setTimeout(apply, 0);
+    return;
+  }
+
+  window.addEventListener("load", () => window.setTimeout(apply, 0), { once: true });
 }

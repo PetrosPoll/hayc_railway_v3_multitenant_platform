@@ -18,3 +18,12 @@ body {
     @apply font-brand antialiased bg-black text-white;
   }
 }
+
+/* Keep above-the-fold hero visible immediately for LCP (override third-party fades) */
+.landing-hero-lcp,
+.landing-hero-lcp h1,
+.landing-hero-lcp p {
+  opacity: 1 !important;
+  animation: none !important;
+  transition: none !important;
+}
