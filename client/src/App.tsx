@@ -305,15 +305,15 @@ function App() {
   return (
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Router>
+        <Router>
+          <AuthProvider>
             <ScrollToTop />
             <CookieConsentProvider>
               <AppContent />
               <Toaster />
             </CookieConsentProvider>
-          </Router>
-        </AuthProvider>
+          </AuthProvider>
+        </Router>
       </QueryClientProvider>
     </I18nextProvider>
   );
