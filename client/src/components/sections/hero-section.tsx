@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { heroReady } from "@/lib/hero-ready";
 
 /** Static hero bottom cards; index matches hero clip: booking -> 0, LMS -> 1, resort -> 2 */
 const HERO_BOTTOM_PREVIEW_IMAGES = [
@@ -71,7 +70,6 @@ export function HeroSection() {
       maskRef.current |= 1 << index;
       if ((maskRef.current & heroFullReadyMask) === heroFullReadyMask) {
         setBuffered(true);
-        heroReady.signal();
       }
     },
     [heroFullReadyMask],
@@ -84,7 +82,6 @@ export function HeroSection() {
         which === "desktop" ? setDesktopVideosBuffered : setMobileVideosBuffered;
       maskRef.current = heroFullReadyMask;
       setBuffered(true);
-      heroReady.signal();
     },
     [heroFullReadyMask],
   );
@@ -103,7 +100,6 @@ export function HeroSection() {
       maskRef.current |= mask;
       if ((maskRef.current & heroFullReadyMask) === heroFullReadyMask) {
         setBuffered(true);
-        heroReady.signal();
       }
     };
     syncStack(desktopVideoRefs, desktopReadyMaskRef, setDesktopVideosBuffered);

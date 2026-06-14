@@ -4,7 +4,6 @@ import { I18nextProvider } from 'react-i18next';
 import i18n from './i18n';
 import React, { useEffect } from 'react';
 import { Toaster } from "@/components/ui/toaster";
-import { AppLoader } from "@/components/ui/app-loader";
 import { NavMenu } from "@/components/ui/nav-menu";
 import { Footer } from "@/components/ui/footer";
 import { AuthProvider, useAuth } from "@/components/ui/authContext";
@@ -310,10 +309,8 @@ function App() {
           <Router>
             <ScrollToTop />
             <CookieConsentProvider>
-              <AppLoader>
-                <AppContent />
-                <Toaster />
-              </AppLoader>
+              <AppContent />
+              <Toaster />
             </CookieConsentProvider>
           </Router>
         </AuthProvider>
