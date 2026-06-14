@@ -29,6 +29,7 @@ import {
 } from "@/lib/landing-page-styles";
 import { LandingNewsletterOptInField } from "@/components/landing/landing-newsletter-opt-in-field";
 import { LandingVimeoEmbed } from "@/components/landing/landing-vimeo-embed";
+import { LANDING_TESTIMONIAL_VIDEOS } from "@/lib/landing-vimeo-videos";
 import { subscribeToHaycNewsletter } from "@/lib/hayc-newsletter-subscribe";
 import {
   landingLeadSource,
@@ -550,12 +551,13 @@ export function WebsiteCreationLanding({
 
             {/* 3-column responsive grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {[
-                { id: "1124268232", title: "Customer Testimonial 1" },
-                { id: "1129865306", title: "Customer Testimonial 2" },
-              ].map((video) => (
+              {LANDING_TESTIMONIAL_VIDEOS.map((video) => (
                 <div key={video.id} className="aspect-[9/16] rounded-lg overflow-hidden shadow-2xl">
-                  <LandingVimeoEmbed videoId={video.id} title={video.title} />
+                  <LandingVimeoEmbed
+                    videoId={video.id}
+                    title={video.title}
+                    thumbnailUrl={video.thumbnailUrl}
+                  />
                 </div>
               ))}
             </div>
