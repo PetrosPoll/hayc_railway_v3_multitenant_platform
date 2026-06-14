@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
+import "@/main-app-fonts";
 import { AuthProvider, useAuth } from "@/components/ui/authContext";
 import { ProtectedRoute } from "@/components/ui/protected-route";
 import { PublicOnlyRoute } from "@/components/ui/public-only-route";
