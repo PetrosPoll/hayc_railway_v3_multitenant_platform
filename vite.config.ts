@@ -32,5 +32,19 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        // Only split libs that are already part of the landing page's critical
+        // path. This separates rarely-changing vendor code for better caching
+        // WITHOUT pulling main-app-only heavy libs (recharts, framer-motion,
+        // stripe, etc.) into the landing's initial load.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          if (/[\\/](react|react-dom|scheduler)[\\/]/.test(id)) return "react-vendor";
+          if (id.includes("react-router")) return "router-vendor";
+          if (id.includes("i18next")) return "i18n-vendor";
+        },
+      },
+    },
   },
 });

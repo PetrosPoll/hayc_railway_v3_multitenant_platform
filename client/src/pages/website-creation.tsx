@@ -1,14 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { ChevronUp, Star, Phone, Mail, CheckCircle, Clock, Zap, Shield, Users, ArrowRight, Play } from "lucide-react";
-import { FacebookReviewWidget, TrustpilotReviewWidget, G2ReviewWidget } from "@/components/ui/review-widget";
+import { ChevronUp, Star, Phone, Mail, CheckCircle, Clock, Shield, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getStoredUTMParams } from "@/lib/utm";
 import { useNavigate } from "react-router-dom";
@@ -38,12 +33,6 @@ import {
 import { useNoIndex } from "@/hooks/use-noindex";
 import { trackLeadConversion } from "@/lib/tracking";
 
-type LeadFormData = {
-  email: string;
-  phone: string;
-  newsletterOptIn?: boolean;
-};
-
 type WebsiteCreationLandingProps = {
   variant?: LandingPageVariant;
   forceEnglish?: boolean;
@@ -59,6 +48,11 @@ export function WebsiteCreationLanding({
   const [submittedEmail, setSubmittedEmail] = useState<string>("");
   const { t, i18n } = useTranslation();
   const leadEventFired = useRef(false);
+
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [newsletterOptIn, setNewsletterOptIn] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
 
   useNoIndex();
 
@@ -77,12 +71,6 @@ export function WebsiteCreationLanding({
       ? t("landingPage.hero.subtitle")
       : t(`landingPage.variants.${variant}.subtitle`);
   
-  const leadSchema = z.object({
-    email: z.string().email(t('landingPage.form.emailValidation')),
-    phone: z.string().min(1, t('landingPage.form.phoneValidation')),
-    newsletterOptIn: z.boolean().optional().default(false),
-  });
-
   const benefits = [
     {
       icon: <Clock className="h-6 w-6" />,
@@ -163,16 +151,27 @@ export function WebsiteCreationLanding({
     }
   ];
 
-  const form = useForm<LeadFormData>({
-    resolver: zodResolver(leadSchema),
-    defaultValues: {
-      email: "",
-      phone: "",
-      newsletterOptIn: false,
-    },
-  });
+  const validateForm = (): boolean => {
+    const nextErrors: { email?: string; phone?: string } = {};
 
-  const onSubmit = async (data: LeadFormData) => {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      nextErrors.email = t('landingPage.form.emailValidation');
+    }
+    if (phone.trim().length < 1) {
+      nextErrors.phone = t('landingPage.form.phoneValidation');
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
+
+  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!validateForm()) {
+      return;
+    }
+
+    const trimmedEmail = email.trim();
     setIsSubmitting(true);
 
     try {
@@ -183,8 +182,8 @@ export function WebsiteCreationLanding({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: data.email,
-          phone: data.phone,
+          email: trimmedEmail,
+          phone: phone.trim(),
           source: landingLeadSource(variant),
           ...(utmParams && { utm: utmParams }),
         }),
@@ -194,8 +193,8 @@ export function WebsiteCreationLanding({
         throw new Error('Failed to submit lead');
       }
 
-      if (data.newsletterOptIn && data.email) {
-        await subscribeToHaycNewsletter(data.email);
+      if (newsletterOptIn && trimmedEmail) {
+        await subscribeToHaycNewsletter(trimmedEmail);
       }
 
       const result = await response.json();
@@ -211,7 +210,7 @@ export function WebsiteCreationLanding({
       }
 
       // UI success
-      setSubmittedEmail(data.email);
+      setSubmittedEmail(trimmedEmail);
       setShowCalendly(true);
 
     } catch (error) {
@@ -461,58 +460,61 @@ export function WebsiteCreationLanding({
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                          <FormField
-                            control={form.control}
-                            name="email"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className={landingFormLabelClass}>{t('landingPage.form.emailLabel')}</FormLabel>
-                                <FormControl>
-                                  <div className="relative">
-                                    <Mail className="absolute left-3 top-3 h-4 w-4 text-white/40" />
-                                    <Input 
-                                      placeholder={t('landingPage.form.emailPlaceholder')}
-                                      className={landingInputClass}
-                                      {...field} 
-                                    />
-                                  </div>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="phone"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className={landingFormLabelClass}>{t('landingPage.form.phoneLabel')}</FormLabel>
-                                <FormControl>
-                                  <div className="relative">
-                                    <Phone className="absolute left-3 top-3 h-4 w-4 text-white/40" />
-                                    <Input 
-                                      placeholder={t('landingPage.form.phonePlaceholder')}
-                                      className={landingInputClass}
-                                      {...field} 
-                                    />
-                                  </div>
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <LandingNewsletterOptInField control={form.control} />
-                          <Button 
-                            type="submit" 
-                            className={landingSubmitButtonClass}
-                            disabled={isSubmitting}
-                          >
-                            {isSubmitting ? t('landingPage.form.submitting') : t('landingPage.form.submitButton')}
-                          </Button>
-                        </form>
-                      </Form>
+                      <form onSubmit={onSubmit} className="space-y-4" noValidate>
+                        <div className="space-y-2">
+                          <label htmlFor="lead-email" className={landingFormLabelClass}>
+                            {t('landingPage.form.emailLabel')}
+                          </label>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-white/40" />
+                            <Input
+                              id="lead-email"
+                              type="email"
+                              autoComplete="email"
+                              placeholder={t('landingPage.form.emailPlaceholder')}
+                              className={landingInputClass}
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              aria-invalid={!!errors.email}
+                            />
+                          </div>
+                          {errors.email && (
+                            <p className="text-sm font-medium text-destructive">{errors.email}</p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <label htmlFor="lead-phone" className={landingFormLabelClass}>
+                            {t('landingPage.form.phoneLabel')}
+                          </label>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-3 h-4 w-4 text-white/40" />
+                            <Input
+                              id="lead-phone"
+                              type="tel"
+                              autoComplete="tel"
+                              placeholder={t('landingPage.form.phonePlaceholder')}
+                              className={landingInputClass}
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value)}
+                              aria-invalid={!!errors.phone}
+                            />
+                          </div>
+                          {errors.phone && (
+                            <p className="text-sm font-medium text-destructive">{errors.phone}</p>
+                          )}
+                        </div>
+                        <LandingNewsletterOptInField
+                          checked={newsletterOptIn}
+                          onChange={setNewsletterOptIn}
+                        />
+                        <Button
+                          type="submit"
+                          className={landingSubmitButtonClass}
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? t('landingPage.form.submitting') : t('landingPage.form.submitButton')}
+                        </Button>
+                      </form>
                     </CardContent>
                   </Card>
                 ) : (

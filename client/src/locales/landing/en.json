@@ -1,0 +1,203 @@
+{
+  "landingPage": {
+    "notice": "Due to high demand, delivery time may vary slightly",
+    "hero": {
+      "title": "Your website, without having to deal with it ever again",
+      "subtitle": "We build it, manage it, and improve it for you — with a fixed monthly cost and zero commission on every sale."
+    },
+    "variants": {
+      "version-1": {
+        "title": "A professional website for one simple monthly price — no agency bill, no surprises.",
+        "subtitle": "Fixed subscription. Hosting, updates, and support included — so you always know what you pay."
+      },
+      "version-2": {
+        "title": "Your website live in 10 days — we build it while you run your business.",
+        "subtitle": "From template to launch in days, not months. We handle build, hosting, and ongoing updates."
+      },
+      "version-3": {
+        "title": "Stop wrestling with builders and agencies — we handle your website, start to finish.",
+        "subtitle": "HAYC isn't a DIY builder. It's a done-for-you service — design, setup, hosting, and management included."
+      },
+      "version-4": {
+        "title": "The professional website your business deserves — built by a team behind 110+ live sites.",
+        "subtitle": "Modern, fast, and built to convert — with ongoing support so it keeps performing."
+      },
+      "version-5": {
+        "title": "Your website, bookings, newsletter, and digital products — one platform, one subscription.",
+        "subtitle": "Everything you need to grow online in one dashboard. We build it and keep it running."
+      }
+    },
+    "form": {
+      "title": "Get Started Today",
+      "subtitle": "Enter your details to schedule a free consultation",
+      "emailLabel": "Email Address",
+      "phoneLabel": "Phone Number",
+      "emailPlaceholder": "your@email.com",
+      "phonePlaceholder": "+30 123 456 7890",
+      "submitButton": "Schedule Free Consultation",
+      "submitting": "Processing...",
+      "successTitle": "Almost Ready!",
+      "successSubtitle": "Pick a convenient time for your free consultation",
+      "emailValidation": "Please enter a valid email address",
+      "phoneValidation": "Please enter a valid phone number",
+      "newsletterOptIn": "I agree to receive emails about offers and updates from Hayc. (Optional)"
+    },
+    "reviews": {
+      "title": "What Our Clients Say",
+      "subtitle": "Real testimonials from businesses we've helped transform",
+      "review1": {
+        "text": "I had the opportunity to work with the www.hayc.gr team and I was completely satisfied with the quality, speed and excellent service they provide. I would like to express special thanks to Petros, who is an excellent professional. His consistency, kindness and willingness to help at every step made our collaboration not only effective but also enjoyable.",
+        "author": "MamaCoach",
+        "role": "Business Owner"
+      },
+      "review2": {
+        "text": "Excellent cooperation with Hayc! Specifically, Petros was always willing to help me and solve several questions I had regarding the website he made for me! I recommend Hayc unreservedly since the result was even better than what I had in mind!",
+        "author": "Marianthi Katsouda",
+        "role": "Website Owner"
+      },
+      "review3": {
+        "text": "A remarkable team of young professionals in the field of Website and Application Development.",
+        "author": "Takis Proios",
+        "role": "Client"
+      },
+      "review4": {
+        "text": "Hayc is fully professional that helped me by building a website for my business. Hayc was super quick and responsive to deliver the website in a really tight schedule and according to specifications. They started working on the project right from day zero, and completed the job successfully in less than 9 days. I highly recommend them to do business with and trust them for the quality of their work.",
+        "author": "Antonis Katsaros",
+        "role": "Business Owner"
+      },
+      "review5": {
+        "text": "Excellent communication, great in their time table everything on time! I hope on a great corporation. Thanks!",
+        "author": "Verified Customer",
+        "role": "Business Partner"
+      },
+      "review6": {
+        "text": "I am so blessed that I met Petros. I'm very happy with his work for my website. He is so professional that I couldn't believe it. Very very fast on his work and excellent in cooperation. I fully recommend him for website! Thanks a lot buddy.",
+        "author": "Happy Client",
+        "role": "Website Owner"
+      }
+    },
+    "benefits": {
+      "title": "Why Choose HAYC for Your Website?",
+      "subtitle": "We deliver results that matter for your business",
+      "benefit1": {
+        "title": "Fast Delivery in 10 Days",
+        "description": "From start to delivery in just 10 days. Your business will be online quickly without sacrificing quality."
+      },
+      "benefit2": {
+        "title": "100% Money-Back Guarantee",
+        "description": "When your website is delivered, if you're not satisfied within 30 days, we'll refund you — no risks, no questions."
+      },
+      "benefit3": {
+        "title": "Built to Grow With You",
+        "description": "Your website isn't a one-off project. With our subscription model, it stays secure, fast, and ready to grow as your business grows."
+      },
+      "benefit4": {
+        "title": "Stress-Free Website Creation",
+        "description": "No technical difficulties, no endless discussions. We handle the design, setup, and management so you can focus entirely on your business."
+      }
+    },
+    "testimonialVideo": {
+      "title": "Watch what people saying",
+      "quote": "What people saying about their websites.",
+      "author": "Penny Deligiannis - Agapi apostolopoulou"
+    },
+    "howItWorks": {
+      "title": "How We Create Your Perfect Website",
+      "subtitle": "Our proven 4-step process guarantees your success",
+      "step1": {
+        "title": "Discovery Call",
+        "description": "We discuss your goals, show layouts and choose the best starting point."
+      },
+      "step2": {
+        "title": "Sign Up & Form",
+        "description": "You subscribe and fill out a simple form with your content and preferences."
+      },
+      "step3": {
+        "title": "Build & Customize",
+        "description": "We customize your selected layout, add your content and optimize for SEO and mobile."
+      },
+      "step4": {
+        "title": "Launch in 10 Days",
+        "description": "Your website goes live with continuous updates, support and new features."
+      }
+    },
+    "cta1": {
+      "title": "Ready to Get Your Website Live in Just 10 Days?",
+      "subtitle": "Join dozens of businesses already growing with hayc. Stop wasting time and money on agencies — get a professional website, fast!",
+      "button": "Get Started Today",
+      "badge": "Limited Slots This Month"
+    },
+    "qualification": {
+      "title": "Is HAYC Right for Your Business?",
+      "subtitle": "Answer a few quick questions to find out.",
+      "question1": "Do you already have a website, or are we starting from scratch?",
+      "question2": "What's your budget range for your online presence?",
+      "question3": "When do you need your new website live?",
+      "question4": "What's the #1 goal you want your website to achieve?",
+      "resultTitle": "Perfect! You qualify for our services.",
+      "resultDescription": "Based on these criteria, HAYC can help transform your business with a professional website that drives real results.",
+      "resultButton": "Schedule Your Free Consultation"
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "question1": "How long does it take to create a website?",
+      "answer1": "We deliver each website in just 10 business days after we receive your content and preferences. Fast, professional and stress-free.",
+      "question2": "What's included in the website package?",
+      "answer2": "Your subscription covers everything: a modern responsive website, SEO-friendly setup, contact forms, social media links, analytics, hosting and continuous updates. No hidden costs.",
+      "question3": "Do I own the website?",
+      "answer3": "You own the content, branding and your domain. The website itself is managed through your hayc subscription, which keeps it updated, secure and evolving with new features.",
+      "question4": "Is maintenance included?",
+      "answer4": "Yes — unlike companies that give you a website and disappear, hayc includes hosting, security, updates and support in your subscription. No additional maintenance costs.",
+      "question5": "What happens if I need changes after launch?",
+      "answer5": "Each plan includes monthly change requests, so you can easily request updates without worrying about additional charges. Larger changes can be managed with add-ons.",
+      "question6": "Do you provide hosting?",
+      "answer6": "Yes, hosting is fully included. We manage it for you so your website stays fast, secure and always online."
+    },
+    "final": {
+      "title": "Get Your Website Live in Just 10 Days",
+      "subtitle": "Stop overpaying agencies or struggling with DIY builders. With hayc, you get a professional website — fast, simple, and built to grow with your business.",
+      "stat1": {
+        "value": "10 Days",
+        "label": "Guaranteed Delivery"
+      },
+      "stat2": {
+        "value": "100%",
+        "label": "Money-Back Guarantee"
+      },
+      "stat3": {
+        "value": "Ongoing",
+        "label": "Support & Updates"
+      },
+      "button": "Start Your Website Today",
+      "badges": "🔒 Risk-Free Guarantee • ⚡ Live in 10 Days • 🎯 Built for Growth"
+    }
+  },
+  "cookieConsent": {
+    "title": "We use cookies",
+    "description": "We use essential cookies to run hayc.gr. With your consent, we also use analytics and marketing cookies. Read our",
+    "cookiePolicyLink": "Cookie Policy",
+    "privacyPolicyLink": "Privacy Policy",
+    "and": "and",
+    "acceptAll": "Accept all",
+    "rejectNonEssential": "Reject non-essential",
+    "customize": "Manage preferences",
+    "preferencesTitle": "Cookie preferences",
+    "preferencesDescription": "Choose which optional cookies you allow. Essential cookies are always active because the site needs them to function.",
+    "savePreferences": "Save preferences",
+    "cancel": "Cancel",
+    "categories": {
+      "necessary": {
+        "title": "Essential",
+        "description": "Required for security, session management, and storing your cookie choices."
+      },
+      "analytics": {
+        "title": "Analytics",
+        "description": "Help us understand how hayc.gr is used (Google Analytics)."
+      },
+      "marketing": {
+        "title": "Marketing",
+        "description": "Used to measure ad performance and reach relevant audiences (Meta Pixel)."
+      }
+    }
+  }
+}

@@ -2,6 +2,10 @@ import { execSync } from 'child_process';
 import { cpSync } from 'fs';
 
 try {
+  // Regenerate landing locale slices from the full locale files
+  console.log('Generating landing locale slices...');
+  execSync('node scripts/generate-landing-locales.mjs', { stdio: 'inherit' });
+
   // Run vite build
   console.log('Building frontend with Vite...');
   execSync('vite build', { stdio: 'inherit' });

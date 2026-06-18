@@ -1,13 +1,15 @@
 import { lazy, Suspense, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { I18nextProvider } from "react-i18next";
-import i18n from "./i18n";
+import i18n, { loadFullTranslations } from "./i18n";
 import { initializeUTMCapture } from "./lib/utm";
 import { loadKeakScript } from "./lib/load-keak";
 import LandingApp from "./LandingApp";
-import "./i18n";
 
-const MainApp = lazy(() => import("./MainApp"));
+const MainApp = lazy(async () => {
+  await loadFullTranslations();
+  return import("./MainApp");
+});
 
 function ScrollToTop() {
   const { pathname, search } = useLocation();
