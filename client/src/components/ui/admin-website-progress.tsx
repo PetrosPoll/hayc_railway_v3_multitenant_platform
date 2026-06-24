@@ -70,6 +70,8 @@ type Website = {
   siteId?: string | null
   websiteLanguage?: string | null
   customDomain?: string | null
+  subscriptionStatus?: string | null
+  subscriptionTier?: string | null
 }
 
 type User = {
@@ -885,6 +887,7 @@ export function AdminWebsiteProgress() {
   const [sortByProgress, setSortByProgress] = useState<"asc" | "desc" | null>("desc")
   const [siteIdSearch, setSiteIdSearch] = useState("")
   const [filterWaitingOnly, setFilterWaitingOnly] = useState(false)
+  const [filterActiveSubscriptionOnly, setFilterActiveSubscriptionOnly] = useState(false)
   const [waitingInfoDialog, setWaitingInfoDialog] = useState<{
     isOpen: boolean;
     websiteId: number | null;
@@ -1278,6 +1281,7 @@ export function AdminWebsiteProgress() {
   const filteredWebsites = websites
     .filter(w => !selectedUser || w.userId === selectedUser)
     .filter(w => !filterWaitingOnly || (w.stages?.some(s => s.status === 'waiting') ?? false))
+    .filter(w => !filterActiveSubscriptionOnly || w.subscriptionStatus?.toLowerCase() === 'active')
     .filter(w => !siteIdSearch.trim() || (w.siteId?.toLowerCase().includes(siteIdSearch.toLowerCase()) ?? false))
   
   // Apply sorting by completion percentage if active
@@ -1333,6 +1337,17 @@ export function AdminWebsiteProgress() {
             />
             <Label htmlFor="filter-waiting" className="text-sm cursor-pointer whitespace-nowrap">
               We are waiting for information
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="filter-active-subscription"
+              checked={filterActiveSubscriptionOnly}
+              onCheckedChange={(checked) => setFilterActiveSubscriptionOnly(checked === true)}
+              data-testid="filter-active-subscription"
+            />
+            <Label htmlFor="filter-active-subscription" className="text-sm cursor-pointer whitespace-nowrap">
+              Active subscription only
             </Label>
           </div>
           <Button
