@@ -20739,6 +20739,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const website = await storage.getWebsiteProgressBySiteId(siteId);
         if (website) {
           analyticsKey = await storage.getAnalyticsKeyByWebsiteId(website.id);
+          if (!analyticsKey) {
+            analyticsKey = await storage.createAnalyticsKey(website.id, website.domain);
+          }
         }
       }
       if (!analyticsKey || !analyticsKey.isActive) {
