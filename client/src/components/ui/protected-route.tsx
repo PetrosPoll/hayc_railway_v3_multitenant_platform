@@ -16,7 +16,7 @@ export function ProtectedRoute({ children, requiredRole, redirectAdminsToAdmin =
     new URLSearchParams(window.location.search).get("mock") === "true";
   if (isMock) return <>{children}</>;
 
-  const { user, isLoading } = useAuth();
+  const { user, impersonation, isLoading } = useAuth();
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -29,7 +29,7 @@ export function ProtectedRoute({ children, requiredRole, redirectAdminsToAdmin =
   }
 
   // Redirect staff (non-subscribers) to admin dashboard if flag is set (e.g., on user dashboard)
-  if (redirectAdminsToAdmin && user.role !== 'subscriber') {
+  if (redirectAdminsToAdmin && user.role !== 'subscriber' && !impersonation?.active) {
     return <Navigate to="/admin" replace />;
   }
 

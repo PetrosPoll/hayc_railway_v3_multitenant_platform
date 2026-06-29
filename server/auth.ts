@@ -8,6 +8,7 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import type { PassportSessionUser, UserWithImpersonation } from "./impersonation";
 
 declare global {
   namespace Express {
@@ -111,13 +112,18 @@ export function setupAuth(app: Express) {
     )
   );
 
-  passport.serializeUser((user, done) => {
+  passport.serializeUser((user: UserWithImpersonation, done) => {
+    if (user.__impersonatedBy) {
+      done(null, { id: user.id, impersonatedBy: user.__impersonatedBy });
+      return;
+    }
     done(null, user.id);
   });
 
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (serialized: PassportSessionUser, done) => {
     try {
-      const user = await storage.getUserById(id);
+      const userId = typeof serialized === "number" ? serialized : serialized.id;
+      const user = await storage.getUserById(userId);
       if (!user) {
         return done(new Error('User not found'));
       }

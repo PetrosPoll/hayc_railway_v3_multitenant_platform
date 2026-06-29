@@ -12,7 +12,8 @@ import {
   Mail,
   Tag,
   Pencil,
-  User as UserIcon
+  User as UserIcon,
+  Eye,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,6 +52,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { useEffect, useCallback, useState } from "react";
 import React from "react";
+import { useImpersonation } from "@/hooks/use-impersonation";
 import { EmailTester } from "@/components/ui/email-tester";
 import { SubscriptionCalendar } from "@/components/ui/subscription-calendar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -453,6 +455,7 @@ const formatMonth = (month: string) => {
 
 // User Details View Component
 function UserDetailsView({ userId }: { userId: number }) {
+  const { startImpersonation, isStarting } = useImpersonation();
   const { data, isLoading } = useQuery({
     queryKey: ["/api/admin/users", userId, "subscriptions"],
     queryFn: async () => {
@@ -493,8 +496,27 @@ function UserDetailsView({ userId }: { userId: number }) {
     <div className="space-y-6">
       {/* User Info Card */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <CardTitle>User Information</CardTitle>
+          {data.user.role === UserRole.SUBSCRIBER && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => startImpersonation(data.user.id)}
+              disabled={isStarting}
+              className="bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
+              data-testid={`button-view-as-customer-${data.user.id}`}
+            >
+              {isStarting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <Eye className="h-4 w-4 mr-2" />
+                  View as Customer
+                </>
+              )}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
@@ -735,7 +757,15 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { startImpersonation, isStarting } = useImpersonation();
+  const [impersonatingUserId, setImpersonatingUserId] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
+
+  const handleViewAsCustomer = async (userId: number) => {
+    setImpersonatingUserId(userId);
+    await startImpersonation(userId);
+    setImpersonatingUserId(null);
+  };
 
   const tabFromUrl = searchParams.get("tab") || "users";
   const [activeTab, setActiveTab] = useState(tabFromUrl);
@@ -1797,6 +1827,28 @@ export default function AdminDashboard() {
                             >
                               View Details
                             </Button>
+                            {userData?.user.role === UserRole.ADMINISTRATOR &&
+                              user.role === UserRole.SUBSCRIBER && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleViewAsCustomer(user.id)}
+                                  disabled={
+                                    impersonatingUserId === user.id || isStarting
+                                  }
+                                  className="bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
+                                  data-testid={`button-view-as-customer-${user.id}`}
+                                >
+                                  {impersonatingUserId === user.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <Eye className="h-4 w-4 mr-1" />
+                                      View as Customer
+                                    </>
+                                  )}
+                                </Button>
+                              )}
                             {userPermissions?.canManageUsers && (
                               <>
                                 <Select

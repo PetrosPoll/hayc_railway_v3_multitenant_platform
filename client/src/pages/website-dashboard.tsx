@@ -69,6 +69,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/ui/authContext";
+import { impersonationStickyTopClass } from "@/lib/impersonation-layout";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Subscription } from "@shared/schema";
@@ -368,7 +369,7 @@ export default function WebsiteDashboard() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { setUser } = useAuth();
+  const { setUser, impersonation } = useAuth();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -4348,7 +4349,7 @@ export default function WebsiteDashboard() {
 
         <SidebarInset>
           <div className="flex flex-col min-h-screen">
-            <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
+            <header className={`sticky ${impersonationStickyTopClass(Boolean(impersonation?.active))} z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4`}>
               <SidebarTrigger />
             </header>
             <div className="flex-1 p-4 md:p-6 overflow-x-hidden">

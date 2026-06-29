@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/ui/authContext";
+import { impersonationNavTopClass } from "@/lib/impersonation-layout";
 
 interface UserResponse {
   user: UserType;
@@ -28,7 +29,7 @@ export function NavMenu() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
-  const { user: authUser, setUser: setAuthUser } = useAuth();
+  const { user: authUser, setUser: setAuthUser, setImpersonation, impersonation } = useAuth();
   const { data: userData } = useQuery<UserResponse>({
     queryKey: ["/api/user"],
   });
@@ -59,6 +60,7 @@ export function NavMenu() {
       await logout();
       queryClient.setQueryData(["/api/user"], null);
       setAuthUser(null);
+      setImpersonation(null);
       setIsOpen(false);
       toast({
         title: t("nav.logoutSuccessTitle"),
@@ -358,7 +360,7 @@ export function NavMenu() {
 
   return (
     <nav
-      className={`fixed w-full z-50 font-brand ${isLoggedOut ? (isTransparent ? "bg-transparent" : "bg-black") : "bg-white border-b border-border"}`}
+      className={`fixed w-full z-50 font-brand ${impersonationNavTopClass(Boolean(impersonation?.active))} ${isLoggedOut ? (isTransparent ? "bg-transparent" : "bg-black") : "bg-white border-b border-border"}`}
     >
       <div className="container mx-auto px-0 md:px-16 py-0 md:py-6 flex justify-between items-center w-full">
         {/* Mobile Menu */}

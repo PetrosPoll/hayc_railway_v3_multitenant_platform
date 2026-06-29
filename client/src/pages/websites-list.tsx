@@ -33,6 +33,8 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   other: "New Website",
 };
 import { BOOKING_APP_BASE_URL } from "@/lib/utils";
+import { useAuth } from "@/components/ui/authContext";
+import { impersonationDashboardPadClass } from "@/lib/impersonation-layout";
 
 type Website = {
   id: number;
@@ -85,6 +87,7 @@ export default function WebsitesList() {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const { impersonation } = useAuth();
   const queryClient = useQueryClient();
 
   const [onboardingFilter, setOnboardingFilter] = useState<"completed" | "draft">(
@@ -289,7 +292,7 @@ export default function WebsitesList() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] pt-28 pb-12 font-brand">
+    <div className={`min-h-[calc(100vh-4rem)] ${impersonationDashboardPadClass(Boolean(impersonation?.active))} pb-12 font-brand`}>
       <div className="container mx-auto px-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">

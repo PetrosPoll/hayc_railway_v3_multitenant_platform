@@ -22,6 +22,16 @@ import * as express from "express";
 import { db, pool } from "./db";
 import { desc, eq, sql, and, or, isNull, inArray, like, gte, ne } from "drizzle-orm";
 import { setupAuth, hashPassword } from "./auth";
+import {
+  buildImpersonationInfo,
+  clearImpersonation,
+  getImpersonationAdminId,
+  getStopTokenForSession,
+  isImpersonating,
+  registerImpersonation,
+  resolveImpersonationForStop,
+  userForImpersonationLogin,
+} from "./impersonation";
 import passport from "passport";
 import {
   users,
@@ -772,6 +782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/logout", (req, res) => {
+    clearImpersonation(req.sessionID);
     req.logout((err) => {
       if (err) {
         console.error("Logout error:", err);
@@ -779,6 +790,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ success: true });
     });
+  });
+
+  app.post("/api/admin/impersonate/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    if (isImpersonating(req)) {
+      return res.status(400).json({
+        error: "Already viewing as a customer. Exit customer view first.",
+      });
+    }
+
+    try {
+      const adminUser = await storage.getUserById(req.user!.id);
+      if (!adminUser || adminUser.role !== UserRole.ADMINISTRATOR) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId, 10);
+      if (Number.isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+
+      const targetUser = await storage.getUserById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      if (targetUser.role !== UserRole.SUBSCRIBER) {
+        return res.status(400).json({
+          error: "Can only view as customer accounts",
+        });
+      }
+
+      const loginUser = userForImpersonationLogin(targetUser, adminUser.id);
+
+      await new Promise<void>((resolve, reject) => {
+        req.login(loginUser, (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      });
+
+      const stopToken = registerImpersonation(
+        req.sessionID,
+        adminUser.id,
+        targetUser.id,
+      );
+
+      console.log(
+        `[IMPERSONATION] Admin ${adminUser.id} (${adminUser.email}) started viewing as user ${targetUser.id} (${targetUser.email})`,
+      );
+      console.log(
+        `[IMPERSONATION] passport session user:`,
+        req.session.passport?.user,
+      );
+
+      const { password, ...sanitizedUser } = targetUser;
+      const permissions = RolePermissions[targetUser.role] || null;
+
+      return res.json({
+        user: sanitizedUser,
+        permissions,
+        impersonation: buildImpersonationInfo(adminUser, stopToken),
+      });
+    } catch (err: any) {
+      console.error("Impersonation error:", err);
+      return res.status(500).json({ error: "Failed to start customer view" });
+    }
+  });
+
+  app.post("/api/admin/stop-impersonation", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    const stopToken =
+      typeof req.body?.stopToken === "string" ? req.body.stopToken : undefined;
+    const record = resolveImpersonationForStop(req, stopToken);
+
+    if (!record) {
+      return res.status(400).json({ error: "Not viewing as a customer" });
+    }
+
+    try {
+      const adminUser = await storage.getUserById(record.adminId);
+      if (!adminUser || adminUser.role !== UserRole.ADMINISTRATOR) {
+        clearImpersonation(req.sessionID, record.stopToken);
+        return res.status(500).json({ error: "Original admin user not found" });
+      }
+
+      const impersonatedUserId = req.user!.id;
+
+      await new Promise<void>((resolve, reject) => {
+        req.login(adminUser, (err) => {
+          if (err) return reject(err);
+          resolve();
+        });
+      });
+
+      clearImpersonation(req.sessionID, record.stopToken);
+
+      console.log(
+        `[IMPERSONATION] Admin ${adminUser.id} stopped viewing as user ${impersonatedUserId}`,
+      );
+
+      const { password, ...sanitizedUser } = adminUser;
+      const permissions = RolePermissions[adminUser.role] || null;
+
+      return res.json({ user: sanitizedUser, permissions });
+    } catch (err: any) {
+      console.error("Stop impersonation error:", err);
+      return res.status(500).json({ error: "Failed to exit customer view" });
+    }
   });
 
   app.get("/api/user", async (req, res) => {
@@ -934,12 +1058,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user permissions from RolePermissions (includes custom roles loaded at startup)
       const permissions = RolePermissions[user.role] || null;
 
+      let impersonation = null;
+      const impersonationAdminId = getImpersonationAdminId(req);
+      if (impersonationAdminId && req.sessionID) {
+        const adminUser = await storage.getUserById(impersonationAdminId);
+        const sessionToken = getStopTokenForSession(req.sessionID);
+        if (adminUser && sessionToken) {
+          impersonation = buildImpersonationInfo(adminUser, sessionToken);
+        }
+      }
+
       // Prevent caching of this response to ensure fresh billing data
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.setHeader('Pragma', 'no-cache');
       res.setHeader('Expires', '0');
       
-      res.json({ user, subscriptions, permissions });
+      res.json({ user, subscriptions, permissions, impersonation });
     } catch (err) {
       console.error("Error fetching user:", err);
       res.status(500).json({ error: "Failed to fetch user data" });

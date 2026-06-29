@@ -8,7 +8,7 @@ interface AdminRouteProps {
 }
 
 export function AdminRoute({ children }: AdminRouteProps) {
-  const { user, isLoading } = useAuth();
+  const { user, impersonation, isLoading } = useAuth();
 
   // Show loading while checking authentication
   if (isLoading) {
@@ -20,9 +20,8 @@ export function AdminRoute({ children }: AdminRouteProps) {
     return <Navigate to="/" replace />;
   }
 
-  // Allow access for any role except subscriber
-  // Subscribers have their own client dashboard, all other roles are staff
-  const hasAdminAccess = user.role !== "subscriber";
+  // Allow access for any role except subscriber (unless actively impersonating a customer)
+  const hasAdminAccess = user.role !== "subscriber" && !impersonation?.active;
   
   if (!hasAdminAccess) {
     return <Navigate to="/" replace />;

@@ -6,9 +6,12 @@ import { Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
+import { useAuth } from "@/components/ui/authContext";
+import { impersonationDashboardPadClass } from "@/lib/impersonation-layout";
 
 export default function Profile() {
     const { t } = useTranslation();
+    const { impersonation } = useAuth();
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
@@ -69,7 +72,7 @@ export default function Profile() {
     });
 
     return (
-        <div className="min-h-[calc(100vh-4rem)] pt-28 pb-12 font-brand">
+        <div className={`min-h-[calc(100vh-4rem)] ${impersonationDashboardPadClass(Boolean(impersonation?.active))} pb-12 font-brand`}>
             <div className="container mx-auto px-4">
                 <div className="max-w-4xl mx-auto">
                     <Card>
