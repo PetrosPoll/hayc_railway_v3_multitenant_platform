@@ -12,7 +12,7 @@ import { NavMenu } from "@/components/ui/nav-menu";
 import { ImpersonationBanner } from "@/components/ui/impersonation-banner";
 import { Footer } from "@/components/ui/footer";
 import { queryClient } from "@/lib/queryClient";
-import { impersonationBannerSpacerClass } from "@/lib/impersonation-layout";
+import { impersonationRootStyle } from "@/lib/impersonation-layout";
 
 import GetStarted from "@/pages/get-started";
 import GetStartedSuccess from "@/pages/get-started-success";
@@ -114,12 +114,11 @@ function MainAppContent() {
   const { impersonation } = useAuth();
 
   return (
-    <div className="min-h-screen flex flex-col overflow-x-hidden w-full">
+    <div
+      className="min-h-screen flex flex-col overflow-x-hidden w-full"
+      style={impersonationRootStyle(Boolean(impersonation?.active))}
+    >
       <ImpersonationBanner />
-      <div
-        className={impersonationBannerSpacerClass(Boolean(impersonation?.active))}
-        aria-hidden="true"
-      />
       <ConditionalNavMenu />
       <div className="flex-1">
         <Routes>

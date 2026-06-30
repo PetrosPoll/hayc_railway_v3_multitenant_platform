@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Save, Download, Loader2, Eye, X, Mail } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { impersonationHSvh } from "@/lib/impersonation-layout";
 import type { EmailTemplate } from "@shared/schema";
 
 interface DefaultSampleTemplate {
@@ -1018,7 +1019,7 @@ export default function EmailBuilderPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className={`flex flex-col ${impersonationHSvh}`}>
       {/* Campaign Context Banner - Only show when editing existing campaign */}
       {campaignContext && campaignContext.mode === 'edit' && (
         <div className="bg-blue-50 dark:bg-blue-950/30 border-b border-blue-200 dark:border-blue-800 px-6 py-3">

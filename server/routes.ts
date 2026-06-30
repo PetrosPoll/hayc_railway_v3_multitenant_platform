@@ -25,11 +25,11 @@ import { setupAuth, hashPassword } from "./auth";
 import {
   buildImpersonationInfo,
   clearImpersonation,
-  getImpersonationAdminId,
-  getStopTokenForSession,
   isImpersonating,
   registerImpersonation,
+  resolveImpersonationForRequest,
   resolveImpersonationForStop,
+  saveSession,
   userForImpersonationLogin,
 } from "./impersonation";
 import passport from "passport";
@@ -782,7 +782,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/logout", (req, res) => {
-    clearImpersonation(req.sessionID);
+    clearImpersonation(req.sessionID, undefined, req.session);
     req.logout((err) => {
       if (err) {
         console.error("Logout error:", err);
@@ -836,7 +836,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.sessionID,
         adminUser.id,
         targetUser.id,
+        req.session,
       );
+      await saveSession(req);
 
       console.log(
         `[IMPERSONATION] Admin ${adminUser.id} (${adminUser.email}) started viewing as user ${targetUser.id} (${targetUser.email})`,
@@ -876,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const adminUser = await storage.getUserById(record.adminId);
       if (!adminUser || adminUser.role !== UserRole.ADMINISTRATOR) {
-        clearImpersonation(req.sessionID, record.stopToken);
+        clearImpersonation(req.sessionID, record.stopToken, req.session);
         return res.status(500).json({ error: "Original admin user not found" });
       }
 
@@ -889,7 +891,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       });
 
-      clearImpersonation(req.sessionID, record.stopToken);
+      clearImpersonation(req.sessionID, record.stopToken, req.session);
+      await saveSession(req);
 
       console.log(
         `[IMPERSONATION] Admin ${adminUser.id} stopped viewing as user ${impersonatedUserId}`,
@@ -905,6 +908,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/auth/session", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUserById(req.user!.id);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const { password, ...sanitizedUser } = user;
+      const permissions = RolePermissions[user.role] || null;
+      const impersonation = await resolveImpersonationForRequest(
+        req,
+        storage.getUserById.bind(storage),
+      );
+
+      if (impersonation) {
+        await saveSession(req);
+      }
+
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.json({ user: sanitizedUser, permissions, impersonation });
+    } catch (err) {
+      console.error("Error fetching auth session:", err);
+      res.status(500).json({ error: "Failed to fetch session" });
+    }
+  });
+
   app.get("/api/user", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -917,6 +950,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       let subscriptions = [];
+      const viewingAsCustomer = isImpersonating(req);
       if (user.stripeCustomerId) {
         // Get subscriptions from database only - no need to query Stripe
         const userSubscriptions = await storage.getUserSubscriptions(user.id);
@@ -953,7 +987,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let discountedPrice = null;
             let originalPrice = price; // Store the original price for reference
             
-            if (subscription.status === 'active' && subscription.stripeSubscriptionId) {
+            if (
+              !viewingAsCustomer &&
+              subscription.status === 'active' &&
+              subscription.stripeSubscriptionId
+            ) {
               try {
                 // Check if this is a scheduled subscription (ID starts with 'sub_sched_')
                 const isScheduledSubscription = subscription.stripeSubscriptionId.startsWith('sub_sched_');
@@ -1057,15 +1095,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get user permissions from RolePermissions (includes custom roles loaded at startup)
       const permissions = RolePermissions[user.role] || null;
-
-      let impersonation = null;
-      const impersonationAdminId = getImpersonationAdminId(req);
-      if (impersonationAdminId && req.sessionID) {
-        const adminUser = await storage.getUserById(impersonationAdminId);
-        const sessionToken = getStopTokenForSession(req.sessionID);
-        if (adminUser && sessionToken) {
-          impersonation = buildImpersonationInfo(adminUser, sessionToken);
-        }
+      const impersonation = await resolveImpersonationForRequest(
+        req,
+        storage.getUserById.bind(storage),
+      );
+      if (impersonation) {
+        await saveSession(req);
       }
 
       // Prevent caching of this response to ensure fresh billing data

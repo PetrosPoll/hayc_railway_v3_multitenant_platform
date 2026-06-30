@@ -29,6 +29,7 @@ declare module "express-session" {
     passport?: {
       user?: PassportSessionUser;
     };
+    impersonationStopToken?: string;
   }
 }
 
@@ -54,7 +55,7 @@ export function getImpersonationAdminId(req: Request): number | undefined {
   const sessionId = req.sessionID;
   if (!sessionId) return undefined;
 
-  const stopToken = impersonationsBySession.get(sessionId);
+  const stopToken = getStopTokenForSession(sessionId, req.session);
   if (!stopToken) return undefined;
 
   return impersonationsByToken.get(stopToken)?.adminId;
@@ -84,17 +85,82 @@ export function userForImpersonationLogin(
   return { ...targetUser, __impersonatedBy: adminId };
 }
 
+function rememberImpersonationRecord(
+  sessionId: string,
+  record: ImpersonationRecord,
+  session?: Request["session"],
+): void {
+  impersonationsByToken.set(record.stopToken, record);
+  impersonationsBySession.set(sessionId, record.stopToken);
+  if (session) {
+    session.impersonationStopToken = record.stopToken;
+  }
+}
+
 export function registerImpersonation(
   sessionId: string,
   adminId: number,
   userId: number,
+  session?: Request["session"],
 ): string {
-  clearImpersonation(sessionId);
+  clearImpersonation(sessionId, session?.impersonationStopToken, session);
 
   const stopToken = randomBytes(32).toString("hex");
-  impersonationsByToken.set(stopToken, { adminId, userId, stopToken });
-  impersonationsBySession.set(sessionId, stopToken);
+  rememberImpersonationRecord(
+    sessionId,
+    { adminId, userId, stopToken },
+    session,
+  );
   return stopToken;
+}
+
+export function getStopTokenForSession(
+  sessionId: string,
+  session?: Request["session"],
+): string | undefined {
+  if (session?.impersonationStopToken) {
+    return session.impersonationStopToken;
+  }
+  return impersonationsBySession.get(sessionId);
+}
+
+function syncImpersonationMapsFromSession(
+  req: Request,
+  adminId: number,
+  userId: number,
+  stopToken: string,
+): void {
+  if (!req.sessionID) return;
+  rememberImpersonationRecord(
+    req.sessionID,
+    { adminId, userId, stopToken },
+    req.session,
+  );
+}
+
+export async function resolveImpersonationForRequest(
+  req: Request,
+  getUserById: (id: number) => Promise<SelectUser | undefined>,
+): Promise<ImpersonationInfo | null> {
+  const adminId = getImpersonationAdminId(req);
+  if (!adminId || !req.user?.id || !req.sessionID) return null;
+
+  const adminUser = await getUserById(adminId);
+  if (!adminUser) return null;
+
+  let stopToken = getStopTokenForSession(req.sessionID, req.session);
+  if (!stopToken) {
+    stopToken = registerImpersonation(
+      req.sessionID,
+      adminId,
+      req.user.id,
+      req.session,
+    );
+  } else {
+    syncImpersonationMapsFromSession(req, adminId, req.user.id, stopToken);
+  }
+
+  return buildImpersonationInfo(adminUser, stopToken);
 }
 
 export function resolveImpersonationForStop(
@@ -110,19 +176,25 @@ export function resolveImpersonationForStop(
 
     const sessionId = req.sessionID;
     if (sessionId) {
-      const sessionToken = impersonationsBySession.get(sessionId);
+      const sessionToken = getStopTokenForSession(sessionId, req.session);
       if (sessionToken) {
         const sessionRecord = impersonationsByToken.get(sessionToken);
         if (sessionRecord && sessionRecord.userId === req.user.id) {
           return sessionRecord;
         }
+        if (sessionRecord) return sessionRecord;
+        return {
+          adminId: fromPassportAdminId,
+          userId: req.user.id,
+          stopToken: sessionToken,
+        };
       }
     }
 
     return {
       adminId: fromPassportAdminId,
       userId: req.user.id,
-      stopToken: stopToken ?? "",
+      stopToken: stopToken ?? req.session?.impersonationStopToken ?? "",
     };
   }
 
@@ -135,7 +207,7 @@ export function resolveImpersonationForStop(
 
   const sessionId = req.sessionID;
   if (sessionId) {
-    const sessionToken = impersonationsBySession.get(sessionId);
+    const sessionToken = getStopTokenForSession(sessionId, req.session);
     if (sessionToken) {
       const record = impersonationsByToken.get(sessionToken);
       if (record && record.userId === req.user?.id) {
@@ -147,20 +219,33 @@ export function resolveImpersonationForStop(
   return undefined;
 }
 
-export function getStopTokenForSession(sessionId: string): string | undefined {
-  return impersonationsBySession.get(sessionId);
-}
-
-export function clearImpersonation(sessionId?: string, stopToken?: string): void {
+export function clearImpersonation(
+  sessionId?: string,
+  stopToken?: string,
+  session?: Request["session"],
+): void {
   if (stopToken) {
     impersonationsByToken.delete(stopToken);
   }
 
+  if (session) {
+    delete session.impersonationStopToken;
+  }
+
   if (!sessionId) return;
 
-  const token = impersonationsBySession.get(sessionId);
+  const token = impersonationsBySession.get(sessionId) ?? stopToken;
   impersonationsBySession.delete(sessionId);
   if (token) {
     impersonationsByToken.delete(token);
   }
+}
+
+export async function saveSession(req: Request): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    req.session.save((err) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
 }

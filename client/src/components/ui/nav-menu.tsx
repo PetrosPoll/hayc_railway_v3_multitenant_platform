@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/ui/authContext";
-import { impersonationNavTopClass } from "@/lib/impersonation-layout";
 
 interface UserResponse {
   user: UserType;
@@ -35,6 +34,7 @@ export function NavMenu() {
   });
   const user = authUser ?? userData?.user;
   const isLoggedOut = !user;
+  const useFlowNav = Boolean(impersonation?.active && user);
   const logoHref = user ? "/dashboard" : "/";
   const logoWordmarkFill = user ? "#00398e" : "#ffffff";
   const queryClient = useQueryClient();
@@ -360,7 +360,7 @@ export function NavMenu() {
 
   return (
     <nav
-      className={`fixed w-full z-50 font-brand ${impersonationNavTopClass(Boolean(impersonation?.active))} ${isLoggedOut ? (isTransparent ? "bg-transparent" : "bg-black") : "bg-white border-b border-border"}`}
+      className={`w-full z-50 font-brand shrink-0 ${useFlowNav ? "sticky top-0" : "fixed top-0"} ${isLoggedOut ? (isTransparent ? "bg-transparent" : "bg-black") : "bg-white border-b border-border"}`}
     >
       <div className="container mx-auto px-0 md:px-16 py-0 md:py-6 flex justify-between items-center w-full">
         {/* Mobile Menu */}

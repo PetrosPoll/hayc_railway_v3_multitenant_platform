@@ -2,6 +2,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { shouldSkipAuthCheck } from '@/lib/skip-auth-check-routes';
+import {
+  readStoredImpersonation,
+  writeStoredImpersonation,
+} from '@/lib/impersonation-storage';
 
 interface User {
   id?: number;
@@ -32,8 +36,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const location = useLocation();
   const skipAuthCheck = shouldSkipAuthCheck(location.pathname);
   const [user, setUser] = useState<User | null>(null);
-  const [impersonation, setImpersonation] = useState<ImpersonationInfo | null>(null);
+  const [impersonation, setImpersonationState] = useState<ImpersonationInfo | null>(
+    () => readStoredImpersonation(),
+  );
   const [isLoading, setIsLoading] = useState(() => !shouldSkipAuthCheck(window.location.pathname));
+
+  const setImpersonation = (value: ImpersonationInfo | null) => {
+    setImpersonationState(value);
+    writeStoredImpersonation(value);
+  };
 
   useEffect(() => {
     if (skipAuthCheck) {
@@ -46,7 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const fetchUserData = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/user', { credentials: 'include' });
+        const response = await fetch('/api/auth/session', { credentials: 'include' });
         if (response.ok) {
           const data = await response.json();
           if (!cancelled) {
