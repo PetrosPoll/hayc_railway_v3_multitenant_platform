@@ -299,10 +299,6 @@ export function CourseCurriculumTab({
   const newLessonVideoBlurTokenRef = useRef(0);
 
   // Media picker state
-  const [isPickingChapterIntroVideo, setIsPickingChapterIntroVideo] = useState(false);
-  const [isPickingNewChapterIntroVideo, setIsPickingNewChapterIntroVideo] = useState(false);
-  const [pickingLessonVideoId, setPickingLessonVideoId] = useState<string | null>(null);
-  const [isPickingNewLessonVideo, setIsPickingNewLessonVideo] = useState(false);
   const [pickingAttachmentTarget, setPickingAttachmentTarget] = useState<{ chapterId: string; lessonId: string } | null>(null);
 
   const { toast } = useToast();
@@ -1137,17 +1133,14 @@ export function CourseCurriculumTab({
                   </div>
                   <div className="space-y-1">
                     <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.introVideoUrl")}</Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={chapterDraft.introVideoUrl}
-                        readOnly
-                        placeholder="No file selected"
-                        className="min-w-0 flex-1 bg-muted/50"
-                      />
-                      <Button type="button" variant="secondary" size="sm" onClick={() => setIsPickingChapterIntroVideo(true)}>
-                        Pick File
-                      </Button>
-                    </div>
+                    <Input
+                      type="url"
+                      value={chapterDraft.introVideoUrl}
+                      placeholder={t("digitalProductsManagement.courseEditor.curriculum.placeholders.videoUrl")}
+                      onChange={(e) =>
+                        setChapterDraft((prev) => ({ ...prev, introVideoUrl: e.target.value }))
+                      }
+                    />
                   </div>
                   <div className="space-y-1">
                     <Label>{t("digitalProductsManagement.table.status")}</Label>
@@ -1328,14 +1321,26 @@ export function CourseCurriculumTab({
                                   <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.videoUrl")}</Label>
                                   <div className="flex flex-wrap items-center gap-2">
                                     <Input
-                                      className="min-w-0 flex-1 bg-muted/50"
+                                      className="min-w-0 flex-1"
+                                      type="url"
                                       value={lessonDraft.videoUrl}
-                                      readOnly
-                                      placeholder="No file selected"
+                                      placeholder={t("digitalProductsManagement.courseEditor.curriculum.placeholders.videoUrl")}
+                                      onChange={(e) => {
+                                        const videoUrl = e.target.value;
+                                        setLessonDraftsById((prev) => ({
+                                          ...prev,
+                                          [lesson.id]: { ...lessonDraft, videoUrl },
+                                        }));
+                                        setLessonVideoUrlDetectSuccessMinutesById((p) => {
+                                          const n = { ...p };
+                                          delete n[lesson.id];
+                                          return n;
+                                        });
+                                      }}
+                                      onBlur={(e) => {
+                                        void runLessonVideoUrlDetect(lesson.id, e.target.value);
+                                      }}
                                     />
-                                    <Button type="button" variant="secondary" size="sm" onClick={() => setPickingLessonVideoId(lesson.id)}>
-                                      Pick File
-                                    </Button>
                                     {lessonVideoUrlDetectingById[lesson.id] ? (
                                       <span
                                         className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
@@ -1525,14 +1530,18 @@ export function CourseCurriculumTab({
                         <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.videoUrl")}</Label>
                         <div className="flex flex-wrap items-center gap-2">
                           <Input
-                            className="min-w-0 flex-1 bg-muted/50"
+                            className="min-w-0 flex-1"
+                            type="url"
                             value={newLessonDraft.videoUrl}
-                            readOnly
-                            placeholder="No file selected"
+                            placeholder={t("digitalProductsManagement.courseEditor.curriculum.placeholders.videoUrl")}
+                            onChange={(e) => {
+                              setNewLessonDraft((prev) => ({ ...prev, videoUrl: e.target.value }));
+                              setNewLessonVideoUrlDetectSuccessMinutes(null);
+                            }}
+                            onBlur={(e) => {
+                              void runNewLessonVideoUrlDetect(e.target.value);
+                            }}
                           />
-                          <Button type="button" variant="secondary" size="sm" onClick={() => setIsPickingNewLessonVideo(true)}>
-                            Pick File
-                          </Button>
                           {newLessonVideoUrlDetecting ? (
                             <span
                               className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground"
@@ -1677,17 +1686,14 @@ export function CourseCurriculumTab({
           </div>
           <div className="space-y-1">
             <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.introVideoUrl")}</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                value={newChapterDraft.introVideoUrl}
-                readOnly
-                placeholder="No file selected"
-                className="min-w-0 flex-1 bg-muted/50"
-              />
-              <Button type="button" variant="secondary" size="sm" onClick={() => setIsPickingNewChapterIntroVideo(true)}>
-                Pick File
-              </Button>
-            </div>
+            <Input
+              type="url"
+              value={newChapterDraft.introVideoUrl}
+              placeholder={t("digitalProductsManagement.courseEditor.curriculum.placeholders.videoUrl")}
+              onChange={(e) =>
+                setNewChapterDraft((prev) => ({ ...prev, introVideoUrl: e.target.value }))
+              }
+            />
           </div>
           <div className="space-y-1">
             <Label>{t("digitalProductsManagement.table.status")}</Label>
@@ -1731,59 +1737,6 @@ export function CourseCurriculumTab({
         </div>
       ) : null}
 
-      <PickImageFromMediaDialog
-        open={isPickingChapterIntroVideo}
-        onClose={() => setIsPickingChapterIntroVideo(false)}
-        onSelect={(url) => {
-          setChapterDraft((prev) => ({ ...prev, introVideoUrl: url }));
-          setIsPickingChapterIntroVideo(false);
-        }}
-        websiteId={websiteId}
-        currentFieldUrl={chapterDraft.introVideoUrl}
-        accept="video"
-      />
-      <PickImageFromMediaDialog
-        open={isPickingNewChapterIntroVideo}
-        onClose={() => setIsPickingNewChapterIntroVideo(false)}
-        onSelect={(url) => {
-          setNewChapterDraft((prev) => ({ ...prev, introVideoUrl: url }));
-          setIsPickingNewChapterIntroVideo(false);
-        }}
-        websiteId={websiteId}
-        currentFieldUrl={newChapterDraft.introVideoUrl}
-        accept="video"
-      />
-      <PickImageFromMediaDialog
-        open={pickingLessonVideoId !== null}
-        onClose={() => setPickingLessonVideoId(null)}
-        onSelect={(url) => {
-          if (pickingLessonVideoId) {
-            setLessonDraftsById((prev) => ({
-              ...prev,
-              [pickingLessonVideoId]: { ...(prev[pickingLessonVideoId] ?? { title: "", description: "", videoUrl: "", durationMinutes: "", isFreePreview: false, status: "draft" as const }), videoUrl: url },
-            }));
-            setLessonVideoUrlDetectSuccessMinutesById((p) => { const n = { ...p }; delete n[pickingLessonVideoId]; return n; });
-            void runLessonVideoUrlDetect(pickingLessonVideoId, url);
-          }
-          setPickingLessonVideoId(null);
-        }}
-        websiteId={websiteId}
-        currentFieldUrl={pickingLessonVideoId ? (lessonDraftsById[pickingLessonVideoId]?.videoUrl ?? "") : ""}
-        accept="video"
-      />
-      <PickImageFromMediaDialog
-        open={isPickingNewLessonVideo}
-        onClose={() => setIsPickingNewLessonVideo(false)}
-        onSelect={(url) => {
-          setNewLessonDraft((prev) => ({ ...prev, videoUrl: url }));
-          setNewLessonVideoUrlDetectSuccessMinutes(null);
-          void runNewLessonVideoUrlDetect(url);
-          setIsPickingNewLessonVideo(false);
-        }}
-        websiteId={websiteId}
-        currentFieldUrl={newLessonDraft.videoUrl}
-        accept="video"
-      />
       <PickImageFromMediaDialog
         open={pickingAttachmentTarget !== null}
         onClose={() => setPickingAttachmentTarget(null)}

@@ -2856,7 +2856,8 @@
                 },
                 "placeholders": {
                     "lessonTitle": "Lesson title",
-                    "chapterTitle": "Chapter title"
+                    "chapterTitle": "Chapter title",
+                    "videoUrl": "Paste Vimeo or video URL"
                 },
                 "validation": {
                     "titleRequired": "Title is required"

@@ -2856,7 +2856,8 @@
                 },
                 "placeholders": {
                     "lessonTitle": "Τίτλος μαθήματος",
-                    "chapterTitle": "Τίτλος ενότητας"
+                    "chapterTitle": "Τίτλος ενότητας",
+                    "videoUrl": "Επικολλήστε URL από Vimeo ή άλλο βίντεο"
                 },
                 "validation": {
                     "titleRequired": "Ο τίτλος είναι υποχρεωτικός"

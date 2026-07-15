@@ -115,7 +115,6 @@ export function CourseEditorView({
   const [isLoading, setIsLoading] = useState(isEditMode);
   const [isSaving, setIsSaving] = useState(false);
   const [isPickingImage, setIsPickingImage] = useState(false);
-  const [isPickingPreviewVideo, setIsPickingPreviewVideo] = useState(false);
   const [resolvedTitle, setResolvedTitle] = useState(t("digitalProductsManagement.courseEditor.defaultNewCourseTitle"));
 
   useEffect(() => {
@@ -360,18 +359,13 @@ export function CourseEditorView({
 
           <div className="space-y-2">
             <Label htmlFor="course-preview-video-url">{t("digitalProductsManagement.courseEditor.fields.previewVideoUrl")}</Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="course-preview-video-url"
-                value={form.previewVideoUrl}
-                readOnly
-                placeholder="No file selected"
-                className="w-full bg-muted/50"
-              />
-              <Button type="button" variant="secondary" size="sm" onClick={() => setIsPickingPreviewVideo(true)}>
-                Pick File
-              </Button>
-            </div>
+            <Input
+              id="course-preview-video-url"
+              type="url"
+              value={form.previewVideoUrl}
+              placeholder={t("digitalProductsManagement.courseEditor.curriculum.placeholders.videoUrl")}
+              onChange={(e) => setForm((prev) => ({ ...prev, previewVideoUrl: e.target.value }))}
+            />
           </div>
 
           <div className="space-y-2">
@@ -472,17 +466,6 @@ export function CourseEditorView({
       websiteId={websiteId}
       currentFieldUrl={form.thumbnail}
       accept="image"
-    />
-    <PickImageFromMediaDialog
-      open={isPickingPreviewVideo}
-      onClose={() => setIsPickingPreviewVideo(false)}
-      onSelect={(url) => {
-        setForm((f) => ({ ...f, previewVideoUrl: url }));
-        setIsPickingPreviewVideo(false);
-      }}
-      websiteId={websiteId}
-      currentFieldUrl={form.previewVideoUrl}
-      accept="video"
     />
     </>
   );
