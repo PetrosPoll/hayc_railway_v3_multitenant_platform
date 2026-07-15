@@ -793,8 +793,26 @@ export function CourseCurriculumTab({
           }
         },
         folder,
-        resourceType: "raw",
-        clientAllowedFormats: ["pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "zip"],
+        resourceType: "auto",
+        clientAllowedFormats: [
+          "pdf",
+          "doc",
+          "docx",
+          "ppt",
+          "pptx",
+          "xls",
+          "xlsx",
+          "zip",
+          "jpg",
+          "jpeg",
+          "png",
+          "gif",
+          "webp",
+          "svg",
+          "bmp",
+          "heic",
+          "heif",
+        ],
         maxFileSize: 20000000,
         multiple: false,
         sources: ["local"],
@@ -1748,7 +1766,7 @@ export function CourseCurriculumTab({
         }}
         websiteId={websiteId}
         currentFieldUrl=""
-        accept="file"
+        accept="attachment"
       />
 
       <AlertDialog

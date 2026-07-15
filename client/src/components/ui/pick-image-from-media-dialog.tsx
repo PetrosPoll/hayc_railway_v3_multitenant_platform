@@ -20,7 +20,7 @@ export interface PickImageFromMediaDialogProps {
   /** When provided, preselects the matching media item in the grid */
   currentFieldUrl?: string;
   /** When set, only items matching this resource type are selectable. Others are shown but greyed out. */
-  accept?: "image" | "video" | "file";
+  accept?: "image" | "video" | "file" | "attachment";
 }
 
 type MediaItem = {
@@ -50,11 +50,15 @@ function extFromPathOrUrl(s: string): string {
   return m ? m[1].toLowerCase() : "";
 }
 
-function isAccepted(item: MediaItem, accept: "image" | "video" | "file" | undefined): boolean {
+function isAccepted(item: MediaItem, accept: "image" | "video" | "file" | "attachment" | undefined): boolean {
   if (!accept) return true;
   if (accept === "image") return item.resourceType === "image" || isImageMediaItem(item);
   if (accept === "video") return item.resourceType === "video";
   if (accept === "file") return item.resourceType === "raw";
+  // Lesson attachments: documents (raw) + images
+  if (accept === "attachment") {
+    return item.resourceType === "raw" || item.resourceType === "image" || isImageMediaItem(item);
+  }
   return true;
 }
 
