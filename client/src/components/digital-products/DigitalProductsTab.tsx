@@ -61,6 +61,7 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
   const [brandModalOpen, setBrandModalOpen] = useState(false);
   const [previewCourse, setPreviewCourse] = useState<Product | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [syncedPublishedIds, setSyncedPublishedIds] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
 
   const fetchProducts = useCallback(async () => {
@@ -79,13 +80,25 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
       if (configRes.ok) {
         try {
           const cfg = (await configRes.json()) as Record<string, unknown>;
-          const dpc = cfg.digitalProductsConfig as { lastSyncedAt?: unknown } | undefined;
+          const dpc = cfg.digitalProductsConfig as {
+            lastSyncedAt?: unknown;
+            products?: Array<{ id?: string | number } | null> | null;
+          } | undefined;
           setLastSyncedAt(typeof dpc?.lastSyncedAt === "string" ? dpc.lastSyncedAt : null);
+          setSyncedPublishedIds(
+            Array.isArray(dpc?.products)
+              ? dpc.products
+                  .map((p) => (p?.id != null ? String(p.id) : ""))
+                  .filter(Boolean)
+              : [],
+          );
         } catch {
           setLastSyncedAt(null);
+          setSyncedPublishedIds([]);
         }
       } else {
         setLastSyncedAt(null);
+        setSyncedPublishedIds([]);
       }
 
       if (!productsRes.ok) {
@@ -270,11 +283,29 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
     return products.filter((p) => p.type === "course" && p.status === "published").length;
   }, [products]);
 
+  /**
+   * Sync needed when never synced, published set ≠ last synced snapshot
+   * (draft ↔ publish / delete), or a published course updatedAt is newer.
+   */
   const hasChangesSinceLastSync = useMemo(() => {
     if (!lastSyncedAt) return true;
 
-    const lastSyncedDate = new Date(lastSyncedAt);
-    const lastSyncedMs = lastSyncedDate.getTime();
+    const publishedIds = new Set(
+      products
+        .filter((p) => p.type === "course" && p.status === "published")
+        .map((p) => String(p.id)),
+    );
+    const syncedIds = new Set(syncedPublishedIds);
+
+    if (publishedIds.size !== syncedIds.size) return true;
+    for (const id of publishedIds) {
+      if (!syncedIds.has(id)) return true;
+    }
+    for (const id of syncedIds) {
+      if (!publishedIds.has(id)) return true;
+    }
+
+    const lastSyncedMs = new Date(lastSyncedAt).getTime();
     if (Number.isNaN(lastSyncedMs)) return true;
 
     return products.some((product) => {
@@ -284,7 +315,7 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
       if (Number.isNaN(updatedAtMs)) return false;
       return updatedAtMs > lastSyncedMs;
     });
-  }, [lastSyncedAt, products]);
+  }, [lastSyncedAt, products, syncedPublishedIds]);
 
   const isSyncButtonDisabled = isSyncing || isLoading || !hasChangesSinceLastSync;
 
@@ -331,6 +362,11 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
       } else {
         setLastSyncedAt(new Date().toISOString());
       }
+      setSyncedPublishedIds(
+        products
+          .filter((p) => p.type === "course" && p.status === "published")
+          .map((p) => String(p.id)),
+      );
       toast({
         title: t("digitalProductsManagement.toasts.successTitle"),
         description: t("digitalProductsManagement.sync.syncSuccess"),
