@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Check, File, Film, X } from "lucide-react";
+import { Check, File, Film, Loader2, Upload, X } from "lucide-react";
 import {
   Dialog,
   DialogPortal,
@@ -11,6 +11,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
+import { useToast } from "@/hooks/use-toast";
 
 export interface PickImageFromMediaDialogProps {
   open: boolean;
@@ -21,6 +23,8 @@ export interface PickImageFromMediaDialogProps {
   currentFieldUrl?: string;
   /** When set, only items matching this resource type are selectable. Others are shown but greyed out. */
   accept?: "image" | "video" | "file" | "attachment";
+  /** Show Upload New (Cloudinary → website media). Defaults to true except for video-only. */
+  allowUpload?: boolean;
 }
 
 type MediaItem = {
@@ -69,6 +73,64 @@ function isImageMediaItem(m: MediaItem): boolean {
   return IMAGE_EXTENSIONS.has(ex);
 }
 
+function uploadConfigForAccept(accept: PickImageFromMediaDialogProps["accept"]): {
+  resourceType: "image" | "auto" | "raw";
+  clientAllowedFormats: string[];
+} {
+  if (accept === "image") {
+    return {
+      resourceType: "image",
+      clientAllowedFormats: ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "heic", "heif"],
+    };
+  }
+  if (accept === "file") {
+    return {
+      resourceType: "raw",
+      clientAllowedFormats: ["pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "zip"],
+    };
+  }
+  if (accept === "attachment") {
+    return {
+      resourceType: "auto",
+      clientAllowedFormats: [
+        "pdf",
+        "doc",
+        "docx",
+        "ppt",
+        "pptx",
+        "xls",
+        "xlsx",
+        "zip",
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "webp",
+        "svg",
+        "bmp",
+        "heic",
+        "heif",
+      ],
+    };
+  }
+  return {
+    resourceType: "auto",
+    clientAllowedFormats: [
+      "jpg",
+      "jpeg",
+      "png",
+      "gif",
+      "webp",
+      "svg",
+      "bmp",
+      "pdf",
+      "doc",
+      "docx",
+      "zip",
+    ],
+  };
+}
+
 export function PickImageFromMediaDialog({
   open,
   onClose,
@@ -76,10 +138,16 @@ export function PickImageFromMediaDialog({
   websiteId,
   currentFieldUrl = "",
   accept,
+  allowUpload,
 }: PickImageFromMediaDialogProps) {
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
 
-  const { data, isLoading } = useQuery<{ media: MediaItem[] }>({
+  const canUpload = allowUpload ?? accept !== "video";
+
+  const { data, isLoading, refetch } = useQuery<{ media: MediaItem[] }>({
     queryKey: ["/api/websites", websiteId, "media"],
     queryFn: async () => {
       const res = await fetch(`/api/websites/${websiteId}/media`, {
@@ -98,6 +166,7 @@ export function PickImageFromMediaDialog({
   useEffect(() => {
     if (!open) {
       setSelectedUrl(null);
+      setIsUploading(false);
       return;
     }
     if (currentFieldUrl && mediaItems.some((m) => m.url === currentFieldUrl)) {
@@ -110,6 +179,162 @@ export function PickImageFromMediaDialog({
   const handleSelect = () => {
     if (selectedUrl) {
       onSelect(selectedUrl);
+    }
+  };
+
+  const resolveUploadFolder = async (): Promise<string> => {
+    const [sessionRes, websiteRes] = await Promise.all([
+      fetch("/api/auth/session", { credentials: "include" }),
+      fetch(`/api/admin/websites/${websiteId}`, { credentials: "include" }),
+    ]);
+    if (!sessionRes.ok) throw new Error("Failed to load session");
+    if (!websiteRes.ok) throw new Error("Failed to load website");
+    const session = await sessionRes.json();
+    const website = await websiteRes.json();
+    const email = session?.user?.email;
+    if (!email || typeof email !== "string") throw new Error("Missing user email");
+    const domain = String(website.domain ?? "").replace(/\.pending-onboarding$/i, "");
+    if (!domain) throw new Error("Missing website domain");
+    return `Website Media/${email}/${domain}`;
+  };
+
+  const persistMediaItem = async (info: {
+    secure_url?: string;
+    public_id?: string;
+    original_filename?: string;
+    resource_type?: string;
+  }) => {
+    const url = info.secure_url ?? "";
+    const publicId = info.public_id ?? "";
+    if (!url || !publicId) throw new Error("Missing upload result");
+    const rt = info.resource_type;
+    const resourceType =
+      rt === "image" || rt === "video" || rt === "raw" ? rt : undefined;
+    const response = await fetch(`/api/websites/${websiteId}/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({
+        url,
+        publicId,
+        name: info.original_filename || "Untitled",
+        ...(resourceType ? { resourceType } : {}),
+      }),
+    });
+    if (!response.ok) throw new Error("Failed to save media");
+    return url;
+  };
+
+  const openUploadWidget = async () => {
+    if (!canUpload || isUploading) return;
+    setIsUploading(true);
+    try {
+      await loadCloudinaryWidget();
+      const folder = await resolveUploadFolder();
+      const uploadCfg = uploadConfigForAccept(accept);
+
+      let cloudinaryConfig = { apiKey: "", cloudName: "" };
+      const configResponse = await fetch("/api/cloudinary/signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ paramsToSign: { folder } }),
+        credentials: "include",
+      });
+      if (!configResponse.ok) throw new Error("Failed to get upload configuration");
+      const configData = await configResponse.json();
+      cloudinaryConfig.apiKey = configData.apiKey;
+      cloudinaryConfig.cloudName = configData.cloudName;
+
+      const widget = window.cloudinary!.createUploadWidget(
+        {
+          cloudName: cloudinaryConfig.cloudName,
+          apiKey: cloudinaryConfig.apiKey,
+          uploadSignature: async (
+            callback: (args: { signature: string; timestamp: number }) => void,
+            paramsToSign: Record<string, unknown>,
+          ) => {
+            try {
+              const response = await fetch("/api/cloudinary/signature", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ paramsToSign }),
+                credentials: "include",
+              });
+              if (!response.ok) throw new Error("Failed to get upload signature");
+              const data = await response.json();
+              callback({ signature: data.signature, timestamp: data.timestamp });
+            } catch {
+              toast({
+                title: "Error",
+                description: "Failed to prepare upload. Please try again.",
+                variant: "destructive",
+              });
+            }
+          },
+          folder,
+          sources: ["local", "url", "camera"],
+          multiple: false,
+          maxFileSize: 52428800,
+          resourceType: uploadCfg.resourceType,
+          clientAllowedFormats: uploadCfg.clientAllowedFormats,
+        },
+        (error: unknown, result: { event?: string; info?: Record<string, unknown> }) => {
+          if (error) {
+            toast({
+              title: "Upload Error",
+              description: "Failed to upload file. Please try again.",
+              variant: "destructive",
+            });
+            setIsUploading(false);
+            return;
+          }
+          if (result?.event === "success" && result.info) {
+            const info = result.info as {
+              secure_url?: string;
+              public_id?: string;
+              original_filename?: string;
+              resource_type?: string;
+            };
+            void persistMediaItem(info)
+              .then(async (url) => {
+                await queryClient.invalidateQueries({
+                  queryKey: ["/api/websites", websiteId, "media"],
+                });
+                await queryClient.invalidateQueries({
+                  queryKey: ["/api/admin/websites", String(websiteId)],
+                });
+                await refetch();
+                setSelectedUrl(url);
+                toast({
+                  title: "Uploaded",
+                  description: "File uploaded and added to Media.",
+                });
+                onSelect(url);
+              })
+              .catch(() => {
+                toast({
+                  title: "Error",
+                  description: "Upload succeeded but saving to Media failed.",
+                  variant: "destructive",
+                });
+              })
+              .finally(() => setIsUploading(false));
+            return;
+          }
+          if (result?.event === "close" || result?.event === "abort") {
+            setIsUploading(false);
+          }
+        },
+      );
+      widget.open();
+    } catch (err) {
+      console.error("Upload init error:", err);
+      toast({
+        title: "Error",
+        description: "Failed to initialize upload. Please try again.",
+        variant: "destructive",
+      });
+      setIsUploading(false);
     }
   };
 
@@ -130,15 +355,33 @@ export function PickImageFromMediaDialog({
             "w-[min(100vw-2rem,56rem)] max-w-3xl overflow-hidden"
           )}
         >
-          <div className="flex shrink-0 items-center justify-between border-b px-6 py-4">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b px-6 py-4">
             <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
               Choose File
             </DialogPrimitive.Title>
-            <DialogPrimitive.Close asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Close">
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogPrimitive.Close>
+            <div className="flex items-center gap-2">
+              {canUpload ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={isUploading}
+                  onClick={() => void openUploadWidget()}
+                >
+                  {isUploading ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-1.5 h-4 w-4" />
+                  )}
+                  Upload New
+                </Button>
+              ) : null}
+              <DialogPrimitive.Close asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Close">
+                  <X className="h-4 w-4" />
+                </Button>
+              </DialogPrimitive.Close>
+            </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 [scrollbar-gutter:stable]">
@@ -149,9 +392,31 @@ export function PickImageFromMediaDialog({
                 ))}
               </div>
             ) : mediaItems.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground py-8">
-                No files found. Upload files in the Media tab first.
-              </p>
+              <div className="py-8 text-center space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  No files found yet.
+                </p>
+                {canUpload ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isUploading}
+                    onClick={() => void openUploadWidget()}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="mr-1.5 h-4 w-4" />
+                    )}
+                    Upload New
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Upload files in the Media tab first.
+                  </p>
+                )}
+              </div>
             ) : (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {mediaItems.map((item) => {
