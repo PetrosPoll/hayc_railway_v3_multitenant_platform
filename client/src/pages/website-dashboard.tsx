@@ -66,6 +66,7 @@ import {
   FileEdit,
   ExternalLink,
   Wallet,
+  Film,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/ui/authContext";
@@ -3615,135 +3616,78 @@ export default function WebsiteDashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="divide-y rounded-md border">
             {mediaFiles.map((file) => {
               const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
               const cloudinaryFormat = file.format?.toLowerCase() || '';
-              
+
               // Check if it's an image - use format from Cloudinary or file extension
               const imageFormats = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'heic', 'heif'];
               const isImage = imageFormats.includes(fileExtension) || imageFormats.includes(cloudinaryFormat);
-              
+
               // Check if it's a video
               const videoFormats = ['mp4', 'mov', 'avi', 'webm', 'mkv', 'm4v', 'flv'];
               const isVideo = videoFormats.includes(fileExtension) || videoFormats.includes(cloudinaryFormat);
-              
-              // Check if it's a document
-              const isDocument = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt', 'rtf', 'odt', 'ods', 'ppt', 'pptx'].includes(fileExtension);
-              
+
               // Check if it's an archive
               const isArchive = ['zip', 'rar', '7z', 'tar', 'gz'].includes(fileExtension);
 
               return (
-              <Card key={file.publicId} data-testid={`media-card-${file.publicId}`}>
-                <CardContent className="p-4">
-                  <div
-                    className="aspect-video bg-muted rounded-md mb-3 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity flex items-center justify-center"
+                <div
+                  key={file.publicId}
+                  className="flex items-center gap-3 px-3 py-2"
+                  data-testid={`media-card-${file.publicId}`}
+                >
+                  <button
+                    type="button"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted"
                     onClick={() => window.open(file.url, '_blank')}
+                    aria-label={t("actions.view")}
                   >
                     {isImage ? (
                       <img
                         src={file.previewUrl || file.url}
                         alt={file.name}
-                        className="w-full h-full object-cover"
+                        className="h-full w-full object-cover"
                         loading="lazy"
-                        onError={(e) => {
-                          // Fallback if image fails to load - show file icon
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent) {
-                            const fallbackDiv = document.createElement('div');
-                            fallbackDiv.className = 'w-full h-full flex items-center justify-center';
-                            fallbackDiv.innerHTML = `
-                              <div class="text-center p-4">
-                                <svg class="h-12 w-12 mx-auto text-muted-foreground mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                </svg>
-                                <p class="text-xs text-muted-foreground truncate px-2">${file.name}</p>
-                              </div>
-                            `;
-                            parent.appendChild(fallbackDiv);
-                          }
-                        }}
                       />
                     ) : isVideo ? (
-                      <video
-                        src={file.url}
-                        className="w-full h-full object-cover"
-                        controls={false}
-                      />
+                      <Film className="h-5 w-5 text-muted-foreground" />
+                    ) : isArchive ? (
+                      <Download className="h-5 w-5 text-muted-foreground" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="text-center p-4">
-                          {isDocument ? (
-                            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                          ) : isArchive ? (
-                            <Download className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                          ) : (
-                            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                          )}
-                          <p className="text-xs text-muted-foreground truncate px-2">{file.name}</p>
-                        </div>
-                      </div>
+                      <FileText className="h-5 w-5 text-muted-foreground" />
                     )}
-                  </div>
-                  <p className="font-medium text-sm truncate mb-3">{file.name}</p>
-                  <div className="flex gap-2">
+                  </button>
+
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium" title={file.name}>
+                    {file.name}
+                  </p>
+
+                  <div className="flex shrink-0 items-center gap-1">
                     <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
                       onClick={() => window.open(file.url, '_blank')}
                       data-testid={`button-view-${file.publicId}`}
+                      aria-label={t("actions.view")}
                     >
-                      <Eye className="h-4 w-4 mr-2" />
-                      {t("actions.view")}
+                      <Eye className="h-4 w-4" />
                     </Button>
-                    {/* <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={async () => {
-                        try {
-                          const response = await fetch(file.url);
-                          const blob = await response.blob();
-                          const url = window.URL.createObjectURL(blob);
-                          const link = document.createElement('a');
-                          link.href = url;
-                          link.download = file.name || 'download';
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                          window.URL.revokeObjectURL(url);
-                        } catch (error) {
-                          console.error('Download failed:', error);
-                          toast({
-                            title: "Error",
-                            description: "Failed to download file",
-                            variant: "destructive",
-                          });
-                        }
-                      }}
-                      data-testid={`button-download-${file.publicId}`}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:text-destructive"
+                      onClick={() => setDeleteMediaId(file.publicId)}
+                      data-testid={`button-delete-${file.publicId}`}
+                      aria-label={t("actions.delete")}
                     >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button> */}
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="w-full mt-2"
-                    onClick={() => setDeleteMediaId(file.publicId)}
-                    data-testid={`button-delete-${file.publicId}`}
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {t("actions.delete")}
-                  </Button>
-                </CardContent>
-              </Card>
-            );
+                </div>
+              );
             })}
           </div>
         )}
