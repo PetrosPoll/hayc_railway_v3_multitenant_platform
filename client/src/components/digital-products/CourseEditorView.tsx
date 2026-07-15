@@ -296,22 +296,17 @@ export function CourseEditorView({
   return (
     <>
     <div className="w-full space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
-          <button
-            type="button"
-            className="text-sm text-muted-foreground hover:underline"
-            onClick={onBack}
-          >
-            ← {t("digitalProductsManagement.title")}
-          </button>
-          <h1 className="text-2xl font-semibold">
-            {isEditMode ? resolvedTitle : t("digitalProductsManagement.courseEditor.defaultNewCourseTitle")}
-          </h1>
-        </div>
-        <Button type="button" onClick={onSave} disabled={isSaving}>
-          {isSaving ? t("digitalProductsManagement.common.saving") : t("digitalProductsManagement.common.save")}
-        </Button>
+      <div className="space-y-2">
+        <button
+          type="button"
+          className="text-sm text-muted-foreground hover:underline"
+          onClick={onBack}
+        >
+          ← {t("digitalProductsManagement.title")}
+        </button>
+        <h1 className="text-2xl font-semibold">
+          {isEditMode ? resolvedTitle : t("digitalProductsManagement.courseEditor.defaultNewCourseTitle")}
+        </h1>
       </div>
 
       <Tabs defaultValue="details">
@@ -425,6 +420,12 @@ export function CourseEditorView({
               </SelectContent>
             </Select>
           </div>
+
+          <div className="flex justify-end border-t pt-4">
+            <Button type="button" onClick={onSave} disabled={!canSave}>
+              {isSaving ? t("digitalProductsManagement.common.saving") : t("digitalProductsManagement.common.save")}
+            </Button>
+          </div>
         </TabsContent>
 
         <TabsContent value="curriculum" className="pt-4">
@@ -453,6 +454,12 @@ export function CourseEditorView({
           <p className="text-sm text-muted-foreground">
             {t("digitalProductsManagement.courseEditor.certificate.description")}
           </p>
+
+          <div className="flex justify-end border-t pt-4">
+            <Button type="button" onClick={onSave} disabled={!canSave}>
+              {isSaving ? t("digitalProductsManagement.common.saving") : t("digitalProductsManagement.common.save")}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
