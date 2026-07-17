@@ -401,7 +401,11 @@ export function WebsiteCreationLanding({
       <section className={`${landingHeroSectionClass} landing-hero-lcp`}>
         <div className="container mx-auto px-4">
           {/* Logo, Hero Content, and Language Switcher Row */}
-          <div className="flex flex-col items-center gap-4 md:flex-row md:items-start md:justify-between md:gap-8 mb-12">
+          <div
+            className={`flex flex-col items-center gap-4 md:flex-row md:items-start md:justify-between md:gap-8 ${
+              showCalendly ? "mb-4" : "mb-12"
+            }`}
+          >
             {/* Logo and Language Switcher Row on Mobile */}
             <div className="flex items-center justify-between w-full md:w-auto md:flex-shrink-0">
               {/* Logo */}
@@ -433,14 +437,16 @@ export function WebsiteCreationLanding({
             </div>
             
             {/* Title and Subtitle in center */}
-            <div className="text-center flex-1">
-              <h1 className="text-2xl md:text-4xl font-bold text-white font-brand mb-4">
-                {heroTitle}
-              </h1>
-              <p className="text-lg md:text-xl text-white/70 font-brand max-w-2xl mx-auto">
-                {heroSubtitle}
-              </p>
-            </div>
+            {!showCalendly && (
+              <div className="text-center flex-1">
+                <h1 className="text-2xl md:text-4xl font-bold text-white font-brand mb-4">
+                  {heroTitle}
+                </h1>
+                <p className="text-lg md:text-xl text-white/70 font-brand max-w-2xl mx-auto">
+                  {heroSubtitle}
+                </p>
+              </div>
+            )}
 
             {/* Language Switcher on the right - hidden on mobile, visible on desktop */}
             <div className="hidden md:flex gap-2 flex-shrink-0">
