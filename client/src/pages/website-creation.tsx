@@ -162,7 +162,9 @@ export function WebsiteCreationLanding({
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       nextErrors.email = t('landingPage.form.emailValidation');
     }
-    if (phone.trim().length < 1) {
+
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10) {
       nextErrors.phone = t('landingPage.form.phoneValidation');
     }
 
