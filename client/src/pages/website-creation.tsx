@@ -398,12 +398,16 @@ export function WebsiteCreationLanding({
       </div> */}
 
       {/* Hero Section */}
-      <section className={`${landingHeroSectionClass} landing-hero-lcp`}>
+      <section
+        className={`${landingHeroSectionClass} landing-hero-lcp ${
+          qualificationEnabled ? "!pt-4 !pb-8 md:!py-10 lg:!py-16" : ""
+        }`}
+      >
         <div className="container mx-auto px-4">
           {/* Logo, Hero Content, and Language Switcher Row */}
           <div
-            className={`flex flex-col items-center gap-4 md:flex-row md:items-start md:justify-between md:gap-8 ${
-              showCalendly ? "mb-4" : "mb-12"
+            className={`flex flex-col items-center gap-2 md:flex-row md:items-start md:justify-between md:gap-8 ${
+              showCalendly ? "mb-2 md:mb-4" : "mb-4 md:mb-12"
             }`}
           >
             {/* Logo and Language Switcher Row on Mobile */}
@@ -439,10 +443,10 @@ export function WebsiteCreationLanding({
             {/* Title and Subtitle in center */}
             {!showCalendly && (
               <div className="text-center flex-1">
-                <h1 className="text-2xl md:text-4xl font-bold text-white font-brand mb-4">
+                <h1 className="text-xl md:text-4xl font-bold text-white font-brand mb-2 md:mb-4">
                   {heroTitle}
                 </h1>
-                <p className="text-lg md:text-xl text-white/70 font-brand max-w-2xl mx-auto">
+                <p className="text-sm leading-5 md:text-xl md:leading-normal text-white/70 font-brand max-w-2xl mx-auto">
                   {heroSubtitle}
                 </p>
               </div>
