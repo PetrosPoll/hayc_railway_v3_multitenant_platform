@@ -42,6 +42,20 @@
       "phoneValidation": "Please enter a valid phone number",
       "newsletterOptIn": "I agree to receive emails about offers and updates from Hayc. (Optional)"
     },
+    "qualificationStep": {
+      "contactProgress": "Step 1 of 2",
+      "contactButton": "Continue",
+      "progress": "Step 2 of 2",
+      "title": "Before you book your appointment",
+      "subtitle": "Two quick confirmations before you choose a date and time.",
+      "onlineMeetingQuestion": "I understand that the appointment will take place online via video call, on my computer or phone.",
+      "onlineMeetingYes": "Yes, I understand",
+      "attendanceQuestion": "I commit to being on time. If something comes up, I will notify you in advance to cancel or reschedule.",
+      "attendanceYes": "Yes, I commit",
+      "no": "No",
+      "validation": "To continue to booking, please confirm both statements.",
+      "bookingButton": "Continue to appointment booking"
+    },
     "reviews": {
       "title": "What Our Clients Say",
       "subtitle": "Real testimonials from businesses we've helped transform",

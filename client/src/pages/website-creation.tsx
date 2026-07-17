@@ -43,7 +43,7 @@ export function WebsiteCreationLanding({
   forceEnglish = false,
 }: WebsiteCreationLandingProps) {
   const navigate = useNavigate();
-  const [showCalendly, setShowCalendly] = useState(false);
+  const [formStage, setFormStage] = useState<"contact" | "qualification" | "booking">("contact");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState<string>("");
   const { t, i18n } = useTranslation();
@@ -53,6 +53,11 @@ export function WebsiteCreationLanding({
   const [phone, setPhone] = useState("");
   const [newsletterOptIn, setNewsletterOptIn] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; phone?: string }>({});
+  const [onlineMeetingConfirmed, setOnlineMeetingConfirmed] = useState<boolean | null>(null);
+  const [attendanceConfirmed, setAttendanceConfirmed] = useState<boolean | null>(null);
+  const [qualificationError, setQualificationError] = useState(false);
+  const qualificationEnabled = variant === "default";
+  const showCalendly = formStage === "booking";
 
   useNoIndex();
 
@@ -211,7 +216,7 @@ export function WebsiteCreationLanding({
 
       // UI success
       setSubmittedEmail(trimmedEmail);
-      setShowCalendly(true);
+      setFormStage(qualificationEnabled ? "qualification" : "booking");
 
     } catch (error) {
       console.error('Error submitting lead:', error);
@@ -220,6 +225,17 @@ export function WebsiteCreationLanding({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const onQualificationSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (onlineMeetingConfirmed !== true || attendanceConfirmed !== true) {
+      setQualificationError(true);
+      return;
+    }
+
+    setQualificationError(false);
+    setFormStage("booking");
   };
 
 
@@ -448,12 +464,17 @@ export function WebsiteCreationLanding({
           </div>
 
           <div className={showCalendly ? "max-w-5xl mx-auto" : "flex justify-center"}>
-            <div className={showCalendly ? "w-full" : "w-full max-w-md"} id="lead-form">
+            <div className={showCalendly ? "w-full" : "w-full max-w-lg"} id="lead-form">
               <div className="w-full">
                 
-                {!showCalendly ? (
+                {formStage === "contact" ? (
                   <Card className={landingCardClass}>
                     <CardHeader>
+                      {qualificationEnabled && (
+                        <p className="text-center text-sm font-medium text-white/60">
+                          {t('landingPage.qualificationStep.contactProgress')}
+                        </p>
+                      )}
                       <CardTitle className="text-center text-white font-brand">{t('landingPage.form.title')}</CardTitle>
                       <CardDescription className="text-center text-white/70 font-brand">
                         {t('landingPage.form.subtitle')}
@@ -512,7 +533,91 @@ export function WebsiteCreationLanding({
                           className={landingSubmitButtonClass}
                           disabled={isSubmitting}
                         >
-                          {isSubmitting ? t('landingPage.form.submitting') : t('landingPage.form.submitButton')}
+                          {isSubmitting
+                            ? t('landingPage.form.submitting')
+                            : qualificationEnabled
+                              ? t('landingPage.qualificationStep.contactButton')
+                              : t('landingPage.form.submitButton')}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                ) : formStage === "qualification" ? (
+                  <Card className={landingCardClass}>
+                    <CardHeader>
+                      <p className="text-center text-sm font-medium text-white/60">
+                        {t('landingPage.qualificationStep.progress')}
+                      </p>
+                      <CardTitle className="text-center text-white font-brand">
+                        {t('landingPage.qualificationStep.title')}
+                      </CardTitle>
+                      <CardDescription className="text-center text-white/70 font-brand">
+                        {t('landingPage.qualificationStep.subtitle')}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={onQualificationSubmit} className="space-y-6">
+                        {[
+                          {
+                            key: "onlineMeeting",
+                            question: t('landingPage.qualificationStep.onlineMeetingQuestion'),
+                            yesLabel: t('landingPage.qualificationStep.onlineMeetingYes'),
+                            value: onlineMeetingConfirmed,
+                            setValue: setOnlineMeetingConfirmed,
+                          },
+                          {
+                            key: "attendance",
+                            question: t('landingPage.qualificationStep.attendanceQuestion'),
+                            yesLabel: t('landingPage.qualificationStep.attendanceYes'),
+                            value: attendanceConfirmed,
+                            setValue: setAttendanceConfirmed,
+                          },
+                        ].map(({ key, question, yesLabel, value, setValue }) => (
+                          <fieldset key={key} className="space-y-3 rounded-lg border border-white/15 bg-white/5 p-4">
+                            <legend className="sr-only">{question}</legend>
+                            <p className="text-sm font-medium leading-relaxed text-white">{question}</p>
+                            <div className="grid grid-cols-2 gap-3">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                aria-pressed={value === true}
+                                className={
+                                  value === true
+                                    ? "border-green-500 bg-green-500 text-white hover:bg-green-600 hover:text-white"
+                                    : "border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                }
+                                onClick={() => {
+                                  setValue(true);
+                                  setQualificationError(false);
+                                }}
+                              >
+                                {yesLabel}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                aria-pressed={value === false}
+                                className={
+                                  value === false
+                                    ? "border-red-400 bg-red-500/20 text-white hover:bg-red-500/30 hover:text-white"
+                                    : "border-white/25 bg-transparent text-white hover:bg-white/10 hover:text-white"
+                                }
+                                onClick={() => setValue(false)}
+                              >
+                                {t('landingPage.qualificationStep.no')}
+                              </Button>
+                            </div>
+                          </fieldset>
+                        ))}
+
+                        {qualificationError && (
+                          <p role="alert" className="text-sm font-medium text-amber-300">
+                            {t('landingPage.qualificationStep.validation')}
+                          </p>
+                        )}
+
+                        <Button type="submit" className={landingSubmitButtonClass}>
+                          {t('landingPage.qualificationStep.bookingButton')}
                         </Button>
                       </form>
                     </CardContent>
