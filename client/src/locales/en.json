@@ -2766,7 +2766,22 @@
                 "email": "Email",
                 "coursesEnrolled": "Courses enrolled",
                 "totalSpent": "Total spent",
-                "memberSince": "Member since"
+                "memberSince": "Member since",
+                "actions": "Actions"
+            },
+            "enrollments": {
+                "manage": "Manage courses",
+                "title": "Manage course enrollments",
+                "subtitle": "Enroll or unenroll {{name}} from courses on this site.",
+                "noCourses": "No courses yet. Create a course first.",
+                "enrolled": "Enrolled",
+                "notEnrolled": "Not enrolled",
+                "enroll": "Enroll",
+                "unenroll": "Unenroll",
+                "enrollSuccess": "Buyer enrolled",
+                "unenrollSuccess": "Buyer unenrolled",
+                "enrollFailed": "Could not enroll buyer. Please try again.",
+                "unenrollFailed": "Could not unenroll buyer. Please try again."
             },
             "demoBuyer": {
                 "title": "Create a demo buyer",

@@ -26,6 +26,7 @@ import { CreateProductButton } from "@/components/digital-products/CreateProduct
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 import { CreateDemoBuyerDialog, type DemoBuyerCredentials } from "@/components/digital-products/CreateDemoBuyerDialog";
 import { DemoBuyerCredentialsPanel } from "@/components/digital-products/DemoBuyerCredentialsPanel";
+import { ManageBuyerEnrollmentsDialog } from "@/components/digital-products/ManageBuyerEnrollmentsDialog";
 import { CourseEditorView } from "@/components/digital-products/CourseEditorView";
 import { CoursePreviewModal } from "@/components/digital-products/CoursePreviewModal";
 
@@ -65,6 +66,7 @@ export function DigitalProductsTab({
   const [demoBuyerDialogOpen, setDemoBuyerDialogOpen] = useState(false);
   const [demoBuyer, setDemoBuyer] = useState<DemoBuyerCredentials | null>(null);
   const [demoBuyerLoading, setDemoBuyerLoading] = useState(false);
+  const [enrollmentsBuyer, setEnrollmentsBuyer] = useState<NormalizedBuyer | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [brandModalOpen, setBrandModalOpen] = useState(false);
@@ -212,6 +214,12 @@ export function DigitalProductsTab({
       void fetchDemoBuyer();
     }
   }, [listMode, fetchBuyers, fetchDemoBuyer]);
+
+  useEffect(() => {
+    if (!enrollmentsBuyer?.id) return;
+    const refreshed = buyers.find((b) => b.id === enrollmentsBuyer.id);
+    if (refreshed) setEnrollmentsBuyer(refreshed);
+  }, [buyers, enrollmentsBuyer?.id]);
 
   // Leaving courses list (e.g. sidebar → Buyers) must exit course editor
   useEffect(() => {
@@ -619,7 +627,11 @@ export function DigitalProductsTab({
             </CardContent>
           </Card>
         ) : (
-          <BuyersTable buyers={buyers} demoBuyerEmail={demoBuyer?.email} />
+          <BuyersTable
+            buyers={buyers}
+            demoBuyerEmail={demoBuyer?.email}
+            onManageEnrollments={setEnrollmentsBuyer}
+          />
         )
       ) : isLoading ? (
         <Card>
@@ -714,6 +726,17 @@ export function DigitalProductsTab({
           setDemoBuyer(credentials);
           void fetchBuyers();
         }}
+      />
+
+      <ManageBuyerEnrollmentsDialog
+        open={!!enrollmentsBuyer}
+        onOpenChange={(open) => {
+          if (!open) setEnrollmentsBuyer(null);
+        }}
+        siteId={siteId}
+        buyer={enrollmentsBuyer}
+        courses={products.filter((p) => p.type === "course")}
+        onChanged={() => void fetchBuyers()}
       />
 
       <CoursePreviewModal
