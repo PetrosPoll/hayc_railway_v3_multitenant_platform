@@ -213,6 +213,14 @@ export function DigitalProductsTab({
     }
   }, [listMode, fetchBuyers, fetchDemoBuyer]);
 
+  // Leaving courses list (e.g. sidebar → Buyers) must exit course editor
+  useEffect(() => {
+    if (listMode !== "courses" && (view === "course-new" || view === "course-edit")) {
+      setView("list");
+      setSelectedCourseId(null);
+    }
+  }, [listMode, view]);
+
   const types = useMemo(() => {
     return Array.from(new Set(products.map((product) => product.type)));
   }, [products]);
@@ -425,7 +433,7 @@ export function DigitalProductsTab({
     }
   };
 
-  if (view === "course-new" || view === "course-edit") {
+  if (listMode === "courses" && (view === "course-new" || view === "course-edit")) {
     return (
       <div>
         <CourseEditorView
