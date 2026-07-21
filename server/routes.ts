@@ -22975,6 +22975,180 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
+  app.get("/api/hdp/buyers/:siteId/demo-buyer", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to access this site" });
+      }
+
+      const demoBuyer = website.hdpDemoBuyer;
+      if (
+        !demoBuyer ||
+        typeof demoBuyer !== "object" ||
+        typeof demoBuyer.email !== "string" ||
+        typeof demoBuyer.password !== "string"
+      ) {
+        return res.status(404).json({ error: "Demo buyer not found" });
+      }
+
+      return res.json({ demoBuyer });
+    } catch (error: any) {
+      console.error("Error fetching HDP demo buyer:", error);
+      res.status(500).json({ error: "Failed to fetch demo buyer" });
+    }
+  });
+
+  app.post("/api/hdp/buyers/:siteId/demo-buyer", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized to modify this site" });
+      }
+
+      const schema = z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        name: z.string().trim().min(1).optional(),
+        courseId: z.string().uuid().optional(),
+      });
+
+      let body: z.infer<typeof schema>;
+      try {
+        body = schema.parse(req.body);
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          return res.status(400).json({ error: "Invalid request", details: err.errors });
+        }
+        throw err;
+      }
+
+      const existingDemo = website.hdpDemoBuyer;
+      if (
+        existingDemo &&
+        typeof existingDemo === "object" &&
+        typeof existingDemo.email === "string" &&
+        typeof existingDemo.password === "string"
+      ) {
+        return res.status(409).json({
+          error: "Demo buyer already exists for this site",
+          demoBuyer: existingDemo,
+        });
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const payload = {
+        email: body.email,
+        password: body.password,
+        name: body.name ?? `Demo Buyer ${website.id}`,
+        ...(body.courseId ? { courseId: body.courseId } : {}),
+      };
+
+      const internalRes = await fetch(
+        `${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/demo-buyer`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-token": HDP_INTERNAL_TOKEN,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      let hdpBody: unknown = null;
+      if (contentType.includes("application/json")) {
+        try {
+          hdpBody = await internalRes.json();
+        } catch {
+          hdpBody = null;
+        }
+      } else if (internalRes.status !== 204) {
+        const text = await internalRes.text();
+        if (!internalRes.ok) {
+          return res.status(internalRes.status).send(text);
+        }
+      }
+
+      if (!internalRes.ok) {
+        return res
+          .status(internalRes.status)
+          .json(
+            typeof hdpBody === "object" && hdpBody !== null
+              ? hdpBody
+              : { error: "Failed to create demo buyer" }
+          );
+      }
+
+      const createdAt = new Date().toISOString();
+      const demoBuyer = {
+        email: payload.email,
+        password: payload.password,
+        name: payload.name,
+        createdAt,
+      };
+
+      await db
+        .update(websiteProgress)
+        .set({
+          hdpDemoBuyer: demoBuyer,
+          updatedAt: new Date(),
+        })
+        .where(eq(websiteProgress.id, website.id));
+
+      return res.status(201).json({ demoBuyer, hdp: hdpBody });
+    } catch (error: any) {
+      console.error("Error creating HDP demo buyer:", error);
+      res.status(500).json({ error: "Failed to create demo buyer" });
+    }
+  });
+
   app.post("/api/hdp/products/:siteId/sync", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -23068,9 +23242,16 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
 
       const lastSyncedAt = new Date().toISOString();
       const config = await getConfig(siteId);
+      const existingDpc =
+        config.digitalProductsConfig &&
+        typeof config.digitalProductsConfig === "object" &&
+        !Array.isArray(config.digitalProductsConfig)
+          ? (config.digitalProductsConfig as Record<string, unknown>)
+          : {};
       const updatedConfig = {
         ...config,
         digitalProductsConfig: {
+          ...existingDpc,
           enabled: true,
           lastSyncedAt,
           products,

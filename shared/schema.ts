@@ -146,6 +146,13 @@ export const websiteProgress = pgTable("website_progress", {
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
   contactEmail: text("contact_email"),
+  /** Demo buyer credentials for Digital Products preview (platform-only, not public site config) */
+  hdpDemoBuyer: jsonb("hdp_demo_buyer").$type<{
+    email: string;
+    password: string;
+    name?: string;
+    createdAt?: string;
+  } | null>(),
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status").notNull().default("disconnected"),
   stripeConnectedAt: timestamp("stripe_connected_at"),

@@ -24,6 +24,8 @@ import { ProductTypeFilter } from "@/components/digital-products/ProductTypeFilt
 import { ProductsTable } from "@/components/digital-products/ProductsTable";
 import { CreateProductButton } from "@/components/digital-products/CreateProductButton";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
+import { CreateDemoBuyerDialog, type DemoBuyerCredentials } from "@/components/digital-products/CreateDemoBuyerDialog";
+import { DemoBuyerCredentialsPanel } from "@/components/digital-products/DemoBuyerCredentialsPanel";
 import { CourseEditorView } from "@/components/digital-products/CourseEditorView";
 import { CoursePreviewModal } from "@/components/digital-products/CoursePreviewModal";
 
@@ -31,6 +33,8 @@ interface Props {
   siteId: string;
   /** Website progress id — for media library API */
   websiteId: number;
+  /** Public domain for login instructions after creating a demo buyer */
+  websiteDomain?: string | null;
   /** Courses list vs buyers — controlled by website dashboard sidebar */
   listMode?: "courses" | "buyers";
 }
@@ -43,7 +47,12 @@ function typeLabel(type: ProductType): string {
 const HDP_WIDGET_BASE =
   (import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined)?.trim().replace(/\/$/, "") || "https://hdp.hayc.gr";
 
-export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: Props) {
+export function DigitalProductsTab({
+  siteId,
+  websiteId,
+  websiteDomain = null,
+  listMode = "courses",
+}: Props) {
   const { t } = useTranslation();
   const HDP_URL = import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined;
   const { toast } = useToast();
@@ -56,6 +65,9 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
   const [buyers, setBuyers] = useState<NormalizedBuyer[]>([]);
   const [buyersLoading, setBuyersLoading] = useState(false);
   const [buyersError, setBuyersError] = useState<string | null>(null);
+  const [demoBuyerDialogOpen, setDemoBuyerDialogOpen] = useState(false);
+  const [demoBuyer, setDemoBuyer] = useState<DemoBuyerCredentials | null>(null);
+  const [demoBuyerLoading, setDemoBuyerLoading] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [brandModalOpen, setBrandModalOpen] = useState(false);
@@ -164,11 +176,45 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
     }
   }, [siteId, t]);
 
+  const fetchDemoBuyer = useCallback(async () => {
+    setDemoBuyerLoading(true);
+    try {
+      const res = await fetch(`/api/hdp/buyers/${encodeURIComponent(siteId)}/demo-buyer`, {
+        credentials: "include",
+      });
+      if (res.status === 404) {
+        setDemoBuyer(null);
+        return;
+      }
+      if (!res.ok) {
+        setDemoBuyer(null);
+        return;
+      }
+      const body = (await res.json()) as { demoBuyer?: Record<string, unknown> };
+      const raw = body.demoBuyer;
+      if (raw && typeof raw.email === "string" && typeof raw.password === "string") {
+        setDemoBuyer({
+          email: raw.email,
+          password: raw.password,
+          name: typeof raw.name === "string" ? raw.name : undefined,
+          createdAt: typeof raw.createdAt === "string" ? raw.createdAt : undefined,
+        });
+      } else {
+        setDemoBuyer(null);
+      }
+    } catch {
+      setDemoBuyer(null);
+    } finally {
+      setDemoBuyerLoading(false);
+    }
+  }, [siteId]);
+
   useEffect(() => {
     if (listMode === "buyers") {
       void fetchBuyers();
+      void fetchDemoBuyer();
     }
-  }, [listMode, fetchBuyers]);
+  }, [listMode, fetchBuyers, fetchDemoBuyer]);
 
   const types = useMemo(() => {
     return Array.from(new Set(products.map((product) => product.type)));
@@ -447,6 +493,16 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
               {t("digitalProductsManagement.configureLookAndFeel")}
             </Button>
             {listMode === "courses" ? <CreateProductButton onSelect={handleCreateSelect} /> : null}
+            {listMode === "buyers" && !demoBuyer && !demoBuyerLoading ? (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setDemoBuyerDialogOpen(true)}
+                data-testid="button-create-demo-buyer"
+              >
+                {t("digitalProductsManagement.buyers.createDemoBuyer")}
+              </Button>
+            ) : null}
           </div>
         )}
       </div>
@@ -468,8 +524,21 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
             {t("digitalProductsManagement.configureLookAndFeel")}
           </Button>
           {listMode === "courses" ? <CreateProductButton onSelect={handleCreateSelect} /> : null}
+          {listMode === "buyers" && !demoBuyer && !demoBuyerLoading ? (
+            <Button
+              type="button"
+              onClick={() => setDemoBuyerDialogOpen(true)}
+              data-testid="button-create-demo-buyer"
+            >
+              {t("digitalProductsManagement.buyers.createDemoBuyer")}
+            </Button>
+          ) : null}
         </div>
       </div>
+
+      {listMode === "buyers" && demoBuyer ? (
+        <DemoBuyerCredentialsPanel credentials={demoBuyer} websiteDomain={websiteDomain} />
+      ) : null}
 
       {listMode === "courses" ? (
       <Card className="mb-6">
@@ -629,6 +698,17 @@ export function DigitalProductsTab({ siteId, websiteId, listMode = "courses" }: 
         siteId={siteId}
         websiteId={websiteId}
         previewUrl={HDP_URL ? `${HDP_URL}?siteId=${encodeURIComponent(siteId)}` : undefined}
+      />
+
+      <CreateDemoBuyerDialog
+        open={demoBuyerDialogOpen}
+        onOpenChange={setDemoBuyerDialogOpen}
+        siteId={siteId}
+        websiteId={websiteId}
+        onCreated={(credentials) => {
+          setDemoBuyer(credentials);
+          void fetchBuyers();
+        }}
       />
 
       <CoursePreviewModal

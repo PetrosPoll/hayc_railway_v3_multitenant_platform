@@ -2759,12 +2759,30 @@
             "empty": "No buyers yet.",
             "free": "Free",
             "coursesCount": "{{count}} courses",
+            "createDemoBuyer": "Create Demo Buyer",
             "table": {
                 "name": "Name",
                 "email": "Email",
                 "coursesEnrolled": "Courses enrolled",
                 "totalSpent": "Total spent",
                 "memberSince": "Member since"
+            },
+            "demoBuyer": {
+                "title": "Create a demo buyer",
+                "subtitle": "We'll create one demo account so you can log in and see what customers see after buying your courses.",
+                "panelTitle": "Demo buyer login",
+                "emailLabel": "Email",
+                "passwordLabel": "Password",
+                "enrollNote": "The demo buyer is enrolled in all published courses for this site. Credentials will stay visible on this page.",
+                "createButton": "Create demo buyer",
+                "creating": "Creating...",
+                "createFailed": "Could not create demo buyer. Please try again.",
+                "loginInstructions": "Open your website ({{siteUrl}}), go to Login, and enter the email and password below to access the demo account.",
+                "loginInstructionsNoUrl": "Open your website, go to Login, and enter the email and password below to access the demo account.",
+                "openWebsite": "Open website",
+                "copyEmail": "Copy email",
+                "copyPassword": "Copy password",
+                "copyFailed": "Could not copy to clipboard"
             }
         },
         "create": {

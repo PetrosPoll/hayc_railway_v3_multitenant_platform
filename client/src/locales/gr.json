@@ -2759,12 +2759,30 @@
             "empty": "Δεν υπάρχουν ακόμα αγοραστές.",
             "free": "Δωρεάν",
             "coursesCount": "{{count}} μαθήματα",
+            "createDemoBuyer": "Δημιουργία Demo Buyer",
             "table": {
                 "name": "Όνομα",
                 "email": "Email",
                 "coursesEnrolled": "Εγγεγραμμένα μαθήματα",
                 "totalSpent": "Συνολική δαπάνη",
                 "memberSince": "Μέλος από"
+            },
+            "demoBuyer": {
+                "title": "Δημιουργία demo αγοραστή",
+                "subtitle": "Θα δημιουργηθεί ένας demo λογαριασμός για να συνδεθείτε και να δείτε τι βλέπουν οι πελάτες σας αφού αγοράσουν τα courses σας.",
+                "panelTitle": "Στοιχεία σύνδεσης demo buyer",
+                "emailLabel": "Email",
+                "passwordLabel": "Κωδικός",
+                "enrollNote": "Ο demo αγοραστής εγγράφεται σε όλα τα published courses του site. Τα στοιχεία θα παραμείνουν ορατά σε αυτή τη σελίδα.",
+                "createButton": "Δημιουργία demo buyer",
+                "creating": "Δημιουργία...",
+                "createFailed": "Αποτυχία δημιουργίας demo buyer. Δοκιμάστε ξανά.",
+                "loginInstructions": "Ανοίξτε την ιστοσελίδα σας ({{siteUrl}}), πατήστε Login και εισάγετε το email και τον κωδικό παρακάτω για να μπείτε με τον demo λογαριασμό.",
+                "loginInstructionsNoUrl": "Ανοίξτε την ιστοσελίδα σας, πατήστε Login και εισάγετε το email και τον κωδικό παρακάτω για να μπείτε με τον demo λογαριασμό.",
+                "openWebsite": "Άνοιγμα ιστοσελίδας",
+                "copyEmail": "Αντιγραφή email",
+                "copyPassword": "Αντιγραφή κωδικού",
+                "copyFailed": "Αποτυχία αντιγραφής"
             }
         },
         "create": {
