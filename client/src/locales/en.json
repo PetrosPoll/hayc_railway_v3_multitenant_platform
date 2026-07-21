@@ -2948,6 +2948,7 @@
             "fields": {
                 "brandName": "Brand name",
                 "logoUrl": "Logo URL",
+                "faviconUrl": "Favicon URL",
                 "primaryColor": "Primary color",
                 "textColorOnPrimary": "Text color on primary",
                 "fontFamily": "Font family",

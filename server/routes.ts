@@ -22732,7 +22732,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   // HDP brand (hayc-digital) proxy routes
   const hdpBrandUpdateSchema = z.object({
     brandName: z.string(),
-    logoUrl: z.string(),
+    logoUrl: z.union([z.string(), z.null()]),
+    faviconUrl: z.union([z.string(), z.null()]).optional(),
     primaryColor: z.string(),
     primaryForeground: z.string(),
     fontFamily: z.enum(["Inter", "Roboto", "Open Sans", "Lato", "Noto Sans", "Source Sans 3", "Nunito", "Raleway", "Playfair Display", "Merriweather"]),

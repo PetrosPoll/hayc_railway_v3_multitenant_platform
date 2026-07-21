@@ -33,12 +33,15 @@ interface HdpBrandModalProps {
 interface HdpBrandFormState {
   brandName: string;
   logoUrl: string;
+  faviconUrl: string;
   primaryColor: string;
   primaryForeground: string;
   fontFamily: HdpFontFamily;
   borderRadius: HdpBorderRadius;
   defaultLanguage: "el" | "en";
 }
+
+type BrandImageField = "logoUrl" | "faviconUrl";
 
 const HDP_LANGUAGES: Array<{ value: "el" | "en"; label: string }> = [
   { value: "el", label: "Ελληνικά (Greek)" },
@@ -68,6 +71,7 @@ const BORDER_RADII: Array<{ value: HdpBorderRadius; labelKey: string }> = [
 const DEFAULT_FORM: HdpBrandFormState = {
   brandName: "",
   logoUrl: "",
+  faviconUrl: "",
   primaryColor: "#182B53",
   primaryForeground: "#FFFFFF",
   fontFamily: "Inter",
@@ -160,7 +164,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [isPickingImage, setIsPickingImage] = useState(false);
+  const [pickingImageField, setPickingImageField] = useState<BrandImageField | null>(null);
   const [form, setForm] = useState<HdpBrandFormState>(DEFAULT_FORM);
 
   const canSave = useMemo(() => open && !isLoading && !isSaving && !!siteId, [open, isLoading, isSaving, siteId]);
@@ -218,6 +222,11 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
           getFirstString(themeRoot, ["logoUrl", "logo_url", "logo"]) ??
           "";
 
+        const faviconUrl =
+          getFirstString(brandRoot, ["faviconUrl", "favicon_url", "favicon"]) ??
+          getFirstString(themeRoot, ["faviconUrl", "favicon_url", "favicon"]) ??
+          "";
+
         const next: HdpBrandFormState = {
           brandName:
             getFirstString(brandRoot, ["brandName", "brand_name", "name"]) ??
@@ -225,6 +234,7 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
             "",
           logoUrl:
             (logoUrl ? logoUrl : typeof logoFromConfig === "string" ? logoFromConfig : ""),
+          faviconUrl,
           primaryColor: normalizeHexColor(
             getFirstString(brandRoot, ["primaryColor", "primary_color", "primarycolour", "mainColor", "main_color"]) ??
               getFirstString(themeRoot, ["primaryColor", "primary_color", "primarycolour", "mainColor", "main_color"]) ??
@@ -302,7 +312,8 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           brandName: form.brandName,
-          logoUrl: form.logoUrl,
+          logoUrl: form.logoUrl || null,
+          faviconUrl: form.faviconUrl || null,
           primaryColor: form.primaryColor,
           primaryForeground: form.primaryForeground,
           fontFamily: form.fontFamily,
@@ -378,7 +389,32 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
                     variant="secondary"
                     size="sm"
                     disabled={isSaving}
-                    onClick={() => setIsPickingImage(true)}
+                    onClick={() => setPickingImageField("logoUrl")}
+                  >
+                    Pick Image
+                  </Button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="hdp-brand-favicon-url">
+                  {t("digitalProductsManagement.brandModal.fields.faviconUrl")}
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="hdp-brand-favicon-url"
+                    value={form.faviconUrl}
+                    readOnly
+                    placeholder="No image selected"
+                    className="min-w-0 flex-1 bg-muted/50"
+                    disabled={isSaving}
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={() => setPickingImageField("faviconUrl")}
                   >
                     Pick Image
                   </Button>
@@ -523,14 +559,15 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
       </DialogContent>
     </Dialog>
     <PickImageFromMediaDialog
-      open={isPickingImage}
-      onClose={() => setIsPickingImage(false)}
+      open={pickingImageField !== null}
+      onClose={() => setPickingImageField(null)}
       onSelect={(url) => {
-        setForm((f) => ({ ...f, logoUrl: url }));
-        setIsPickingImage(false);
+        if (!pickingImageField) return;
+        setForm((f) => ({ ...f, [pickingImageField]: url }));
+        setPickingImageField(null);
       }}
       websiteId={websiteId}
-      currentFieldUrl={form.logoUrl}
+      currentFieldUrl={pickingImageField ? form[pickingImageField] : ""}
       accept="image"
     />
     </>

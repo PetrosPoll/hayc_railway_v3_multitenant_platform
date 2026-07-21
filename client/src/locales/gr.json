@@ -2948,6 +2948,7 @@
             "fields": {
                 "brandName": "Όνομα επωνυμίας",
                 "logoUrl": "URL λογοτύπου",
+                "faviconUrl": "URL favicon",
                 "primaryColor": "Κύριο χρώμα",
                 "textColorOnPrimary": "Χρώμα κειμένου πάνω στο κύριο",
                 "fontFamily": "Γραμματοσειρά",
