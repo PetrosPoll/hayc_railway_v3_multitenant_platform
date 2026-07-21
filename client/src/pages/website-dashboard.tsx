@@ -4197,7 +4197,6 @@ export default function WebsiteDashboard() {
       <DigitalProductsTab
         siteId={website.siteId}
         websiteId={Number(websiteId)}
-        websiteDomain={website.domain}
         listMode={digitalProductsSubView}
       />
     );

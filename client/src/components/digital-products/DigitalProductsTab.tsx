@@ -33,8 +33,6 @@ interface Props {
   siteId: string;
   /** Website progress id — for media library API */
   websiteId: number;
-  /** Public domain for login instructions after creating a demo buyer */
-  websiteDomain?: string | null;
   /** Courses list vs buyers — controlled by website dashboard sidebar */
   listMode?: "courses" | "buyers";
 }
@@ -50,7 +48,6 @@ const HDP_WIDGET_BASE =
 export function DigitalProductsTab({
   siteId,
   websiteId,
-  websiteDomain = null,
   listMode = "courses",
 }: Props) {
   const { t } = useTranslation();
@@ -537,7 +534,7 @@ export function DigitalProductsTab({
       </div>
 
       {listMode === "buyers" && demoBuyer ? (
-        <DemoBuyerCredentialsPanel credentials={demoBuyer} websiteDomain={websiteDomain} />
+        <DemoBuyerCredentialsPanel credentials={demoBuyer} />
       ) : null}
 
       {listMode === "courses" ? (

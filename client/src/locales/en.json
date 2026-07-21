@@ -2777,9 +2777,7 @@
                 "createButton": "Create demo buyer",
                 "creating": "Creating...",
                 "createFailed": "Could not create demo buyer. Please try again.",
-                "loginInstructions": "Open your website ({{siteUrl}}), go to Login, and enter the email and password below to access the demo account.",
-                "loginInstructionsNoUrl": "Open your website, go to Login, and enter the email and password below to access the demo account.",
-                "openWebsite": "Open website",
+                "loginInstructions": "Go to your website’s login page and enter the credentials below to access the demo account.",
                 "copyEmail": "Copy email",
                 "copyPassword": "Copy password",
                 "copyFailed": "Could not copy to clipboard"

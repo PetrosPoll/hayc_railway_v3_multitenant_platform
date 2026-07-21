@@ -2777,9 +2777,7 @@
                 "createButton": "Δημιουργία demo buyer",
                 "creating": "Δημιουργία...",
                 "createFailed": "Αποτυχία δημιουργίας demo buyer. Δοκιμάστε ξανά.",
-                "loginInstructions": "Ανοίξτε την ιστοσελίδα σας ({{siteUrl}}), πατήστε Login και εισάγετε το email και τον κωδικό παρακάτω για να μπείτε με τον demo λογαριασμό.",
-                "loginInstructionsNoUrl": "Ανοίξτε την ιστοσελίδα σας, πατήστε Login και εισάγετε το email και τον κωδικό παρακάτω για να μπείτε με τον demo λογαριασμό.",
-                "openWebsite": "Άνοιγμα ιστοσελίδας",
+                "loginInstructions": "Πήγαινε στο site σου, στη σελίδα Login, και βάλε τα παρακάτω credentials για να μπεις με τον demo λογαριασμό.",
                 "copyEmail": "Αντιγραφή email",
                 "copyPassword": "Αντιγραφή κωδικού",
                 "copyFailed": "Αποτυχία αντιγραφής"

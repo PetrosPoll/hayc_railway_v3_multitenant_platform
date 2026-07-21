@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Copy, ExternalLink } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,22 +10,12 @@ import type { DemoBuyerCredentials } from "@/components/digital-products/CreateD
 
 type Props = {
   credentials: DemoBuyerCredentials;
-  websiteDomain?: string | null;
 };
 
-function websitePublicUrl(domain: string | null | undefined): string | null {
-  if (!domain) return null;
-  const clean = domain.replace(/\.pending-onboarding$/i, "").trim();
-  if (!clean) return null;
-  if (/^https?:\/\//i.test(clean)) return clean.replace(/\/$/, "");
-  return `https://${clean}`;
-}
-
-export function DemoBuyerCredentialsPanel({ credentials, websiteDomain }: Props) {
+export function DemoBuyerCredentialsPanel({ credentials }: Props) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [copiedField, setCopiedField] = useState<"email" | "password" | null>(null);
-  const siteUrl = websitePublicUrl(websiteDomain);
 
   const copyValue = async (field: "email" | "password", value: string) => {
     try {
@@ -49,9 +39,7 @@ export function DemoBuyerCredentialsPanel({ credentials, websiteDomain }: Props)
             {t("digitalProductsManagement.buyers.demoBuyer.panelTitle")}
           </h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            {siteUrl
-              ? t("digitalProductsManagement.buyers.demoBuyer.loginInstructions", { siteUrl })
-              : t("digitalProductsManagement.buyers.demoBuyer.loginInstructionsNoUrl")}
+            {t("digitalProductsManagement.buyers.demoBuyer.loginInstructions")}
           </p>
         </div>
 
@@ -97,15 +85,6 @@ export function DemoBuyerCredentialsPanel({ credentials, websiteDomain }: Props)
             </div>
           </div>
         </div>
-
-        {siteUrl ? (
-          <Button type="button" variant="secondary" size="sm" asChild>
-            <a href={siteUrl} target="_blank" rel="noreferrer">
-              <ExternalLink className="mr-2 h-4 w-4" />
-              {t("digitalProductsManagement.buyers.demoBuyer.openWebsite")}
-            </a>
-          </Button>
-        ) : null}
       </CardContent>
     </Card>
   );
