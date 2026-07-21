@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface PickImageFromMediaDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelect: (url: string) => void;
+  onSelect: (url: string, meta?: { name?: string }) => void;
   websiteId: string | number;
   /** When provided, preselects the matching media item in the grid */
   currentFieldUrl?: string;
@@ -182,9 +182,9 @@ export function PickImageFromMediaDialog({
   }, [open, currentFieldUrl, mediaItems]);
 
   const handleSelect = () => {
-    if (selectedUrl) {
-      onSelect(selectedUrl);
-    }
+    if (!selectedUrl) return;
+    const item = mediaItems.find((m) => m.url === selectedUrl);
+    onSelect(selectedUrl, item?.name ? { name: item.name } : undefined);
   };
 
   const resolveUploadFolder = async (): Promise<string> => {
@@ -330,7 +330,8 @@ export function PickImageFromMediaDialog({
                   title: "Uploaded",
                   description: "File uploaded and added to Media.",
                 });
-                onSelect(url);
+                const originalName = info.original_filename?.trim();
+                onSelect(url, originalName ? { name: originalName } : undefined);
               })
               .catch(() => {
                 toast({

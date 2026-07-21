@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, ChevronRight, Loader2, Trash2 } from "lucide-react";
+import { Check, ChevronDown, ChevronRight, Loader2, Pencil, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -217,6 +217,18 @@ function parseAttachmentsPayload(data: unknown): LessonAttachment[] {
   return [];
 }
 
+function attachmentTitleFromSource(url: string, name: string | undefined, fallback: string): string {
+  const trimmed = name?.trim();
+  if (trimmed) return trimmed;
+  try {
+    const last = decodeURIComponent((url.split("?")[0] ?? "").split("/").pop() ?? "");
+    if (last && !/^v\d+$/i.test(last)) return last;
+  } catch {
+    // ignore
+  }
+  return fallback;
+}
+
 function fileTypeDisplayLabel(fileType: string): string {
   switch (fileType.toLowerCase()) {
     case "pdf":
@@ -285,6 +297,9 @@ export function CourseCurriculumTab({
   const [attachmentsLoadingByLessonId, setAttachmentsLoadingByLessonId] = useState<Record<string, boolean>>({});
   const [attachmentUploadingLessonId, setAttachmentUploadingLessonId] = useState<string | null>(null);
   const [deletingAttachmentKey, setDeletingAttachmentKey] = useState<string | null>(null);
+  const [renamingAttachmentKey, setRenamingAttachmentKey] = useState<string | null>(null);
+  const [renameDraftTitle, setRenameDraftTitle] = useState("");
+  const [savingRenameKey, setSavingRenameKey] = useState<string | null>(null);
 
   const [lessonVideoUrlDetectingById, setLessonVideoUrlDetectingById] = useState<Record<string, boolean>>({});
   const [lessonVideoUrlDetectSuccessMinutesById, setLessonVideoUrlDetectSuccessMinutesById] = useState<
@@ -645,17 +660,26 @@ export function CourseCurriculumTab({
     return `${courseBaseUrl}/chapters/${encodeURIComponent(chapterId)}/lessons/${encodeURIComponent(lessonId)}/attachments`;
   };
 
-  const addAttachmentFromMedia = async (chapterId: string, lessonId: string, url: string) => {
+  const addAttachmentFromMedia = async (
+    chapterId: string,
+    lessonId: string,
+    url: string,
+    name?: string,
+  ) => {
     const endpoint = attachmentsUrl(chapterId, lessonId);
     if (!endpoint) return;
-    const filename = url.split("/").pop() ?? t("digitalProductsManagement.courseEditor.curriculum.attachments.defaultTitle");
-    const ext = filename.includes(".") ? filename.split(".").pop()?.toLowerCase() : undefined;
+    const title = attachmentTitleFromSource(
+      url,
+      name,
+      t("digitalProductsManagement.courseEditor.curriculum.attachments.defaultTitle"),
+    );
+    const ext = title.includes(".") ? title.split(".").pop()?.toLowerCase() : undefined;
     try {
       const response = await fetch(endpoint, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: filename, cloudinaryUrl: url, fileType: ext }),
+        body: JSON.stringify({ title, cloudinaryUrl: url, fileType: ext }),
       });
       if (!response.ok) throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToSaveAttachment"));
       await loadAttachments(chapterId, lessonId);
@@ -881,6 +905,57 @@ export function CourseCurriculumTab({
       });
     } finally {
       setDeletingAttachmentKey(null);
+    }
+  };
+
+  const startRenameAttachment = (lessonId: string, attachment: LessonAttachment) => {
+    setRenamingAttachmentKey(`${lessonId}:${attachment.id}`);
+    setRenameDraftTitle(attachment.title);
+  };
+
+  const cancelRenameAttachment = () => {
+    setRenamingAttachmentKey(null);
+    setRenameDraftTitle("");
+  };
+
+  const saveRenameAttachment = async (chapterId: string, lessonId: string, attachmentId: string) => {
+    const base = attachmentsUrl(chapterId, lessonId);
+    if (!base) return;
+    const title = renameDraftTitle.trim();
+    if (!title) {
+      toast({
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.attachments.renameRequired"),
+        variant: "destructive",
+      });
+      return;
+    }
+    const key = `${lessonId}:${attachmentId}`;
+    setSavingRenameKey(key);
+    try {
+      const response = await fetch(`${base}/${encodeURIComponent(attachmentId)}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      if (!response.ok && response.status !== 204) {
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToRenameAttachment"));
+      }
+      await loadAttachments(chapterId, lessonId);
+      cancelRenameAttachment();
+      toast({
+        title: t("digitalProductsManagement.courseEditor.curriculum.attachments.renamedTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.attachments.renamedDescription"),
+      });
+    } catch (_e) {
+      toast({
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.courseEditor.curriculum.errors.failedToRenameAttachment"),
+        variant: "destructive",
+      });
+    } finally {
+      setSavingRenameKey(null);
     }
   };
 
@@ -1478,32 +1553,97 @@ export function CourseCurriculumTab({
                                   <ul className="divide-y rounded-md border">
                                     {lessonAttachments.map((att) => {
                                       const delKey = `${lesson.id}:${att.id}`;
+                                      const isRenaming = renamingAttachmentKey === delKey;
+                                      const isSavingRename = savingRenameKey === delKey;
                                       return (
                                         <li
                                           key={att.id}
                                           className="flex items-center justify-between gap-3 p-3 text-sm"
                                         >
                                           <div className="min-w-0 flex-1">
-                                            <p className="truncate font-medium">{att.title}</p>
+                                            {isRenaming ? (
+                                              <Input
+                                                value={renameDraftTitle}
+                                                onChange={(e) => setRenameDraftTitle(e.target.value)}
+                                                disabled={isSavingRename}
+                                                className="h-8"
+                                                autoFocus
+                                                onKeyDown={(e) => {
+                                                  if (e.key === "Enter") {
+                                                    e.preventDefault();
+                                                    void saveRenameAttachment(chapter.id, lesson.id, att.id);
+                                                  }
+                                                  if (e.key === "Escape") {
+                                                    e.preventDefault();
+                                                    cancelRenameAttachment();
+                                                  }
+                                                }}
+                                              />
+                                            ) : (
+                                              <p className="truncate font-medium">{att.title}</p>
+                                            )}
                                             <p className="text-muted-foreground">
                                               {fileTypeDisplayLabel(att.fileType ?? "")}
                                             </p>
                                           </div>
-                                          <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                            disabled={deletingAttachmentKey === delKey || isSaving}
-                                            aria-label={t("digitalProductsManagement.courseEditor.curriculum.attachments.deleteAriaLabel")}
-                                            onClick={() => deleteLessonAttachment(chapter.id, lesson.id, att.id)}
-                                          >
-                                            {deletingAttachmentKey === delKey ? (
-                                              <Loader2 className="h-4 w-4 animate-spin" />
+                                          <div className="flex shrink-0 items-center gap-1">
+                                            {isRenaming ? (
+                                              <>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-8 w-8"
+                                                  disabled={isSavingRename || isSaving}
+                                                  aria-label={t("digitalProductsManagement.courseEditor.curriculum.attachments.saveRenameAriaLabel")}
+                                                  onClick={() => void saveRenameAttachment(chapter.id, lesson.id, att.id)}
+                                                >
+                                                  {isSavingRename ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                  ) : (
+                                                    <Check className="h-4 w-4" />
+                                                  )}
+                                                </Button>
+                                                <Button
+                                                  type="button"
+                                                  variant="ghost"
+                                                  size="sm"
+                                                  className="h-8 px-2"
+                                                  disabled={isSavingRename || isSaving}
+                                                  onClick={cancelRenameAttachment}
+                                                >
+                                                  {t("digitalProductsManagement.common.cancel")}
+                                                </Button>
+                                              </>
                                             ) : (
-                                              <Trash2 className="h-4 w-4" />
+                                              <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                disabled={deletingAttachmentKey === delKey || isSaving}
+                                                aria-label={t("digitalProductsManagement.courseEditor.curriculum.attachments.renameAriaLabel")}
+                                                onClick={() => startRenameAttachment(lesson.id, att)}
+                                              >
+                                                <Pencil className="h-4 w-4" />
+                                              </Button>
                                             )}
-                                          </Button>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="icon"
+                                              className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                              disabled={deletingAttachmentKey === delKey || isSaving || isRenaming}
+                                              aria-label={t("digitalProductsManagement.courseEditor.curriculum.attachments.deleteAriaLabel")}
+                                              onClick={() => deleteLessonAttachment(chapter.id, lesson.id, att.id)}
+                                            >
+                                              {deletingAttachmentKey === delKey ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                              ) : (
+                                                <Trash2 className="h-4 w-4" />
+                                              )}
+                                            </Button>
+                                          </div>
                                         </li>
                                       );
                                     })}
@@ -1759,9 +1899,14 @@ export function CourseCurriculumTab({
       <PickImageFromMediaDialog
         open={pickingAttachmentTarget !== null}
         onClose={() => setPickingAttachmentTarget(null)}
-        onSelect={(url) => {
+        onSelect={(url, meta) => {
           if (pickingAttachmentTarget) {
-            void addAttachmentFromMedia(pickingAttachmentTarget.chapterId, pickingAttachmentTarget.lessonId, url);
+            void addAttachmentFromMedia(
+              pickingAttachmentTarget.chapterId,
+              pickingAttachmentTarget.lessonId,
+              url,
+              meta?.name,
+            );
           }
           setPickingAttachmentTarget(null);
         }}
