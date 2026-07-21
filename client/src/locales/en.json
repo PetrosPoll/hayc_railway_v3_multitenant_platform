@@ -2760,6 +2760,7 @@
             "free": "Free",
             "coursesCount": "{{count}} courses",
             "createDemoBuyer": "Create Demo Buyer",
+            "demoBadge": "Demo",
             "table": {
                 "name": "Name",
                 "email": "Email",

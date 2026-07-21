@@ -619,7 +619,7 @@ export function DigitalProductsTab({
             </CardContent>
           </Card>
         ) : (
-          <BuyersTable buyers={buyers} />
+          <BuyersTable buyers={buyers} demoBuyerEmail={demoBuyer?.email} />
         )
       ) : isLoading ? (
         <Card>

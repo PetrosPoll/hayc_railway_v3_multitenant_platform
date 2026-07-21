@@ -2760,6 +2760,7 @@
             "free": "Δωρεάν",
             "coursesCount": "{{count}} μαθήματα",
             "createDemoBuyer": "Δημιουργία Demo Buyer",
+            "demoBadge": "Demo",
             "table": {
                 "name": "Όνομα",
                 "email": "Email",
