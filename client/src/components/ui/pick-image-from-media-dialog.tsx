@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Check, File, Film, Loader2, Upload, X } from "lucide-react";
@@ -142,6 +142,9 @@ export function PickImageFromMediaDialog({
 }: PickImageFromMediaDialogProps) {
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  /** Hide Radix dialog while Cloudinary is open — z-index alone can't beat Radix inert/focus layer. */
+  const [cloudinaryActive, setCloudinaryActive] = useState(false);
+  const cloudinaryActiveRef = useRef(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -167,6 +170,8 @@ export function PickImageFromMediaDialog({
     if (!open) {
       setSelectedUrl(null);
       setIsUploading(false);
+      cloudinaryActiveRef.current = false;
+      setCloudinaryActive(false);
       return;
     }
     if (currentFieldUrl && mediaItems.some((m) => m.url === currentFieldUrl)) {
@@ -202,6 +207,7 @@ export function PickImageFromMediaDialog({
     secure_url?: string;
     public_id?: string;
     original_filename?: string;
+    resourceType?: string;
     resource_type?: string;
   }) => {
     const url = info.secure_url ?? "";
@@ -225,9 +231,18 @@ export function PickImageFromMediaDialog({
     return url;
   };
 
+  const finishCloudinary = () => {
+    cloudinaryActiveRef.current = false;
+    setIsUploading(false);
+    setCloudinaryActive(false);
+  };
+
   const openUploadWidget = async () => {
     if (!canUpload || isUploading) return;
     setIsUploading(true);
+    // Unmount Radix dialog first so it stops owning the top layer / inert siblings
+    cloudinaryActiveRef.current = true;
+    setCloudinaryActive(true);
     try {
       await loadCloudinaryWidget();
       const folder = await resolveUploadFolder();
@@ -244,6 +259,11 @@ export function PickImageFromMediaDialog({
       const configData = await configResponse.json();
       cloudinaryConfig.apiKey = configData.apiKey;
       cloudinaryConfig.cloudName = configData.cloudName;
+
+      // Let Radix finish unmounting before Cloudinary mounts its overlay
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
 
       const widget = window.cloudinary!.createUploadWidget(
         {
@@ -277,6 +297,7 @@ export function PickImageFromMediaDialog({
           maxFileSize: 52428800,
           resourceType: uploadCfg.resourceType,
           clientAllowedFormats: uploadCfg.clientAllowedFormats,
+          zIndex: 2147483000,
         },
         (error: unknown, result: { event?: string; info?: Record<string, unknown> }) => {
           if (error) {
@@ -285,7 +306,7 @@ export function PickImageFromMediaDialog({
               description: "Failed to upload file. Please try again.",
               variant: "destructive",
             });
-            setIsUploading(false);
+            finishCloudinary();
             return;
           }
           if (result?.event === "success" && result.info) {
@@ -318,11 +339,11 @@ export function PickImageFromMediaDialog({
                   variant: "destructive",
                 });
               })
-              .finally(() => setIsUploading(false));
+              .finally(() => finishCloudinary());
             return;
           }
           if (result?.event === "close" || result?.event === "abort") {
-            setIsUploading(false);
+            finishCloudinary();
           }
         },
       );
@@ -334,15 +355,16 @@ export function PickImageFromMediaDialog({
         description: "Failed to initialize upload. Please try again.",
         variant: "destructive",
       });
-      setIsUploading(false);
+      finishCloudinary();
     }
   };
 
   return (
     <Dialog
-      open={open}
+      open={open && !cloudinaryActive}
       onOpenChange={(next) => {
-        if (!next) onClose();
+        // Ignore programmatic close while Cloudinary owns the UI
+        if (!next && !cloudinaryActiveRef.current) onClose();
       }}
     >
       <DialogPortal

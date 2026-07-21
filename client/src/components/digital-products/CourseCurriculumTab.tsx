@@ -816,6 +816,7 @@ export function CourseCurriculumTab({
         maxFileSize: 20000000,
         multiple: false,
         sources: ["local"],
+        zIndex: 2147483000,
       },
       (error: unknown, result: { event?: string; info?: Record<string, unknown> }) => {
         if (error) {
