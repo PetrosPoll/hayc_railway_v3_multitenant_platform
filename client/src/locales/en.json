@@ -2893,6 +2893,13 @@
                 "tabs": {
                     "attachments": "Attachments"
                 },
+                "descriptionEditor": {
+                    "write": "Write",
+                    "preview": "Preview",
+                    "placeholder": "Write the lesson description. Use Enter for new lines.",
+                    "hint": "Line breaks and spaces are kept as you type.",
+                    "emptyPreview": "Nothing to preview yet."
+                },
                 "fields": {
                     "introVideoUrl": "Intro Video URL",
                     "videoUrl": "Video URL",

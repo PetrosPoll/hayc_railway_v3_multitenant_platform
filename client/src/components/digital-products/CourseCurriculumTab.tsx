@@ -4,13 +4,13 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
+import { LessonDescriptionField } from "@/components/digital-products/LessonDescriptionField";
 import {
   Select,
   SelectContent,
@@ -134,6 +134,12 @@ function trimmedOrUndefined(value: string): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined;
 }
 
+/** Keep internal newlines/spaces; omit only when empty or whitespace-only. */
+function descriptionPayloadValue(value: string): string | undefined {
+  if (value.trim().length === 0) return undefined;
+  return value;
+}
+
 function buildChapterPayload(draft: ChapterDraftState): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     title: draft.title.trim(),
@@ -173,7 +179,7 @@ function buildLessonPayload(draft: LessonDraftState): Record<string, unknown> {
     isFreePreview: draft.isFreePreview,
     status: draft.status,
   };
-  const description = trimmedOrUndefined(draft.description);
+  const description = descriptionPayloadValue(draft.description);
   const videoUrl = trimmedOrUndefined(draft.videoUrl);
   const durationMinutesText = draft.durationMinutes.trim();
   if (description !== undefined) payload.description = description;
@@ -1398,19 +1404,16 @@ export function CourseCurriculumTab({
                                     <p className="text-xs text-destructive">{lessonTitleErrorsById[lesson.id]}</p>
                                   ) : null}
                                 </div>
-                                <div className="space-y-1">
-                                  <Label>{t("digitalProductsManagement.courseEditor.fields.description")}</Label>
-                                  <Textarea
-                                    rows={3}
-                                    value={lessonDraft.description}
-                                    onChange={(e) =>
-                                      setLessonDraftsById((prev) => ({
-                                        ...prev,
-                                        [lesson.id]: { ...lessonDraft, description: e.target.value },
-                                      }))
-                                    }
-                                  />
-                                </div>
+                                <LessonDescriptionField
+                                  id={`lesson-description-${lesson.id}`}
+                                  value={lessonDraft.description}
+                                  onChange={(description) =>
+                                    setLessonDraftsById((prev) => ({
+                                      ...prev,
+                                      [lesson.id]: { ...lessonDraft, description },
+                                    }))
+                                  }
+                                />
                                 <div className="space-y-1">
                                   <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.videoUrl")}</Label>
                                   <div className="flex flex-wrap items-center gap-2">
@@ -1675,16 +1678,13 @@ export function CourseCurriculumTab({
                           <p className="text-xs text-destructive">{newLessonTitleError}</p>
                         ) : null}
                       </div>
-                      <div className="space-y-1">
-                        <Label>{t("digitalProductsManagement.courseEditor.fields.description")}</Label>
-                        <Textarea
-                          rows={3}
-                          value={newLessonDraft.description}
-                          onChange={(e) =>
-                            setNewLessonDraft((prev) => ({ ...prev, description: e.target.value }))
-                          }
-                        />
-                      </div>
+                      <LessonDescriptionField
+                        id="new-lesson-description"
+                        value={newLessonDraft.description}
+                        onChange={(description) =>
+                          setNewLessonDraft((prev) => ({ ...prev, description }))
+                        }
+                      />
                       <div className="space-y-1">
                         <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.videoUrl")}</Label>
                         <div className="flex flex-wrap items-center gap-2">
