@@ -2897,8 +2897,12 @@
                     "write": "Write",
                     "preview": "Preview",
                     "placeholder": "Write the lesson description. Use Enter for new lines.",
-                    "hint": "Line breaks and spaces are kept as you type.",
-                    "emptyPreview": "Nothing to preview yet."
+                    "hint": "Use the toolbar or type **bold**, *italic*, __underline__. Line breaks are kept.",
+                    "emptyPreview": "Nothing to preview yet.",
+                    "bold": "Bold",
+                    "italic": "Italic",
+                    "underline": "Underline",
+                    "sampleText": "text"
                 },
                 "fields": {
                     "introVideoUrl": "Intro Video URL",
