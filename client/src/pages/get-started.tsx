@@ -202,12 +202,17 @@ export default function GetStarted() {
   const { t, i18n } = useTranslation();
   const [currentStep, setCurrentStep] = useState(0);
   const [showExitModal, setShowExitModal] = useState(false);
+  const [showBrowserBackModal, setShowBrowserBackModal] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user: sessionUser } = useAuth();
   const isLoggedIn = !!sessionUser;
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const currentStepRef = useRef(0);
+  const allowUnloadRef = useRef(false);
+
+  currentStepRef.current = currentStep;
 
 
   const form = useForm<WizardValues>({
@@ -272,6 +277,33 @@ export default function GetStarted() {
       setValue("fullName", sessionUser.username);
     }
   }, [sessionUser, setValue]);
+
+  // Block browser / mobile system back; ask users to use the in-app Back button.
+  useEffect(() => {
+    window.history.pushState({ haycGetStartedGuard: true }, "");
+
+    const onPopState = () => {
+      window.history.pushState({ haycGetStartedGuard: true }, "");
+      if (currentStepRef.current > 0) {
+        setShowBrowserBackModal(true);
+      } else {
+        setShowExitModal(true);
+      }
+    };
+
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (allowUnloadRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
+  }, []);
 
   const persistPreCheckout = (patch: Partial<WizardValues> & Record<string, unknown>) => {
     try {
@@ -471,6 +503,7 @@ export default function GetStarted() {
       if (data.sessionId) {
         localStorage.setItem("hayc_gs_session_id", data.sessionId);
       }
+      allowUnloadRef.current = true;
       window.location.href = data.url;
     } catch (error) {
       console.error("Get-started submit error:", error);
@@ -586,10 +619,48 @@ export default function GetStarted() {
             </button>
             <button
               type="button"
-              onClick={() => navigate(isLoggedIn ? "/dashboard" : "/")}
+              onClick={() => {
+                allowUnloadRef.current = true;
+                navigate(isLoggedIn ? "/dashboard" : "/");
+              }}
               className="h-11 w-full sm:w-auto px-5 rounded-[10px] bg-[#ED4C14] border-0 text-white text-sm font-semibold font-brand cursor-pointer hover:bg-[#d44310] transition-colors"
             >
               {t("getStarted.exitModal.leaveAnyway")}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showBrowserBackModal}
+        onOpenChange={(open) => {
+          if (!open) setShowBrowserBackModal(false);
+        }}
+      >
+        <DialogContent
+          className="bg-[#111111] border border-zinc-800 text-white font-brand max-w-md rounded-2xl sm:rounded-lg"
+          closeBtnClassName="border-white/30 bg-white/15 text-white shadow-md hover:bg-white/25 hover:text-white hover:opacity-100 focus-visible:ring-[#ED4C14]/60 focus-visible:ring-offset-[#111111]"
+        >
+          <DialogHeader className="gap-3 text-center pt-2 pr-14">
+            <DialogTitle className="text-white text-xl font-semibold font-brand">
+              {t("getStarted.browserBackModal.title", {
+                defaultValue: "Use the Back button on the page",
+              })}
+            </DialogTitle>
+            <DialogDescription className="text-white/60 text-sm font-normal font-brand leading-6">
+              {t("getStarted.browserBackModal.description", {
+                defaultValue:
+                  "Browser or phone back isn't supported during setup. To go to the previous step, press the Back button at the bottom left of the page.",
+              })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col gap-3 pt-4 sm:flex-row sm:justify-end">
+            <button
+              type="button"
+              onClick={() => setShowBrowserBackModal(false)}
+              className="h-11 w-full sm:w-auto px-5 rounded-[10px] bg-[#ED4C14] border-0 text-white text-sm font-semibold font-brand cursor-pointer hover:bg-[#d44310] transition-colors"
+            >
+              {t("getStarted.browserBackModal.gotIt", { defaultValue: "Got it" })}
             </button>
           </DialogFooter>
         </DialogContent>

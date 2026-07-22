@@ -3085,6 +3085,11 @@
             "keepGoing": "Keep going",
             "leaveAnyway": "Leave anyway"
         },
+        "browserBackModal": {
+            "title": "Use the Back button on the page",
+            "description": "Browser or phone back isn't supported during setup. To go to the previous step, press the Back button at the bottom left of the page.",
+            "gotIt": "Got it"
+        },
         "intro": {
             "headlineLine1": "Start with a few",
             "headlineLine2": "simple steps",

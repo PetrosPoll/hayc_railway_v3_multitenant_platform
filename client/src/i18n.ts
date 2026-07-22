@@ -22,21 +22,33 @@ i18n
 
 let fullTranslationsPromise: Promise<void> | null = null;
 
+async function applyFullTranslations(): Promise<void> {
+  const [en, gr] = await Promise.all([
+    import('./locales/en.json'),
+    import('./locales/gr.json'),
+  ]);
+  const enData = (en as { default?: unknown }).default ?? en;
+  const grData = (gr as { default?: unknown }).default ?? gr;
+  i18n.addResourceBundle('en', 'translation', enData as object, true, true);
+  i18n.addResourceBundle('gr', 'translation', grData as object, true, true);
+}
+
 /**
  * Loads the complete translation set (lazy chunk) and merges it into i18n.
  * Called before the main app renders so the landing bundle stays lean.
  */
 export function loadFullTranslations(): Promise<void> {
   if (!fullTranslationsPromise) {
-    fullTranslationsPromise = Promise.all([
-      import('./locales/en.json'),
-      import('./locales/gr.json'),
-    ]).then(([en, gr]) => {
-      i18n.addResourceBundle('en', 'translation', en.default, true, true);
-      i18n.addResourceBundle('gr', 'translation', gr.default, true, true);
-    });
+    fullTranslationsPromise = applyFullTranslations();
   }
   return fullTranslationsPromise;
+}
+
+// Dev: re-merge locale JSON after Vite HMR so newly added keys appear without a hard refresh.
+if (import.meta.hot) {
+  import.meta.hot.on('vite:afterUpdate', () => {
+    fullTranslationsPromise = applyFullTranslations();
+  });
 }
 
 export default i18n;
