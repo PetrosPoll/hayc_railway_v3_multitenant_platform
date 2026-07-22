@@ -8,9 +8,12 @@ import { cn } from "@/lib/utils";
 import { Calendar, Check, LayoutGrid, RefreshCcw } from "lucide-react";
 import { usePricing, getPrice, getAddonPrice } from "@/hooks/use-pricing";
 import {
+  ALL_GET_STARTED_ADDONS,
   dedupeAddonsByStripeId,
+  enforceSingleBookingAddon,
   GET_STARTED_ADDON_I18N_KEY_MAP,
   GET_STARTED_ADDON_ID_MAP,
+  isBookingAddonValue,
 } from "@/lib/get-started-addons";
 
 const ICON_TODAY    = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779920606/card-tick_bowfis.svg";
@@ -62,7 +65,21 @@ export default function StepPricing({
 
   const selectedPlanId = form.watch("plan") ?? "essential";
   const billingPeriod  = form.watch("billingPeriod") ?? "monthly";
-  const selectedAddons = form.watch("selectedAddons") ?? [];
+  const selectedAddons = enforceSingleBookingAddon(form.watch("selectedAddons") ?? []);
+
+  const toggleAddon = (value: string) => {
+    const base = enforceSingleBookingAddon(form.getValues("selectedAddons") ?? []);
+    let updated: string[];
+    if (isBookingAddonValue(value)) {
+      const withoutBooking = base.filter((v) => !isBookingAddonValue(v));
+      updated = base.includes(value) ? withoutBooking : [...withoutBooking, value];
+    } else {
+      updated = base.includes(value)
+        ? base.filter((v) => v !== value)
+        : [...base, value];
+    }
+    form.setValue("selectedAddons", enforceSingleBookingAddon(updated));
+  };
 
   const { data: stripePrices } = usePricing();
 
@@ -131,17 +148,23 @@ export default function StepPricing({
   };
 
   const pricedAddonIds = new Set<string>();
-  const selectedAddonRows = selectedAddons.map((addon) => {
+  const addonRows = ALL_GET_STARTED_ADDONS.map(({ value: addon }) => {
     const stripeId = GET_STARTED_ADDON_ID_MAP[addon];
+    const selected = selectedAddons.includes(addon);
     let priceLabel: string;
-    if (stripeId && pricedAddonIds.has(stripeId)) {
-      priceLabel = t("getStarted.pricing.addonIncluded");
+    if (selected) {
+      if (stripeId && pricedAddonIds.has(stripeId)) {
+        priceLabel = t("getStarted.pricing.addonIncluded");
+      } else {
+        if (stripeId) pricedAddonIds.add(stripeId);
+        const amount = isYearly ? addonYearly(addon) : addonMonthly(addon);
+        priceLabel = `${amount}€/${isYearly ? "yr" : "mo"}`;
+      }
     } else {
-      if (stripeId) pricedAddonIds.add(stripeId);
       const amount = isYearly ? addonYearly(addon) : addonMonthly(addon);
       priceLabel = `${amount}€/${isYearly ? "yr" : "mo"}`;
     }
-    return { addon, stripeId, priceLabel };
+    return { addon, stripeId, priceLabel, selected };
   });
 
   return (
@@ -341,37 +364,74 @@ export default function StepPricing({
             </div>
           </div>
 
-          {/* ── Selected add-ons ── */}
-          {selectedAddons.length > 0 && (
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-start items-center gap-6">
-                <div className="text-white text-lg font-medium font-brand">
-                  {t("getStarted.pricing.selectedAddons")}
-                </div>
+          {/* ── Add-ons (toggleable) ── */}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="text-white text-lg font-medium font-brand">
+                {t("getStarted.pricing.selectedAddons")}
               </div>
-              {/* Figma: inline-flex gap-3, each chip is flex-1 */}
-              <div className="flex flex-col md:flex-row gap-3">
-                {selectedAddonRows.map(({ addon, stripeId, priceLabel }) => (
-                  <div
-                    key={addon}
-                    className="flex-1 px-2.5 py-1 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 flex justify-between items-center"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 rounded-lg bg-[#ED4C14]/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        {(stripeId && ADDON_ICON[stripeId]) ?? <div className="w-6 h-4 bg-[#ED4C14]" />}
-                      </div>
-                      <span className="text-white text-sm font-semibold font-brand tracking-tight">
-                        {getAddonLabel(addon)}
-                      </span>
+              <p className="text-white/50 text-sm font-normal font-brand">
+                {t("getStarted.pricing.addonsToggleHint")}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              {addonRows.map(({ addon, stripeId, priceLabel, selected }) => (
+                <button
+                  key={addon}
+                  type="button"
+                  onClick={() => toggleAddon(addon)}
+                  className={cn(
+                    "w-full px-2.5 py-2 rounded-lg outline outline-1 outline-offset-[-1px] flex justify-between items-center gap-3 text-left border-0 cursor-pointer transition-colors",
+                    selected
+                      ? "outline-[#ED4C14]/60 bg-[#ED4C14]/10"
+                      : "outline-neutral-500 hover:outline-white/40 bg-transparent",
+                  )}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div
+                      className={cn(
+                        "w-4 h-4 rounded flex-shrink-0 border flex items-center justify-center transition-colors",
+                        selected
+                          ? "bg-white border-white"
+                          : "bg-transparent border-white/50",
+                      )}
+                    >
+                      {selected ? (
+                        <svg width="8" height="7" viewBox="0 0 8 7" fill="none">
+                          <path
+                            d="M1 3.5L3 5.5L7 1"
+                            stroke="#ED4C14"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      ) : null}
                     </div>
-                    <span className="text-white text-base font-normal font-brand leading-6">
-                      {priceLabel}
+                    <div className="w-9 h-9 rounded-lg bg-[#ED4C14]/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {(stripeId && ADDON_ICON[stripeId]) ?? <div className="w-6 h-4 bg-[#ED4C14]" />}
+                    </div>
+                    <span
+                      className={cn(
+                        "text-sm font-semibold font-brand tracking-tight truncate",
+                        selected ? "text-white" : "text-white/70",
+                      )}
+                    >
+                      {getAddonLabel(addon)}
                     </span>
                   </div>
-                ))}
-              </div>
+                  <span
+                    className={cn(
+                      "text-base font-normal font-brand leading-6 whitespace-nowrap flex-shrink-0",
+                      selected ? "text-white" : "text-white/50",
+                    )}
+                  >
+                    {priceLabel}
+                  </span>
+                </button>
+              ))}
             </div>
-          )}
+          </div>
 
           {/* ── Delivery Speed ── */}
           {speedDevData?.unitAmount != null && (
