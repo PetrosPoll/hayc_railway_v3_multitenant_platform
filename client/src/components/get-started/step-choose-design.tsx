@@ -333,7 +333,10 @@ export default function StepChooseDesign({
           <div className="w-full relative inline-flex justify-start items-center gap-3">
             <button
               type="button"
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-[10px] transition-colors",
+                "bg-[#ED4C14] hover:bg-[#d44310]",
+              )}
               onClick={() => setIndustryOpen((o) => !o)}
             >
               <span className="text-white text-base font-medium font-brand">
