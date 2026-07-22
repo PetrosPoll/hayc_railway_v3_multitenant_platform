@@ -8,6 +8,7 @@ import {
   unique,
   jsonb,
   primaryKey,
+  index,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -1161,6 +1162,42 @@ export const insertAnalyticsEventSchema = createInsertSchema(analyticsEvents).om
 
 export type InsertWebsiteAnalyticsKey = z.infer<typeof insertWebsiteAnalyticsKeySchema>;
 export type InsertAnalyticsEvent = z.infer<typeof insertAnalyticsEventSchema>;
+
+/** Authenticated hayc.gr platform usage (admin product analytics). */
+export const platformAnalyticsEvents = pgTable(
+  "platform_analytics_events",
+  {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    eventType: text("event_type").notNull(), // login | pageview | heartbeat
+    path: text("path").notNull().default("/"),
+    sessionId: text("session_id").notNull(),
+    durationMs: integer("duration_ms"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userCreatedIdx: index("platform_analytics_events_user_created_idx").on(
+      table.userId,
+      table.createdAt,
+    ),
+    createdIdx: index("platform_analytics_events_created_idx").on(table.createdAt),
+    typeCreatedIdx: index("platform_analytics_events_type_created_idx").on(
+      table.eventType,
+      table.createdAt,
+    ),
+  }),
+);
+
+export type PlatformAnalyticsEvent = typeof platformAnalyticsEvents.$inferSelect;
+
+export const insertPlatformAnalyticsEventSchema = createInsertSchema(platformAnalyticsEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertPlatformAnalyticsEvent = z.infer<typeof insertPlatformAnalyticsEventSchema>;
 
 // Website templates table
 export const templates = pgTable("templates", {

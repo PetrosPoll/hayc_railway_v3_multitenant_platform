@@ -20,7 +20,7 @@ import { getEmailLimitWithAddOns } from "./email-limits";
 import { z } from "zod";
 import * as express from "express";
 import { db, pool } from "./db";
-import { desc, eq, sql, and, or, isNull, inArray, like, gte, ne } from "drizzle-orm";
+import { desc, eq, sql, and, or, isNull, inArray, like, gte, lte, ne } from "drizzle-orm";
 import { setupAuth, hashPassword } from "./auth";
 import {
   buildImpersonationInfo,
@@ -62,6 +62,7 @@ import {
   paymentObligations,
   internalEmailLog,
   internalBusinessEmailSettings,
+  platformAnalyticsEvents,
 } from "@shared/schema";
 import fs from "fs";
 import path from "path";
@@ -8433,6 +8434,311 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching churn stats:", err);
       return res.status(500).json({ error: "Failed to fetch churn stats" });
+    }
+  });
+
+  function parsePlatformAnalyticsRange(query: express.Request["query"]): { from: Date; to: Date } | null {
+    const to = query.to ? new Date(String(query.to)) : new Date();
+    const from = query.from
+      ? new Date(String(query.from))
+      : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || from > to) {
+      return null;
+    }
+    return { from, to };
+  }
+
+  // Platform usage analytics — overall summary
+  app.get("/api/admin/platform-analytics/overview", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewUsers")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const range = parsePlatformAnalyticsRange(req.query);
+      if (!range) {
+        return res.status(400).json({ error: "Invalid date range" });
+      }
+      const { from, to } = range;
+      const inRange = and(
+        gte(platformAnalyticsEvents.createdAt, from),
+        lte(platformAnalyticsEvents.createdAt, to),
+      );
+
+      const now = new Date();
+      const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const [dauRow] = await db
+        .select({ count: sql<number>`count(distinct ${platformAnalyticsEvents.userId})::int` })
+        .from(platformAnalyticsEvents)
+        .where(and(gte(platformAnalyticsEvents.createdAt, dayAgo), lte(platformAnalyticsEvents.createdAt, now)));
+
+      const [wauRow] = await db
+        .select({ count: sql<number>`count(distinct ${platformAnalyticsEvents.userId})::int` })
+        .from(platformAnalyticsEvents)
+        .where(and(gte(platformAnalyticsEvents.createdAt, weekAgo), lte(platformAnalyticsEvents.createdAt, now)));
+
+      const [sessionRow] = await db
+        .select({ count: sql<number>`count(distinct ${platformAnalyticsEvents.sessionId})::int` })
+        .from(platformAnalyticsEvents)
+        .where(inRange);
+
+      const [activeMsRow] = await db
+        .select({
+          total: sql<number>`coalesce(sum(${platformAnalyticsEvents.durationMs}), 0)::bigint`,
+        })
+        .from(platformAnalyticsEvents)
+        .where(and(inRange, eq(platformAnalyticsEvents.eventType, "heartbeat")));
+
+      const sessionCount = sessionRow?.count ?? 0;
+      const totalActiveMs = Number(activeMsRow?.total ?? 0);
+      const avgSessionDurationMs = sessionCount > 0 ? Math.round(totalActiveMs / sessionCount) : 0;
+
+      const topPaths = await db
+        .select({
+          path: platformAnalyticsEvents.path,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(platformAnalyticsEvents)
+        .where(and(inRange, eq(platformAnalyticsEvents.eventType, "pageview")))
+        .groupBy(platformAnalyticsEvents.path)
+        .orderBy(sql`count(*) desc`)
+        .limit(20);
+
+      const [loginRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(platformAnalyticsEvents)
+        .where(and(inRange, eq(platformAnalyticsEvents.eventType, "login")));
+
+      const [activeUsersRow] = await db
+        .select({ count: sql<number>`count(distinct ${platformAnalyticsEvents.userId})::int` })
+        .from(platformAnalyticsEvents)
+        .where(inRange);
+
+      return res.json({
+        from: from.toISOString(),
+        to: to.toISOString(),
+        dau: dauRow?.count ?? 0,
+        wau: wauRow?.count ?? 0,
+        activeUsers: activeUsersRow?.count ?? 0,
+        sessionCount,
+        loginCount: loginRow?.count ?? 0,
+        totalActiveMs,
+        avgSessionDurationMs,
+        topPaths: topPaths.map((r) => ({ path: r.path, count: r.count })),
+      });
+    } catch (err) {
+      console.error("Platform analytics overview error:", err);
+      return res.status(500).json({ error: "Failed to fetch overview" });
+    }
+  });
+
+  // Platform usage analytics — per-user list
+  app.get("/api/admin/platform-analytics/users", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const admin = await storage.getUserById(req.user.id);
+      if (!admin || !hasPermission(admin.role, "canViewUsers")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const range = parsePlatformAnalyticsRange(req.query);
+      if (!range) {
+        return res.status(400).json({ error: "Invalid date range" });
+      }
+      const { from, to } = range;
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+
+      const rows = await db.execute(sql`
+        WITH scoped AS (
+          SELECT *
+          FROM platform_analytics_events
+          WHERE created_at >= ${from} AND created_at <= ${to}
+        ),
+        per_user AS (
+          SELECT
+            user_id,
+            max(created_at) AS last_seen_at,
+            count(*) FILTER (WHERE event_type = 'login')::int AS login_count,
+            count(DISTINCT session_id)::int AS session_count,
+            coalesce(sum(duration_ms) FILTER (WHERE event_type = 'heartbeat'), 0)::bigint AS total_active_ms
+          FROM scoped
+          GROUP BY user_id
+        ),
+        top_path AS (
+          SELECT user_id, path AS top_path
+          FROM (
+            SELECT
+              user_id,
+              path,
+              row_number() OVER (PARTITION BY user_id ORDER BY count(*) DESC) AS rn
+            FROM scoped
+            WHERE event_type = 'pageview'
+            GROUP BY user_id, path
+          ) ranked
+          WHERE rn = 1
+        )
+        SELECT
+          u.id AS user_id,
+          u.email,
+          u.username,
+          pu.last_seen_at,
+          pu.login_count,
+          pu.session_count,
+          pu.total_active_ms,
+          tp.top_path
+        FROM per_user pu
+        INNER JOIN users u ON u.id = pu.user_id
+        LEFT JOIN top_path tp ON tp.user_id = pu.user_id
+        WHERE (
+          ${q === ""} OR
+          u.email ILIKE ${"%" + q + "%"} OR
+          u.username ILIKE ${"%" + q + "%"}
+        )
+        ORDER BY pu.last_seen_at DESC
+        LIMIT 500
+      `);
+
+      const usersList = (rows.rows as Array<Record<string, unknown>>).map((r) => ({
+        userId: Number(r.user_id),
+        email: String(r.email ?? ""),
+        username: String(r.username ?? ""),
+        lastSeenAt: r.last_seen_at ? new Date(r.last_seen_at as string).toISOString() : null,
+        loginCount: Number(r.login_count ?? 0),
+        sessionCount: Number(r.session_count ?? 0),
+        totalActiveMs: Number(r.total_active_ms ?? 0),
+        topPath: r.top_path ? String(r.top_path) : null,
+      }));
+
+      return res.json({ from: from.toISOString(), to: to.toISOString(), users: usersList });
+    } catch (err) {
+      console.error("Platform analytics users error:", err);
+      return res.status(500).json({ error: "Failed to fetch users" });
+    }
+  });
+
+  // Platform usage analytics — user drill-down
+  app.get("/api/admin/platform-analytics/users/:userId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const admin = await storage.getUserById(req.user.id);
+      if (!admin || !hasPermission(admin.role, "canViewUsers")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const userId = parseInt(req.params.userId, 10);
+      if (Number.isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user id" });
+      }
+
+      const range = parsePlatformAnalyticsRange(req.query);
+      if (!range) {
+        return res.status(400).json({ error: "Invalid date range" });
+      }
+      const { from, to } = range;
+
+      const targetUser = await storage.getUserById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const events = await db
+        .select({
+          id: platformAnalyticsEvents.id,
+          eventType: platformAnalyticsEvents.eventType,
+          path: platformAnalyticsEvents.path,
+          sessionId: platformAnalyticsEvents.sessionId,
+          durationMs: platformAnalyticsEvents.durationMs,
+          createdAt: platformAnalyticsEvents.createdAt,
+        })
+        .from(platformAnalyticsEvents)
+        .where(
+          and(
+            eq(platformAnalyticsEvents.userId, userId),
+            gte(platformAnalyticsEvents.createdAt, from),
+            lte(platformAnalyticsEvents.createdAt, to),
+          ),
+        )
+        .orderBy(desc(platformAnalyticsEvents.createdAt))
+        .limit(5000);
+
+      const sessionMap = new Map<
+        string,
+        {
+          sessionId: string;
+          startedAt: string;
+          endedAt: string;
+          totalActiveMs: number;
+          paths: { path: string; durationMs: number; pageviews: number }[];
+          loginCount: number;
+        }
+      >();
+
+      for (const ev of events) {
+        let session = sessionMap.get(ev.sessionId);
+        if (!session) {
+          session = {
+            sessionId: ev.sessionId,
+            startedAt: ev.createdAt.toISOString(),
+            endedAt: ev.createdAt.toISOString(),
+            totalActiveMs: 0,
+            paths: [],
+            loginCount: 0,
+          };
+          sessionMap.set(ev.sessionId, session);
+        }
+        const ts = ev.createdAt.toISOString();
+        if (ts < session.startedAt) session.startedAt = ts;
+        if (ts > session.endedAt) session.endedAt = ts;
+        if (ev.eventType === "login") session.loginCount += 1;
+        if (ev.eventType === "heartbeat" && ev.durationMs) {
+          session.totalActiveMs += ev.durationMs;
+        }
+        if (ev.eventType === "pageview" || ev.eventType === "heartbeat") {
+          let pathEntry = session.paths.find((p) => p.path === ev.path);
+          if (!pathEntry) {
+            pathEntry = { path: ev.path, durationMs: 0, pageviews: 0 };
+            session.paths.push(pathEntry);
+          }
+          if (ev.eventType === "pageview") pathEntry.pageviews += 1;
+          if (ev.eventType === "heartbeat" && ev.durationMs) {
+            pathEntry.durationMs += ev.durationMs;
+          }
+        }
+      }
+
+      const sessions = Array.from(sessionMap.values()).sort((a, b) =>
+        a.startedAt < b.startedAt ? 1 : -1,
+      );
+
+      const lastLogin = events.find((e) => e.eventType === "login");
+      const lastPageview = events.find((e) => e.eventType === "pageview");
+
+      return res.json({
+        from: from.toISOString(),
+        to: to.toISOString(),
+        user: {
+          id: targetUser.id,
+          email: targetUser.email,
+          username: targetUser.username,
+        },
+        lastLoginAt: lastLogin?.createdAt.toISOString() ?? null,
+        lastPageviewAt: lastPageview?.createdAt.toISOString() ?? null,
+        lastPageviewPath: lastPageview?.path ?? null,
+        sessions,
+      });
+    } catch (err) {
+      console.error("Platform analytics user detail error:", err);
+      return res.status(500).json({ error: "Failed to fetch user analytics" });
     }
   });
 
@@ -20887,6 +21193,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     message: "Too many tracking requests from this IP, please try again later",
     standardHeaders: true,
     legacyHeaders: false,
+  });
+
+  // Authenticated platform usage analytics (hayc.gr product)
+  app.post("/api/platform-analytics/events", async (req, res) => {
+    try {
+      if (!req.isAuthenticated() || !req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      if (isImpersonating(req)) {
+        return res.status(204).end();
+      }
+
+      const bodySchema = z.object({
+        events: z
+          .array(
+            z.object({
+              eventType: z.enum(["login", "pageview", "heartbeat"]),
+              path: z.string().min(1).max(500),
+              sessionId: z.string().min(1).max(128),
+              durationMs: z.number().int().min(0).max(3_600_000).optional(),
+            }),
+          )
+          .min(1)
+          .max(50),
+      });
+
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload" });
+      }
+
+      const userId = req.user.id;
+      const rows = parsed.data.events.map((e) => ({
+        userId,
+        eventType: e.eventType,
+        path: e.path.slice(0, 500),
+        sessionId: e.sessionId,
+        durationMs: e.eventType === "heartbeat" ? (e.durationMs ?? null) : null,
+      }));
+
+      await db.insert(platformAnalyticsEvents).values(rows);
+      return res.status(204).end();
+    } catch (err) {
+      console.error("Platform analytics ingest error:", err);
+      return res.status(500).json({ error: "Failed to record events" });
+    }
   });
 
   // Handle CORS preflight for analytics tracking

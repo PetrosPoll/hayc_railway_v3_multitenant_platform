@@ -13,6 +13,7 @@ import { ImpersonationBanner } from "@/components/ui/impersonation-banner";
 import { Footer } from "@/components/ui/footer";
 import { queryClient } from "@/lib/queryClient";
 import { impersonationRootStyle } from "@/lib/impersonation-layout";
+import { PlatformAnalyticsTracker } from "@/components/PlatformAnalyticsTracker";
 
 import GetStarted from "@/pages/get-started";
 import GetStartedSuccess from "@/pages/get-started-success";
@@ -315,6 +316,7 @@ export default function MainApp() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CookieConsentProvider>
+          <PlatformAnalyticsTracker />
           <MainAppContent />
           <Toaster />
         </CookieConsentProvider>

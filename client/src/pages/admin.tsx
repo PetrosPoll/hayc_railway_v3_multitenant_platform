@@ -62,6 +62,7 @@ import { AdminWebsiteChanges } from "@/components/ui/admin-website-changes";
 import { CancelledDueToPaymentFailureList } from "@/components/admin-cancelled-payment-failures";
 import { AdminWebsiteInvoices } from "@/components/ui/admin-website-invoices";
 import AdminGetStartedSubmissions from "@/components/ui/admin-get-started-submissions";
+import { PlatformUsageAnalytics } from "@/components/ui/platform-usage-analytics";
 import { Switch } from "@/components/ui/switch";
 import { RoleManagement } from "@/components/ui/role-management";
 import {
@@ -1613,6 +1614,11 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                   </>
                 )}
+                {userPermissions?.canViewUsers && (
+                  <TabsTrigger value="platform-usage" className="w-full justify-start rounded-md px-3 py-2.5">
+                    Platform Usage
+                  </TabsTrigger>
+                )}
                 {userPermissions?.canManageSettings && (
                   <TabsTrigger value="email-testing" className="w-full justify-start rounded-md px-3 py-2.5">
                     Email Testing
@@ -2633,6 +2639,9 @@ export default function AdminDashboard() {
                   </CardContent>
                 </Card>
               </section>
+            </TabsContent>
+            <TabsContent value="platform-usage" className="mt-0">
+              <PlatformUsageAnalytics />
             </TabsContent>
             <TabsContent value="website-progress" className="mt-0">
               <section>
