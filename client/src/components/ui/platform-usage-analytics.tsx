@@ -27,7 +27,24 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 
-type DaysRange = "7" | "30" | "90";
+type RangePreset = "7" | "30" | "90" | "custom";
+
+function toDateInputValue(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function startOfLocalDay(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
+}
+
+function endOfLocalDay(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d, 23, 59, 59, 999);
+}
 
 interface OverviewResponse {
   dau: number;
@@ -66,9 +83,9 @@ interface UserDetailResponse {
   }>;
 }
 
-function rangeFromDays(days: DaysRange): { from: string; to: string } {
+function rangeFromPreset(preset: Exclude<RangePreset, "custom">): { from: string; to: string } {
   const to = new Date();
-  const from = new Date(to.getTime() - Number(days) * 24 * 60 * 60 * 1000);
+  const from = new Date(to.getTime() - Number(preset) * 24 * 60 * 60 * 1000);
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
@@ -100,58 +117,151 @@ async function fetchJson<T>(url: string): Promise<T> {
 }
 
 export function PlatformUsageAnalytics() {
-  const [days, setDays] = useState<DaysRange>("30");
+  const [preset, setPreset] = useState<RangePreset>("30");
+  const defaultCustomTo = toDateInputValue(new Date());
+  const defaultCustomFrom = toDateInputValue(
+    new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+  );
+  const [customFrom, setCustomFrom] = useState(defaultCustomFrom);
+  const [customTo, setCustomTo] = useState(defaultCustomTo);
+  const [appliedCustom, setAppliedCustom] = useState<{ from: string; to: string } | null>(null);
   const [search, setSearch] = useState("");
   const [searchApplied, setSearchApplied] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
-  const { from, to } = useMemo(() => rangeFromDays(days), [days]);
+  const rangeError =
+    preset === "custom" && appliedCustom
+      ? startOfLocalDay(appliedCustom.from) > endOfLocalDay(appliedCustom.to)
+        ? "From date must be on or before To date."
+        : null
+      : null;
+
+  const { from, to } = useMemo(() => {
+    if (preset === "custom" && appliedCustom) {
+      return {
+        from: startOfLocalDay(appliedCustom.from).toISOString(),
+        to: endOfLocalDay(appliedCustom.to).toISOString(),
+      };
+    }
+    return rangeFromPreset(preset === "custom" ? "30" : preset);
+  }, [preset, appliedCustom]);
+
+  const rangeReady = preset !== "custom" || (appliedCustom != null && !rangeError);
   const rangeQs = `from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const rangeKey = `${preset}:${from}:${to}`;
 
   const overviewQuery = useQuery<OverviewResponse>({
-    queryKey: ["/api/admin/platform-analytics/overview", days],
+    queryKey: ["/api/admin/platform-analytics/overview", rangeKey],
     queryFn: () => fetchJson(`/api/admin/platform-analytics/overview?${rangeQs}`),
+    enabled: rangeReady,
   });
 
   const usersQuery = useQuery<{ users: UserRow[] }>({
-    queryKey: ["/api/admin/platform-analytics/users", days, searchApplied],
+    queryKey: ["/api/admin/platform-analytics/users", rangeKey, searchApplied],
     queryFn: () => {
       const q = searchApplied
         ? `&q=${encodeURIComponent(searchApplied)}`
         : "";
       return fetchJson(`/api/admin/platform-analytics/users?${rangeQs}${q}`);
     },
+    enabled: rangeReady,
   });
 
   const detailQuery = useQuery<UserDetailResponse>({
-    queryKey: ["/api/admin/platform-analytics/users", selectedUserId, days],
+    queryKey: ["/api/admin/platform-analytics/users", selectedUserId, rangeKey],
     queryFn: () =>
       fetchJson(`/api/admin/platform-analytics/users/${selectedUserId}?${rangeQs}`),
-    enabled: selectedUserId != null,
+    enabled: selectedUserId != null && rangeReady,
   });
 
   return (
     <section className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Platform Usage</h2>
           <p className="text-sm text-muted-foreground">
             Authenticated hayc.gr activity: logins, pages, and time spent.
           </p>
         </div>
-        <Select value={days} onValueChange={(v) => setDays(v as DaysRange)}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="7">Last 7 days</SelectItem>
-            <SelectItem value="30">Last 30 days</SelectItem>
-            <SelectItem value="90">Last 90 days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-col items-end gap-2">
+          <Select
+            value={preset}
+            onValueChange={(v) => {
+              const next = v as RangePreset;
+              setPreset(next);
+              if (next !== "custom") {
+                setAppliedCustom(null);
+              } else if (!appliedCustom) {
+                setCustomFrom(defaultCustomFrom);
+                setCustomTo(defaultCustomTo);
+              }
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Last 7 days</SelectItem>
+              <SelectItem value="30">Last 30 days</SelectItem>
+              <SelectItem value="90">Last 90 days</SelectItem>
+              <SelectItem value="custom">Custom range</SelectItem>
+            </SelectContent>
+          </Select>
+          {preset === "custom" && (
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground" htmlFor="platform-usage-from">
+                  From
+                </label>
+                <Input
+                  id="platform-usage-from"
+                  type="date"
+                  value={customFrom}
+                  max={customTo || undefined}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                  className="w-[150px]"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground" htmlFor="platform-usage-to">
+                  To
+                </label>
+                <Input
+                  id="platform-usage-to"
+                  type="date"
+                  value={customTo}
+                  min={customFrom || undefined}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                  className="w-[150px]"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={!customFrom || !customTo}
+                onClick={() => {
+                  if (!customFrom || !customTo) return;
+                  setAppliedCustom({ from: customFrom, to: customTo });
+                }}
+              >
+                Apply
+              </Button>
+            </div>
+          )}
+          {rangeError && (
+            <p className="text-xs text-destructive">{rangeError}</p>
+          )}
+          {preset === "custom" && !appliedCustom && (
+            <p className="text-xs text-muted-foreground">Choose dates and click Apply.</p>
+          )}
+        </div>
       </div>
 
-      {overviewQuery.isLoading ? (
+      {!rangeReady ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          Select a custom date range and click Apply.
+        </p>
+      ) : overviewQuery.isLoading ? (
         <div className="flex justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
