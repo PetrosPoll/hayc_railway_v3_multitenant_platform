@@ -3,6 +3,12 @@ import { useTranslation } from "react-i18next";
 import type { UseFormReturn } from "react-hook-form";
 import type { WizardValues } from "@/pages/get-started";
 import { cn } from "@/lib/utils";
+import {
+  hasAnyBookingAddon,
+  hasOnlineCoursesAddon,
+  isBookingAddonValue,
+  enforceSingleBookingAddon,
+} from "@/lib/get-started-addons";
 
 const GOAL_PAGE_MAP: Record<string, string[]> = {
   get_enquiries: ["Contact"],
@@ -68,14 +74,16 @@ function computeSuggestedStructure(
 }
 
 const ALL_ADDONS = [
-  { key: "bookingIntegration", value: "Booking Integration", label: "Booking Integration" },
-  { key: "hdp", value: "HDP", label: "Hayc Digital Products" },
+  { key: "onlineCourses", value: "Online Courses", label: "Online Courses" },
+  { key: "servicesBooking", value: "Services Booking", label: "Services Booking" },
+  { key: "toursTransfers", value: "Tours & Transfers", label: "Tours & Transfers" },
+  { key: "boatRentals", value: "Boat Rentals", label: "Boat Rentals" },
 ] as const;
 
 const GOAL_ADDON_MAP: Record<string, string[]> = {
   get_enquiries: [],
-  book_appointments: ["Booking Integration"],
-  sell_products: ["HDP"],
+  book_appointments: ["Services Booking"],
+  sell_products: ["Online Courses"],
   showcase_work: [],
   build_trust: [],
   share_information: [],
@@ -83,13 +91,13 @@ const GOAL_ADDON_MAP: Record<string, string[]> = {
 };
 
 const BUSINESS_TYPE_ADDON_MAP: Record<string, string[]> = {
-  local_business: ["Booking Integration"],
-  service_business: ["Booking Integration"],
+  local_business: ["Services Booking"],
+  service_business: ["Services Booking"],
   personal_brand: [],
-  creative_business: ["HDP"],
-  online_store: ["HDP"],
-  hospitality_travel: ["Booking Integration"],
-  health_wellness: ["Booking Integration"],
+  creative_business: ["Online Courses"],
+  online_store: ["Online Courses"],
+  hospitality_travel: ["Tours & Transfers"],
+  health_wellness: ["Services Booking"],
   other: [],
 };
 
@@ -131,14 +139,20 @@ function computeSuggestedAddons(
     (GOAL_ADDON_MAP[goalKey] ?? []).forEach((a) => suggested.add(a));
   });
 
-  suggested.add("Booking Integration");
+  if (suggested.size === 0) {
+    suggested.add("Services Booking");
+  }
 
-  return Array.from(suggested);
+  return enforceSingleBookingAddon(Array.from(suggested));
 }
 
 const ADDON_KEY_MAP: Record<string, string> = {
   "Booking Integration": "bookingIntegration",
-  "HDP": "hdp",
+  "Boat Rentals": "boatRentals",
+  "Tours & Transfers": "toursTransfers",
+  "Services Booking": "servicesBooking",
+  HDP: "hdp",
+  "Online Courses": "onlineCourses",
 };
 
 interface StepRecommendationProps {
@@ -226,22 +240,35 @@ export default function StepRecommendation({
     return t(`getStarted.recommendation.addons.${key}`);
   };
 
-  const suggestedAddonValues = computeSuggestedAddons(businessType, goals ?? []);
+  const suggestedAddonValues = enforceSingleBookingAddon(
+    computeSuggestedAddons(businessType, goals ?? []),
+  );
 
   const rawSelectedAddons = form.watch("selectedAddons");
-  const selectedAddons = rawSelectedAddons !== undefined
-    ? rawSelectedAddons
-    : suggestedAddonValues;
+  const selectedAddons = enforceSingleBookingAddon(
+    rawSelectedAddons !== undefined ? rawSelectedAddons : suggestedAddonValues,
+  );
 
   const toggleAddon = (value: string) => {
     form.setValue("suggestedAddons", suggestedAddonValues);
 
     const current = form.getValues("selectedAddons");
-    const base = current !== undefined ? current : suggestedAddonValues;
-    const updated = base.includes(value)
-      ? base.filter((v) => v !== value)
-      : [...base, value];
-    form.setValue("selectedAddons", updated);
+    const base = enforceSingleBookingAddon(
+      current !== undefined ? current : suggestedAddonValues,
+    );
+
+    let updated: string[];
+    if (isBookingAddonValue(value)) {
+      // Radio: pick one booking type (or clear if clicking the same)
+      const withoutBooking = base.filter((v) => !isBookingAddonValue(v));
+      updated = base.includes(value) ? withoutBooking : [...withoutBooking, value];
+    } else {
+      updated = base.includes(value)
+        ? base.filter((v) => v !== value)
+        : [...base, value];
+    }
+
+    form.setValue("selectedAddons", enforceSingleBookingAddon(updated));
   };
 
   const navButtons = (
@@ -383,10 +410,12 @@ export default function StepRecommendation({
                 </div>
               </div>
 
-              {/* Digital Products — visible when HDP addon is selected */}
-              {selectedAddons.includes("HDP") && (
+              {/* Online Courses — visible when LMS addon is selected */}
+              {hasOnlineCoursesAddon(selectedAddons) && (
                 <div className="w-full px-4 py-3 bg-[#fefaf7] border-t border-[#e8e2da] flex flex-col gap-2">
-                  <div className="text-[9px] font-semibold text-[#333] text-center font-brand">Digital Products</div>
+                  <div className="text-[9px] font-semibold text-[#333] text-center font-brand">
+                    {t("getStarted.recommendation.addons.onlineCourses")}
+                  </div>
                   <div className="flex gap-2">
                     {[0, 1, 2].map((i) => (
                       <div key={i} className="flex-1 bg-white rounded-lg border border-[#e8e2da] overflow-hidden flex flex-col">
@@ -436,10 +465,12 @@ export default function StepRecommendation({
                 </div>
               </div>
 
-              {/* Booking Integration — full width, visible when addon is selected */}
-              {selectedAddons.includes("Booking Integration") && (
+              {/* Booking — full width, visible when any booking variant is selected */}
+              {hasAnyBookingAddon(selectedAddons) && (
                 <div className="w-full px-4 py-3 bg-[#fefaf7] border-t border-[#e8e2da] flex flex-col gap-2">
-                  <div className="text-[9px] font-semibold text-[#333] font-brand">Booking Integration</div>
+                  <div className="text-[9px] font-semibold text-[#333] font-brand">
+                    {t("getStarted.recommendation.addons.bookingIntegration")}
+                  </div>
                   <div className="w-full">
                     <div className="grid grid-cols-7 mb-1">
                       {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((d) => (

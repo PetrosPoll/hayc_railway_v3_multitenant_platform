@@ -29,11 +29,9 @@ import {
   Rocket,
 } from "lucide-react";
 import WalkthroughExplainer from "@/components/get-started/walkthrough-explainer";
+import { GET_STARTED_ADDON_I18N_KEY_MAP } from "@/lib/get-started-addons";
 
-const ADDON_I18N_KEY_MAP: Record<string, string> = {
-  "Booking Integration": "bookingIntegration",
-  "HDP": "hdp",
-};
+const ADDON_I18N_KEY_MAP = GET_STARTED_ADDON_I18N_KEY_MAP;
 
 interface StepSummaryProps {
   form: UseFormReturn<WizardValues>;

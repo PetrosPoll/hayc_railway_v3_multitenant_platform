@@ -7,6 +7,11 @@ import { FormControl, FormField, FormItem } from "@/components/ui/form";
 import { cn } from "@/lib/utils";
 import { Calendar, Check, LayoutGrid, RefreshCcw } from "lucide-react";
 import { usePricing, getPrice, getAddonPrice } from "@/hooks/use-pricing";
+import {
+  dedupeAddonsByStripeId,
+  GET_STARTED_ADDON_I18N_KEY_MAP,
+  GET_STARTED_ADDON_ID_MAP,
+} from "@/lib/get-started-addons";
 
 const ICON_TODAY    = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779920606/card-tick_bowfis.svg";
 const ICON_CALENDAR = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779349753/calendar_orange_yt37oa.svg";
@@ -15,20 +20,13 @@ const ICON_INFO     = "https://res.cloudinary.com/dem12vqtl/image/upload/v177992
 
 const SETUP_FEE = 120;
 
-// Display-name → add-on ID (for Stripe price lookup)
-const ADDON_ID_MAP: Record<string, string> = {
-  "Booking Integration": "booking",
-  "HDP": "lms",
-};
-
-// Fallbacks used while Stripe prices are loading
 const ADDON_MONTHLY_FALLBACK: Record<string, number> = {
-  "Booking Integration": 15,
-  "HDP": 15,
+  booking: 15,
+  lms: 15,
 };
 const ADDON_YEARLY_FALLBACK: Record<string, number> = {
-  "Booking Integration": 180,
-  "HDP": 180,
+  booking: 180,
+  lms: 180,
 };
 const PLAN_FALLBACKS = {
   basic:     { monthly: 44,  yearly: 440  },
@@ -36,14 +34,9 @@ const PLAN_FALLBACKS = {
   pro:       { monthly: 200, yearly: 1920 },
 } as const;
 
-const ADDON_I18N_KEY_MAP: Record<string, string> = {
-  "Booking Integration": "bookingIntegration",
-  "HDP": "hdp",
-};
-
 const ADDON_ICON: Record<string, React.ReactNode> = {
-  "Booking Integration": <Calendar className="w-5 h-5 text-[#ED4C14]" />,
-  "HDP": <LayoutGrid className="w-5 h-5 text-[#ED4C14]" />,
+  booking: <Calendar className="w-5 h-5 text-[#ED4C14]" />,
+  lms: <LayoutGrid className="w-5 h-5 text-[#ED4C14]" />,
 };
 
 const PLAN_CONFIG: { id: (typeof PLANS)[number]; recommended: boolean }[] = [
@@ -89,20 +82,31 @@ export default function StepPricing({
 
   const planYearlyPerMonth = (id: string): number => Math.round(planYearly(id) / 12);
 
-  const addonMonthly = (name: string): number =>
-    getAddonPrice(stripePrices, ADDON_ID_MAP[name] ?? name, "monthly")?.unitAmount
-      ?? ADDON_MONTHLY_FALLBACK[name] ?? 0;
+  const addonMonthly = (name: string): number => {
+    const stripeId = GET_STARTED_ADDON_ID_MAP[name] ?? name;
+    return (
+      getAddonPrice(stripePrices, stripeId, "monthly")?.unitAmount
+      ?? ADDON_MONTHLY_FALLBACK[stripeId]
+      ?? 0
+    );
+  };
 
-  const addonYearly = (name: string): number =>
-    getAddonPrice(stripePrices, ADDON_ID_MAP[name] ?? name, "yearly")?.unitAmount
-      ?? ADDON_YEARLY_FALLBACK[name] ?? addonMonthly(name) * 12;
+  const addonYearly = (name: string): number => {
+    const stripeId = GET_STARTED_ADDON_ID_MAP[name] ?? name;
+    return (
+      getAddonPrice(stripePrices, stripeId, "yearly")?.unitAmount
+      ?? ADDON_YEARLY_FALLBACK[stripeId]
+      ?? addonMonthly(name) * 12
+    );
+  };
 
   const isYearly     = billingPeriod === "yearly";
   const basePrice    = isYearly ? planYearlyPerMonth(selectedPlanId) : planMonthly(selectedPlanId);
-  const addonsTotal  = selectedAddons.reduce((sum, a) => sum + addonMonthly(a), 0);
+  const billableAddons = dedupeAddonsByStripeId(selectedAddons);
+  const addonsTotal  = billableAddons.reduce((sum, a) => sum + addonMonthly(a), 0);
   const monthlyTotal = basePrice + addonsTotal;
 
-  const yearlyAddonsTotal = selectedAddons.reduce((sum, a) => sum + addonYearly(a), 0);
+  const yearlyAddonsTotal = billableAddons.reduce((sum, a) => sum + addonYearly(a), 0);
   const billingTotal = isYearly ? planYearly(selectedPlanId) + yearlyAddonsTotal : monthlyTotal;
   const speedDevFee  = speedUpDevChecked && speedDevData?.unitAmount ? speedDevData.unitAmount : 0;
   const payToday     = SETUP_FEE + billingTotal + speedDevFee;
@@ -122,9 +126,23 @@ export default function StepPricing({
   const planLabel = t(`getStarted.summary.plans.${selectedPlanId}.label`);
 
   const getAddonLabel = (value: string): string => {
-    const key = ADDON_I18N_KEY_MAP[value];
+    const key = GET_STARTED_ADDON_I18N_KEY_MAP[value];
     return key ? t(`getStarted.recommendation.addons.${key}`) : value;
   };
+
+  const pricedAddonIds = new Set<string>();
+  const selectedAddonRows = selectedAddons.map((addon) => {
+    const stripeId = GET_STARTED_ADDON_ID_MAP[addon];
+    let priceLabel: string;
+    if (stripeId && pricedAddonIds.has(stripeId)) {
+      priceLabel = t("getStarted.pricing.addonIncluded");
+    } else {
+      if (stripeId) pricedAddonIds.add(stripeId);
+      const amount = isYearly ? addonYearly(addon) : addonMonthly(addon);
+      priceLabel = `${amount}€/${isYearly ? "yr" : "mo"}`;
+    }
+    return { addon, stripeId, priceLabel };
+  });
 
   return (
     <div className="w-full min-h-screen bg-black px-4 md:px-16 py-12 md:py-7 flex flex-col justify-center items-center overflow-hidden">
@@ -333,21 +351,21 @@ export default function StepPricing({
               </div>
               {/* Figma: inline-flex gap-3, each chip is flex-1 */}
               <div className="flex flex-col md:flex-row gap-3">
-                {selectedAddons.map((addon) => (
+                {selectedAddonRows.map(({ addon, stripeId, priceLabel }) => (
                   <div
                     key={addon}
                     className="flex-1 px-2.5 py-1 rounded-lg outline outline-1 outline-offset-[-1px] outline-neutral-500 flex justify-between items-center"
                   >
                     <div className="flex items-center gap-2">
                       <div className="w-9 h-9 rounded-lg bg-[#ED4C14]/20 flex items-center justify-center flex-shrink-0 overflow-hidden">
-                        {ADDON_ICON[addon] ?? <div className="w-6 h-4 bg-[#ED4C14]" />}
+                        {(stripeId && ADDON_ICON[stripeId]) ?? <div className="w-6 h-4 bg-[#ED4C14]" />}
                       </div>
                       <span className="text-white text-sm font-semibold font-brand tracking-tight">
                         {getAddonLabel(addon)}
                       </span>
                     </div>
                     <span className="text-white text-base font-normal font-brand leading-6">
-                      {isYearly ? addonYearly(addon) : addonMonthly(addon)}€/{isYearly ? "yr" : "mo"}
+                      {priceLabel}
                     </span>
                   </div>
                 ))}

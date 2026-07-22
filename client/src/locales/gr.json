@@ -3143,8 +3143,12 @@
                 "booking": "Κράτηση"
             },
             "addons": {
-                "bookingIntegration": "Σύστημα Κρατήσεων",
-                "hdp": "Hayc Digital Products",
+                "bookingIntegration": "Κρατήσεις",
+                "boatRentals": "Ενοικίαση Σκαφών",
+                "toursTransfers": "Tours & Transfers",
+                "servicesBooking": "Κρατήσεις Υπηρεσιών",
+                "hdp": "Διαδικτυακά μαθήματα",
+                "onlineCourses": "Διαδικτυακά μαθήματα",
                 "basicSeo": "Βασικό SEO",
                 "analytics": "Analytics"
             },
@@ -3341,6 +3345,7 @@
             "choosePlan": "Επιλέξτε πλάνο",
             "baseModelNote": "Βασική τιμή πριν τα add-ons",
             "selectedAddons": "Επιλεγμένα add-ons",
+            "addonIncluded": "Περιλαμβάνεται",
             "pricingSummary": "Σύνοψη τιμολόγησης",
             "basePlanLine": "Βασικό πλάνο: {{plan}}",
             "addonsLine": "Επιλεγμένα add-ons",

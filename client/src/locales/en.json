@@ -3143,8 +3143,12 @@
                 "booking": "Booking"
             },
             "addons": {
-                "bookingIntegration": "Booking Integration",
-                "hdp": "Hayc Digital Products",
+                "bookingIntegration": "Booking",
+                "boatRentals": "Boat Rentals",
+                "toursTransfers": "Tours & Transfers",
+                "servicesBooking": "Services Booking",
+                "hdp": "Online Courses",
+                "onlineCourses": "Online Courses",
                 "basicSeo": "Basic SEO",
                 "analytics": "Analytics"
             },
@@ -3341,6 +3345,7 @@
             "choosePlan": "Choose your plan",
             "baseModelNote": "Base model price before add-ons",
             "selectedAddons": "Selected add-ons",
+            "addonIncluded": "Included",
             "pricingSummary": "Pricing summary",
             "basePlanLine": "Base plan: {{plan}}",
             "addonsLine": "Selected add-ons",

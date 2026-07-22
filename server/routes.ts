@@ -325,8 +325,12 @@ const ADDON_PRICE_MAP = availableAddOnsWithPriceIds.reduce((map, addon) => {
 
 // Map client-side display names → schema IDs (client stores display names in selectedAddons)
 const ADDON_DISPLAY_NAME_TO_ID: Record<string, string> = {
-  "Booking Integration": "booking",
-  "HDP": "lms",
+  "Booking Integration": "booking", // legacy
+  "Boat Rentals": "booking",
+  "Tours & Transfers": "booking",
+  "Services Booking": "booking",
+  HDP: "lms", // legacy
+  "Online Courses": "lms",
 };
 
 // Mapping of add-on IDs to their yearly price environment variable names
@@ -2677,8 +2681,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // 2. Add-ons (recurring)
       if (body.addOns && body.addOns.length > 0) {
         console.log("📦 Processing add-ons:", body.addOns);
+        const seenAddonIds = new Set<string>();
         body.addOns.forEach((rawAddonId) => {
           const addonId = ADDON_DISPLAY_NAME_TO_ID[rawAddonId] ?? rawAddonId;
+          if (seenAddonIds.has(addonId)) {
+            console.log(`  - Skipping duplicate add-on "${rawAddonId}" -> "${addonId}"`);
+            return;
+          }
+          seenAddonIds.add(addonId);
           const priceId = body.billingPeriod === "yearly"
             ? (ADDON_YEARLY_PRICE_MAP[addonId]?.priceId ?? ADDON_PRICE_MAP[addonId])
             : ADDON_PRICE_MAP[addonId];

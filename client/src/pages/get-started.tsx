@@ -23,6 +23,7 @@ import StepSummary from "@/components/get-started/step-summary";
 import StepPricing from "@/components/get-started/step-pricing";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
 import { checkEmailExists } from "@/lib/api";
+import { enforceSingleBookingAddon } from "@/lib/get-started-addons";
 // import { StepBusinessType } from "@/pages/get-started/steps/step-business-type";
 // import { StepGoal } from "@/pages/get-started/steps/step-goal";
 // import { StepRecommendation } from "@/pages/get-started/steps/step-recommendation";
@@ -155,8 +156,8 @@ function computeSuggestedStructure(
 
 const GOAL_ADDON_MAP: Record<string, string[]> = {
   get_enquiries: [],
-  book_appointments: ["Booking Integration"],
-  sell_products: ["HDP"],
+  book_appointments: ["Services Booking"],
+  sell_products: ["Online Courses"],
   showcase_work: [],
   build_trust: [],
   share_information: [],
@@ -164,13 +165,13 @@ const GOAL_ADDON_MAP: Record<string, string[]> = {
 };
 
 const BUSINESS_TYPE_ADDON_MAP: Record<string, string[]> = {
-  local_business: ["Booking Integration"],
-  service_business: ["Booking Integration"],
+  local_business: ["Services Booking"],
+  service_business: ["Services Booking"],
   personal_brand: [],
-  creative_business: ["HDP"],
-  online_store: ["HDP"],
-  hospitality_travel: ["Booking Integration"],
-  health_wellness: ["Booking Integration"],
+  creative_business: ["Online Courses"],
+  online_store: ["Online Courses"],
+  hospitality_travel: ["Tours & Transfers"],
+  health_wellness: ["Services Booking"],
   other: [],
 };
 
@@ -190,9 +191,11 @@ function computeSuggestedAddons(
       (GOAL_ADDON_MAP[goalKey] ?? []).forEach((a) => suggested.add(a));
     });
 
-  suggested.add("Booking Integration");
+  if (suggested.size === 0) {
+    suggested.add("Services Booking");
+  }
 
-  return Array.from(suggested);
+  return enforceSingleBookingAddon(Array.from(suggested));
 }
 
 export default function GetStarted() {
@@ -311,9 +314,9 @@ export default function GetStarted() {
       );
       const currentSelected = step3Values.selectedAddons;
 
-      const finalSelectedAddons = currentSelected !== undefined
-        ? currentSelected
-        : currentSuggested;
+      const finalSelectedAddons = enforceSingleBookingAddon(
+        currentSelected !== undefined ? currentSelected : currentSuggested,
+      );
 
       form.setValue("suggestedStructure", suggestedStructure);
       form.setValue("suggestedAddons", currentSuggested);
