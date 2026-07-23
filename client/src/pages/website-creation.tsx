@@ -28,6 +28,7 @@ import { LANDING_TESTIMONIAL_VIDEOS } from "@/lib/landing-vimeo-videos";
 import { subscribeToHaycNewsletter } from "@/lib/hayc-newsletter-subscribe";
 import {
   landingLeadSource,
+  landingQualificationEnabled,
   type LandingPageVariant,
 } from "@/lib/landing-page-variants";
 import { useNoIndex } from "@/hooks/use-noindex";
@@ -56,7 +57,7 @@ export function WebsiteCreationLanding({
   const [onlineMeetingConfirmed, setOnlineMeetingConfirmed] = useState<boolean | null>(null);
   const [attendanceConfirmed, setAttendanceConfirmed] = useState<boolean | null>(null);
   const [qualificationError, setQualificationError] = useState(false);
-  const qualificationEnabled = variant === "default";
+  const qualificationEnabled = landingQualificationEnabled(variant);
   const showCalendly = formStage === "booking";
 
   useNoIndex();

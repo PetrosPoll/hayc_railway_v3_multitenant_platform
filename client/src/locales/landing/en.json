@@ -25,6 +25,38 @@
       "version-5": {
         "title": "Your website, bookings, newsletter, and digital products — one platform, one subscription.",
         "subtitle": "Everything you need to grow online in one dashboard. We build it and keep it running."
+      },
+      "doctors": {
+        "title": "You don’t have time to deal with your website.",
+        "subtitle": "At Hayc we build the website for your practice. We build, host, and maintain it — with a fixed monthly cost."
+      },
+      "language-teachers": {
+        "title": "Sell your online courses and earn passive income",
+        "subtitle": "Present your courses professionally and grow enrollments. At Hayc you get all the tools: courses for sale, online payments, and client management."
+      },
+      "consultants": {
+        "title": "A website for consultants — that builds trust from the first visit",
+        "subtitle": "Clear services, professional image, and ongoing support. We build and manage it for you."
+      },
+      "psychologists": {
+        "title": "Stop answering calls and sending messages about your appointments",
+        "subtitle": "Use Hayc’s booking system so your clients schedule their appointments automatically"
+      },
+      "personal-trainers": {
+        "title": "Share your availability and let them book their appointments themselves",
+        "subtitle": "Show your programs and take bookings online. We build, host, and keep your site running."
+      },
+      "boat-rentals": {
+        "title": "Want to rent out your boats with 0% commission?",
+        "subtitle": "At Hayc we build your website and give you a booking management system — with a fixed monthly cost."
+      },
+      "transfers-tours": {
+        "title": "A website for transfers & tours — automatic bookings",
+        "subtitle": "Present routes and packages, accept bookings online. We handle build, hosting, and updates."
+      },
+      "newsletter-marketing": {
+        "title": "Newsletter marketing without the technical headache",
+        "subtitle": "Professional emails and a website in one platform. We set it up and keep it running for you."
       }
     },
     "form": {
