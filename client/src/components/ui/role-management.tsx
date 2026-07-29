@@ -12,21 +12,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Edit, Trash2, Shield } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import type { RolePermissionsType } from "@shared/schema";
 
-interface RolePermissions {
-  canViewUsers: boolean;
-  canManageUsers: boolean;
-  canViewSubscriptions: boolean;
-  canManageSubscriptions: boolean;
-  canViewWebsites: boolean;
-  canManageWebsites: boolean;
-  canViewTemplates: boolean;
-  canManageTemplates: boolean;
-  canViewTips: boolean;
-  canManageTips: boolean;
-  canViewSettings: boolean;
-  canManageSettings: boolean;
-}
+type RolePermissions = RolePermissionsType;
 
 interface CustomRole {
   id: number;
@@ -38,6 +26,23 @@ interface CustomRole {
   createdAt: string;
   updatedAt: string;
 }
+
+const DEFAULT_PERMISSIONS: RolePermissions = {
+  canViewUsers: false,
+  canManageUsers: false,
+  canViewSubscriptions: false,
+  canManageSubscriptions: false,
+  canViewWebsites: false,
+  canManageWebsites: false,
+  canViewTemplates: false,
+  canManageTemplates: false,
+  canViewTips: false,
+  canManageTips: false,
+  canViewSettings: false,
+  canManageSettings: false,
+  canViewPlatformUsage: false,
+  canViewNewsletter: false,
+};
 
 const permissionLabels: Record<keyof RolePermissions, string> = {
   canViewUsers: "View Users",
@@ -52,7 +57,13 @@ const permissionLabels: Record<keyof RolePermissions, string> = {
   canManageTips: "Manage Tips",
   canViewSettings: "View Settings",
   canManageSettings: "Manage Settings",
+  canViewPlatformUsage: "View Platform Usage",
+  canViewNewsletter: "View Newsletter",
 };
+
+function normalizePermissions(permissions: Partial<RolePermissions> | null | undefined): RolePermissions {
+  return { ...DEFAULT_PERMISSIONS, ...(permissions || {}) };
+}
 
 export function RoleManagement() {
   const { toast } = useToast();
@@ -63,20 +74,7 @@ export function RoleManagement() {
   const [roleForm, setRoleForm] = useState({
     displayName: "",
     description: "",
-    permissions: {
-      canViewUsers: false,
-      canManageUsers: false,
-      canViewSubscriptions: false,
-      canManageSubscriptions: false,
-      canViewWebsites: false,
-      canManageWebsites: false,
-      canViewTemplates: false,
-      canManageTemplates: false,
-      canViewTips: false,
-      canManageTips: false,
-      canViewSettings: false,
-      canManageSettings: false,
-    } as RolePermissions,
+    permissions: { ...DEFAULT_PERMISSIONS },
   });
 
   const { data: roles, isLoading } = useQuery<CustomRole[]>({
@@ -134,18 +132,15 @@ export function RoleManagement() {
         method: "DELETE",
         credentials: "include",
       });
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to delete role");
-      }
+      if (!response.ok) throw new Error("Failed to delete role");
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/roles"] });
       toast({ title: "Success", description: "Role deleted successfully" });
     },
-    onError: (error: Error) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    onError: () => {
+      toast({ title: "Error", description: "Failed to delete role", variant: "destructive" });
     },
   });
 
@@ -153,20 +148,7 @@ export function RoleManagement() {
     setRoleForm({
       displayName: "",
       description: "",
-      permissions: {
-        canViewUsers: false,
-        canManageUsers: false,
-        canViewSubscriptions: false,
-        canManageSubscriptions: false,
-        canViewWebsites: false,
-        canManageWebsites: false,
-        canViewTemplates: false,
-        canManageTemplates: false,
-        canViewTips: false,
-        canManageTips: false,
-        canViewSettings: false,
-        canManageSettings: false,
-      },
+      permissions: { ...DEFAULT_PERMISSIONS },
     });
   };
 
@@ -180,7 +162,7 @@ export function RoleManagement() {
     setRoleForm({
       displayName: role.displayName,
       description: role.description || "",
-      permissions: role.permissions,
+      permissions: normalizePermissions(role.permissions),
     });
     setIsEditDialogOpen(true);
   };
@@ -252,29 +234,30 @@ export function RoleManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Role Name</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Role</TableHead>
                 <TableHead>Permissions</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {roles?.map((role) => (
                 <TableRow key={role.id}>
-                  <TableCell className="font-medium">{role.displayName}</TableCell>
-                  <TableCell>{role.description || "-"}</TableCell>
                   <TableCell>
-                    {role.isSystem ? (
-                      <Badge variant="secondary">System</Badge>
-                    ) : (
-                      <Badge>Custom</Badge>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <div className="font-medium">{role.displayName}</div>
+                        {role.description && (
+                          <div className="text-sm text-muted-foreground">{role.description}</div>
+                        )}
+                      </div>
+                      {role.isSystem && <Badge variant="secondary">System</Badge>}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {Object.entries(role.permissions)
-                        .filter(([, value]) => value)
+                      {Object.entries(normalizePermissions(role.permissions))
+                        .filter(([, enabled]) => enabled)
                         .map(([key]) => (
                           <Badge key={key} variant="outline" className="text-xs">
                             {permissionLabels[key as keyof RolePermissions]}
@@ -282,31 +265,21 @@ export function RoleManagement() {
                         ))}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditRole(role)}
-                        disabled={role.isSystem}
-                        title={role.isSystem ? "System roles cannot be edited" : "Edit role"}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => deleteRoleMutation.mutate(role.id)}
-                        disabled={role.isSystem || deleteRoleMutation.isPending}
-                        title={role.isSystem ? "System roles cannot be deleted" : "Delete role"}
-                      >
-                        {deleteRoleMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
+                  <TableCell className="text-right">
+                    {!role.isSystem && (
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditRole(role)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => deleteRoleMutation.mutate(role.id)}
+                        >
                           <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
+                        </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -315,98 +288,84 @@ export function RoleManagement() {
         </CardContent>
       </Card>
 
-      {/* Create Role Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create New Role</DialogTitle>
+            <DialogTitle>Create Role</DialogTitle>
             <DialogDescription>Define a new role with custom permissions</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="displayName">Role Name</Label>
+            <div className="space-y-2">
+              <Label htmlFor="create-displayName">Display Name</Label>
               <Input
-                id="displayName"
+                id="create-displayName"
                 value={roleForm.displayName}
                 onChange={(e) => setRoleForm({ ...roleForm, displayName: e.target.value })}
-                placeholder="e.g., Content Manager"
               />
             </div>
-            <div>
-              <Label htmlFor="description">Description</Label>
+            <div className="space-y-2">
+              <Label htmlFor="create-description">Description</Label>
               <Textarea
-                id="description"
+                id="create-description"
                 value={roleForm.description}
                 onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
-                placeholder="Describe this role's purpose"
               />
             </div>
-            <div>
+            <div className="space-y-3">
               <Label>Permissions</Label>
-              <p className="text-sm text-muted-foreground mb-2">
+              <p className="text-xs text-muted-foreground">
                 Note: Manage permissions automatically include view permissions
               </p>
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                {Object.entries(permissionLabels).map(([key, label]) => {
-                  const isViewPermission = key.startsWith('canView');
-                  const managePermissionKey = key.replace('canView', 'canManage') as keyof RolePermissions;
-                  const isAutoEnabled = isViewPermission && roleForm.permissions[managePermissionKey];
-                  
-                  return (
-                    <div key={key} className="flex items-center justify-between space-x-2 p-2 border rounded">
-                      <Label 
-                        htmlFor={`create-${key}`} 
-                        className={`text-sm cursor-pointer ${isAutoEnabled ? 'text-muted-foreground' : ''}`}
-                      >
-                        {label} {isAutoEnabled && <span className="text-xs">(auto)</span>}
-                      </Label>
-                      <Switch
-                        id={`create-${key}`}
-                        checked={roleForm.permissions[key as keyof RolePermissions]}
-                        onCheckedChange={() => togglePermission(key as keyof RolePermissions)}
-                        disabled={isAutoEnabled}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              {Object.keys(permissionLabels).map((key) => {
+                const isViewPermission = key.startsWith("canView");
+                const managePermissionKey = key.replace("canView", "canManage") as keyof RolePermissions;
+                const isAutoEnabled =
+                  isViewPermission &&
+                  managePermissionKey in roleForm.permissions &&
+                  roleForm.permissions[managePermissionKey];
+                return (
+                  <div key={key} className="flex items-center justify-between">
+                    <Label htmlFor={`create-${key}`} className="font-normal">
+                      {permissionLabels[key as keyof RolePermissions]}
+                    </Label>
+                    <Switch
+                      id={`create-${key}`}
+                      checked={roleForm.permissions[key as keyof RolePermissions]}
+                      onCheckedChange={() => togglePermission(key as keyof RolePermissions)}
+                      disabled={Boolean(isAutoEnabled)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+            <Button variant="outline" onClick={() => { setIsCreateDialogOpen(false); resetForm(); }}>
               Cancel
             </Button>
-            <Button onClick={handleCreateRole} disabled={!roleForm.displayName || createRoleMutation.isPending}>
-              {createRoleMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Role"
-              )}
+            <Button onClick={handleCreateRole} disabled={createRoleMutation.isPending || !roleForm.displayName}>
+              {createRoleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Role Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Role</DialogTitle>
             <DialogDescription>Update role permissions and details</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <div>
-              <Label htmlFor="edit-displayName">Role Name</Label>
+            <div className="space-y-2">
+              <Label htmlFor="edit-displayName">Display Name</Label>
               <Input
                 id="edit-displayName"
                 value={roleForm.displayName}
                 onChange={(e) => setRoleForm({ ...roleForm, displayName: e.target.value })}
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label htmlFor="edit-description">Description</Label>
               <Textarea
                 id="edit-description"
@@ -414,50 +373,40 @@ export function RoleManagement() {
                 onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
               />
             </div>
-            <div>
+            <div className="space-y-3">
               <Label>Permissions</Label>
-              <p className="text-sm text-muted-foreground mb-2">
+              <p className="text-xs text-muted-foreground">
                 Note: Manage permissions automatically include view permissions
               </p>
-              <div className="grid grid-cols-2 gap-3 mt-2">
-                {Object.entries(permissionLabels).map(([key, label]) => {
-                  const isViewPermission = key.startsWith('canView');
-                  const managePermissionKey = key.replace('canView', 'canManage') as keyof RolePermissions;
-                  const isAutoEnabled = isViewPermission && roleForm.permissions[managePermissionKey];
-                  
-                  return (
-                    <div key={key} className="flex items-center justify-between space-x-2 p-2 border rounded">
-                      <Label 
-                        htmlFor={`edit-${key}`} 
-                        className={`text-sm cursor-pointer ${isAutoEnabled ? 'text-muted-foreground' : ''}`}
-                      >
-                        {label} {isAutoEnabled && <span className="text-xs">(auto)</span>}
-                      </Label>
-                      <Switch
-                        id={`edit-${key}`}
-                        checked={roleForm.permissions[key as keyof RolePermissions]}
-                        onCheckedChange={() => togglePermission(key as keyof RolePermissions)}
-                        disabled={isAutoEnabled}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
+              {Object.keys(permissionLabels).map((key) => {
+                const isViewPermission = key.startsWith("canView");
+                const managePermissionKey = key.replace("canView", "canManage") as keyof RolePermissions;
+                const isAutoEnabled =
+                  isViewPermission &&
+                  managePermissionKey in roleForm.permissions &&
+                  roleForm.permissions[managePermissionKey];
+                return (
+                  <div key={key} className="flex items-center justify-between">
+                    <Label htmlFor={`edit-${key}`} className="font-normal">
+                      {permissionLabels[key as keyof RolePermissions]}
+                    </Label>
+                    <Switch
+                      id={`edit-${key}`}
+                      checked={roleForm.permissions[key as keyof RolePermissions]}
+                      onCheckedChange={() => togglePermission(key as keyof RolePermissions)}
+                      disabled={Boolean(isAutoEnabled)}
+                    />
+                  </div>
+                );
+              })}
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => { setIsEditDialogOpen(false); resetForm(); }}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateRole} disabled={!roleForm.displayName || updateRoleMutation.isPending}>
-              {updateRoleMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Updating...
-                </>
-              ) : (
-                "Update Role"
-              )}
+            <Button onClick={handleUpdateRole} disabled={updateRoleMutation.isPending}>
+              {updateRoleMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>

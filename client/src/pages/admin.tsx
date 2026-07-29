@@ -1614,7 +1614,7 @@ export default function AdminDashboard() {
                     </TabsTrigger>
                   </>
                 )}
-                {userPermissions?.canViewUsers && (
+                {userPermissions?.canViewPlatformUsage && (
                   <TabsTrigger value="platform-usage" className="w-full justify-start rounded-md px-3 py-2.5">
                     Platform Usage
                   </TabsTrigger>
@@ -1647,10 +1647,12 @@ export default function AdminDashboard() {
                     <TabsTrigger value="system-settings" className="w-full justify-start rounded-md px-3 py-2.5">
                       System Settings
                     </TabsTrigger>
-                    <TabsTrigger value="newsletter" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Newsletter
-                    </TabsTrigger>
                   </>
+                )}
+                {userPermissions?.canViewNewsletter && (
+                  <TabsTrigger value="newsletter" className="w-full justify-start rounded-md px-3 py-2.5">
+                    Newsletter
+                  </TabsTrigger>
                 )}
               </TabsList>
             </nav>

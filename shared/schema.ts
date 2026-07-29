@@ -35,6 +35,8 @@ export interface RolePermissionsType {
   canManageTips: boolean;
   canViewSettings: boolean;
   canManageSettings: boolean;
+  canViewPlatformUsage: boolean;
+  canViewNewsletter: boolean;
 }
 
 // Define permissions for each role
@@ -52,6 +54,8 @@ export const RolePermissions: Record<string, RolePermissionsType> = {
     canManageTips: false,
     canViewSettings: false,
     canManageSettings: false,
+    canViewPlatformUsage: false,
+    canViewNewsletter: false,
   },
   moderator: {
     canViewUsers: true,
@@ -66,6 +70,8 @@ export const RolePermissions: Record<string, RolePermissionsType> = {
     canManageTips: true,
     canViewSettings: false,
     canManageSettings: false,
+    canViewPlatformUsage: false,
+    canViewNewsletter: false,
   },
   administrator: {
     canViewUsers: true,
@@ -80,6 +86,8 @@ export const RolePermissions: Record<string, RolePermissionsType> = {
     canManageTips: true,
     canViewSettings: true,
     canManageSettings: true,
+    canViewPlatformUsage: true,
+    canViewNewsletter: true,
   },
 };
 

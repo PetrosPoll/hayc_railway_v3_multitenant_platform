@@ -528,7 +528,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     .from(customRoles)
     .then((customRolesData) => {
       for (const role of customRolesData) {
-        RolePermissions[role.name] = role.permissions;
+        RolePermissions[role.name] = {
+          ...RolePermissions.subscriber,
+          ...(role.permissions as Partial<typeof RolePermissions.subscriber>),
+        };
       }
       if (customRolesData.length > 0) {
         console.log(`✅ Loaded ${customRolesData.length} custom roles into permissions system`);
@@ -2248,7 +2251,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).returning();
 
       // Update RolePermissions object dynamically
-      RolePermissions[newRole.name] = permissions;
+      RolePermissions[newRole.name] = {
+        ...RolePermissions.subscriber,
+        ...(permissions as Partial<typeof RolePermissions.subscriber>),
+      };
 
       res.json(newRole);
     } catch (error) {
@@ -2292,7 +2298,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .returning();
 
       // Update RolePermissions object dynamically
-      RolePermissions[updatedRole.name] = permissions;
+      RolePermissions[updatedRole.name] = {
+        ...RolePermissions.subscriber,
+        ...(permissions as Partial<typeof RolePermissions.subscriber>),
+      };
 
       res.json(updatedRole);
     } catch (error) {
@@ -8455,7 +8464,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     try {
       const user = await storage.getUserById(req.user.id);
-      if (!user || !hasPermission(user.role, "canViewUsers")) {
+      if (!user || !hasPermission(user.role, "canViewPlatformUsage")) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -8545,7 +8554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     try {
       const admin = await storage.getUserById(req.user.id);
-      if (!admin || !hasPermission(admin.role, "canViewUsers")) {
+      if (!admin || !hasPermission(admin.role, "canViewPlatformUsage")) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -8631,7 +8640,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     try {
       const admin = await storage.getUserById(req.user.id);
-      if (!admin || !hasPermission(admin.role, "canViewUsers")) {
+      if (!admin || !hasPermission(admin.role, "canViewPlatformUsage")) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -12142,9 +12151,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12165,9 +12173,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12205,9 +12212,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12255,9 +12261,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12298,9 +12303,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12322,9 +12326,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12351,9 +12354,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12388,9 +12390,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12453,9 +12454,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12491,9 +12491,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12590,9 +12589,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12655,9 +12653,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12701,9 +12698,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12791,9 +12787,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12886,9 +12881,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12931,9 +12925,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -12971,9 +12964,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13123,9 +13115,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13179,9 +13170,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13229,9 +13219,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13253,9 +13242,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13282,9 +13270,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13396,9 +13383,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13526,9 +13512,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13728,9 +13713,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13775,9 +13759,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -13819,9 +13802,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22290,9 +22272,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
     try {
       const payments = await storage.getAllCustomPayments();
@@ -22369,9 +22350,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22389,9 +22369,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22443,9 +22422,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22476,9 +22454,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22506,9 +22483,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22536,9 +22512,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22561,9 +22536,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22591,9 +22565,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22632,9 +22605,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22665,9 +22637,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22706,9 +22677,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22735,9 +22705,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22756,9 +22725,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22778,9 +22746,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
@@ -22800,9 +22767,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       return res.status(401).json({ error: "Not authenticated" });
     }
 
-    const isAdmin = req.user.role === "admin" || req.user.role === "administrator";
-    if (!isAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
     }
 
     try {
