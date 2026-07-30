@@ -25,6 +25,47 @@ function wrapSelection(
   const start = el.selectionStart;
   const end = el.selectionEnd;
   const selected = value.slice(start, end);
+
+  const isItalicStar = before === "*";
+
+  const selectionHasMarkers =
+    selected.length >= before.length + after.length &&
+    selected.startsWith(before) &&
+    selected.endsWith(after) &&
+    !(isItalicStar && selected.startsWith("**"));
+
+  const outerHasMarkers =
+    start >= before.length &&
+    end + after.length <= value.length &&
+    value.slice(start - before.length, start) === before &&
+    value.slice(end, end + after.length) === after &&
+    !(isItalicStar && value.slice(start - 2, start) === "**") &&
+    !(isItalicStar && value.slice(end, end + 2) === "**");
+
+  // Toggle off: markers already around or inside the selection
+  if (selectionHasMarkers) {
+    const inner = selected.slice(before.length, selected.length - after.length);
+    const next = value.slice(0, start) + inner + value.slice(end);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start, start + inner.length);
+    });
+    return;
+  }
+
+  if (outerHasMarkers) {
+    const next =
+      value.slice(0, start - before.length) + selected + value.slice(end + after.length);
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start - before.length, end - before.length);
+    });
+    return;
+  }
+
+  // Toggle on
   const inner = selected.length > 0 ? selected : "text";
   const next = value.slice(0, start) + before + inner + after + value.slice(end);
   onChange(next);
@@ -65,50 +106,49 @@ export function FormattedTextarea({
     if (!el || !canFormat) return;
     wrapSelection(el, value, before, after, (next) => {
       onChange({
-        ...({} as React.ChangeEvent<HTMLTextAreaElement>),
-        target: { ...el, value: next },
-        currentTarget: { ...el, value: next },
-      });
+        target: { value: next },
+        currentTarget: { value: next },
+      } as React.ChangeEvent<HTMLTextAreaElement>);
     });
   };
 
   return (
     <div className="w-full space-y-1.5">
       {canFormat ? (
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1 rounded-md border bg-muted/40 p-1">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
-            className="h-7 px-2"
-            title="Bold (**text**)"
+            className="h-8 gap-1 px-2.5 font-bold"
+            title="Bold"
             onClick={() => applyFormat("**", "**")}
           >
             <Bold className="h-3.5 w-3.5" />
+            <span className="text-xs">Bold</span>
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
-            className="h-7 px-2"
-            title="Italic (*text*)"
+            className="h-8 gap-1 px-2.5 italic"
+            title="Italic"
             onClick={() => applyFormat("*", "*")}
           >
             <Italic className="h-3.5 w-3.5" />
+            <span className="text-xs not-italic">Italic</span>
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             size="sm"
-            className="h-7 px-2"
-            title="Underline (__text__)"
+            className="h-8 gap-1 px-2.5 underline"
+            title="Underline"
             onClick={() => applyFormat("__", "__")}
           >
             <Underline className="h-3.5 w-3.5" />
+            <span className="text-xs no-underline">Underline</span>
           </Button>
-          <span className="text-[10px] text-muted-foreground ml-1">
-            Select text, then format
-          </span>
         </div>
       ) : null}
       <Textarea

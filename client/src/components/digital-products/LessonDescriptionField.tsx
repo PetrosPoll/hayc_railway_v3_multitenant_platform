@@ -26,9 +26,48 @@ export function LessonDescriptionField({ id, value, onChange, disabled }: Props)
     const start = el.selectionStart;
     const end = el.selectionEnd;
     const selected = value.slice(start, end);
-    const inner = selected.length > 0 ? selected : t(
-      "digitalProductsManagement.courseEditor.curriculum.descriptionEditor.sampleText"
-    );
+    const isItalicStar = before === "*";
+
+    const selectionHasMarkers =
+      selected.length >= before.length + after.length &&
+      selected.startsWith(before) &&
+      selected.endsWith(after) &&
+      !(isItalicStar && selected.startsWith("**"));
+
+    const outerHasMarkers =
+      start >= before.length &&
+      end + after.length <= value.length &&
+      value.slice(start - before.length, start) === before &&
+      value.slice(end, end + after.length) === after &&
+      !(isItalicStar && value.slice(start - 2, start) === "**") &&
+      !(isItalicStar && value.slice(end, end + 2) === "**");
+
+    if (selectionHasMarkers) {
+      const inner = selected.slice(before.length, selected.length - after.length);
+      const next = value.slice(0, start) + inner + value.slice(end);
+      onChange(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(start, start + inner.length);
+      });
+      return;
+    }
+
+    if (outerHasMarkers) {
+      const next =
+        value.slice(0, start - before.length) + selected + value.slice(end + after.length);
+      onChange(next);
+      requestAnimationFrame(() => {
+        el.focus();
+        el.setSelectionRange(start - before.length, end - before.length);
+      });
+      return;
+    }
+
+    const inner =
+      selected.length > 0
+        ? selected
+        : t("digitalProductsManagement.courseEditor.curriculum.descriptionEditor.sampleText");
     const next = value.slice(0, start) + before + inner + after + value.slice(end);
     onChange(next);
 

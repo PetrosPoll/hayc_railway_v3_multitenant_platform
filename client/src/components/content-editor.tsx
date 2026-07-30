@@ -62,6 +62,15 @@ function createEmptyFromTemplate(template: unknown): unknown {
   return "";
 }
 
+function normalizeEditablePath(path: string): string {
+  const parts = path.split(".");
+  const last = parts[parts.length - 1];
+  if ((last === "el" || last === "en") && parts.length > 1) {
+    return parts.slice(0, -1).join(".");
+  }
+  return path;
+}
+
 function getValueAtPath(obj: Record<string, unknown>, path: string): unknown {
   const keys = path.split(".");
   let cur: unknown = obj;
@@ -972,17 +981,16 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
 
       if (isMobile) {
         // Normalise path: strip trailing .el / .en so we show the whole locale field
-        const parts = path.split('.');
-        const last = parts[parts.length - 1];
-        const normalized = (last === 'el' || last === 'en') && parts.length > 1
-          ? parts.slice(0, -1).join('.')
-          : path;
+        const normalized = normalizeEditablePath(path);
         setFieldDrawerPath(normalized);
         setFieldDrawerOpen(true);
         setConfigDrawerOpen(false);
       } else {
+        const normalized = normalizeEditablePath(path);
+        setFieldDrawerPath(normalized);
         setTimeout(() => {
           const el = document.querySelector(`[data-path="${path}"]`)
+            ?? document.querySelector(`[data-field-path="${normalized}"]`)
             ?? document.querySelector(`[data-field-path="${path}"]`)
             ?? document.querySelector(`[data-path="${path}.el"]`);
           if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1215,8 +1223,47 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
             </div>
 
             {/* Config panel — desktop only */}
-            <div className="hidden sm:block sm:w-1/4 h-full overflow-y-auto p-4 min-h-0" onClick={() => setHighlightedPath(null)}>
-              {configPanelContent}
+            <div className="hidden sm:flex sm:w-1/4 h-full min-h-0 flex-col border-l bg-background">
+              {fieldDrawerPath && localConfig && highlightedPath ? (
+                <div className="shrink-0 border-b bg-muted/30 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold">Editing field</p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        setFieldDrawerPath(null);
+                        setHighlightedPath(null);
+                      }}
+                    >
+                      Close
+                    </Button>
+                  </div>
+                  <ConfigField
+                    path={fieldDrawerPath}
+                    fieldKey={fieldDrawerPath.split(".").pop() ?? ""}
+                    value={getValueAtPath(localConfig, fieldDrawerPath)}
+                    onChange={handleFieldChange}
+                    highlightedPath={highlightedPath}
+                    websiteLanguage={previewLanguage ?? websiteLanguage}
+                    onRequestPickImage={(path) => setPickImagePath(path)}
+                  />
+                </div>
+              ) : (
+                <div className="shrink-0 border-b px-4 py-2">
+                  <p className="text-xs text-muted-foreground">
+                    Turn Edit Mode on, then click text on the preview to edit it here.
+                  </p>
+                </div>
+              )}
+              <div
+                className="min-h-0 flex-1 overflow-y-auto p-4"
+                onClick={() => setHighlightedPath(null)}
+              >
+                {configPanelContent}
+              </div>
             </div>
           </div>
 
