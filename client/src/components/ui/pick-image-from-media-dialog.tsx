@@ -173,6 +173,36 @@ function uploadConfigForAccept(accept: PickImageFromMediaDialogProps["accept"]):
   };
 }
 
+const CLOUDINARY_OVER_RADIX_STYLE_ID = "hayc-cloudinary-over-radix";
+
+function enableCloudinaryAboveRadix(): () => void {
+  const body = document.body;
+  const prevBodyPe = body.style.pointerEvents;
+  body.style.pointerEvents = "auto";
+
+  let styleEl = document.getElementById(CLOUDINARY_OVER_RADIX_STYLE_ID) as HTMLStyleElement | null;
+  if (!styleEl) {
+    styleEl = document.createElement("style");
+    styleEl.id = CLOUDINARY_OVER_RADIX_STYLE_ID;
+    styleEl.textContent = `
+      .cloudinary-overlay,
+      .cloudinary-widget,
+      .cloudinary-widget iframe,
+      iframe.cloudinary-widget,
+      div[class*="cloudinary"] {
+        pointer-events: auto !important;
+        z-index: 2147483647 !important;
+      }
+    `;
+    document.head.appendChild(styleEl);
+  }
+
+  return () => {
+    body.style.pointerEvents = prevBodyPe;
+    document.getElementById(CLOUDINARY_OVER_RADIX_STYLE_ID)?.remove();
+  };
+}
+
 export function PickImageFromMediaDialog({
   open,
   onClose,
@@ -185,19 +215,12 @@ export function PickImageFromMediaDialog({
 }: PickImageFromMediaDialogProps) {
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  /** Hide Radix dialog while Cloudinary is open — z-index alone can't beat Radix inert/focus layer. */
-  const [cloudinaryActive, setCloudinaryActive] = useState(false);
   const cloudinaryActiveRef = useRef(false);
+  const restorePointerEventsRef = useRef<(() => void) | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   const canUpload = allowUpload ?? true;
-
-  const setCloudinaryUiActive = (active: boolean) => {
-    cloudinaryActiveRef.current = active;
-    setCloudinaryActive(active);
-    onCloudinaryOpenChange?.(active);
-  };
 
   const { data, isLoading, refetch } = useQuery<{ media: MediaItem[] }>({
     queryKey: ["/api/websites", websiteId, "media"],
@@ -219,7 +242,10 @@ export function PickImageFromMediaDialog({
     if (!open) {
       setSelectedUrl(null);
       setIsUploading(false);
-      setCloudinaryUiActive(false);
+      cloudinaryActiveRef.current = false;
+      restorePointerEventsRef.current?.();
+      restorePointerEventsRef.current = null;
+      onCloudinaryOpenChange?.(false);
       return;
     }
     if (currentFieldUrl && mediaItems.some((m) => m.url === currentFieldUrl)) {
@@ -227,7 +253,7 @@ export function PickImageFromMediaDialog({
     } else {
       setSelectedUrl(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset selection when dialog opens / media loads
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, currentFieldUrl, mediaItems]);
 
   const handleSelect = () => {
@@ -281,15 +307,21 @@ export function PickImageFromMediaDialog({
   };
 
   const finishCloudinary = () => {
+    cloudinaryActiveRef.current = false;
     setIsUploading(false);
-    setCloudinaryUiActive(false);
+    restorePointerEventsRef.current?.();
+    restorePointerEventsRef.current = null;
+    onCloudinaryOpenChange?.(false);
   };
 
   const openUploadWidget = async () => {
     if (!canUpload || isUploading) return;
     setIsUploading(true);
-    // Unmount Radix dialog first so it stops owning the top layer / inert siblings
-    setCloudinaryUiActive(true);
+    cloudinaryActiveRef.current = true;
+    onCloudinaryOpenChange?.(true);
+    // Keep CMS + media dialog mounted; only unlock pointer-events so Cloudinary is clickable above Radix.
+    restorePointerEventsRef.current?.();
+    restorePointerEventsRef.current = enableCloudinaryAboveRadix();
     try {
       await loadCloudinaryWidget();
       const folder = await resolveUploadFolder();
@@ -306,13 +338,6 @@ export function PickImageFromMediaDialog({
       const configData = await configResponse.json();
       cloudinaryConfig.apiKey = configData.apiKey;
       cloudinaryConfig.cloudName = configData.cloudName;
-
-      // Let Radix finish unmounting / releasing inert before Cloudinary mounts
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
-      // One more frame after parent can flip modal={false}
-      await new Promise((r) => setTimeout(r, 50));
 
       const widget = window.cloudinary!.createUploadWidget(
         {
@@ -346,8 +371,7 @@ export function PickImageFromMediaDialog({
           maxFileSize: 52428800,
           resourceType: uploadCfg.resourceType,
           clientAllowedFormats: uploadCfg.clientAllowedFormats,
-          // Stay above any remaining app overlays (Radix dialogs use z-50 / z-100)
-          zIndex: 2147483646,
+          zIndex: 2147483647,
         },
         (error: unknown, result: { event?: string; info?: Record<string, unknown> }) => {
           if (error) {
@@ -412,10 +436,10 @@ export function PickImageFromMediaDialog({
 
   return (
     <Dialog
-      open={open && !cloudinaryActive}
+      open={open}
       onOpenChange={(next) => {
-        // Ignore programmatic close while Cloudinary owns the UI
-        if (!next && !cloudinaryActiveRef.current) onClose();
+        if (!next && cloudinaryActiveRef.current) return;
+        if (!next) onClose();
       }}
     >
       <DialogPortal
@@ -427,6 +451,18 @@ export function PickImageFromMediaDialog({
             "fixed left-[50%] top-[50%] z-[100] flex max-h-[85vh] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col gap-0 border bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
             "w-[min(100vw-2rem,56rem)] max-w-3xl overflow-hidden"
           )}
+          onInteractOutside={(e) => {
+            if (cloudinaryActiveRef.current) e.preventDefault();
+          }}
+          onPointerDownOutside={(e) => {
+            if (cloudinaryActiveRef.current) e.preventDefault();
+          }}
+          onFocusOutside={(e) => {
+            if (cloudinaryActiveRef.current) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (cloudinaryActiveRef.current) e.preventDefault();
+          }}
         >
           <div className="flex shrink-0 items-center justify-between gap-3 border-b px-6 py-4">
             <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">

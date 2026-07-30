@@ -897,8 +897,8 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const [editMode, setEditMode] = useState(false);
   const [previewLanguage, setPreviewLanguage] = useState<string | null>(null);
   const [pickImagePath, setPickImagePath] = useState<string | null>(null);
-  /** Drop CMS dialog modal trapping while Cloudinary upload widget is open */
-  const [cloudinaryUploadActive, setCloudinaryUploadActive] = useState(false);
+  /** While Cloudinary is open, ignore outside-dismiss on the CMS dialog (do not flip modal). */
+  const cloudinaryUploadActiveRef = useRef(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [fieldDrawerOpen, setFieldDrawerOpen] = useState(false);
   const [fieldDrawerPath, setFieldDrawerPath] = useState<string | null>(null);
@@ -1111,17 +1111,31 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
     <>
     <Dialog
       open={open}
-      modal={!cloudinaryUploadActive}
       onOpenChange={(v) => {
+        if (!v && cloudinaryUploadActiveRef.current) return;
         if (!v) {
           setConfigDrawerOpen(false);
           setFieldDrawerOpen(false);
-          setCloudinaryUploadActive(false);
         }
         onOpenChange(v);
       }}
     >
-      <DialogContent className="max-w-none w-screen h-screen h-dvh p-0 rounded-none border-0 gap-0 [&>button]:hidden" style={{ height: '100dvh' }}>
+      <DialogContent
+        className="max-w-none w-screen h-screen h-dvh p-0 rounded-none border-0 gap-0 [&>button]:hidden"
+        style={{ height: "100dvh" }}
+        onInteractOutside={(e) => {
+          if (cloudinaryUploadActiveRef.current) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (cloudinaryUploadActiveRef.current) e.preventDefault();
+        }}
+        onFocusOutside={(e) => {
+          if (cloudinaryUploadActiveRef.current) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (cloudinaryUploadActiveRef.current) e.preventDefault();
+        }}
+      >
         <VisuallyHidden.Root>
           <DialogTitle>Content Editor</DialogTitle>
         </VisuallyHidden.Root>
@@ -1381,7 +1395,9 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
         if (IMAGE_FIELD_KEYWORDS.some((k) => key.includes(k))) return "image";
         return undefined;
       })()}
-      onCloudinaryOpenChange={setCloudinaryUploadActive}
+      onCloudinaryOpenChange={(active) => {
+        cloudinaryUploadActiveRef.current = active;
+      }}
     />
     </>
   );
