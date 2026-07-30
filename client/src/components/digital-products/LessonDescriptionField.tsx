@@ -100,6 +100,7 @@ export function LessonDescriptionField({ id, value, onChange, disabled }: Props)
               className="h-8 px-2"
               disabled={disabled}
               title={t("digitalProductsManagement.courseEditor.curriculum.descriptionEditor.bold")}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => wrapSelection("**", "**")}
             >
               <Bold className="h-4 w-4" />
@@ -111,6 +112,7 @@ export function LessonDescriptionField({ id, value, onChange, disabled }: Props)
               className="h-8 px-2"
               disabled={disabled}
               title={t("digitalProductsManagement.courseEditor.curriculum.descriptionEditor.italic")}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => wrapSelection("*", "*")}
             >
               <Italic className="h-4 w-4" />
@@ -122,6 +124,7 @@ export function LessonDescriptionField({ id, value, onChange, disabled }: Props)
               className="h-8 px-2"
               disabled={disabled}
               title={t("digitalProductsManagement.courseEditor.curriculum.descriptionEditor.underline")}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => wrapSelection("__", "__")}
             >
               <Underline className="h-4 w-4" />
