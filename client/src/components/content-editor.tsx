@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { FormattedTextarea } from "@/components/ui/formatted-textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -133,33 +133,6 @@ function isFileField(fieldKey: string, value: string): boolean {
   return isFileFieldKey(fieldKey) || looksLikeFilePath(value);
 }
 
-function AutoResizeTextarea({ 
-  value, 
-  onChange, 
-  ...props 
-}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & { value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void }) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [value]);
-  
-  return (
-    <Textarea
-      ref={textareaRef}
-      value={value}
-      onChange={onChange}
-      className="min-h-[38px] resize-none overflow-hidden"
-      rows={1}
-      {...props}
-    />
-  );
-}
-
 function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlightedPath, readOnlyFields, websiteLanguage, onRequestPickImage }: ConfigFieldProps) {
   const highlightClass = highlightedPath === path ? "hayc-field-highlighted" : "";
   const isReadOnly = readOnlyFields?.includes(fieldKey) ?? false;
@@ -173,20 +146,24 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
         {showEl && (
           <div className="flex gap-2 items-start mb-1">
             <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EL</span>
-            <AutoResizeTextarea
+            <FormattedTextarea
               data-path={`${path}.el`}
               value={localeVal.el}
               onChange={(e) => onChange(path, { ...localeVal, el: e.target.value })}
+              readOnly={isReadOnly}
+              className={isReadOnly ? "bg-muted/50" : undefined}
             />
           </div>
         )}
         {showEn && (
           <div className="flex gap-2 items-start">
             <span className="text-xs text-muted-foreground w-6 shrink-0 pt-2">EN</span>
-            <AutoResizeTextarea
+            <FormattedTextarea
               data-path={`${path}.en`}
               value={localeVal.en}
               onChange={(e) => onChange(path, { ...localeVal, en: e.target.value })}
+              readOnly={isReadOnly}
+              className={isReadOnly ? "bg-muted/50" : undefined}
             />
           </div>
         )}
@@ -222,7 +199,7 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
         ) : isReadOnly ? (
           <Input data-path={path} value={value} readOnly className="bg-muted/50" />
         ) : (
-          <AutoResizeTextarea data-path={path} value={value} onChange={(e) => onChange(path, e.target.value)} />
+          <FormattedTextarea data-path={path} value={value} onChange={(e) => onChange(path, e.target.value)} />
         )}
       </div>
     );
