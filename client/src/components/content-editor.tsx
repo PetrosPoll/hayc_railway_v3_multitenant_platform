@@ -897,6 +897,8 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const [editMode, setEditMode] = useState(false);
   const [previewLanguage, setPreviewLanguage] = useState<string | null>(null);
   const [pickImagePath, setPickImagePath] = useState<string | null>(null);
+  /** Drop CMS dialog modal trapping while Cloudinary upload widget is open */
+  const [cloudinaryUploadActive, setCloudinaryUploadActive] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [fieldDrawerOpen, setFieldDrawerOpen] = useState(false);
   const [fieldDrawerPath, setFieldDrawerPath] = useState<string | null>(null);
@@ -1107,7 +1109,18 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { setConfigDrawerOpen(false); setFieldDrawerOpen(false); } onOpenChange(v); }}>
+    <Dialog
+      open={open}
+      modal={!cloudinaryUploadActive}
+      onOpenChange={(v) => {
+        if (!v) {
+          setConfigDrawerOpen(false);
+          setFieldDrawerOpen(false);
+          setCloudinaryUploadActive(false);
+        }
+        onOpenChange(v);
+      }}
+    >
       <DialogContent className="max-w-none w-screen h-screen h-dvh p-0 rounded-none border-0 gap-0 [&>button]:hidden" style={{ height: '100dvh' }}>
         <VisuallyHidden.Root>
           <DialogTitle>Content Editor</DialogTitle>
@@ -1362,11 +1375,13 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
       accept={(() => {
         if (!pickImagePath) return undefined;
         const key = pickImagePath.toLowerCase();
-        if (["video", "audio"].some((k) => key.includes(k))) return "video";
+        // Video slots can also take a still image if the customer changes their mind
+        if (["video", "audio"].some((k) => key.includes(k))) return "media";
         if (["pdf", "document", "attachment"].some((k) => key.includes(k))) return "file";
         if (IMAGE_FIELD_KEYWORDS.some((k) => key.includes(k))) return "image";
         return undefined;
       })()}
+      onCloudinaryOpenChange={setCloudinaryUploadActive}
     />
     </>
   );

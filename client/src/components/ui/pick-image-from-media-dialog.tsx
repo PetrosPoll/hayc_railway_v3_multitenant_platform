@@ -21,10 +21,18 @@ export interface PickImageFromMediaDialogProps {
   websiteId: string | number;
   /** When provided, preselects the matching media item in the grid */
   currentFieldUrl?: string;
-  /** When set, only items matching this resource type are selectable. Others are shown but greyed out. */
-  accept?: "image" | "video" | "file" | "attachment";
-  /** Show Upload New (Cloudinary → website media). Defaults to true except for video-only. */
+  /**
+   * When set, only matching items are selectable.
+   * - image: images only
+   * - video: videos only
+   * - media: images or videos (CMS hero/background slots)
+   * - file / attachment: documents (+ images for attachment)
+   */
+  accept?: "image" | "video" | "media" | "file" | "attachment";
+  /** Show Upload New (Cloudinary → website media). Defaults to true. */
   allowUpload?: boolean;
+  /** Fired when Cloudinary widget opens/closes so parent dialogs can drop modal/inert trapping. */
+  onCloudinaryOpenChange?: (active: boolean) => void;
 }
 
 type MediaItem = {
@@ -54,10 +62,45 @@ function extFromPathOrUrl(s: string): string {
   return m ? m[1].toLowerCase() : "";
 }
 
-function isAccepted(item: MediaItem, accept: "image" | "video" | "file" | "attachment" | undefined): boolean {
+const VIDEO_EXTENSIONS = new Set([
+  "mp4",
+  "webm",
+  "mov",
+  "m4v",
+  "avi",
+  "mkv",
+  "ogv",
+]);
+
+const IMAGE_FORMATS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "svg",
+  "bmp",
+  "heic",
+  "heif",
+];
+
+const VIDEO_FORMATS = ["mp4", "webm", "mov", "m4v", "avi", "mkv", "ogv"];
+
+function isAccepted(
+  item: MediaItem,
+  accept: PickImageFromMediaDialogProps["accept"],
+): boolean {
   if (!accept) return true;
   if (accept === "image") return item.resourceType === "image" || isImageMediaItem(item);
-  if (accept === "video") return item.resourceType === "video";
+  if (accept === "video") return item.resourceType === "video" || isVideoMediaItem(item);
+  if (accept === "media") {
+    return (
+      item.resourceType === "image" ||
+      item.resourceType === "video" ||
+      isImageMediaItem(item) ||
+      isVideoMediaItem(item)
+    );
+  }
   if (accept === "file") return item.resourceType === "raw";
   // Lesson attachments: documents (raw) + images
   if (accept === "attachment") {
@@ -73,14 +116,33 @@ function isImageMediaItem(m: MediaItem): boolean {
   return IMAGE_EXTENSIONS.has(ex);
 }
 
+function isVideoMediaItem(m: MediaItem): boolean {
+  if (m.resourceType === "video") return true;
+  if (m.resourceType === "image" || m.resourceType === "raw") return false;
+  const ex = extFromPathOrUrl(m.name) || extFromPathOrUrl(m.url);
+  return VIDEO_EXTENSIONS.has(ex);
+}
+
 function uploadConfigForAccept(accept: PickImageFromMediaDialogProps["accept"]): {
-  resourceType: "image" | "auto" | "raw";
+  resourceType: "image" | "video" | "auto" | "raw";
   clientAllowedFormats: string[];
 } {
   if (accept === "image") {
     return {
       resourceType: "image",
-      clientAllowedFormats: ["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "heic", "heif"],
+      clientAllowedFormats: [...IMAGE_FORMATS],
+    };
+  }
+  if (accept === "video") {
+    return {
+      resourceType: "video",
+      clientAllowedFormats: [...VIDEO_FORMATS],
+    };
+  }
+  if (accept === "media") {
+    return {
+      resourceType: "auto",
+      clientAllowedFormats: [...IMAGE_FORMATS, ...VIDEO_FORMATS],
     };
   }
   if (accept === "file") {
@@ -101,33 +163,13 @@ function uploadConfigForAccept(accept: PickImageFromMediaDialogProps["accept"]):
         "xls",
         "xlsx",
         "zip",
-        "jpg",
-        "jpeg",
-        "png",
-        "gif",
-        "webp",
-        "svg",
-        "bmp",
-        "heic",
-        "heif",
+        ...IMAGE_FORMATS,
       ],
     };
   }
   return {
     resourceType: "auto",
-    clientAllowedFormats: [
-      "jpg",
-      "jpeg",
-      "png",
-      "gif",
-      "webp",
-      "svg",
-      "bmp",
-      "pdf",
-      "doc",
-      "docx",
-      "zip",
-    ],
+    clientAllowedFormats: [...IMAGE_FORMATS, ...VIDEO_FORMATS, "pdf", "doc", "docx", "zip"],
   };
 }
 
@@ -139,6 +181,7 @@ export function PickImageFromMediaDialog({
   currentFieldUrl = "",
   accept,
   allowUpload,
+  onCloudinaryOpenChange,
 }: PickImageFromMediaDialogProps) {
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -148,7 +191,13 @@ export function PickImageFromMediaDialog({
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const canUpload = allowUpload ?? accept !== "video";
+  const canUpload = allowUpload ?? true;
+
+  const setCloudinaryUiActive = (active: boolean) => {
+    cloudinaryActiveRef.current = active;
+    setCloudinaryActive(active);
+    onCloudinaryOpenChange?.(active);
+  };
 
   const { data, isLoading, refetch } = useQuery<{ media: MediaItem[] }>({
     queryKey: ["/api/websites", websiteId, "media"],
@@ -170,8 +219,7 @@ export function PickImageFromMediaDialog({
     if (!open) {
       setSelectedUrl(null);
       setIsUploading(false);
-      cloudinaryActiveRef.current = false;
-      setCloudinaryActive(false);
+      setCloudinaryUiActive(false);
       return;
     }
     if (currentFieldUrl && mediaItems.some((m) => m.url === currentFieldUrl)) {
@@ -179,6 +227,7 @@ export function PickImageFromMediaDialog({
     } else {
       setSelectedUrl(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset selection when dialog opens / media loads
   }, [open, currentFieldUrl, mediaItems]);
 
   const handleSelect = () => {
@@ -232,17 +281,15 @@ export function PickImageFromMediaDialog({
   };
 
   const finishCloudinary = () => {
-    cloudinaryActiveRef.current = false;
     setIsUploading(false);
-    setCloudinaryActive(false);
+    setCloudinaryUiActive(false);
   };
 
   const openUploadWidget = async () => {
     if (!canUpload || isUploading) return;
     setIsUploading(true);
     // Unmount Radix dialog first so it stops owning the top layer / inert siblings
-    cloudinaryActiveRef.current = true;
-    setCloudinaryActive(true);
+    setCloudinaryUiActive(true);
     try {
       await loadCloudinaryWidget();
       const folder = await resolveUploadFolder();
@@ -260,10 +307,12 @@ export function PickImageFromMediaDialog({
       cloudinaryConfig.apiKey = configData.apiKey;
       cloudinaryConfig.cloudName = configData.cloudName;
 
-      // Let Radix finish unmounting before Cloudinary mounts its overlay
+      // Let Radix finish unmounting / releasing inert before Cloudinary mounts
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
       });
+      // One more frame after parent can flip modal={false}
+      await new Promise((r) => setTimeout(r, 50));
 
       const widget = window.cloudinary!.createUploadWidget(
         {
@@ -297,7 +346,8 @@ export function PickImageFromMediaDialog({
           maxFileSize: 52428800,
           resourceType: uploadCfg.resourceType,
           clientAllowedFormats: uploadCfg.clientAllowedFormats,
-          zIndex: 2147483000,
+          // Stay above any remaining app overlays (Radix dialogs use z-50 / z-100)
+          zIndex: 2147483646,
         },
         (error: unknown, result: { event?: string; info?: Record<string, unknown> }) => {
           if (error) {
