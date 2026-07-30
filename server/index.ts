@@ -8,25 +8,32 @@ import "dotenv/config";
 
 const app = express();
 // Skip JSON/urlencoded parsing for webhook endpoints - they need raw body for Stripe signature verification
-// Use larger limit for email templates (base64 images can be large) and bulk-import endpoints
+// Use larger limit for email templates (base64 images can be large), CMS site-config, and bulk-import endpoints
 app.use((req, res, next) => {
   if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect') {
     next();
   } else if ((req.originalUrl.startsWith('/api/email-templates') || req.originalUrl.startsWith('/api/admin/templates')) && (req.method === 'POST' || req.method === 'PATCH')) {
     // 50MB limit for email templates (to handle base64-encoded images)
     express.json({ limit: '50mb' })(req, res, next);
+  } else if (
+    (req.originalUrl.includes('/site-config') ||
+      /\/api\/sites\/[^/?]+\/config(?:\/|$|\?)/.test(req.originalUrl)) &&
+    (req.method === 'PUT' || req.method === 'POST' || req.method === 'PATCH')
+  ) {
+    // CMS saves full site config JSON (all pages/content) — default 100kb is too small
+    express.json({ limit: '10mb' })(req, res, next);
   } else if ((req.originalUrl.startsWith('/api/contacts/bulk-import') || req.originalUrl.startsWith('/api/admin/contacts/bulk-import')) && req.method === 'POST') {
     // 10MB limit for bulk-import endpoints (to handle large contact imports)
     express.json({ limit: '10mb' })(req, res, next);
   } else {
-    express.json()(req, res, next);
+    express.json({ limit: '1mb' })(req, res, next);
   }
 });
 app.use((req, res, next) => {
   if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect') {
     next();
   } else {
-    express.urlencoded({ extended: false })(req, res, next);
+    express.urlencoded({ extended: false, limit: '1mb' })(req, res, next);
   }
 });
 
