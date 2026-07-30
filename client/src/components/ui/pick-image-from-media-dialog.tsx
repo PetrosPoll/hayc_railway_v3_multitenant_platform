@@ -423,8 +423,8 @@ export function PickImageFromMediaDialog({
         <DialogOverlay className="z-[100]" />
         <DialogPrimitive.Content
           className={cn(
-            "fixed left-[50%] top-[50%] z-[100] flex max-h-[85vh] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col gap-0 border bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-            "relative w-[min(100vw-2rem,56rem)] max-w-3xl overflow-hidden",
+            "fixed left-1/2 top-1/2 z-[100] flex max-h-[85vh] w-[min(100vw-2rem,56rem)] max-w-3xl -translate-x-1/2 -translate-y-1/2 flex-col gap-0 overflow-hidden border bg-background p-0 shadow-lg duration-200 sm:rounded-lg",
+            "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
           )}
         >
           <div className="flex shrink-0 items-center justify-between gap-3 border-b px-6 py-4">
