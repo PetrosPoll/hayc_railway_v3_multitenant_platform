@@ -166,6 +166,22 @@ function uploadConfigForAccept(accept: PickImageFromMediaDialogProps["accept"]):
 
 type CloudinaryWidget = { open: () => void; close?: () => void; destroy?: () => void };
 
+/** Radix modal dialogs set pointer-events:none on body; Cloudinary mounts outside and becomes unusable. */
+function elevateCloudinaryOverlay() {
+  const selectors = [
+    ".cloudinary-widget",
+    ".cloudinary-overlay",
+    "#cloudinary-overlay",
+    '[class*="cloudinary"]',
+    'iframe[src*="cloudinary"]',
+  ];
+  document.querySelectorAll(selectors.join(",")).forEach((node) => {
+    const el = node as HTMLElement;
+    el.style.setProperty("pointer-events", "auto", "important");
+    el.style.setProperty("z-index", "2147483646", "important");
+  });
+}
+
 export function PickImageFromMediaDialog({
   open,
   onClose,
@@ -177,9 +193,10 @@ export function PickImageFromMediaDialog({
 }: PickImageFromMediaDialogProps) {
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [inlineUploadOpen, setInlineUploadOpen] = useState(false);
-  const inlineHostRef = useRef<HTMLDivElement>(null);
+  const [cloudinaryActive, setCloudinaryActive] = useState(false);
   const widgetRef = useRef<CloudinaryWidget | null>(null);
+  const suppressDialogCloseRef = useRef(false);
+  const elevateTimerRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -194,24 +211,37 @@ export function PickImageFromMediaDialog({
       if (!res.ok) throw new Error("Failed to fetch media");
       return res.json();
     },
-    enabled: open && websiteId !== "" && websiteId != null,
+    enabled: (open || cloudinaryActive) && websiteId !== "" && websiteId != null,
     staleTime: 0,
     gcTime: 0,
   });
 
   const mediaItems = useMemo(() => data?.media ?? [], [data?.media]);
 
+  const stopElevating = () => {
+    if (elevateTimerRef.current != null) {
+      window.clearInterval(elevateTimerRef.current);
+      elevateTimerRef.current = null;
+    }
+  };
+
+  const finishUpload = () => {
+    stopElevating();
+    suppressDialogCloseRef.current = false;
+    setIsUploading(false);
+    setCloudinaryActive(false);
+    try {
+      widgetRef.current?.destroy?.();
+    } catch {
+      /* ignore */
+    }
+    widgetRef.current = null;
+  };
+
   useEffect(() => {
     if (!open) {
+      finishUpload();
       setSelectedUrl(null);
-      setIsUploading(false);
-      setInlineUploadOpen(false);
-      try {
-        widgetRef.current?.destroy?.();
-      } catch {
-        /* ignore */
-      }
-      widgetRef.current = null;
       return;
     }
     if (currentFieldUrl && mediaItems.some((m) => m.url === currentFieldUrl)) {
@@ -219,7 +249,10 @@ export function PickImageFromMediaDialog({
     } else {
       setSelectedUrl(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only reset when dialog opens / media list changes
   }, [open, currentFieldUrl, mediaItems]);
+
+  useEffect(() => () => stopElevating(), []);
 
   const handleSelect = () => {
     if (!selectedUrl) return;
@@ -270,33 +303,12 @@ export function PickImageFromMediaDialog({
     return url;
   };
 
-  const finishInlineUpload = () => {
-    setIsUploading(false);
-    setInlineUploadOpen(false);
-    try {
-      widgetRef.current?.destroy?.();
-    } catch {
-      /* ignore */
-    }
-    widgetRef.current = null;
-    if (inlineHostRef.current) inlineHostRef.current.innerHTML = "";
-  };
-
   const openUploadWidget = async () => {
     if (!canUpload || isUploading) return;
     setIsUploading(true);
-    setInlineUploadOpen(true);
 
     try {
       await loadCloudinaryWidget();
-      // Wait for the inline host to mount
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
-      const host = inlineHostRef.current;
-      if (!host) throw new Error("Upload container not ready");
-      host.innerHTML = "";
-
       const folder = await resolveUploadFolder();
       const uploadCfg = uploadConfigForAccept(accept);
 
@@ -309,12 +321,17 @@ export function PickImageFromMediaDialog({
       if (!configResponse.ok) throw new Error("Failed to get upload configuration");
       const configData = await configResponse.json();
 
+      // Hide Choose File so Radix focus-trap / pointer-events don't block Cloudinary
+      suppressDialogCloseRef.current = true;
+      setCloudinaryActive(true);
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+
       const widget = window.cloudinary!.createUploadWidget(
         {
           cloudName: configData.cloudName,
           apiKey: configData.apiKey,
-          // Render inside our dialog — never as a body overlay that fights Radix/CMS
-          inlineContainer: host,
           uploadSignature: async (
             callback: (args: { signature: string; timestamp: number }) => void,
             paramsToSign: Record<string, unknown>,
@@ -351,7 +368,7 @@ export function PickImageFromMediaDialog({
               description: "Failed to upload file. Please try again.",
               variant: "destructive",
             });
-            finishInlineUpload();
+            finishUpload();
             return;
           }
           if (result?.event === "success" && result.info) {
@@ -385,17 +402,20 @@ export function PickImageFromMediaDialog({
                   variant: "destructive",
                 });
               })
-              .finally(() => finishInlineUpload());
+              .finally(() => finishUpload());
             return;
           }
           if (result?.event === "close" || result?.event === "abort") {
-            finishInlineUpload();
+            finishUpload();
           }
         },
       ) as CloudinaryWidget;
 
       widgetRef.current = widget;
       widget.open();
+      elevateCloudinaryOverlay();
+      stopElevating();
+      elevateTimerRef.current = window.setInterval(elevateCloudinaryOverlay, 250);
     } catch (err) {
       console.error("Upload init error:", err);
       toast({
@@ -403,18 +423,18 @@ export function PickImageFromMediaDialog({
         description: "Failed to initialize upload. Please try again.",
         variant: "destructive",
       });
-      finishInlineUpload();
+      finishUpload();
     }
   };
 
   return (
     <Dialog
-      open={open}
+      open={open && !cloudinaryActive}
       onOpenChange={(next) => {
-        if (!next && inlineUploadOpen) {
-          finishInlineUpload();
+        if (!next) {
+          if (suppressDialogCloseRef.current || cloudinaryActive) return;
+          onClose();
         }
-        if (!next) onClose();
       }}
     >
       <DialogPortal
@@ -429,10 +449,10 @@ export function PickImageFromMediaDialog({
         >
           <div className="flex shrink-0 items-center justify-between gap-3 border-b px-6 py-4">
             <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
-              {inlineUploadOpen ? "Upload New" : "Choose File"}
+              Choose File
             </DialogPrimitive.Title>
             <div className="flex items-center gap-2">
-              {canUpload && !inlineUploadOpen ? (
+              {canUpload ? (
                 <Button
                   type="button"
                   variant="secondary"
@@ -448,16 +468,6 @@ export function PickImageFromMediaDialog({
                   Upload New
                 </Button>
               ) : null}
-              {inlineUploadOpen ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => finishInlineUpload()}
-                >
-                  Back
-                </Button>
-              ) : null}
               <DialogPrimitive.Close asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Close">
                   <X className="h-4 w-4" />
@@ -467,12 +477,7 @@ export function PickImageFromMediaDialog({
           </div>
 
           <div className="relative min-h-0 flex-1 overflow-hidden">
-            <div
-              className={cn(
-                "h-full max-h-[min(60vh,28rem)] overflow-y-auto px-6 py-4 [scrollbar-gutter:stable]",
-                inlineUploadOpen && "invisible pointer-events-none absolute inset-0",
-              )}
-            >
+            <div className="h-full max-h-[min(60vh,28rem)] overflow-y-auto px-6 py-4 [scrollbar-gutter:stable]">
               {isLoading ? (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                   {Array.from({ length: 8 }).map((_, i) => (
@@ -554,27 +559,16 @@ export function PickImageFromMediaDialog({
                 </div>
               )}
             </div>
-
-            {inlineUploadOpen ? (
-              <div className="flex h-full min-h-[min(60vh,28rem)] flex-col px-2 py-2">
-                <div
-                  ref={inlineHostRef}
-                  className="min-h-[min(55vh,24rem)] w-full flex-1 overflow-auto"
-                />
-              </div>
-            ) : null}
           </div>
 
-          {!inlineUploadOpen ? (
-            <DialogFooter className="border-t px-6 py-4 sm:justify-end">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="button" onClick={handleSelect} disabled={!selectedUrl}>
-                Select
-              </Button>
-            </DialogFooter>
-          ) : null}
+          <DialogFooter className="border-t px-6 py-4 sm:justify-end">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSelect} disabled={!selectedUrl}>
+              Select
+            </Button>
+          </DialogFooter>
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>
