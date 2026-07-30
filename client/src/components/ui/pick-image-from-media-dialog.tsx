@@ -31,8 +31,6 @@ export interface PickImageFromMediaDialogProps {
   accept?: "image" | "video" | "media" | "file" | "attachment";
   /** Show Upload New (Cloudinary → website media). Defaults to true. */
   allowUpload?: boolean;
-  /** Fired when Cloudinary widget opens/closes so parent dialogs can drop modal/inert trapping. */
-  onCloudinaryOpenChange?: (active: boolean) => void;
 }
 
 type MediaItem = {
@@ -102,7 +100,6 @@ function isAccepted(
     );
   }
   if (accept === "file") return item.resourceType === "raw";
-  // Lesson attachments: documents (raw) + images
   if (accept === "attachment") {
     return item.resourceType === "raw" || item.resourceType === "image" || isImageMediaItem(item);
   }
@@ -128,16 +125,10 @@ function uploadConfigForAccept(accept: PickImageFromMediaDialogProps["accept"]):
   clientAllowedFormats: string[];
 } {
   if (accept === "image") {
-    return {
-      resourceType: "image",
-      clientAllowedFormats: [...IMAGE_FORMATS],
-    };
+    return { resourceType: "image", clientAllowedFormats: [...IMAGE_FORMATS] };
   }
   if (accept === "video") {
-    return {
-      resourceType: "video",
-      clientAllowedFormats: [...VIDEO_FORMATS],
-    };
+    return { resourceType: "video", clientAllowedFormats: [...VIDEO_FORMATS] };
   }
   if (accept === "media") {
     return {
@@ -173,35 +164,7 @@ function uploadConfigForAccept(accept: PickImageFromMediaDialogProps["accept"]):
   };
 }
 
-const CLOUDINARY_OVER_RADIX_STYLE_ID = "hayc-cloudinary-over-radix";
-
-function enableCloudinaryAboveRadix(): () => void {
-  const body = document.body;
-  const prevBodyPe = body.style.pointerEvents;
-  body.style.pointerEvents = "auto";
-
-  let styleEl = document.getElementById(CLOUDINARY_OVER_RADIX_STYLE_ID) as HTMLStyleElement | null;
-  if (!styleEl) {
-    styleEl = document.createElement("style");
-    styleEl.id = CLOUDINARY_OVER_RADIX_STYLE_ID;
-    styleEl.textContent = `
-      .cloudinary-overlay,
-      .cloudinary-widget,
-      .cloudinary-widget iframe,
-      iframe.cloudinary-widget,
-      div[class*="cloudinary"] {
-        pointer-events: auto !important;
-        z-index: 2147483647 !important;
-      }
-    `;
-    document.head.appendChild(styleEl);
-  }
-
-  return () => {
-    body.style.pointerEvents = prevBodyPe;
-    document.getElementById(CLOUDINARY_OVER_RADIX_STYLE_ID)?.remove();
-  };
-}
+type CloudinaryWidget = { open: () => void; close?: () => void; destroy?: () => void };
 
 export function PickImageFromMediaDialog({
   open,
@@ -211,12 +174,12 @@ export function PickImageFromMediaDialog({
   currentFieldUrl = "",
   accept,
   allowUpload,
-  onCloudinaryOpenChange,
 }: PickImageFromMediaDialogProps) {
   const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const cloudinaryActiveRef = useRef(false);
-  const restorePointerEventsRef = useRef<(() => void) | null>(null);
+  const [inlineUploadOpen, setInlineUploadOpen] = useState(false);
+  const inlineHostRef = useRef<HTMLDivElement>(null);
+  const widgetRef = useRef<CloudinaryWidget | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -242,10 +205,13 @@ export function PickImageFromMediaDialog({
     if (!open) {
       setSelectedUrl(null);
       setIsUploading(false);
-      cloudinaryActiveRef.current = false;
-      restorePointerEventsRef.current?.();
-      restorePointerEventsRef.current = null;
-      onCloudinaryOpenChange?.(false);
+      setInlineUploadOpen(false);
+      try {
+        widgetRef.current?.destroy?.();
+      } catch {
+        /* ignore */
+      }
+      widgetRef.current = null;
       return;
     }
     if (currentFieldUrl && mediaItems.some((m) => m.url === currentFieldUrl)) {
@@ -253,7 +219,6 @@ export function PickImageFromMediaDialog({
     } else {
       setSelectedUrl(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, currentFieldUrl, mediaItems]);
 
   const handleSelect = () => {
@@ -282,7 +247,6 @@ export function PickImageFromMediaDialog({
     secure_url?: string;
     public_id?: string;
     original_filename?: string;
-    resourceType?: string;
     resource_type?: string;
   }) => {
     const url = info.secure_url ?? "";
@@ -306,28 +270,36 @@ export function PickImageFromMediaDialog({
     return url;
   };
 
-  const finishCloudinary = () => {
-    cloudinaryActiveRef.current = false;
+  const finishInlineUpload = () => {
     setIsUploading(false);
-    restorePointerEventsRef.current?.();
-    restorePointerEventsRef.current = null;
-    onCloudinaryOpenChange?.(false);
+    setInlineUploadOpen(false);
+    try {
+      widgetRef.current?.destroy?.();
+    } catch {
+      /* ignore */
+    }
+    widgetRef.current = null;
+    if (inlineHostRef.current) inlineHostRef.current.innerHTML = "";
   };
 
   const openUploadWidget = async () => {
     if (!canUpload || isUploading) return;
     setIsUploading(true);
-    cloudinaryActiveRef.current = true;
-    onCloudinaryOpenChange?.(true);
-    // Keep CMS + media dialog mounted; only unlock pointer-events so Cloudinary is clickable above Radix.
-    restorePointerEventsRef.current?.();
-    restorePointerEventsRef.current = enableCloudinaryAboveRadix();
+    setInlineUploadOpen(true);
+
     try {
       await loadCloudinaryWidget();
+      // Wait for the inline host to mount
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      const host = inlineHostRef.current;
+      if (!host) throw new Error("Upload container not ready");
+      host.innerHTML = "";
+
       const folder = await resolveUploadFolder();
       const uploadCfg = uploadConfigForAccept(accept);
 
-      let cloudinaryConfig = { apiKey: "", cloudName: "" };
       const configResponse = await fetch("/api/cloudinary/signature", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -336,13 +308,13 @@ export function PickImageFromMediaDialog({
       });
       if (!configResponse.ok) throw new Error("Failed to get upload configuration");
       const configData = await configResponse.json();
-      cloudinaryConfig.apiKey = configData.apiKey;
-      cloudinaryConfig.cloudName = configData.cloudName;
 
       const widget = window.cloudinary!.createUploadWidget(
         {
-          cloudName: cloudinaryConfig.cloudName,
-          apiKey: cloudinaryConfig.apiKey,
+          cloudName: configData.cloudName,
+          apiKey: configData.apiKey,
+          // Render inside our dialog — never as a body overlay that fights Radix/CMS
+          inlineContainer: host,
           uploadSignature: async (
             callback: (args: { signature: string; timestamp: number }) => void,
             paramsToSign: Record<string, unknown>,
@@ -371,7 +343,6 @@ export function PickImageFromMediaDialog({
           maxFileSize: 52428800,
           resourceType: uploadCfg.resourceType,
           clientAllowedFormats: uploadCfg.clientAllowedFormats,
-          zIndex: 2147483647,
         },
         (error: unknown, result: { event?: string; info?: Record<string, unknown> }) => {
           if (error) {
@@ -380,7 +351,7 @@ export function PickImageFromMediaDialog({
               description: "Failed to upload file. Please try again.",
               variant: "destructive",
             });
-            finishCloudinary();
+            finishInlineUpload();
             return;
           }
           if (result?.event === "success" && result.info) {
@@ -414,14 +385,16 @@ export function PickImageFromMediaDialog({
                   variant: "destructive",
                 });
               })
-              .finally(() => finishCloudinary());
+              .finally(() => finishInlineUpload());
             return;
           }
           if (result?.event === "close" || result?.event === "abort") {
-            finishCloudinary();
+            finishInlineUpload();
           }
         },
-      );
+      ) as CloudinaryWidget;
+
+      widgetRef.current = widget;
       widget.open();
     } catch (err) {
       console.error("Upload init error:", err);
@@ -430,7 +403,7 @@ export function PickImageFromMediaDialog({
         description: "Failed to initialize upload. Please try again.",
         variant: "destructive",
       });
-      finishCloudinary();
+      finishInlineUpload();
     }
   };
 
@@ -438,7 +411,9 @@ export function PickImageFromMediaDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next && cloudinaryActiveRef.current) return;
+        if (!next && inlineUploadOpen) {
+          finishInlineUpload();
+        }
         if (!next) onClose();
       }}
     >
@@ -449,27 +424,15 @@ export function PickImageFromMediaDialog({
         <DialogPrimitive.Content
           className={cn(
             "fixed left-[50%] top-[50%] z-[100] flex max-h-[85vh] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] flex-col gap-0 border bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
-            "w-[min(100vw-2rem,56rem)] max-w-3xl overflow-hidden"
+            "relative w-[min(100vw-2rem,56rem)] max-w-3xl overflow-hidden",
           )}
-          onInteractOutside={(e) => {
-            if (cloudinaryActiveRef.current) e.preventDefault();
-          }}
-          onPointerDownOutside={(e) => {
-            if (cloudinaryActiveRef.current) e.preventDefault();
-          }}
-          onFocusOutside={(e) => {
-            if (cloudinaryActiveRef.current) e.preventDefault();
-          }}
-          onEscapeKeyDown={(e) => {
-            if (cloudinaryActiveRef.current) e.preventDefault();
-          }}
         >
           <div className="flex shrink-0 items-center justify-between gap-3 border-b px-6 py-4">
             <DialogPrimitive.Title className="text-lg font-semibold leading-none tracking-tight">
-              Choose File
+              {inlineUploadOpen ? "Upload New" : "Choose File"}
             </DialogPrimitive.Title>
             <div className="flex items-center gap-2">
-              {canUpload ? (
+              {canUpload && !inlineUploadOpen ? (
                 <Button
                   type="button"
                   variant="secondary"
@@ -485,6 +448,16 @@ export function PickImageFromMediaDialog({
                   Upload New
                 </Button>
               ) : null}
+              {inlineUploadOpen ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => finishInlineUpload()}
+                >
+                  Back
+                </Button>
+              ) : null}
               <DialogPrimitive.Close asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" aria-label="Close">
                   <X className="h-4 w-4" />
@@ -493,97 +466,115 @@ export function PickImageFromMediaDialog({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4 [scrollbar-gutter:stable]">
-            {isLoading ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-square w-full rounded-md" />
-                ))}
-              </div>
-            ) : mediaItems.length === 0 ? (
-              <div className="py-8 text-center space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  No files found yet.
-                </p>
-                {canUpload ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isUploading}
-                    onClick={() => void openUploadWidget()}
-                  >
-                    {isUploading ? (
-                      <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Upload className="mr-1.5 h-4 w-4" />
-                    )}
-                    Upload New
-                  </Button>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Upload files in the Media tab first.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {mediaItems.map((item) => {
-                  const isSelected = selectedUrl === item.url;
-                  const accepted = isAccepted(item, accept);
-                  const showImagePreview =
-                    item.resourceType === "image" || isImageMediaItem(item);
-                  return (
-                    <button
-                      key={item.publicId}
+          <div className="relative min-h-0 flex-1 overflow-hidden">
+            <div
+              className={cn(
+                "h-full max-h-[min(60vh,28rem)] overflow-y-auto px-6 py-4 [scrollbar-gutter:stable]",
+                inlineUploadOpen && "invisible pointer-events-none absolute inset-0",
+              )}
+            >
+              {isLoading ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="aspect-square w-full rounded-md" />
+                  ))}
+                </div>
+              ) : mediaItems.length === 0 ? (
+                <div className="py-8 text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">No files found yet.</p>
+                  {canUpload ? (
+                    <Button
                       type="button"
-                      disabled={!accepted}
-                      onClick={() => accepted && setSelectedUrl(item.url)}
-                      className={cn(
-                        "group relative flex flex-col overflow-hidden rounded-md border-2 bg-muted/30 text-left transition-colors",
-                        accepted ? "hover:bg-muted/50 cursor-pointer" : "pointer-events-none opacity-40 cursor-not-allowed",
-                        isSelected
-                          ? "border-primary ring-2 ring-primary ring-offset-2"
-                          : "border-transparent"
-                      )}
+                      variant="outline"
+                      size="sm"
+                      disabled={isUploading}
+                      onClick={() => void openUploadWidget()}
                     >
-                      {isSelected && (
-                        <span className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
-                          <Check className="h-3.5 w-3.5" />
-                        </span>
+                      {isUploading ? (
+                        <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Upload className="mr-1.5 h-4 w-4" />
                       )}
-                      <div className="aspect-square w-full overflow-hidden bg-muted flex items-center justify-center">
-                        {showImagePreview ? (
-                          <img
-                            src={item.previewUrl || item.url}
-                            alt=""
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : item.resourceType === "video" ? (
-                          <Film className="h-10 w-10 text-muted-foreground" />
-                        ) : (
-                          <File className="h-10 w-10 text-muted-foreground" />
+                      Upload New
+                    </Button>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Upload files in the Media tab first.
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {mediaItems.map((item) => {
+                    const isSelected = selectedUrl === item.url;
+                    const accepted = isAccepted(item, accept);
+                    const showImagePreview =
+                      item.resourceType === "image" || isImageMediaItem(item);
+                    return (
+                      <button
+                        key={item.publicId}
+                        type="button"
+                        disabled={!accepted}
+                        onClick={() => accepted && setSelectedUrl(item.url)}
+                        className={cn(
+                          "group relative flex flex-col overflow-hidden rounded-md border-2 bg-muted/30 text-left transition-colors",
+                          accepted
+                            ? "hover:bg-muted/50 cursor-pointer"
+                            : "pointer-events-none opacity-40 cursor-not-allowed",
+                          isSelected
+                            ? "border-primary ring-2 ring-primary ring-offset-2"
+                            : "border-transparent",
                         )}
-                      </div>
-                      <span className="truncate px-2 py-1.5 text-xs text-muted-foreground">
-                        {item.name}
-                      </span>
-                    </button>
-                  );
-                })}
+                      >
+                        {isSelected && (
+                          <span className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+                            <Check className="h-3.5 w-3.5" />
+                          </span>
+                        )}
+                        <div className="aspect-square w-full overflow-hidden bg-muted flex items-center justify-center">
+                          {showImagePreview ? (
+                            <img
+                              src={item.previewUrl || item.url}
+                              alt=""
+                              className="h-full w-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : item.resourceType === "video" ? (
+                            <Film className="h-10 w-10 text-muted-foreground" />
+                          ) : (
+                            <File className="h-10 w-10 text-muted-foreground" />
+                          )}
+                        </div>
+                        <span className="truncate px-2 py-1.5 text-xs text-muted-foreground">
+                          {item.name}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {inlineUploadOpen ? (
+              <div className="flex h-full min-h-[min(60vh,28rem)] flex-col px-2 py-2">
+                <div
+                  ref={inlineHostRef}
+                  className="min-h-[min(55vh,24rem)] w-full flex-1 overflow-auto"
+                />
               </div>
-            )}
+            ) : null}
           </div>
 
-          <DialogFooter className="border-t px-6 py-4 sm:justify-end">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="button" onClick={handleSelect} disabled={!selectedUrl}>
-              Select
-            </Button>
-          </DialogFooter>
+          {!inlineUploadOpen ? (
+            <DialogFooter className="border-t px-6 py-4 sm:justify-end">
+              <Button type="button" variant="outline" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button type="button" onClick={handleSelect} disabled={!selectedUrl}>
+                Select
+              </Button>
+            </DialogFooter>
+          ) : null}
         </DialogPrimitive.Content>
       </DialogPortal>
     </Dialog>
