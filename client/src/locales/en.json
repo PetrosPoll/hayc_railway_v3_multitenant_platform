@@ -3079,6 +3079,11 @@
         "previous": "Previous",
         "next": "Next"
     },
+    "formattedTextarea": {
+        "bold": "Bold",
+        "italic": "Italic",
+        "underline": "Underline"
+    },
     "unsubscribe": {
         "title": "Newsletter Unsubscribe",
         "subtitle": "Manage your email preferences",

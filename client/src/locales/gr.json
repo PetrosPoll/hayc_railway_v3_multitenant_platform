@@ -3079,6 +3079,11 @@
         "previous": "Προηγούμενη",
         "next": "Επόμενη"
     },
+    "formattedTextarea": {
+        "bold": "Έντονα",
+        "italic": "Πλάγια",
+        "underline": "Υπογράμμιση"
+    },
     "unsubscribe": {
         "title": "Κατάργηση Εγγραφής Newsletter",
         "subtitle": "Διαχειριστείτε τις προτιμήσεις email σας",

@@ -1,5 +1,6 @@
 import { useEffect, useRef, type TextareaHTMLAttributes } from "react";
 import { Bold, Italic, Underline } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -144,6 +145,7 @@ export function FormattedTextarea({
   readOnly,
   ...props
 }: FormattedTextareaProps) {
+  const { t } = useTranslation();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const pendingSelectionRef = useRef<SelectionRange | null>(null);
   const canFormat = !disabled && !readOnly;
@@ -192,36 +194,36 @@ export function FormattedTextarea({
             variant="secondary"
             size="sm"
             className="h-8 gap-1 px-2.5 font-bold"
-            title="Bold"
+            title={t("formattedTextarea.bold")}
             onMouseDown={preserveSelection}
             onClick={() => applyFormat("**", "**")}
           >
             <Bold className="h-3.5 w-3.5" />
-            <span className="text-xs">Bold</span>
+            <span className="text-xs">{t("formattedTextarea.bold")}</span>
           </Button>
           <Button
             type="button"
             variant="secondary"
             size="sm"
             className="h-8 gap-1 px-2.5 italic"
-            title="Italic"
+            title={t("formattedTextarea.italic")}
             onMouseDown={preserveSelection}
             onClick={() => applyFormat("*", "*")}
           >
             <Italic className="h-3.5 w-3.5" />
-            <span className="text-xs not-italic">Italic</span>
+            <span className="text-xs not-italic">{t("formattedTextarea.italic")}</span>
           </Button>
           <Button
             type="button"
             variant="secondary"
             size="sm"
             className="h-8 gap-1 px-2.5 underline"
-            title="Underline"
+            title={t("formattedTextarea.underline")}
             onMouseDown={preserveSelection}
             onClick={() => applyFormat("__", "__")}
           >
             <Underline className="h-3.5 w-3.5" />
-            <span className="text-xs no-underline">Underline</span>
+            <span className="text-xs no-underline">{t("formattedTextarea.underline")}</span>
           </Button>
         </div>
       ) : null}
