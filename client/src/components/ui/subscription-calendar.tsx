@@ -24,6 +24,18 @@ import { Subscription, CustomPayment, PaymentObligation, PaymentSettlement } fro
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
+/** Local calendar day key (YYYY-MM-DD). Avoids UTC day-shift from toISOString(). */
+function toDateKey(input: string | Date | null | undefined): string | null {
+  if (!input) return null;
+  if (typeof input === "string") {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(input);
+    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+  }
+  const d = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(d.getTime())) return null;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 interface StripePayment {
   id: string;
   type: 'stripe_invoice' | 'stripe_upcoming';
@@ -156,7 +168,7 @@ export function SubscriptionCalendar() {
       const res = await apiRequest('POST', '/api/admin/custom-payments/migrate-future-to-outstanding', {});
       return (await res.json()) as { message: string; created: number; skipped: number };
     },
-    onSuccess: (data: { message: string; created: number; skipped: number }) => {
+    onSuccess: (data: { message: string; created: number; skipped: number; duplicatesRemoved?: number }) => {
       toast({
         title: "Migration Complete",
         description: data.message,
@@ -192,44 +204,74 @@ export function SubscriptionCalendar() {
     queryKey: ["/api/admin/payment-obligations"],
   });
 
-  const allObligations = obligationsData?.obligations || [];
-  const outstandingObligations = allObligations.filter(
-    o => o.status === 'pending' || o.status === 'grace' || o.status === 'retrying' || o.status === 'delinquent' || o.status === 'failed'
+  const allObligations = obligationsData?.obligations ?? [];
+  const outstandingObligations = useMemo(
+    () =>
+      allObligations.filter(
+        (o) =>
+          o.status === "pending" ||
+          o.status === "grace" ||
+          o.status === "retrying" ||
+          o.status === "delinquent" ||
+          o.status === "failed",
+      ),
+    [allObligations],
   );
 
   // Outstanding for current month only (for summary and list - changes with calendar month)
-  const outstandingObligationsForMonth = outstandingObligations.filter(o => {
-    if (!o.dueDate) return false;
-    const d = new Date(o.dueDate);
-    return d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear();
-  });
+  // Deduplicate timezone twin rows (same custom payment + local day) caused by UTC vs local date keys.
+  const outstandingObligationsForMonth = useMemo(() => {
+    const monthItems = outstandingObligations.filter((o) => {
+      if (!o.dueDate) return false;
+      const d = new Date(o.dueDate);
+      return d.getMonth() === currentMonth.getMonth() && d.getFullYear() === currentMonth.getFullYear();
+    });
+    const seen = new Set<string>();
+    const deduped: PaymentObligation[] = [];
+    for (const o of monthItems) {
+      const day = toDateKey(o.dueDate);
+      const key =
+        o.customPaymentId != null
+          ? `custom:${o.customPaymentId}:${day}:${o.amountDue}`
+          : o.stripeInvoiceId
+            ? `stripe:${o.stripeInvoiceId}`
+            : `id:${o.id}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      deduped.push(o);
+    }
+    return deduped;
+  }, [outstandingObligations, currentMonth]);
 
   // Helper to check if an OUTSTANDING (unpaid) obligation exists for a specific payment date.
   // Excludes settled/written_off/stopped - when marked as paid, the calendar should show "Paid" not "Outstanding".
   const hasOutstandingObligation = (customPaymentId: number, paymentDate: Date) => {
-    const dateStr = paymentDate.toISOString().split('T')[0];
-    return outstandingObligations.some(o => 
-      o.customPaymentId === customPaymentId && 
-      o.dueDate && new Date(o.dueDate).toISOString().split('T')[0] === dateStr
+    const dateStr = toDateKey(paymentDate);
+    if (!dateStr) return false;
+    return outstandingObligations.some(o =>
+      o.customPaymentId === customPaymentId &&
+      toDateKey(o.dueDate) === dateStr
     );
   };
 
   // Helper to check if ANY obligation exists (for preventing duplicate "mark as unpaid" on same date)
   const hasExistingObligation = (customPaymentId: number, paymentDate: Date) => {
-    const dateStr = paymentDate.toISOString().split('T')[0];
-    return allObligations.some(o => 
-      o.customPaymentId === customPaymentId && 
-      o.dueDate && new Date(o.dueDate).toISOString().split('T')[0] === dateStr
+    const dateStr = toDateKey(paymentDate);
+    if (!dateStr) return false;
+    return allObligations.some(o =>
+      o.customPaymentId === customPaymentId &&
+      toDateKey(o.dueDate) === dateStr
     );
   };
 
   // Helper to get the settled obligation for a custom payment + date (for "Revert to unpaid")
   const getSettledObligation = (customPaymentId: number, paymentDate: Date) => {
-    const dateStr = paymentDate.toISOString().split('T')[0];
-    return allObligations.find(o => 
-      o.customPaymentId === customPaymentId && 
+    const dateStr = toDateKey(paymentDate);
+    if (!dateStr) return undefined;
+    return allObligations.find(o =>
+      o.customPaymentId === customPaymentId &&
       o.status === 'settled' &&
-      o.dueDate && new Date(o.dueDate).toISOString().split('T')[0] === dateStr
+      toDateKey(o.dueDate) === dateStr
     );
   };
 
@@ -366,7 +408,7 @@ export function SubscriptionCalendar() {
         clientName,
         amountDue: amount,
         currency: 'eur',
-        dueDate: dueDate.toISOString(),
+        dueDate: toDateKey(dueDate),
         origin: 'custom',
         notes: description || 'Custom payment marked as unpaid'
       });

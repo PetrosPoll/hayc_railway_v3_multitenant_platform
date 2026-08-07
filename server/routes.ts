@@ -22266,6 +22266,30 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   // ============================================
   // Custom Payments API Routes
   // ============================================
+
+  /** Parse YYYY-MM-DD (or Date) as local noon to avoid UTC day-shift. */
+  const parseDateOnly = (input: string | Date): Date => {
+    if (input instanceof Date) {
+      return new Date(input.getFullYear(), input.getMonth(), input.getDate(), 12, 0, 0, 0);
+    }
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(input));
+    if (m) {
+      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12, 0, 0, 0);
+    }
+    const d = new Date(input);
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0, 0);
+  };
+
+  const toLocalDateKey = (input: string | Date | null | undefined): string | null => {
+    if (!input) return null;
+    if (typeof input === "string") {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(input);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+    }
+    const d = input instanceof Date ? input : new Date(input);
+    if (Number.isNaN(d.getTime())) return null;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
   
   // Migrate existing custom payments: create obligations for future dates (from next month)
   app.post("/api/admin/custom-payments/migrate-future-to-outstanding", async (req, res) => {
@@ -22284,25 +22308,45 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
 
       let created = 0;
       let skipped = 0;
+      let duplicatesRemoved = 0;
 
       for (const payment of activePayments) {
         const existingObligations = await storage.getObligationsByCustomPaymentId(payment.id);
         const existingDueDates = new Set(
           existingObligations
-            .filter((o: { dueDate: Date | null }) => o.dueDate)
-            .map((o: { dueDate: Date }) => new Date(o.dueDate).toISOString().split("T")[0])
+            .map((o: { dueDate: Date | null }) => toLocalDateKey(o.dueDate))
+            .filter((k: string | null): k is string => Boolean(k))
         );
+
+        // Collapse timezone twin pending obligations (same local day)
+        const seenLocal = new Map<string, number>();
+        for (const o of existingObligations) {
+          if (!['pending', 'grace', 'retrying', 'delinquent', 'failed'].includes(o.status)) continue;
+          const key = toLocalDateKey(o.dueDate);
+          if (!key) continue;
+          const prev = seenLocal.get(key);
+          if (prev == null) {
+            seenLocal.set(key, o.id);
+            continue;
+          }
+          // Keep the older id, write off the duplicate twin
+          const keepId = Math.min(prev, o.id);
+          const dropId = Math.max(prev, o.id);
+          seenLocal.set(key, keepId);
+          await storage.markObligationWrittenOff(dropId, "Removed duplicate outstanding (timezone twin)");
+          duplicatesRemoved++;
+        }
 
         const excludedDates = new Set((payment.excludedDates || []).map((d: string) =>
           d.includes("T") ? d.split("T")[0] : d
         ));
 
-        let currentDate = new Date(payment.startDate);
+        let currentDate = parseDateOnly(payment.startDate);
         const rangeEnd = new Date(twoYearsAhead.getFullYear(), twoYearsAhead.getMonth() + 1, 0);
 
         while (currentDate <= rangeEnd) {
           if (currentDate >= nextMonthStart) {
-            const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, "0")}-${String(currentDate.getDate()).padStart(2, "0")}`;
+            const dateKey = toLocalDateKey(currentDate)!;
             if (!excludedDates.has(dateKey) && !existingDueDates.has(dateKey)) {
               await storage.createPaymentObligation({
                 customPaymentId: payment.id,
@@ -22311,7 +22355,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
                 clientName: payment.clientName,
                 amountDue: payment.amount,
                 currency: payment.currency || "eur",
-                dueDate: new Date(currentDate),
+                dueDate: parseDateOnly(currentDate),
                 status: "pending",
                 origin: "custom",
                 notes: "Migrated: future payment marked outstanding",
@@ -22329,14 +22373,17 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
             currentDate.setFullYear(currentDate.getFullYear() + 1);
           } else if (payment.frequency === "weekly") {
             currentDate.setDate(currentDate.getDate() + 7);
+          } else {
+            break;
           }
         }
       }
 
       res.json({
-        message: `Migration complete. Created ${created} obligations, skipped ${skipped} (already exist).`,
+        message: `Migration complete. Created ${created} obligations, skipped ${skipped} (already exist), removed ${duplicatesRemoved} duplicates.`,
         created,
         skipped,
+        duplicatesRemoved,
       });
     } catch (error) {
       console.error("Error migrating custom payments:", error);
@@ -22386,7 +22433,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         amount: Math.round(amount * 100), // Convert to cents
         currency: currency || "eur",
         frequency: frequency || "monthly",
-        startDate: new Date(startDate),
+        startDate: parseDateOnly(startDate),
         paymentType: paymentType || "cash",
         description: description || null,
         isActive: true,
@@ -22403,7 +22450,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         clientName,
         amountDue: Math.round(amount * 100),
         currency: currency || "eur",
-        dueDate: new Date(startDate),
+        dueDate: parseDateOnly(startDate),
         status: "pending",
         origin: "custom",
         notes: notes || "Custom payment - unpaid by default",
@@ -22576,6 +22623,18 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(400).json({ error: "Client name, amount due, and due date are required" });
       }
 
+      const parsedDue = parseDateOnly(dueDate);
+      const dueKey = toLocalDateKey(parsedDue);
+
+      // Prevent timezone twin duplicates for the same custom payment + local day
+      if (customPaymentId && dueKey) {
+        const existing = await storage.getObligationsByCustomPaymentId(Number(customPaymentId));
+        const twin = existing.find((o) => toLocalDateKey(o.dueDate) === dueKey);
+        if (twin) {
+          return res.json({ obligation: twin, deduped: true });
+        }
+      }
+
       const obligation = await storage.createPaymentObligation({
         customPaymentId: customPaymentId || null,
         subscriptionId: subscriptionId || null,
@@ -22583,7 +22642,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         clientName,
         amountDue: Math.round(amountDue * 100), // Convert to cents
         currency: currency || "eur",
-        dueDate: new Date(dueDate),
+        dueDate: parsedDue,
         status: "pending",
         origin: origin || "custom",
         stripeInvoiceId: stripeInvoiceId || null,
