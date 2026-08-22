@@ -104,6 +104,8 @@ export const EMAIL_LIMITS = {
 
 export function getEmailLimit(tier: string | null): number {
   if (!tier) return 0;
+  const normalized = tier.toLowerCase();
+  if (normalized.startsWith("legacy_")) return EMAIL_LIMITS.ESSENTIAL;
   const upperTier = tier.toUpperCase();
   if (upperTier === 'BASIC') return EMAIL_LIMITS.BASIC;
   if (upperTier === 'ESSENTIAL') return EMAIL_LIMITS.ESSENTIAL;
