@@ -72,6 +72,14 @@ import multer from "multer";
 import { createHash, randomBytes } from "crypto";
 import rateLimit from "express-rate-limit";
 import { getPrices, initializePricingCache } from "./stripe/pricing";
+import { registerPromoCodeRoutes } from "./promo-code-routes";
+import {
+  applyPromoToCheckoutSession,
+  buildCheckoutEmailPricing,
+  getPromoCodeForSessionMetadata,
+  resolveActivePromoCode,
+  recordPromoRedemption,
+} from "./promo-codes";
 import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUrl, generateUnsubscribeFooter, resolveUnsubscribeBaseUrl } from "./unsubscribe-utils";
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
@@ -517,6 +525,8 @@ async function allocateUniqueUsernameForCheckout(preferred: string): Promise<str
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupAuth(app);
+
+  registerPromoCodeRoutes(app, stripe);
 
   // Initialize pricing cache on server startup
   // initializePricingCache().catch((error) => {
@@ -2525,6 +2535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       language: z.string().optional(), // Add support for language preference
       isResume: z.boolean().optional(), // Add support for resume flow
       websiteProgressId: z.number().optional(), // Add support for website progress ID
+      promoCode: z.string().optional(),
     });
 
     try {
@@ -2617,6 +2628,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           sessionConfig.customer_email = body.email;
         }
 
+        if (body.promoCode?.trim()) {
+          const promo = await resolveActivePromoCode(stripe, body.promoCode);
+          if (!promo) {
+            return res.status(400).json({
+              error: "Invalid or expired promo code",
+              code: "INVALID_PROMO",
+            });
+          }
+          await applyPromoToCheckoutSession(sessionConfig, promo);
+        }
+
         const session = await stripe.checkout.sessions.create(sessionConfig);
 
         res.json({ url: session.url });
@@ -2667,6 +2689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       addOns: z.array(z.string()).optional(),
       language: z.string().optional(),
       speedUpDev: z.boolean().optional().default(false),
+      promoCode: z.string().optional(),
     });
 
     try {
@@ -2766,6 +2789,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sessionConfig.customer = stripeCustomerId;
       } else {
         sessionConfig.customer_email = body.email;
+      }
+
+      if (body.promoCode?.trim()) {
+        const promo = await resolveActivePromoCode(stripe, body.promoCode);
+        if (!promo) {
+          return res.status(400).json({
+            error: "Invalid or expired promo code",
+            code: "INVALID_PROMO",
+          });
+        }
+        await applyPromoToCheckoutSession(sessionConfig, promo);
       }
 
       const session = await stripe.checkout.sessions.create(sessionConfig);
@@ -4179,6 +4213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             // Create a separate subscription record for each subscription item
+            let planSubscriptionId: number | null = null;
             for (const item of stripeSubscription.items.data) {
               const priceId = item.price.id;
               
@@ -4234,6 +4269,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     .where(eq(subscriptionsTable.id, scheduledSubscription[0].id));
                   
                   console.log('✅ Updated scheduled subscription to active subscription');
+                  if (productType === "plan") {
+                    planSubscriptionId = scheduledSubscription[0].id;
+                  }
                   continue; // Don't create a new record
                 }
               }
@@ -4331,6 +4369,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 }
               }
 
+              if (productType === "plan" && createdSubscription?.id) {
+                planSubscriptionId = createdSubscription.id;
+              }
+
+            }
+
+            // Attribute ambassador promo code redemption (idempotent on checkout session)
+            const promoCodeIdMeta = session.metadata?.promoCodeId
+              ? parseInt(session.metadata.promoCodeId, 10)
+              : NaN;
+            const ambassadorIdMeta = session.metadata?.ambassadorId
+              ? parseInt(session.metadata.ambassadorId, 10)
+              : NaN;
+            if (
+              user?.id &&
+              Number.isFinite(promoCodeIdMeta) &&
+              Number.isFinite(ambassadorIdMeta) &&
+              ambassadorIdMeta > 0
+            ) {
+              try {
+                await recordPromoRedemption({
+                  promoCodeId: promoCodeIdMeta,
+                  ambassadorId: ambassadorIdMeta,
+                  userId: user.id,
+                  subscriptionId: planSubscriptionId,
+                  checkoutSessionId: session.id,
+                  stripePromotionCodeId:
+                    session.metadata?.stripePromotionCodeId || null,
+                  codeSnapshot: session.metadata?.promoCode || "",
+                });
+                console.log("✅ Recorded promo redemption:", {
+                  promoCode: session.metadata?.promoCode,
+                  userId: user.id,
+                  checkoutSessionId: session.id,
+                });
+              } catch (promoErr) {
+                console.error("❌ Failed to record promo redemption:", promoErr);
+              }
             }
 
             // New get-started flow: create get_started_submissions row on confirmed payment
@@ -4449,29 +4525,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 html: adminEmailHtml,
               });
             } else {
-              // Calculate the base subscription price from the Stripe subscription items (excluding setup fee and add-ons)
-              const planPriceItem = stripeSubscription.items.data.find(item => 
-                item.price.id === SUBSCRIPTION_PRICES[planId].monthly || 
-                item.price.id === SUBSCRIPTION_PRICES[planId].yearly
-              );
-              
-              const basePriceInCents = planPriceItem?.price.unit_amount || 0;
-              const basePriceFormatted = (basePriceInCents / 100).toFixed(2);
-
-              // Get the setup fee from the session's line items (setup fee is a one-time charge, not in subscription items)
-              let setupFeeInCents = 0;
+              // Pricing for confirmation emails — from Stripe checkout session + line items
+              let checkoutSession = session;
               try {
-                const lineItems = await stripe.checkout.sessions.listLineItems(session.id, {
-                  expand: ['data.price']
+                checkoutSession = await stripe.checkout.sessions.retrieve(session.id, {
+                  expand: ["total_details.breakdown"],
                 });
-                const setupFeeLineItem = lineItems.data.find(item =>
-                  item.price?.id === SETUP_FEE_PRICES[planId]
-                );
-                setupFeeInCents = setupFeeLineItem?.amount_total || 0;
               } catch (error) {
-                console.error('Error fetching setup fee from session line items:', error);
+                console.error("Error retrieving checkout session for email:", error);
               }
-              const setupFeeFormatted = (setupFeeInCents / 100).toFixed(2);
+
+              let checkoutLineItems: Stripe.LineItem[] = [];
+              try {
+                const listed = await stripe.checkout.sessions.listLineItems(session.id, {
+                  expand: ["data.price", "data.discounts"],
+                });
+                checkoutLineItems = listed.data;
+              } catch (error) {
+                console.error("Error fetching checkout line items for email:", error);
+              }
+
+              const planPriceItem = stripeSubscription.items.data.find(
+                (item) =>
+                  item.price.id === SUBSCRIPTION_PRICES[planId].monthly ||
+                  item.price.id === SUBSCRIPTION_PRICES[planId].yearly,
+              );
+
+              const promoFromDb = await getPromoCodeForSessionMetadata(checkoutSession);
+
+              const pricing = buildCheckoutEmailPricing({
+                session: checkoutSession,
+                lineItems: checkoutLineItems,
+                planMonthlyPriceId: SUBSCRIPTION_PRICES[planId].monthly,
+                planYearlyPriceId: SUBSCRIPTION_PRICES[planId].yearly,
+                setupFeePriceId: SETUP_FEE_PRICES[planId],
+                speedDevPriceId: process.env.STRIPE_SPEED_DEV_PRICE_ID,
+                priceToAddonMap: PRICE_TO_ADDON_MAP,
+                resolveAddonName: (addonId) =>
+                  availableAddOns.find((a) => a.id === addonId)?.name ?? addonId,
+                planListFallbackCents: planPriceItem?.price.unit_amount ?? undefined,
+                promoFromDb,
+              });
+
+              const addOnsHtml = pricing.addOns
+                .map(
+                  (addon) => `
+                    <div class="addon-item">
+                      <div class="price-row">
+                        <span>${addon.name}</span>
+                        <span>${pricing.currency} ${addon.price.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  `,
+                )
+                .join("");
 
               // User confirmation email for new subscription
               emailTasks.push({
@@ -4481,29 +4588,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   username: session.metadata?.username,
                   email: customerEmail,
                   plan: planId,
-                  amount: session.amount_total
-                    ? (session.amount_total / 100).toFixed(2)
-                    : "0.00",
-                  baseAmount: basePriceFormatted,
-                  setupFee: setupFeeFormatted,
-                  hasSetupFee: setupFeeInCents > 0,
-                  currency: session.currency?.toUpperCase(),
+                  amount: pricing.amount,
+                  baseAmount: pricing.baseAmount,
+                  baseAmountOriginal: pricing.baseAmountOriginal,
+                  planDiscountAmount: pricing.planDiscountAmount,
+                  hasPlanPromo: pricing.hasPlanPromo,
+                  promoCode: pricing.promoCode,
+                  setupFee: pricing.setupFee,
+                  hasSetupFee: pricing.hasSetupFee,
+                  currency: pricing.currency,
                   startDate: new Date(),
                   language: userLanguage,
-                  hasAddOns: addOnsInfo.length > 0,
-                  addOns: addOnsInfo,
-                  addOnsHtml: addOnsInfo
-                    .map(
-                      (addon) => `
-                    <div class="addon-item">
-                      <div class="price-row">
-                        <span>${addon.name}</span>
-                        <span>${session.currency?.toUpperCase()} ${addon.price.toFixed(2)}</span>
-                      </div>
-                    </div>
-                  `,
-                    )
-                    .join(""),
+                  hasAddOns: pricing.addOns.length > 0,
+                  addOns: pricing.addOns,
+                  addOnsHtml,
                 }
               });
 
@@ -4515,16 +4613,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   email: customerEmail,
                   plan: planId,
                   subscriptionDate: new Date().toLocaleDateString(),
-                  amount: session.amount_total
-                    ? (session.amount_total / 100).toFixed(2)
-                    : "0.00",
-                  currency: session.currency?.toUpperCase(),
-                  hasAddOns: addOnsInfo.length > 0,
+                  amount: pricing.amount,
+                  currency: pricing.currency,
+                  hasAddOns: pricing.addOns.length > 0,
+                  hasPlanPromo: pricing.hasPlanPromo,
+                  promoCode: pricing.promoCode,
+                  planDiscountAmount: pricing.planDiscountAmount,
                   addOnsDetails:
-                    addOnsInfo
+                    pricing.addOns
                       .map(
                         (addon) =>
-                          `${addon.name} (+${session.currency?.toUpperCase()} ${addon.price.toFixed(2)})`,
+                          `${addon.name} (+${pricing.currency} ${addon.price.toFixed(2)})`,
                       )
                       .join(", ") || "None",
                 },
@@ -5833,8 +5932,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       template = template.replace(
         /{{#if\s+([^}]+)}}([\s\S]*?){{\/if}}/g,
         (match, condition, content) => {
-          const conditionValue = enrichedReplacements[condition];
-          return conditionValue ? content : "";
+          const conditionValue = enrichedReplacements[condition.trim()];
+          const isTruthy =
+            conditionValue === true ||
+            conditionValue === "true" ||
+            (!!conditionValue &&
+              conditionValue !== "false" &&
+              conditionValue !== "0");
+          return isTruthy ? content : "";
         },
       );
 
@@ -9754,14 +9859,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       Array.isArray(data.addOns) &&
       data.addOns.length > 0
     ) {
-      // Format add-ons data for the template
       templateData.hasAddOns = true;
-      templateData.addOnsHtml = "";
+      templateData.addOnsHtml = templateData.addOnsHtml || "";
 
-      let addOnsTotal = 0;
-
-      data.addOns.forEach((addon: any) => {
-        templateData.addOnsHtml += `
+      if (!templateData.addOnsHtml) {
+        data.addOns.forEach((addon: any) => {
+          templateData.addOnsHtml += `
           <div class="addon-item">
             <div class="price-row">
               <span>${addon.name}</span>
@@ -9769,13 +9872,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             </div>
           </div>
         `;
-        addOnsTotal += addon.price;
-      });
-
-      // Calculate total with add-ons and setup fee
-      const baseAmount = parseFloat(data.baseAmount);
-      const setupFee = parseFloat(data.setupFee || "0");
-      templateData.totalAmount = (baseAmount + addOnsTotal + setupFee).toFixed(2);
+        });
+      }
     }
 
     switch (type) {
@@ -9786,8 +9884,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             username: templateData.username,
             email: templateData.email,
             plan: templateData.plan,
-            amount: templateData.totalAmount || templateData.amount,
+            amount: templateData.amount,
             baseAmount: templateData.baseAmount || templateData.amount,
+            baseAmountOriginal: templateData.baseAmountOriginal || templateData.baseAmount,
+            planDiscountAmount: templateData.planDiscountAmount || "0.00",
+            hasPlanPromo: !!templateData.hasPlanPromo,
+            promoCode: templateData.promoCode || "",
             setupFee: templateData.setupFee || "0.00",
             hasSetupFee: templateData.hasSetupFee || false,
             currency: templateData.currency,

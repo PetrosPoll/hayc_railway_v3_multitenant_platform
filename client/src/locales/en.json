@@ -3401,7 +3401,15 @@
             "continueToPayment": "Continue to Payment",
             "deliverySpeedTitle": "Delivery Speed",
             "speedUpDev": "Get your website delivered in 4 days instead of 10",
-            "speedDevLine": "Express delivery"
+            "speedDevLine": "Express delivery",
+            "promoCodeLabel": "Promo code",
+            "promoDiscountLine": "Promo ({{label}})",
+            "promoCodePlaceholder": "Enter code",
+            "promoApply": "Apply",
+            "promoApplying": "Checking...",
+            "promoApplied": "Promo applied: {{label}}",
+            "promoInvalid": "Invalid or expired promo code",
+            "promoEstimateNote": "Discount applies to the base plan only (not setup fee or add-ons). Final total is confirmed on Stripe checkout."
         },
         "onboarding": {
             "title": "Add your services",

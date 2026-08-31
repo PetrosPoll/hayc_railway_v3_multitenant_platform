@@ -87,6 +87,7 @@ const wizardSchema = z.object({
   selectedAddons: z.array(z.string()).optional(),
   suggestedStructure: z.array(z.string()).optional(),
   speedUpDev: z.boolean().optional().default(false),
+  promoCode: z.string().optional(),
 });
 
 export type WizardValues = z.infer<typeof wizardSchema>;
@@ -241,6 +242,7 @@ export default function GetStarted() {
       suggestedAddons: [],
       selectedAddons: undefined,
       suggestedStructure: [],
+      promoCode: "",
     },
   });
 
@@ -258,6 +260,11 @@ export default function GetStarted() {
     const billingParam = searchParams.get("billing");
     if (billingParam === "monthly" || billingParam === "yearly") {
       setValue("billingPeriod", billingParam);
+    }
+    const promoParam =
+      searchParams.get("promo") || searchParams.get("code") || searchParams.get("promoCode");
+    if (promoParam) {
+      setValue("promoCode", promoParam.trim().toUpperCase());
     }
     const stepParam = searchParams.get("step");
     if (stepParam !== null) {
@@ -494,10 +501,17 @@ export default function GetStarted() {
           addOns: values.selectedAddons ?? [],
           language: i18n.language,
           speedUpDev: values.speedUpDev ?? false,
+          promoCode: values.promoCode?.trim() || undefined,
         }),
       });
 
-      if (!response.ok) throw new Error("Failed to create checkout session");
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        if (errBody.code === "INVALID_PROMO") {
+          throw new Error(t("getStarted.pricing.promoInvalid"));
+        }
+        throw new Error("Failed to create checkout session");
+      }
       const data = await response.json();
       if (!data.url) throw new Error("No checkout URL received");
       if (data.sessionId) {
@@ -509,7 +523,10 @@ export default function GetStarted() {
       console.error("Get-started submit error:", error);
       toast({
         title: t("getStarted.errors.checkoutFailed"),
-        description: t("getStarted.errors.checkoutFailedDesc"),
+        description:
+          error instanceof Error && error.message
+            ? error.message
+            : t("getStarted.errors.checkoutFailedDesc"),
         variant: "destructive",
       });
     } finally {

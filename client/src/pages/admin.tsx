@@ -62,6 +62,7 @@ import { AdminWebsiteChanges } from "@/components/ui/admin-website-changes";
 import { CancelledDueToPaymentFailureList } from "@/components/admin-cancelled-payment-failures";
 import { AdminWebsiteInvoices } from "@/components/ui/admin-website-invoices";
 import AdminGetStartedSubmissions from "@/components/ui/admin-get-started-submissions";
+import AdminAmbassadors from "@/components/ui/admin-ambassadors";
 import { PlatformUsageAnalytics } from "@/components/ui/platform-usage-analytics";
 import { Switch } from "@/components/ui/switch";
 import { RoleManagement } from "@/components/ui/role-management";
@@ -1603,6 +1604,9 @@ export default function AdminDashboard() {
                     <TabsTrigger value="get-started" className="w-full justify-start rounded-md px-3 py-2.5">
                       Get Started
                     </TabsTrigger>
+                    <TabsTrigger value="ambassadors" className="w-full justify-start rounded-md px-3 py-2.5">
+                      Ambassadors
+                    </TabsTrigger>
                     <TabsTrigger value="calendar" className="w-full justify-start rounded-md px-3 py-2.5">
                       Calendar
                     </TabsTrigger>
@@ -2561,6 +2565,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="get-started" className="mt-0">
               <AdminGetStartedSubmissions />
+            </TabsContent>
+            <TabsContent value="ambassadors" className="mt-0">
+              <AdminAmbassadors />
             </TabsContent>
             <TabsContent value="calendar" className="mt-0">
               <section>

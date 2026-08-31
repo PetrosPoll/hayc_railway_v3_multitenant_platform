@@ -1513,3 +1513,88 @@ export const insertPaymentSettlementSchema = createInsertSchema(paymentSettlemen
 
 export type PaymentSettlement = typeof paymentSettlements.$inferSelect;
 export type InsertPaymentSettlement = z.infer<typeof insertPaymentSettlementSchema>;
+
+// Ambassador promo codes — Stripe Coupon + Promotion Code with local attribution
+export const ambassadors = pgTable("ambassadors", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email"),
+  notes: text("notes"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const promoCodes = pgTable(
+  "promo_codes",
+  {
+    id: serial("id").primaryKey(),
+    ambassadorId: integer("ambassador_id")
+      .notNull()
+      .references(() => ambassadors.id),
+    code: text("code").notNull(),
+    stripeCouponId: text("stripe_coupon_id").notNull(),
+    stripePromotionCodeId: text("stripe_promotion_code_id").notNull(),
+    discountType: text("discount_type").notNull(), // percent | fixed
+    percentOff: integer("percent_off"),
+    amountOff: integer("amount_off"), // cents
+    currency: text("currency").default("eur"),
+    duration: text("duration").notNull().default("once"), // once | repeating | forever
+    durationInMonths: integer("duration_in_months"),
+    maxRedemptions: integer("max_redemptions"),
+    active: boolean("active").notNull().default(true),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    codeUnique: unique("promo_codes_code_unique").on(table.code),
+  }),
+);
+
+export const promoRedemptions = pgTable(
+  "promo_redemptions",
+  {
+    id: serial("id").primaryKey(),
+    promoCodeId: integer("promo_code_id")
+      .notNull()
+      .references(() => promoCodes.id),
+    ambassadorId: integer("ambassador_id")
+      .notNull()
+      .references(() => ambassadors.id),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id),
+    subscriptionId: integer("subscription_id").references(() => subscriptions.id),
+    checkoutSessionId: text("checkout_session_id"),
+    stripePromotionCodeId: text("stripe_promotion_code_id"),
+    codeSnapshot: text("code_snapshot").notNull(),
+    redeemedAt: timestamp("redeemed_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    checkoutSessionUnique: unique("promo_redemptions_checkout_session_unique").on(
+      table.checkoutSessionId,
+    ),
+  }),
+);
+
+export const insertAmbassadorSchema = createInsertSchema(ambassadors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertPromoCodeSchema = createInsertSchema(promoCodes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export const insertPromoRedemptionSchema = createInsertSchema(promoRedemptions).omit({
+  id: true,
+  redeemedAt: true,
+});
+
+export type Ambassador = typeof ambassadors.$inferSelect;
+export type InsertAmbassador = z.infer<typeof insertAmbassadorSchema>;
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
+export type PromoRedemption = typeof promoRedemptions.$inferSelect;
+export type InsertPromoRedemption = z.infer<typeof insertPromoRedemptionSchema>;

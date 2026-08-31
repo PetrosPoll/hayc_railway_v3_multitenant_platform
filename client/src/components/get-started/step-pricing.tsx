@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import type { UseFormReturn } from "react-hook-form";
@@ -15,6 +15,7 @@ import {
   GET_STARTED_ADDON_ID_MAP,
   isBookingAddonValue,
 } from "@/lib/get-started-addons";
+import { Input } from "@/components/ui/input";
 
 const ICON_TODAY    = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779920606/card-tick_bowfis.svg";
 const ICON_CALENDAR = "https://res.cloudinary.com/dem12vqtl/image/upload/v1779349753/calendar_orange_yt37oa.svg";
@@ -127,6 +128,88 @@ export default function StepPricing({
   const billingTotal = isYearly ? planYearly(selectedPlanId) + yearlyAddonsTotal : monthlyTotal;
   const speedDevFee  = speedUpDevChecked && speedDevData?.unitAmount ? speedDevData.unitAmount : 0;
   const payToday     = SETUP_FEE + billingTotal + speedDevFee;
+  const discountablePlanAmount = isYearly
+    ? planYearly(selectedPlanId)
+    : planMonthly(selectedPlanId);
+
+  const [promoInput, setPromoInput] = useState(form.getValues("promoCode") ?? "");
+  const [promoStatus, setPromoStatus] = useState<
+    | { state: "idle" }
+    | { state: "loading" }
+    | { state: "valid"; label: string; discountType: "percent" | "fixed"; discountValue: number }
+    | { state: "invalid"; message: string }
+  >({ state: "idle" });
+
+  const estimatedDiscount =
+    promoStatus.state === "valid"
+      ? promoStatus.discountType === "percent"
+        ? (discountablePlanAmount * promoStatus.discountValue) / 100
+        : Math.min(discountablePlanAmount, promoStatus.discountValue)
+      : 0;
+  const estimatedPayToday = Math.max(0, Math.round((payToday - estimatedDiscount) * 100) / 100);
+
+  function formatEuro(amount: number): string {
+    return Number.isInteger(amount) ? String(amount) : amount.toFixed(2);
+  }
+
+  const discountedPlanAmount =
+    estimatedDiscount > 0
+      ? Math.max(0, Math.round((discountablePlanAmount - estimatedDiscount) * 100) / 100)
+      : discountablePlanAmount;
+  const planPeriodSuffix = isYearly ? "yr" : "mo";
+  const originalPlanPriceLabel = isYearly
+    ? `${formatEuro(planYearly(selectedPlanId))}€/${planPeriodSuffix}`
+    : `${formatEuro(basePrice)}€/${planPeriodSuffix}`;
+  const discountedPlanPriceLabel = `${formatEuro(discountedPlanAmount)}€/${planPeriodSuffix}`;
+  const hasPlanPromo = estimatedDiscount > 0 && promoStatus.state === "valid";
+
+  const applyPromoCode = async () => {
+    const code = promoInput.trim();
+    if (!code) {
+      form.setValue("promoCode", "");
+      setPromoStatus({ state: "idle" });
+      return;
+    }
+    setPromoStatus({ state: "loading" });
+    try {
+      const response = await fetch("/public/promo-codes/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.valid) {
+        form.setValue("promoCode", "");
+        setPromoStatus({
+          state: "invalid",
+          message: data.error || t("getStarted.pricing.promoInvalid"),
+        });
+        return;
+      }
+      form.setValue("promoCode", data.code);
+      setPromoInput(data.code);
+      setPromoStatus({
+        state: "valid",
+        label: data.label,
+        discountType: data.discountType,
+        discountValue: data.discountValue,
+      });
+    } catch {
+      form.setValue("promoCode", "");
+      setPromoStatus({
+        state: "invalid",
+        message: t("getStarted.pricing.promoInvalid"),
+      });
+    }
+  };
+
+  useEffect(() => {
+    const existing = form.getValues("promoCode")?.trim();
+    if (existing && promoStatus.state === "idle") {
+      void applyPromoCode();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- validate once on mount when prefilled
+  }, []);
 
   const nextBillingDate = new Date();
   if (isYearly) {
@@ -191,7 +274,7 @@ export default function StepPricing({
                       {t("getStarted.pricing.todayLabel")}
                     </span>
                     <span className="text-black text-sm md:text-lg font-medium font-brand md:text-right">
-                      {t("getStarted.pricing.todayDesc", { amount: payToday })}
+                      {t("getStarted.pricing.todayDesc", { amount: estimatedPayToday })}
                     </span>
                   </div>
                 </div>
@@ -481,17 +564,73 @@ export default function StepPricing({
               </div>
 
               <div className="flex flex-col gap-3">
+                {/* Promo code — above summary so breakdown updates visibly */}
+                <div className="flex flex-col gap-2">
+                  <span className="text-white text-sm font-normal font-brand leading-5">
+                    {t("getStarted.pricing.promoCodeLabel")}
+                  </span>
+                  <div className="flex gap-2">
+                    <Input
+                      value={promoInput}
+                      onChange={(e) => {
+                        const next = e.target.value.toUpperCase();
+                        setPromoInput(next);
+                        form.setValue("promoCode", next.trim());
+                        if (promoStatus.state !== "idle") setPromoStatus({ state: "idle" });
+                      }}
+                      placeholder={t("getStarted.pricing.promoCodePlaceholder")}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyPromoCode}
+                      disabled={promoStatus.state === "loading"}
+                      className="h-10 px-4 rounded-[10px] border border-white/30 text-white text-sm font-semibold font-brand hover:bg-white/10 transition-colors disabled:opacity-60"
+                    >
+                      {promoStatus.state === "loading"
+                        ? t("getStarted.pricing.promoApplying")
+                        : t("getStarted.pricing.promoApply")}
+                    </button>
+                  </div>
+                  {promoStatus.state === "valid" && (
+                    <span className="text-emerald-400 text-sm font-brand">
+                      {t("getStarted.pricing.promoApplied", { label: promoStatus.label })}
+                    </span>
+                  )}
+                  {promoStatus.state === "invalid" && (
+                    <span className="text-red-400 text-sm font-brand">
+                      {promoStatus.message}
+                    </span>
+                  )}
+                  <span className="text-white/50 text-xs font-brand">
+                    {t("getStarted.pricing.promoEstimateNote")}
+                  </span>
+                </div>
+
                 {/* Summary box — Figma: p-3.5 rounded-[10px] outline outline-1 outline-neutral-500 */}
                 <div className="p-3.5 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-neutral-500 flex flex-col gap-3">
                   {/* Line items above divider */}
                   <div className="pb-2 border-b border-neutral-500 flex flex-col gap-3">
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-start gap-3">
                       <span className="text-white text-sm font-normal font-brand leading-5">
                         {t("getStarted.pricing.basePlanLine", { plan: planLabel })}
                       </span>
-                      <span className="text-white text-sm font-normal font-brand leading-5 tabular-nums">
-                        {isYearly ? `${planYearly(selectedPlanId)}€/yr` : `${basePrice}€/mo`}
-                      </span>
+                      <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                        {hasPlanPromo ? (
+                          <>
+                            <span className="text-[#ED4C14] text-base font-semibold font-brand tabular-nums leading-5">
+                              {discountedPlanPriceLabel}
+                            </span>
+                            <span className="text-white/50 text-xs font-normal font-brand tabular-nums line-through leading-4">
+                              {originalPlanPriceLabel}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-white text-sm font-normal font-brand tabular-nums leading-5">
+                            {originalPlanPriceLabel}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     {addonsTotal > 0 && (
                       <div className="flex justify-between items-center">
@@ -531,7 +670,12 @@ export default function StepPricing({
                       <img src={ICON_INFO} alt="" className="w-4 h-4 flex-shrink-0 opacity-40" />
                     </div>
                     <span className="text-[#ED4C14] text-lg font-medium font-brand tabular-nums">
-                      {payToday}€
+                      {formatEuro(estimatedPayToday)}€
+                      {hasPlanPromo && (
+                        <span className="ml-2 text-sm text-white/50 line-through tabular-nums">
+                          {formatEuro(payToday)}€
+                        </span>
+                      )}
                     </span>
                   </div>
                 </div>

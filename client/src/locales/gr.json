@@ -3401,7 +3401,15 @@
             "continueToPayment": "Συνέχεια στην πληρωμή",
             "deliverySpeedTitle": "Ταχύτητα Παράδοσης",
             "speedUpDev": "Παραλάβετε τον ιστότοπό σας σε 4 ημέρες αντί για 10",
-            "speedDevLine": "Γρήγορη παράδοση"
+            "speedDevLine": "Γρήγορη παράδοση",
+            "promoCodeLabel": "Κωδικός έκπτωσης",
+            "promoDiscountLine": "Έκπτωση ({{label}})",
+            "promoCodePlaceholder": "Εισάγετε κωδικό",
+            "promoApply": "Εφαρμογή",
+            "promoApplying": "Έλεγχος...",
+            "promoApplied": "Εφαρμόστηκε: {{label}}",
+            "promoInvalid": "Μη έγκυρος ή ληγμένος κωδικός",
+            "promoEstimateNote": "Η έκπτωση ισχύει μόνο στο βασικό πλάνο (όχι setup fee ή add-ons). Το τελικό ποσό επιβεβαιώνεται στη Stripe."
         },
         "onboarding": {
             "title": "Προσθέστε τις υπηρεσίες σας",
