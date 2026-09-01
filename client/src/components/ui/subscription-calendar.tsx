@@ -613,27 +613,17 @@ export function SubscriptionCalendar() {
     failedPayment: failedPaymentDates,
   };
 
-  // Custom modifier styles
-  const modifiersStyles = {
-    pastPayment: {
-      backgroundColor: '#10b981',
-      color: 'white',
-      borderRadius: '50%',
-      fontWeight: 'bold',
-    },
-    futurePayment: {
-      backgroundColor: '#3b82f6',
-      color: 'white',
-      borderRadius: '50%',
-      fontWeight: 'bold',
-    },
-    failedPayment: {
-      backgroundColor: '#ef4444',
-      color: 'white',
-      borderRadius: '50%',
-      fontWeight: 'bold',
-    },
+  const paymentDayClass =
+    "rounded-full font-bold [&:not([aria-selected='true'])]:text-white";
+
+  const modifiersClassNames = {
+    pastPayment: `${paymentDayClass} [&:not([aria-selected='true'])]:bg-emerald-500`,
+    futurePayment: `${paymentDayClass} [&:not([aria-selected='true'])]:bg-blue-500`,
+    failedPayment: `${paymentDayClass} [&:not([aria-selected='true'])]:bg-red-500`,
   };
+
+  const selectedDayClass =
+    "!bg-[rgb(237_76_20/var(--tw-bg-opacity,1))] !text-white hover:!bg-[rgb(237_76_20/var(--tw-bg-opacity,1))] hover:!text-white focus:!bg-[rgb(237_76_20/var(--tw-bg-opacity,1))] focus:!text-white rounded-full font-bold";
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     const newMonth = new Date(currentMonth);
@@ -907,7 +897,11 @@ export function SubscriptionCalendar() {
           month={currentMonth}
           onMonthChange={(month) => setCurrentMonth(month)}
           modifiers={modifiers}
-          modifiersStyles={modifiersStyles}
+          modifiersClassNames={modifiersClassNames}
+          classNames={{
+            cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
+            day_selected: selectedDayClass,
+          }}
           className="rounded-md border shadow"
         />
       </div>
