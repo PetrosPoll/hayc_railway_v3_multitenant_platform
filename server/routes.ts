@@ -146,6 +146,18 @@ function normalizeEmailLanguage(language: string | null | undefined): "en" | "gr
   return "en";
 }
 
+/** Light-background email logo (blue wordmark). Do not use hayc-logo.png — that asset has a black background. */
+function getEmailLogoUrl(): string {
+  return `${process.env.VITE_APP_URL || "https://hayc.gr"}/images/hayc-logo-email.png`;
+}
+
+function injectEmailLogo(template: string): string {
+  return template.replace(
+    /https:\/\/res\.cloudinary\.com\/dem12vqtl\/image\/upload\/f_auto,q_auto\/public\/images\/hayc-logo\.png/g,
+    getEmailLogoUrl(),
+  );
+}
+
 /**
  * Helper function to create a DRAFT invoice in the database
  * @param params - Invoice creation parameters
@@ -6086,6 +6098,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const regex = new RegExp(`{{${key}}}`, "g");
         template = template.replace(regex, enrichedReplacements[key]);
       }
+
+      template = injectEmailLogo(template);
 
       return template;
     } catch (err) {
