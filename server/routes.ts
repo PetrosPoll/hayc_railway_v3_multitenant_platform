@@ -22610,16 +22610,26 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     try {
       const paymentId = parseInt(req.params.id);
       const payment = await storage.stopCustomPayment(paymentId);
-      
-      // Also mark any pending obligations for this payment as stopped
+
+      const stopMonthStart = new Date(payment.updatedAt ?? new Date());
+      stopMonthStart.setDate(1);
+      stopMonthStart.setHours(0, 0, 0, 0);
+
       const obligations = await storage.getObligationsByCustomPaymentId(paymentId);
+      const outstandingStatuses = ["pending", "grace", "retrying", "delinquent", "failed"];
+      let stoppedCount = 0;
+
       for (const obligation of obligations) {
-        if (obligation.status === 'pending' || obligation.status === 'grace') {
+        if (!outstandingStatuses.includes(obligation.status)) continue;
+        const dueDate = new Date(obligation.dueDate);
+        dueDate.setHours(0, 0, 0, 0);
+        if (dueDate >= stopMonthStart) {
           await storage.markObligationStopped(obligation.id);
+          stoppedCount++;
         }
       }
-      
-      res.json({ payment });
+
+      res.json({ payment, stoppedObligations: stoppedCount });
     } catch (error) {
       console.error("Error stopping custom payment:", error);
       res.status(500).json({ error: "Failed to stop custom payment" });

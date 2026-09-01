@@ -205,17 +205,44 @@ export function SubscriptionCalendar() {
   });
 
   const allObligations = obligationsData?.obligations ?? [];
+
+  const inactiveCustomPaymentStopMonth = useMemo(() => {
+    const map = new Map<number, Date>();
+    for (const payment of customPayments) {
+      if (!payment.isActive && payment.updatedAt) {
+        const stopDate = new Date(payment.updatedAt);
+        map.set(
+          payment.id,
+          new Date(stopDate.getFullYear(), stopDate.getMonth(), 1),
+        );
+      }
+    }
+    return map;
+  }, [customPayments]);
+
   const outstandingObligations = useMemo(
     () =>
-      allObligations.filter(
-        (o) =>
-          o.status === "pending" ||
-          o.status === "grace" ||
-          o.status === "retrying" ||
-          o.status === "delinquent" ||
-          o.status === "failed",
-      ),
-    [allObligations],
+      allObligations.filter((o) => {
+        if (
+          o.status !== "pending" &&
+          o.status !== "grace" &&
+          o.status !== "retrying" &&
+          o.status !== "delinquent" &&
+          o.status !== "failed"
+        ) {
+          return false;
+        }
+        if (o.customPaymentId != null && o.dueDate) {
+          const stopMonthStart = inactiveCustomPaymentStopMonth.get(o.customPaymentId);
+          if (stopMonthStart) {
+            const dueDate = new Date(o.dueDate);
+            dueDate.setHours(0, 0, 0, 0);
+            if (dueDate >= stopMonthStart) return false;
+          }
+        }
+        return true;
+      }),
+    [allObligations, inactiveCustomPaymentStopMonth],
   );
 
   // Outstanding for current month only (for summary and list - changes with calendar month)
@@ -374,6 +401,7 @@ export function SubscriptionCalendar() {
     onSuccess: () => {
       toast({ title: "Payment Stopped", description: "Recurring payment has been cancelled. Historical records are preserved." });
       qc.invalidateQueries({ queryKey: ["/api/admin/custom-payments"] });
+      qc.invalidateQueries({ queryKey: ["/api/admin/payment-obligations"] });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message || "Failed to stop payment", variant: "destructive" });
