@@ -139,6 +139,13 @@ function inferCloudinaryResourceTypeForDelete(item: {
 
 let publicContactDailyCount = { count: 0, date: new Date().toDateString() };
 
+function normalizeEmailLanguage(language: string | null | undefined): "en" | "gr" {
+  const l = (language || "en").toLowerCase();
+  if (l === "el" || l === "gr") return "gr";
+  if (l.startsWith("en")) return "en";
+  return "en";
+}
+
 /**
  * Helper function to create a DRAFT invoice in the database
  * @param params - Invoice creation parameters
@@ -3515,7 +3522,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       setImmediate(async () => {
-        const preferredLanguage = getPreferredLanguage(req);
+        const preferredLanguage = normalizeEmailLanguage(
+          req.user.language || submission.websiteLanguage,
+        );
         const submittedAt = new Date().toLocaleString();
         const contactName = submission.fullName || submission.email;
         const businessName = submission.businessName || "";
@@ -4609,7 +4618,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // After subscription creation, send appropriate email
             // Get user's language preference from the database
-            const userLanguage = user.language || "en";
+            const userLanguage = normalizeEmailLanguage(user.language);
             const isResumeFlow = session.metadata?.isResume === "true";
 
             // Get add-on subscriptions for THIS subscription only (not all user's addons)
@@ -5948,8 +5957,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Extract language from Accept-Language header as a fallback when user preference isn't available
+  // Prefer authenticated user's profile language; fall back to Accept-Language header
   const getPreferredLanguage = (req: express.Request): string => {
+    if (req.isAuthenticated() && req.user && "language" in req.user) {
+      const userLang = (req.user as { language?: string | null }).language;
+      if (userLang) {
+        return normalizeEmailLanguage(userLang);
+      }
+    }
+
     const acceptLanguage = req.headers["accept-language"] || "";
 
     // Parse the Accept-Language header to get the preferred language
@@ -5958,19 +5974,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .map((lang) => {
         const [code, quality] = lang.trim().split(";q=");
         return {
-          code: code.substring(0, 2).toLowerCase(), // Get first two characters (e.g., 'en' from 'en-US')
+          code: code.substring(0, 2).toLowerCase(), // e.g. 'en' from 'en-US', 'el' from 'el-GR'
           quality: quality ? parseFloat(quality) : 1.0,
         };
       })
       .sort((a, b) => b.quality - a.quality); // Sort by quality descending
 
-    // Check if the preferred language has a template folder
-    const availableLanguages = ["en", "gr"]; // Add more supported languages here
-    const preferredLanguage =
-      languages.find((lang) => availableLanguages.includes(lang.code))?.code ||
-      "en";
+    for (const lang of languages) {
+      const normalized = normalizeEmailLanguage(lang.code);
+      if (normalized === "gr" || lang.code === "en") {
+        return normalized;
+      }
+    }
 
-    return preferredLanguage;
+    return "en";
   };
 
   // Get user's websites from their subscriptions (returns projectName for display)
@@ -6033,8 +6050,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     replacements: any,
     language: string,
   ): string => {
-    const l = (language || "en").toLowerCase();
-    const lang = l === "el" ? "gr" : l.startsWith("en") ? "en" : l === "gr" ? "gr" : "en";
+    const lang = normalizeEmailLanguage(language);
     try {
       const filePath = path.join(
         __dirname,
@@ -25655,7 +25671,9 @@ async function checkExpiringCards() {
         const user = await storage.getUserByStripeCustomerId(customer.id);
         // This would require additional data storage for user language preferences
         // For now we'll default to English, but you could enhance this
-        const userLanguage = user?.preferredLanguage || "en";
+        const userLanguage = user?.language
+          ? normalizeEmailLanguage(user.language)
+          : "en";
 
         await sendSubscriptionEmail("card-expiring", {
           username: customer.name,
