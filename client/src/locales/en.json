@@ -73,6 +73,10 @@
         "vatIncluded": "incl. VAT",
         "saveAnnually": "Save 20% annually",
         "whatYouGet": "What you will get",
+        "sections": {
+            "website": "Website",
+            "platform": "Platform"
+        },
         "getStarted": "Get Started",
         "setupFee": "Each plan requires + {{amount}}€ setup fee",
         "comparePlans": "Compare plans",
@@ -86,10 +90,14 @@
             "basic": {
                 "name": "Basic",
                 "tagline": "For getting online fast.",
-                "features": [
+                "websiteFeatures": [
+                    "1 professional website",
                     "Up to 3 pages",
                     "1 content update / month",
-                    "SEO (essential)",
+                    "SEO (Essential)",
+                    "Delivery: up to 10 business days"
+                ],
+                "platformFeatures": [
                     "Newsletter: 1,000 emails / month",
                     "Email Support (GR/EN)"
                 ]
@@ -97,24 +105,32 @@
             "essential": {
                 "name": "Essential",
                 "tagline": "For growing businesses.",
-                "features": [
+                "websiteFeatures": [
+                    "1 professional website",
                     "Up to 10 pages",
                     "2 content updates / month",
-                    "Analytics (Basic)",
                     "SEO (Advanced)",
+                    "Delivery: up to 10 business days"
+                ],
+                "platformFeatures": [
                     "Newsletter: 3,000 emails / month",
+                    "Analytics (Basic)",
                     "Email Support (GR/EN)"
                 ]
             },
             "pro": {
                 "name": "Pro",
                 "tagline": "For teams that want a partner.",
-                "features": [
+                "websiteFeatures": [
+                    "1 professional website",
                     "Up to 50 pages",
                     "5 content changes / month",
-                    "Analytics (Advanced)",
                     "SEO (Premium) + Competitor research",
+                    "Priority delivery (3–5 business days)"
+                ],
+                "platformFeatures": [
                     "Newsletter: 10,000 emails / month",
+                    "Analytics (Advanced)",
                     "Phone Support (business hours)",
                     "Monthly Strategy Call",
                     "All add-ons included"
@@ -123,6 +139,8 @@
         },
         "comparison": {
             "featuresHeader": "Features",
+            "websiteSection": "Website",
+            "platformSection": "Platform",
             "pages": {
                 "feature": "Pages",
                 "description": "The number of pages included in your website",

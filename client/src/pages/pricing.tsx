@@ -5,15 +5,51 @@ import { FaqSection } from "@/components/sections/faq-section";
 import { FinalCtaSection } from "@/components/sections/final-cta-section";
 import { usePricing, getPrice } from "@/hooks/use-pricing";
 
+type PlanTier = "basic" | "essential" | "pro";
+
+type ComparisonEntry =
+  | { kind: "section"; title: string }
+  | {
+      kind: "row";
+      feature: string;
+      description: string;
+      basic: string;
+      essential: string;
+      pro: string;
+    };
+
+function FeatureCheckList({ features }: { features: string[] }) {
+  return (
+    <div className="flex flex-col gap-3">
+      {features.map((feature, j) => (
+        <div key={j} className="flex items-center gap-2">
+          <img
+            src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/tick.svg"
+            alt="check"
+            loading="lazy"
+            className="w-4 h-4 flex-shrink-0"
+          />
+          <span className="text-white/80 text-sm font-normal font-brand leading-5">{feature}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function PricingPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [bgLoaded, setBgLoaded] = useState(false);
   const [billing, setBilling] = useState<"monthly" | "annually">("monthly");
-  const [mobileComparisonPlan, setMobileComparisonPlan] = useState<"basic" | "essential" | "pro">("basic");
+  const [mobileComparisonPlan, setMobileComparisonPlan] = useState<PlanTier>("basic");
 
   const { data: stripePrices } = usePricing();
   const setupFeeAmount = stripePrices?.find(p => p.tier === "setup_fee")?.unitAmount ?? 120;
+
+  const getPlanFeatures = (tier: PlanTier, section: "websiteFeatures" | "platformFeatures"): string[] => {
+    const items = t(`pricing.plans.${tier}.${section}`, { returnObjects: true });
+    return Array.isArray(items) ? (items as string[]) : [];
+  };
 
   const FALLBACK_PRICES = {
     basic:     { monthly: 44,  annualPerMonth: 37  },
@@ -37,49 +73,32 @@ export default function PricingPage() {
       tier: "basic" as const,
       name: t("pricing.plans.basic.name"),
       tagline: t("pricing.plans.basic.tagline"),
-      features: [
-        t("pricing.plans.basic.features.0"),
-        t("pricing.plans.basic.features.1"),
-        t("pricing.plans.basic.features.2"),
-        t("pricing.plans.basic.features.3"),
-        t("pricing.plans.basic.features.4"),
-      ],
+      websiteFeatures: getPlanFeatures("basic", "websiteFeatures"),
+      platformFeatures: getPlanFeatures("basic", "platformFeatures"),
       highlighted: false,
     },
     {
       tier: "essential" as const,
       name: t("pricing.plans.essential.name"),
       tagline: t("pricing.plans.essential.tagline"),
-      features: [
-        t("pricing.plans.essential.features.0"),
-        t("pricing.plans.essential.features.1"),
-        t("pricing.plans.essential.features.2"),
-        t("pricing.plans.essential.features.3"),
-        t("pricing.plans.essential.features.4"),
-        t("pricing.plans.essential.features.5"),
-      ],
+      websiteFeatures: getPlanFeatures("essential", "websiteFeatures"),
+      platformFeatures: getPlanFeatures("essential", "platformFeatures"),
       highlighted: true,
     },
     {
       tier: "pro" as const,
       name: t("pricing.plans.pro.name"),
       tagline: t("pricing.plans.pro.tagline"),
-      features: [
-        t("pricing.plans.pro.features.0"),
-        t("pricing.plans.pro.features.1"),
-        t("pricing.plans.pro.features.2"),
-        t("pricing.plans.pro.features.3"),
-        t("pricing.plans.pro.features.4"),
-        t("pricing.plans.pro.features.5"),
-        t("pricing.plans.pro.features.6"),
-        t("pricing.plans.pro.features.7"),
-      ],
+      websiteFeatures: getPlanFeatures("pro", "websiteFeatures"),
+      platformFeatures: getPlanFeatures("pro", "platformFeatures"),
       highlighted: false,
     },
   ];
 
-  const comparisonRows = [
+  const comparisonEntries: ComparisonEntry[] = [
+    { kind: "section", title: t("pricing.comparison.websiteSection") },
     {
+      kind: "row",
       feature: t("pricing.comparison.pages.feature"),
       description: t("pricing.comparison.pages.description"),
       basic: t("pricing.comparison.pages.basic"),
@@ -87,6 +106,7 @@ export default function PricingPage() {
       pro: t("pricing.comparison.pages.pro"),
     },
     {
+      kind: "row",
       feature: t("pricing.comparison.contentUpdates.feature"),
       description: t("pricing.comparison.contentUpdates.description"),
       basic: t("pricing.comparison.contentUpdates.basic"),
@@ -94,6 +114,7 @@ export default function PricingPage() {
       pro: t("pricing.comparison.contentUpdates.pro"),
     },
     {
+      kind: "row",
       feature: t("pricing.comparison.delivery.feature"),
       description: t("pricing.comparison.delivery.description"),
       basic: t("pricing.comparison.delivery.basic"),
@@ -101,13 +122,16 @@ export default function PricingPage() {
       pro: t("pricing.comparison.delivery.pro"),
     },
     {
+      kind: "row",
       feature: t("pricing.comparison.seo.feature"),
       description: t("pricing.comparison.seo.description"),
       basic: t("pricing.comparison.seo.basic"),
       essential: t("pricing.comparison.seo.essential"),
       pro: t("pricing.comparison.seo.pro"),
     },
+    { kind: "section", title: t("pricing.comparison.platformSection") },
     {
+      kind: "row",
       feature: t("pricing.comparison.emailMarketing.feature"),
       description: t("pricing.comparison.emailMarketing.description"),
       basic: t("pricing.comparison.emailMarketing.basic"),
@@ -115,6 +139,7 @@ export default function PricingPage() {
       pro: t("pricing.comparison.emailMarketing.pro"),
     },
     {
+      kind: "row",
       feature: t("pricing.comparison.analytics.feature"),
       description: t("pricing.comparison.analytics.description"),
       basic: t("pricing.comparison.analytics.basic"),
@@ -122,6 +147,7 @@ export default function PricingPage() {
       pro: t("pricing.comparison.analytics.pro"),
     },
     {
+      kind: "row",
       feature: t("pricing.comparison.support.feature"),
       description: t("pricing.comparison.support.description"),
       basic: t("pricing.comparison.support.basic"),
@@ -210,11 +236,11 @@ export default function PricingPage() {
 
       {/* Plans */}
       <div className="w-full flex flex-col gap-3">
-        <div className="w-full flex flex-col lg:flex-row justify-start items-start gap-4 lg:h-[799px]">
+        <div className="w-full flex flex-col lg:flex-row justify-start items-stretch gap-4">
           {plans.map((plan, i) => (
             <div
               key={i}
-              className={`w-full lg:flex-1 lg:h-full p-6 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-blue-50/20 flex flex-col justify-between items-start overflow-hidden ${
+              className={`w-full lg:flex-1 p-6 rounded-[20px] outline outline-1 outline-offset-[-1px] outline-blue-50/20 flex flex-col justify-between items-start overflow-hidden ${
                 plan.highlighted
                   ? "bg-gradient-to-b from-orange-600/0 to-orange-600/50"
                   : "bg-gradient-to-bl from-neutral-700/5 to-neutral-700/20"
@@ -250,15 +276,21 @@ export default function PricingPage() {
                 <div className="w-full h-px bg-white/25" />
 
                 {/* Features */}
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-5">
                   <span className="text-white text-base font-normal font-brand leading-6">{t("pricing.whatYouGet")}</span>
-                  <div className="flex flex-col gap-4">
-                    {plan.features.map((feature, j) => (
-                      <div key={j} className="flex items-center gap-2">
-                        <img src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/tick.svg" alt="check" loading="lazy" className="w-4 h-4 flex-shrink-0" />
-                        <span className="text-white/80 text-sm font-normal font-brand leading-5">{feature}</span>
-                      </div>
-                    ))}
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-3">
+                      <span className="text-white text-sm font-semibold font-brand leading-5">
+                        {t("pricing.sections.website")}
+                      </span>
+                      <FeatureCheckList features={plan.websiteFeatures} />
+                    </div>
+                    <div className="flex flex-col gap-3">
+                      <span className="text-white text-sm font-semibold font-brand leading-5">
+                        {t("pricing.sections.platform")}
+                      </span>
+                      <FeatureCheckList features={plan.platformFeatures} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -368,83 +400,88 @@ export default function PricingPage() {
                 </div>
                 <span className="text-white text-base font-normal font-brand leading-5">{mobileComparisonPrice}</span>
               </div>
-              <div className="w-full flex justify-between items-start">
-                <div className="flex-1 flex flex-col">
-                  {comparisonRows.map((row, i) => (
-                    <div key={i} className="h-36 px-3.5 py-6 border-t border-zinc-800 flex flex-col justify-center items-start">
-                      <span className="text-white text-base font-bold font-brand leading-5">{row.feature}</span>
-                      <span className="text-white text-sm font-normal font-brand leading-5">{row.description}</span>
+              <div className="w-full flex flex-col">
+                {comparisonEntries.map((entry, i) => {
+                  if (entry.kind === "section") {
+                    return (
+                      <div
+                        key={i}
+                        className="w-full px-3.5 py-3 border-t border-zinc-800 bg-white/5 flex items-center"
+                      >
+                        <span className="text-white/90 text-sm font-semibold font-brand leading-5">{entry.title}</span>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div key={i} className="w-full flex justify-between items-start border-t border-zinc-800">
+                      <div className="flex-1 h-36 px-3.5 py-6 flex flex-col justify-center items-start">
+                        <span className="text-white text-base font-bold font-brand leading-5">{entry.feature}</span>
+                        <span className="text-white text-sm font-normal font-brand leading-5">{entry.description}</span>
+                      </div>
+                      <div className="flex-1 h-36 px-5 py-6 border-l border-zinc-800 flex flex-col justify-center items-center gap-2.5">
+                        <span className="text-center text-white text-base font-normal font-brand leading-5">
+                          {entry[mobileComparisonPlan]}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                </div>
-                <div className="flex-1 flex flex-col">
-                  {comparisonRows.map((row, i) => (
-                    <div
-                      key={i}
-                      className="h-36 px-5 py-6 border-l border-t border-zinc-800 flex flex-col justify-center items-center gap-2.5"
-                    >
-                      <span className="text-center text-white text-base font-normal font-brand leading-5">
-                        {row[mobileComparisonPlan]}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Desktop table */}
-            <div className="hidden lg:flex justify-start items-start">
-              {/* Features column */}
-              <div className="w-72 flex flex-col flex-shrink-0">
-                <div className="p-5 border-r border-zinc-800 flex items-center gap-2.5">
+            <div className="hidden lg:flex flex-col">
+              <div className="flex justify-start items-start">
+                <div className="w-72 p-5 border-r border-zinc-800 flex items-center gap-2.5 flex-shrink-0">
                   <span className="text-white text-lg font-bold font-brand">{t("pricing.comparison.featuresHeader")}</span>
                 </div>
-                {comparisonRows.map((row, i) => (
-                  <div key={i} className="h-36 px-5 py-6 border-t border-b border-zinc-800 flex flex-col justify-center items-start">
-                    <span className="text-white text-base font-bold font-brand leading-6">{row.feature}</span>
-                    <span className="text-white text-sm font-normal font-brand leading-5">{row.description}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Basic column */}
-              <div className="flex-1 flex flex-col">
-                <div className="p-5 border-r border-zinc-800 flex justify-between items-end">
+                <div className="flex-1 p-5 border-r border-zinc-800 flex justify-between items-end">
                   <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.basic.name")}</span>
                   <span className="text-white text-sm font-normal font-brand leading-5">{displayPrice("basic", billing)}</span>
                 </div>
-                {comparisonRows.map((row, i) => (
-                  <div key={i} className="h-36 px-5 py-6 outline outline-1 outline-offset-[-1px] outline-zinc-800 flex flex-col justify-center items-center gap-2.5">
-                    <span className="text-center text-white text-base font-normal font-brand leading-6">{row.basic}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Essential column */}
-              <div className="flex-1 flex flex-col">
-                <div className="p-5 border-r border-zinc-800 flex justify-between items-end">
+                <div className="flex-1 p-5 border-r border-zinc-800 flex justify-between items-end">
                   <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.essential.name")}</span>
                   <span className="text-white text-sm font-normal font-brand leading-5">{displayPrice("essential", billing)}</span>
                 </div>
-                {comparisonRows.map((row, i) => (
-                  <div key={i} className="h-36 px-5 py-6 outline outline-1 outline-offset-[-1px] outline-zinc-800 flex flex-col justify-center items-center gap-2.5">
-                    <span className="text-center text-white text-base font-normal font-brand leading-6">{row.essential}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Pro column */}
-              <div className="flex-1 flex flex-col">
-                <div className="p-5 flex justify-between items-end">
+                <div className="flex-1 p-5 flex justify-between items-end">
                   <span className="text-white text-lg font-bold font-brand">{t("pricing.plans.pro.name")}</span>
                   <span className="text-white text-sm font-normal font-brand leading-5">{displayPrice("pro", billing)}</span>
                 </div>
-                {comparisonRows.map((row, i) => (
-                  <div key={i} className="h-36 px-5 py-6 border-l border-t border-b border-zinc-800 flex flex-col justify-center items-center gap-2.5">
-                    <span className="text-center text-white text-base font-normal font-brand leading-6">{row.pro}</span>
-                  </div>
-                ))}
               </div>
+
+              {comparisonEntries.map((entry, i) => {
+                if (entry.kind === "section") {
+                  return (
+                    <div key={i} className="flex border-t border-zinc-800 bg-white/5">
+                      <div className="w-72 px-5 py-3 border-r border-zinc-800 flex items-center flex-shrink-0">
+                        <span className="text-white/90 text-sm font-semibold font-brand leading-5">{entry.title}</span>
+                      </div>
+                      <div className="flex-1 border-r border-zinc-800" />
+                      <div className="flex-1 border-r border-zinc-800" />
+                      <div className="flex-1" />
+                    </div>
+                  );
+                }
+
+                return (
+                  <div key={i} className="flex">
+                    <div className="w-72 h-36 px-5 py-6 border-t border-zinc-800 flex flex-col justify-center items-start flex-shrink-0">
+                      <span className="text-white text-base font-bold font-brand leading-6">{entry.feature}</span>
+                      <span className="text-white text-sm font-normal font-brand leading-5">{entry.description}</span>
+                    </div>
+                    <div className="flex-1 h-36 px-5 py-6 border-t border-l border-zinc-800 flex flex-col justify-center items-center gap-2.5">
+                      <span className="text-center text-white text-base font-normal font-brand leading-6">{entry.basic}</span>
+                    </div>
+                    <div className="flex-1 h-36 px-5 py-6 border-t border-l border-zinc-800 flex flex-col justify-center items-center gap-2.5">
+                      <span className="text-center text-white text-base font-normal font-brand leading-6">{entry.essential}</span>
+                    </div>
+                    <div className="flex-1 h-36 px-5 py-6 border-t border-l border-zinc-800 flex flex-col justify-center items-center gap-2.5">
+                      <span className="text-center text-white text-base font-normal font-brand leading-6">{entry.pro}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
           </div>
