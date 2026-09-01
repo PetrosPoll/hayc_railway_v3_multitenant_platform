@@ -42,8 +42,7 @@ export function landingLeadSource(variant: LandingPageVariant): string {
     : `website-creation-landing-${variant}`;
 }
 
-/** Default + category ad landings keep the meeting qualification step. */
-export function landingQualificationEnabled(variant: LandingPageVariant): boolean {
-  if (variant === "default") return true;
-  return (LANDING_PAGE_CATEGORY_VARIANTS as readonly string[]).includes(variant);
+/** All landing variants use the meeting qualification step before Calendly booking. */
+export function landingQualificationEnabled(_variant: LandingPageVariant): boolean {
+  return true;
 }
