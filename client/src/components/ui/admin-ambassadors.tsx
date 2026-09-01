@@ -81,7 +81,9 @@ export default function AdminAmbassadors() {
 
   const [selectedAmbassadorId, setSelectedAmbassadorId] = useState<string>("");
   const [promoCode, setPromoCode] = useState("");
+  const [discountType, setDiscountType] = useState<"percent" | "fixed">("percent");
   const [percentOff, setPercentOff] = useState("20");
+  const [amountOffEuros, setAmountOffEuros] = useState("10");
   const [duration, setDuration] = useState<"once" | "repeating" | "forever">("once");
   const [durationInMonths, setDurationInMonths] = useState("3");
   const [maxRedemptions, setMaxRedemptions] = useState("");
@@ -154,7 +156,9 @@ export default function AdminAmbassadors() {
         body: JSON.stringify({
           ambassadorId: Number(selectedAmbassadorId),
           code: promoCode,
-          percentOff: Number(percentOff),
+          ...(discountType === "percent"
+            ? { percentOff: Number(percentOff) }
+            : { amountOff: Math.round(Number(amountOffEuros) * 100) }),
           duration,
           durationInMonths:
             duration === "repeating" ? Number(durationInMonths) : undefined,
@@ -285,17 +289,51 @@ export default function AdminAmbassadors() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="percent-off">Percent off</Label>
-                <Input
-                  id="percent-off"
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={percentOff}
-                  onChange={(e) => setPercentOff(e.target.value)}
-                />
+                <Label>Discount type</Label>
+                <Select
+                  value={discountType}
+                  onValueChange={(v) => setDiscountType(v as "percent" | "fixed")}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="percent">Percentage (%)</SelectItem>
+                    <SelectItem value="fixed">Fixed amount (€)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
+                {discountType === "percent" ? (
+                  <>
+                    <Label htmlFor="percent-off">Percent off</Label>
+                    <Input
+                      id="percent-off"
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={percentOff}
+                      onChange={(e) => setPercentOff(e.target.value)}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Label htmlFor="amount-off">Amount off (€)</Label>
+                    <Input
+                      id="amount-off"
+                      type="number"
+                      min={0.01}
+                      step={0.01}
+                      value={amountOffEuros}
+                      onChange={(e) => setAmountOffEuros(e.target.value)}
+                      placeholder="10"
+                    />
+                  </>
+                )}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
                 <Label>Duration</Label>
                 <Select
                   value={duration}
@@ -342,7 +380,9 @@ export default function AdminAmbassadors() {
               disabled={
                 !selectedAmbassadorId ||
                 promoCode.trim().length < 3 ||
-                !percentOff ||
+                (discountType === "percent"
+                  ? !percentOff || Number(percentOff) < 1 || Number(percentOff) > 100
+                  : !amountOffEuros || Number(amountOffEuros) <= 0) ||
                 createPromo.isPending
               }
             >
@@ -435,10 +475,10 @@ export default function AdminAmbassadors() {
                     <TableCell className="font-mono">{p.code}</TableCell>
                     <TableCell>{p.ambassadorName}</TableCell>
                     <TableCell>
-                      {p.percentOff != null
-                        ? `${p.percentOff}%`
-                        : p.amountOff != null
-                          ? `${(p.amountOff / 100).toFixed(2)}€`
+                      {p.discountType === "fixed" && p.amountOff != null
+                        ? `${(p.amountOff / 100).toFixed(2)}€`
+                        : p.percentOff != null
+                          ? `${p.percentOff}%`
                           : "—"}
                     </TableCell>
                     <TableCell>
