@@ -462,6 +462,199 @@ function resolveStripeSubscriptionItemId(
   return stripeSub.items.data.length === 1 ? stripeSub.items.data[0].id : null;
 }
 
+type InvoiceSubscriptionRecord = {
+  id: number;
+  productType: string | null;
+  productId: string | null;
+  tier: string | null;
+  stripeSubscriptionItemId: string | null;
+  billingPeriod: string | null;
+  price: number | null;
+};
+
+function findInvoiceLineForSubscription(
+  invoice: Stripe.Invoice,
+  subscription: InvoiceSubscriptionRecord,
+  stripeSub?: Stripe.Subscription,
+): Stripe.InvoiceLineItem | undefined {
+  if (subscription.stripeSubscriptionItemId) {
+    const byStoredId = invoice.lines.data.find(
+      (line) =>
+        getInvoiceLineSubscriptionItemId(line) === subscription.stripeSubscriptionItemId,
+    );
+    if (byStoredId) return byStoredId;
+  }
+
+  const expectedPriceIds = getSubscriptionRecordPriceIds(subscription);
+  if (expectedPriceIds.length > 0) {
+    const byPrice = invoice.lines.data.find((line) => {
+      const priceRef = line.price;
+      const priceId = typeof priceRef === "string" ? priceRef : priceRef?.id;
+      return Boolean(priceId && expectedPriceIds.includes(priceId));
+    });
+    if (byPrice) return byPrice;
+  }
+
+  if (stripeSub) {
+    const resolvedItemId = resolveStripeSubscriptionItemId(subscription, stripeSub);
+    if (resolvedItemId) {
+      return invoice.lines.data.find(
+        (line) => getInvoiceLineSubscriptionItemId(line) === resolvedItemId,
+      );
+    }
+  }
+
+  return undefined;
+}
+
+function findSetupFeeInvoiceLine(invoice: Stripe.Invoice): Stripe.InvoiceLineItem | undefined {
+  const setupFeePriceIds = Object.values(SETUP_FEE_PRICES).filter(
+    (id): id is string => Boolean(id),
+  );
+  if (setupFeePriceIds.length === 0) return undefined;
+
+  return invoice.lines.data.find((line) => {
+    if (getInvoiceLineSubscriptionItemId(line)) return false;
+    const priceRef = line.price;
+    const priceId = typeof priceRef === "string" ? priceRef : priceRef?.id;
+    return Boolean(priceId && setupFeePriceIds.includes(priceId));
+  });
+}
+
+function buildDraftInvoiceCopy(sub: InvoiceSubscriptionRecord): {
+  title: string;
+  description: string;
+} {
+  if (sub.productType === "plan") {
+    const tierName = sub.tier
+      ? sub.tier.charAt(0).toUpperCase() + sub.tier.slice(1)
+      : "Plan";
+    const billingPeriod = sub.billingPeriod === "yearly" ? "Yearly" : "Monthly";
+    const planName =
+      subscriptionPlans[sub.tier as keyof typeof subscriptionPlans]?.name || tierName;
+    return {
+      title: `Invoice for ${planName} Plan (${billingPeriod})`,
+      description: `Subscription plan - ${planName} (${billingPeriod})`,
+    };
+  }
+
+  if (sub.productType === "addon") {
+    const addOn = availableAddOns.find((a) => a.id === sub.productId);
+    const addOnName = addOn?.name || "Add-on";
+    return {
+      title: `Invoice for ${addOnName}`,
+      description: `Add-on - ${addOnName}`,
+    };
+  }
+
+  return {
+    title: "Invoice for Subscription",
+    description: "Subscription payment",
+  };
+}
+
+async function ensureDraftInvoicesForPaidInvoice(params: {
+  websiteProgressId: number;
+  subscriptions: InvoiceSubscriptionRecord[];
+  invoice: Stripe.Invoice;
+  stripeSubscription?: Stripe.Subscription;
+  context: string;
+}): Promise<void> {
+  const { websiteProgressId, subscriptions, invoice, stripeSubscription, context } = params;
+
+  if (!invoice.paid || invoice.amount_paid <= 0) return;
+
+  const invoiceDate = invoice.status_transitions?.paid_at
+    ? new Date(invoice.status_transitions.paid_at * 1000)
+    : new Date(invoice.created * 1000);
+  const invoiceMonth = invoiceDate.getMonth() + 1;
+  const invoiceYear = invoiceDate.getFullYear();
+
+  let paymentIntentId: string | null = null;
+  if (invoice.payment_intent) {
+    paymentIntentId =
+      typeof invoice.payment_intent === "string"
+        ? invoice.payment_intent
+        : invoice.payment_intent.id;
+  }
+
+  const currency = (invoice.currency || "eur").toUpperCase();
+
+  for (const sub of subscriptions) {
+    const lineItem = findInvoiceLineForSubscription(invoice, sub, stripeSubscription);
+    const amount = lineItem?.amount ?? sub.price ?? 0;
+
+    if (amount <= 0) {
+      console.warn(
+        `⚠️ [${context}] No invoice line matched for subscription ${sub.id} (${sub.productType}), skipping draft`,
+      );
+      continue;
+    }
+
+    const existingInvoice = await db
+      .select()
+      .from(websiteInvoices)
+      .where(
+        and(
+          eq(websiteInvoices.subscriptionId, sub.id),
+          eq(websiteInvoices.websiteProgressId, websiteProgressId),
+          sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
+          sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`,
+        ),
+      )
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (existingInvoice) continue;
+
+    const { title, description } = buildDraftInvoiceCopy(sub);
+
+    await createDraftInvoice({
+      websiteProgressId,
+      subscriptionId: sub.id,
+      paymentIntentId,
+      title,
+      description,
+      amount,
+      currency,
+      context: `${context} (${sub.productType})`,
+    });
+  }
+
+  const setupFeeLine = findSetupFeeInvoiceLine(invoice);
+  if (setupFeeLine && setupFeeLine.amount > 0) {
+    const setupFeeConditions = [
+      eq(websiteInvoices.websiteProgressId, websiteProgressId),
+      isNull(websiteInvoices.subscriptionId),
+      sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
+      sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`,
+    ];
+    if (paymentIntentId) {
+      setupFeeConditions.push(eq(websiteInvoices.paymentIntentId, paymentIntentId));
+    }
+
+    const existingSetupFee = await db
+      .select()
+      .from(websiteInvoices)
+      .where(and(...setupFeeConditions))
+      .limit(1)
+      .then((rows) => rows[0]);
+
+    if (!existingSetupFee) {
+      await createDraftInvoice({
+        websiteProgressId,
+        subscriptionId: null,
+        paymentIntentId,
+        title: "Invoice for Website Setup Fee",
+        description: "One-time website setup fee",
+        amount: setupFeeLine.amount,
+        currency,
+        context: `${context} (setup fee)`,
+      });
+    }
+  }
+}
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2024-06-20",
   typescript: true,
@@ -1073,7 +1266,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                       if (upcomingInvoice) {
                         const lineItem = upcomingInvoice.lines.data.find(
-                          (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                          (line) =>
+                            getInvoiceLineSubscriptionItemId(line) ===
+                            subscription.stripeSubscriptionItemId,
                         );
                         nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
                       }
@@ -1438,7 +1633,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                       if (upcomingInvoice) {
                         const lineItem = upcomingInvoice.lines.data.find(
-                          (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                          (line) =>
+                            getInvoiceLineSubscriptionItemId(line) ===
+                            subscription.stripeSubscriptionItemId,
                         );
                         nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
                         console.log(`[/api/subscriptions Mode 1] Upcoming invoice line item: ${nextBillingAmount} cents`);
@@ -1567,7 +1764,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                   if (upcomingInvoice) {
                     const lineItem = upcomingInvoice.lines.data.find(
-                      (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                      (line) =>
+                        getInvoiceLineSubscriptionItemId(line) ===
+                        subscription.stripeSubscriptionItemId,
                     );
                     nextBillingAmount = lineItem ? lineItem.amount : upcomingInvoice.amount_due;
                   }
@@ -3235,71 +3434,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const latestInvoice = stripeSubscription.latest_invoice as Stripe.Invoice;
 
           if (latestInvoice && latestInvoice.paid && latestInvoice.amount_paid > 0) {
-            const now = new Date();
-            const invoiceMonth = now.getMonth() + 1;
-            const invoiceYear = now.getFullYear();
-
-            let paymentIntentId: string | null = null;
-            if (latestInvoice.payment_intent) {
-              paymentIntentId = typeof latestInvoice.payment_intent === 'string'
-                ? latestInvoice.payment_intent
-                : (latestInvoice.payment_intent as Stripe.PaymentIntent).id;
-            }
-
-            for (const sub of allLinkedSubscriptions) {
-              const lineItem = latestInvoice.lines.data.find(
-                (line) => line.subscription_item === sub.stripeSubscriptionItemId
-              );
-              const amount = lineItem ? lineItem.amount : 0;
-
-              if (amount <= 0) continue;
-
-              const existingInvoice = await db
-                .select()
-                .from(websiteInvoices)
-                .where(
-                  and(
-                    eq(websiteInvoices.subscriptionId, sub.id),
-                    eq(websiteInvoices.websiteProgressId, websiteProgressEntry.id),
-                    sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
-                    sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`
-                  )
-                )
-                .limit(1)
-                .then((rows) => rows[0]);
-
-              if (existingInvoice) continue;
-
-              let invoiceTitle: string;
-              let invoiceDescription: string;
-
-              if (sub.productType === 'plan') {
-                const tierName = sub.tier ? sub.tier.charAt(0).toUpperCase() + sub.tier.slice(1) : 'Plan';
-                const billingPeriod = sub.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
-                const planName = subscriptionPlans[sub.tier as keyof typeof subscriptionPlans]?.name || tierName;
-                invoiceTitle = `Invoice for ${planName} Plan (${billingPeriod})`;
-                invoiceDescription = `Subscription plan - ${planName} (${billingPeriod})`;
-              } else if (sub.productType === 'addon') {
-                const addOn = availableAddOns.find((a) => a.id === sub.productId);
-                const addOnName = addOn?.name || 'Add-on';
-                invoiceTitle = `Invoice for ${addOnName}`;
-                invoiceDescription = `Add-on - ${addOnName}`;
-              } else {
-                invoiceTitle = 'Invoice for Subscription';
-                invoiceDescription = 'Initial payment';
-              }
-
-              await createDraftInvoice({
-                websiteProgressId: websiteProgressEntry.id,
-                subscriptionId: sub.id,
-                paymentIntentId,
-                title: invoiceTitle,
-                description: invoiceDescription,
-                amount,
-                currency: (latestInvoice.currency || 'eur').toUpperCase(),
-                context: `initial purchase via get-started (${sub.productType})`,
-              });
-            }
+            await ensureDraftInvoicesForPaidInvoice({
+              websiteProgressId: websiteProgressEntry.id,
+              subscriptions: allLinkedSubscriptions,
+              invoice: latestInvoice,
+              stripeSubscription,
+              context: "initial purchase via get-started",
+            });
           }
         }
       } catch (invoiceError) {
@@ -4913,13 +5054,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ? new Date(invoice.status_transitions.paid_at * 1000)
                   : new Date(invoice.created * 1000);
 
-                let paymentIntentId: string | null = null;
-                if (invoice.payment_intent) {
-                  paymentIntentId = typeof invoice.payment_intent === 'string'
-                    ? invoice.payment_intent
-                    : invoice.payment_intent.id;
-                }
-
                 // Settle obligation once per invoice (not per subscription item)
                 const existingObligation = await storage.getObligationsByStripeInvoiceId(invoice.id);
                 if (existingObligation) {
@@ -4934,6 +5068,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
                   await storage.markObligationSettled(existingObligation.id);
                   console.log('✅ Obligation settled for invoice:', invoice.id);
+                }
+
+                let stripeSubForInvoice: Stripe.Subscription | undefined;
+                try {
+                  stripeSubForInvoice = await stripe.subscriptions.retrieve(
+                    invoice.subscription as string,
+                  );
+                } catch (stripeSubError) {
+                  console.warn(
+                    "⚠️ [WEBHOOK] Could not retrieve Stripe subscription for line matching:",
+                    stripeSubError,
+                  );
                 }
 
                 // Process each subscription separately with its own per-item amount
@@ -4955,11 +5101,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     continue;
                   }
 
-                  // Resolve per-item amount from invoice line items
-                  const lineItem = invoice.lines.data.find(
-                    (line) => line.subscription_item === subscription.stripeSubscriptionItemId
+                  const lineItem = findInvoiceLineForSubscription(
+                    invoice,
+                    subscription,
+                    stripeSubForInvoice,
                   );
-                  const itemAmount = lineItem ? lineItem.amount : invoice.amount_paid;
+                  const itemAmount = lineItem?.amount ?? subscription.price ?? 0;
+
+                  if (itemAmount <= 0) {
+                    console.warn(
+                      `⏭️ [WEBHOOK] Could not resolve amount for subscription ${subscription.id}, skipping transaction`,
+                    );
+                    continue;
+                  }
 
                   console.log('📋 [WEBHOOK] Processing invoice for subscription:', {
                     dbSubscriptionId: subscription.id,
@@ -4980,69 +5134,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   });
 
                   console.log(`✅ [WEBHOOK] Transaction created for subscription ${subscription.id}, amount: ${itemAmount}`);
+                }
 
-                  if (subscription.websiteProgressId && subscription.id) {
-                    try {
-                      const invoiceDate = new Date(invoice.created * 1000);
-                      const invoiceMonth = invoiceDate.getMonth() + 1;
-                      const invoiceYear = invoiceDate.getFullYear();
+                const websiteInvoiceGroups = new Map<number, typeof dbSubscriptions>();
+                for (const subscription of dbSubscriptions) {
+                  if (!subscription.websiteProgressId) {
+                    console.log(
+                      `🔵 [WEBHOOK] Subscription ${subscription.id} has no websiteProgressId, skipping invoice draft`,
+                    );
+                    continue;
+                  }
+                  const existing = websiteInvoiceGroups.get(subscription.websiteProgressId) || [];
+                  existing.push(subscription);
+                  websiteInvoiceGroups.set(subscription.websiteProgressId, existing);
+                }
 
-                      const existingInvoice = await db
-                        .select()
-                        .from(websiteInvoices)
-                        .where(
-                          and(
-                            eq(websiteInvoices.subscriptionId, subscription.id),
-                            eq(websiteInvoices.websiteProgressId, subscription.websiteProgressId),
-                            sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${invoiceMonth}`,
-                            sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${invoiceYear}`
-                          )
-                        )
-                        .limit(1)
-                        .then((rows) => rows[0]);
-
-                      if (!existingInvoice && itemAmount > 0) {
-                        let invoiceTitle: string;
-                        let invoiceDescription: string;
-
-                        if (subscription.productType === 'plan') {
-                          const tierName = subscription.tier
-                            ? subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)
-                            : 'Plan';
-                          const billingPeriod = subscription.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
-                          const planName = subscriptionPlans[subscription.tier as keyof typeof subscriptionPlans]?.name || tierName;
-                          invoiceTitle = `Invoice for ${planName} Plan (${billingPeriod})`;
-                          invoiceDescription = `Subscription plan - ${planName} (${billingPeriod})`;
-                        } else if (subscription.productType === 'addon') {
-                          const addOn = availableAddOns.find(a => a.id === subscription.productId);
-                          const addOnName = addOn?.name || 'Add-on';
-                          invoiceTitle = `Invoice for ${addOnName}`;
-                          invoiceDescription = `Add-on purchase - ${addOnName}`;
-                        } else {
-                          invoiceTitle = `Invoice for Subscription`;
-                          invoiceDescription = `Recurring payment`;
-                        }
-
-                        await createDraftInvoice({
-                          websiteProgressId: subscription.websiteProgressId,
-                          subscriptionId: subscription.id,
-                          paymentIntentId,
-                          title: invoiceTitle,
-                          description: invoiceDescription,
-                          amount: itemAmount,
-                          currency: (invoice.currency || 'eur').toUpperCase(),
-                          context: `recurring payment via webhook (${subscription.productType})`,
-                        });
-
-                        console.log(`✅ [WEBHOOK] Invoice draft created for subscription ${subscription.id} (${subscription.productType}), amount: ${itemAmount}`);
-                      } else if (existingInvoice) {
-                        console.log(`🔵 [WEBHOOK] Invoice draft already exists for subscription ${subscription.id}, skipping`);
-                      }
-                    } catch (invoiceError) {
-                      console.error(`❌ [WEBHOOK] Error creating invoice draft for subscription ${subscription.id}:`, invoiceError);
-                    }
-                  } else {
-                    console.log(`🔵 [WEBHOOK] Subscription ${subscription.id} has no websiteProgressId, skipping invoice draft`);
+                for (const [websiteProgressId] of websiteInvoiceGroups) {
+                  try {
+                    await ensureDraftInvoicesForPaidInvoice({
+                      websiteProgressId,
+                      subscriptions: dbSubscriptions.filter(
+                        (sub) => sub.websiteProgressId === websiteProgressId,
+                      ),
+                      invoice,
+                      stripeSubscription: stripeSubForInvoice,
+                      context: "recurring payment via webhook",
+                    });
+                  } catch (invoiceError) {
+                    console.error(
+                      `❌ [WEBHOOK] Error creating invoice drafts for website ${websiteProgressId}:`,
+                      invoiceError,
+                    );
                   }
                 }
               } else {
@@ -7004,78 +7126,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Create invoice draft for plan subscriptions
-        if (websiteProgressEntry && subscription) {
-          // Only create invoice for plan subscriptions, not addons
-          if (subscription.productType === 'plan' && subscription.id) {
-            try {
-              // Check if invoice already exists for this subscription + current month
-              // This prevents duplicates if webhook already created invoice for first payment
-              const now = new Date();
-              const currentMonth = now.getMonth() + 1;
-              const currentYear = now.getFullYear();
-              
-              const existingInvoice = await db
-                .select()
-                .from(websiteInvoices)
-                .where(
-                  and(
-                    eq(websiteInvoices.subscriptionId, subscription.id),
-                    eq(websiteInvoices.websiteProgressId, websiteProgressEntry.id),
-                    // Check if invoice exists for current month/year to avoid duplicates
-                    sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${currentMonth}`,
-                    sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${currentYear}`
-                  )
-                )
-                .limit(1)
-                .then((rows) => rows[0]);
+        // Create draft invoices for all subscriptions linked to this website (plan, add-ons, setup fee)
+        if (websiteProgressEntry) {
+          try {
+            const allLinkedSubscriptions = await db
+              .select()
+              .from(subscriptionsTable)
+              .where(
+                and(
+                  eq(subscriptionsTable.userId, req.user.id),
+                  eq(subscriptionsTable.websiteProgressId, websiteProgressEntry.id),
+                  eq(subscriptionsTable.status, "active"),
+                ),
+              );
 
-              if (!existingInvoice && subscription.price && subscription.price > 0) {
-                console.log('🔵 [ONBOARDING INITIALIZE] Creating invoice draft for plan subscription');
-                
-                // Get payment intent from Stripe subscription
-                let paymentIntentId: string | null = null;
-                if (subscription.stripeSubscriptionId) {
-                  try {
-                    const stripeSubscription = await stripe.subscriptions.retrieve(
-                      subscription.stripeSubscriptionId,
-                      { expand: ['latest_invoice'] }
-                    );
-                    paymentIntentId = await getPaymentIntentFromSubscription(stripeSubscription);
-                  } catch (stripeError) {
-                    console.warn('⚠️ [ONBOARDING INITIALIZE] Could not fetch Stripe subscription for payment intent:', stripeError);
-                  }
-                }
+            if (
+              allLinkedSubscriptions.length > 0 &&
+              allLinkedSubscriptions[0].stripeSubscriptionId
+            ) {
+              const stripeSubscription = await stripe.subscriptions.retrieve(
+                allLinkedSubscriptions[0].stripeSubscriptionId,
+                { expand: ["latest_invoice.payment_intent"] },
+              );
 
-                // Get tier name for invoice title
-                const tierName = subscription.tier 
-                  ? subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)
-                  : 'Plan';
-                
-                const billingPeriod = subscription.billingPeriod === 'yearly' ? 'Yearly' : 'Monthly';
-                const planName = subscriptionPlans[subscription.tier as keyof typeof subscriptionPlans]?.name || tierName;
+              const latestInvoice = stripeSubscription.latest_invoice as Stripe.Invoice;
 
-                await createDraftInvoice({
+              if (latestInvoice?.paid && latestInvoice.amount_paid > 0) {
+                console.log(
+                  "🔵 [ONBOARDING INITIALIZE] Creating invoice drafts for linked subscriptions:",
+                  allLinkedSubscriptions.map((sub) => sub.id),
+                );
+
+                await ensureDraftInvoicesForPaidInvoice({
                   websiteProgressId: websiteProgressEntry.id,
-                  subscriptionId: subscription.id,
-                  paymentIntentId,
-                  title: `Invoice for ${planName} Plan (${billingPeriod})`,
-                  description: `Subscription plan - ${planName} (${billingPeriod})`,
-                  amount: subscription.price,
-                  currency: 'EUR', // Default to EUR, can be enhanced later
-                  context: `plan subscription via onboarding initialize (${subscription.tier || 'unknown'})`,
+                  subscriptions: allLinkedSubscriptions,
+                  invoice: latestInvoice,
+                  stripeSubscription,
+                  context: "initial purchase via onboarding initialize",
                 });
-                
-                console.log('✅ [ONBOARDING INITIALIZE] Invoice draft created for plan subscription');
-              } else if (existingInvoice) {
-                console.log('🔵 [ONBOARDING INITIALIZE] Invoice already exists for this subscription, skipping creation');
-              } else {
-                console.log('🔵 [ONBOARDING INITIALIZE] Subscription price is 0 or null, skipping invoice creation');
+
+                console.log("✅ [ONBOARDING INITIALIZE] Invoice drafts ensured for linked subscriptions");
               }
-            } catch (invoiceError) {
-              console.error('❌ [ONBOARDING INITIALIZE] Error creating invoice draft:', invoiceError);
-              // Don't fail the entire request if invoice creation fails
             }
+          } catch (invoiceError) {
+            console.error("❌ [ONBOARDING INITIALIZE] Error creating invoice drafts:", invoiceError);
           }
         }
       } else {
