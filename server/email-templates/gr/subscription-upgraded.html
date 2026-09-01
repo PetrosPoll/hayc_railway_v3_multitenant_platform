@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Αναβάθμιση Συνδρομής - hayc</title>
+        <meta name="color-scheme" content="light only" />
+    <meta name="supported-color-schemes" content="light" />
+<title>Αναβάθμιση Συνδρομής - hayc</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -37,10 +39,7 @@
         .logo {
             margin-bottom: 15px;
         }
-        .logo-header {
-            text-align: center;
-        }
-        .content {
+.content {
             padding: 30px;
         }
         .subscription-details {
@@ -108,17 +107,34 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+      <div class="header">
             <h1>Η Συνδρομή σας Αναβαθμίστηκε με Επιτυχία!</h1>
         </div>
-        <div class="logo-header">
+        <table
+        role="presentation"
+        cellspacing="0"
+        cellpadding="0"
+        border="0"
+        width="100%"
+        style="margin: 0 auto 24px auto"
+      >
+        <tr>
+          <td
+            align="center"
+            bgcolor="#ffffff"
+            style="background-color: #ffffff; padding: 12px 0"
+          >
             <img
-                src="http://hayc.gr/images/hayc-logo.png"
-                alt="HAYC Logo Image"
-                className="w-full h-auto"
-                style="max-width: 100px; padding: 0 30px"
+              src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/hayc-logo.png"
+              width="120"
+              height="40"
+              alt="hayc"
+              style="display: block; border: 0; outline: none; text-decoration: none; width: 120px; max-width: 120px; height: auto"
             />
-        </div>
+          </td>
+        </tr>
+      </table>
+
         <div class="content">
             <p>Γεια σας {{username}},</p>
             <p>Υπέροχα νέα! Η συνδρομή σας έχει αναβαθμιστεί με επιτυχία σε ετήσια χρέωση. Τώρα εξοικονομείτε χρήματα με το ετήσιο μας πρόγραμμα!</p>
