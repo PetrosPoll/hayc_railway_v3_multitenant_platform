@@ -21,6 +21,7 @@ import {
 } from "@/components/digital-products/buyersTableUtils";
 import { EditEnrollmentAccessDialog } from "@/components/digital-products/EditEnrollmentAccessDialog";
 import type { Product } from "@/types/digital-products";
+import { cn } from "@/lib/utils";
 
 type Props = {
   open: boolean;
@@ -31,17 +32,20 @@ type Props = {
   onChanged: () => void;
 };
 
-function CompletionBar({ percent }: { percent: number }) {
+function CompletionBar({ percent, label }: { percent: number; label: string }) {
   const clamped = Math.min(100, Math.max(0, percent));
   return (
-    <div className="flex items-center gap-2 min-w-[8rem]">
-      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-        <div
-          className="h-full bg-[#ED4C14] transition-all"
-          style={{ width: `${clamped}%` }}
-        />
+    <div className="space-y-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-2 min-w-[8rem]">
+        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+          <div
+            className="h-full bg-green-600 transition-all"
+            style={{ width: `${clamped}%` }}
+          />
+        </div>
+        <span className="text-xs tabular-nums text-muted-foreground w-9 text-right">{clamped}%</span>
       </div>
-      <span className="text-xs tabular-nums text-muted-foreground w-9 text-right">{clamped}%</span>
     </div>
   );
 }
@@ -162,17 +166,35 @@ export function ManageBuyerEnrollmentsDialog({
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <p className="font-medium truncate">{course.title || "—"}</p>
                                   {enrollment?.accessExpired ? (
-                                    <Badge variant="destructive" className="text-xs">
+                                    <Badge
+                                      variant="destructive"
+                                      className="text-xs bg-red-600 hover:bg-red-600"
+                                    >
                                       {t("digitalProductsManagement.buyers.enrollments.expired")}
                                     </Badge>
                                   ) : null}
                                 </div>
                                 {enrollment ? (
                                   <>
-                                    <p className="text-xs text-muted-foreground">
+                                    <p
+                                      className={cn(
+                                        "text-xs font-medium",
+                                        enrollment.accessExpired
+                                          ? "text-muted-foreground line-through"
+                                          : enrollment.accessType === "lifetime" ||
+                                              enrollment.accessDays == null
+                                            ? "text-green-700 dark:text-green-500"
+                                            : "text-muted-foreground",
+                                      )}
+                                    >
                                       {formatEnrollmentAccessLabel(enrollment, t)}
                                     </p>
-                                    <CompletionBar percent={enrollment.completionPercent} />
+                                    <CompletionBar
+                                      percent={enrollment.completionPercent}
+                                      label={t(
+                                        "digitalProductsManagement.buyers.enrollments.progressLabel",
+                                      )}
+                                    />
                                   </>
                                 ) : null}
                               </div>

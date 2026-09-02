@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { accessToggleButtonClass } from "@/components/digital-products/accessToggleStyles";
 import type { NormalizedEnrollment } from "@/components/digital-products/buyersTableUtils";
 
 type Props = {
@@ -128,16 +129,18 @@ export function EditEnrollmentAccessDialog({
           <div className="flex gap-2">
             <Button
               type="button"
-              variant={accessMode === "lifetime" ? "default" : "outline"}
+              variant="outline"
               size="sm"
+              className={accessToggleButtonClass(accessMode === "lifetime", "lifetime")}
               onClick={() => setAccessMode("lifetime")}
             >
               {t("digitalProductsManagement.courseEditor.access.lifetime")}
             </Button>
             <Button
               type="button"
-              variant={accessMode === "limited" ? "default" : "outline"}
+              variant="outline"
               size="sm"
+              className={accessToggleButtonClass(accessMode === "limited", "limited")}
               onClick={() => setAccessMode("limited")}
             >
               {t("digitalProductsManagement.courseEditor.access.limited")}

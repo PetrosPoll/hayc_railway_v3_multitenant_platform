@@ -289,9 +289,6 @@ export function formatEnrollmentAccessLabel(
   enrollment: NormalizedEnrollment,
   t: (key: string, opts?: Record<string, unknown>) => string,
 ): string {
-  if (enrollment.accessExpired) {
-    return t("digitalProductsManagement.buyers.enrollments.expired");
-  }
   if (enrollment.accessType === "lifetime" || enrollment.accessDays == null) {
     return t("digitalProductsManagement.courseEditor.access.lifetime");
   }

@@ -2835,6 +2835,7 @@
                 "unenrollFailed": "Could not unenroll buyer. Please try again.",
                 "enrolledSection": "Enrolled courses",
                 "availableSection": "Available courses",
+                "progressLabel": "Course progress",
                 "expired": "Expired",
                 "editAccess": "Edit access",
                 "editAccessTitle": "Edit access duration",
@@ -2969,7 +2970,7 @@
             "access": {
                 "title": "Access duration",
                 "description": "How long buyers can access this course after purchase.",
-                "lifetime": "Lifetime access",
+                "lifetime": "Unlimited access",
                 "limited": "Limited access",
                 "daysLabel": "Access days",
                 "invalidDays": "Enter a positive number of access days."

@@ -17,6 +17,7 @@ import {
 import type { Product, ProductStatus, CourseAccessType } from "@/types/digital-products";
 import { CourseCurriculumTab } from "@/components/digital-products/CourseCurriculumTab";
 import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
+import { accessToggleButtonClass } from "@/components/digital-products/accessToggleStyles";
 
 type CourseLanguage = "el" | "en";
 
@@ -451,7 +452,8 @@ export function CourseEditorView({
               <Button
                 type="button"
                 size="sm"
-                variant={form.accessType === "lifetime" ? "default" : "outline"}
+                variant="outline"
+                className={accessToggleButtonClass(form.accessType === "lifetime", "lifetime")}
                 onClick={() => setForm((prev) => ({ ...prev, accessType: "lifetime" }))}
               >
                 {t("digitalProductsManagement.courseEditor.access.lifetime")}
@@ -459,7 +461,8 @@ export function CourseEditorView({
               <Button
                 type="button"
                 size="sm"
-                variant={form.accessType === "limited" ? "default" : "outline"}
+                variant="outline"
+                className={accessToggleButtonClass(form.accessType === "limited", "limited")}
                 onClick={() => setForm((prev) => ({ ...prev, accessType: "limited" }))}
               >
                 {t("digitalProductsManagement.courseEditor.access.limited")}
