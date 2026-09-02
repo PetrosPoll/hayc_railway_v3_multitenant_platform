@@ -2994,7 +2994,8 @@
                     "addLesson": "+ Προσθήκη μαθήματος"
                 },
                 "tabs": {
-                    "attachments": "Συνημμένα"
+                    "attachments": "Συνημμένα",
+                    "quiz": "Quiz"
                 },
                 "descriptionEditor": {
                     "write": "Επεξεργασία",
@@ -3045,6 +3046,16 @@
                     "removedDescription": "Το συνημμένο διαγράφηκε.",
                     "uploadErrorTitle": "Σφάλμα μεταφόρτωσης"
                 },
+                "quiz": {
+                    "embedCodeLabel": "Embed code",
+                    "embedCodePlaceholder": "<iframe src=\"https://...\" ...></iframe>",
+                    "helper": "Επικόλλησε το embed code από Typeform, Google Forms, κ.λπ. Οι μαθητές θα το βλέπουν στο tab Quiz.",
+                    "remove": "Αφαίρεση quiz",
+                    "savedTitle": "Το quiz αποθηκεύτηκε",
+                    "savedDescription": "Το quiz embed ενημερώθηκε για αυτό το μάθημα.",
+                    "removedTitle": "Το quiz αφαιρέθηκε",
+                    "removedDescription": "Το quiz embed αφαιρέθηκε από αυτό το μάθημα."
+                },
                 "errors": {
                     "failedToLoadCurriculum": "Αποτυχία φόρτωσης προγράμματος.",
                     "failedToLoadChapters": "Αποτυχία φόρτωσης ενοτήτων",
@@ -3068,7 +3079,8 @@
                     "failedToGetUploadSignature": "Αποτυχία λήψης υπογραφής μεταφόρτωσης",
                     "failedToPrepareUpload": "Αποτυχία προετοιμασίας μεταφόρτωσης. Δοκιμάστε ξανά.",
                     "failedToUploadFile": "Αποτυχία μεταφόρτωσης αρχείου. Δοκιμάστε ξανά.",
-                    "uploadSucceededButSaveFailed": "Η μεταφόρτωση ολοκληρώθηκε, αλλά απέτυχε η αποθήκευση του συνημμένου."
+                    "uploadSucceededButSaveFailed": "Η μεταφόρτωση ολοκληρώθηκε, αλλά απέτυχε η αποθήκευση του συνημμένου.",
+                    "failedToSaveQuiz": "Αποτυχία αποθήκευσης quiz embed."
                 }
             }
         },

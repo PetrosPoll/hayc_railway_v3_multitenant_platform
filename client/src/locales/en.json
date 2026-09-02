@@ -2994,7 +2994,8 @@
                     "addLesson": "+ Add Lesson"
                 },
                 "tabs": {
-                    "attachments": "Attachments"
+                    "attachments": "Attachments",
+                    "quiz": "Quiz"
                 },
                 "descriptionEditor": {
                     "write": "Write",
@@ -3045,6 +3046,16 @@
                     "removedDescription": "Attachment deleted.",
                     "uploadErrorTitle": "Upload Error"
                 },
+                "quiz": {
+                    "embedCodeLabel": "Embed code",
+                    "embedCodePlaceholder": "<iframe src=\"https://...\" ...></iframe>",
+                    "helper": "Paste the embed code from Typeform, Google Forms, etc. Students will see it in the Quiz tab.",
+                    "remove": "Remove quiz",
+                    "savedTitle": "Quiz saved",
+                    "savedDescription": "The quiz embed was updated for this lesson.",
+                    "removedTitle": "Quiz removed",
+                    "removedDescription": "The quiz embed was removed from this lesson."
+                },
                 "errors": {
                     "failedToLoadCurriculum": "Failed to load curriculum.",
                     "failedToLoadChapters": "Failed to load chapters",
@@ -3068,7 +3079,8 @@
                     "failedToGetUploadSignature": "Failed to get upload signature",
                     "failedToPrepareUpload": "Failed to prepare upload. Please try again.",
                     "failedToUploadFile": "Failed to upload file. Please try again.",
-                    "uploadSucceededButSaveFailed": "Upload succeeded but saving the attachment failed."
+                    "uploadSucceededButSaveFailed": "Upload succeeded but saving the attachment failed.",
+                    "failedToSaveQuiz": "Failed to save quiz embed."
                 }
             }
         },

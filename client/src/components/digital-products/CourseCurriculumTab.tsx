@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,6 +52,7 @@ interface Lesson {
   videoDurationSeconds: number | null;
   isFreePreview: boolean;
   status: ItemStatus;
+  quizEmbedCode: string | null;
 }
 
 interface Props {
@@ -70,6 +72,7 @@ interface LessonDraftState {
   durationMinutes: string;
   isFreePreview: boolean;
   status: ItemStatus;
+  quizEmbedCode: string;
 }
 
 interface ChapterDraftState {
@@ -83,7 +86,7 @@ type DeleteTarget =
   | { type: "lesson"; chapterId: string; lessonId: string; label: string }
   | null;
 
-type LessonEditTab = "details" | "attachments";
+type LessonEditTab = "details" | "attachments" | "quiz";
 
 interface LessonAttachment {
   id: string;
@@ -117,6 +120,7 @@ function normalizeLesson(raw: Record<string, unknown>): Lesson {
         : null,
     isFreePreview: raw.isFreePreview === true,
     status: toStatus(raw.status),
+    quizEmbedCode: typeof raw.quizEmbedCode === "string" ? raw.quizEmbedCode : null,
   };
 }
 
@@ -294,6 +298,7 @@ export function CourseCurriculumTab({
     durationMinutes: "",
     isFreePreview: false,
     status: "draft",
+    quizEmbedCode: "",
   });
   const [newLessonTitleError, setNewLessonTitleError] = useState<string | null>(null);
   const [lessonTitleErrorsById, setLessonTitleErrorsById] = useState<Record<string, string | null>>({});
@@ -306,6 +311,7 @@ export function CourseCurriculumTab({
   const [renamingAttachmentKey, setRenamingAttachmentKey] = useState<string | null>(null);
   const [renameDraftTitle, setRenameDraftTitle] = useState("");
   const [savingRenameKey, setSavingRenameKey] = useState<string | null>(null);
+  const [savingQuizLessonId, setSavingQuizLessonId] = useState<string | null>(null);
 
   const [lessonVideoUrlDetectingById, setLessonVideoUrlDetectingById] = useState<Record<string, boolean>>({});
   const [lessonVideoUrlDetectSuccessMinutesById, setLessonVideoUrlDetectSuccessMinutesById] = useState<
@@ -979,8 +985,64 @@ export function CourseCurriculumTab({
         durationMinutes: lessonSecondsToDurationMinutesField(lesson.videoDurationSeconds),
         isFreePreview: lesson.isFreePreview,
         status: lesson.status,
+        quizEmbedCode: lesson.quizEmbedCode ?? "",
       },
     }));
+  };
+
+  const saveLessonQuizEmbed = async (
+    chapterId: string,
+    lessonId: string,
+    quizEmbedCode: string | null,
+  ) => {
+    if (!courseBaseUrl) return;
+    setSavingQuizLessonId(lessonId);
+    setError(null);
+    try {
+      const response = await fetch(
+        `${courseBaseUrl}/chapters/${encodeURIComponent(chapterId)}/lessons/${encodeURIComponent(lessonId)}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quizEmbedCode }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToSaveQuiz"));
+      }
+
+      setLessonsByChapter((prev) => ({
+        ...prev,
+        [chapterId]: (prev[chapterId] ?? []).map((lesson) =>
+          lesson.id === lessonId ? { ...lesson, quizEmbedCode } : lesson,
+        ),
+      }));
+      setLessonDraftsById((prev) => {
+        const draft = prev[lessonId];
+        if (!draft) return prev;
+        return { ...prev, [lessonId]: { ...draft, quizEmbedCode: quizEmbedCode ?? "" } };
+      });
+
+      toast({
+        title:
+          quizEmbedCode == null
+            ? t("digitalProductsManagement.courseEditor.curriculum.quiz.removedTitle")
+            : t("digitalProductsManagement.courseEditor.curriculum.quiz.savedTitle"),
+        description:
+          quizEmbedCode == null
+            ? t("digitalProductsManagement.courseEditor.curriculum.quiz.removedDescription")
+            : t("digitalProductsManagement.courseEditor.curriculum.quiz.savedDescription"),
+      });
+    } catch (_error) {
+      setError(t("digitalProductsManagement.courseEditor.curriculum.errors.failedToSaveQuiz"));
+      toast({
+        title: t("digitalProductsManagement.courseEditor.curriculum.errors.failedToSaveQuiz"),
+        variant: "destructive",
+      });
+    } finally {
+      setSavingQuizLessonId(null);
+    }
   };
 
   const saveLessonEdit = async (chapterId: string, lessonId: string) => {
@@ -1054,6 +1116,7 @@ export function CourseCurriculumTab({
         durationMinutes: "",
         isFreePreview: false,
         status: "draft",
+        quizEmbedCode: "",
       });
       setNewLessonTitleError(null);
       setNewLessonVideoUrlDetecting(false);
@@ -1295,10 +1358,12 @@ export function CourseCurriculumTab({
                       durationMinutes: lessonSecondsToDurationMinutesField(lesson.videoDurationSeconds),
                       isFreePreview: lesson.isFreePreview,
                       status: lesson.status,
+                      quizEmbedCode: lesson.quizEmbedCode ?? "",
                     };
                     const lessonTab = lessonEditTabByLessonId[lesson.id] ?? "details";
                     const lessonAttachments = attachmentsByLessonId[lesson.id] ?? [];
                     const attachmentsLoading = attachmentsLoadingByLessonId[lesson.id] === true;
+                    const quizSaving = savingQuizLessonId === lesson.id;
                     return (
                       <div key={lesson.id} className="rounded-md border">
                         <div
@@ -1383,6 +1448,9 @@ export function CourseCurriculumTab({
                                 <TabsTrigger value="details">{t("digitalProductsManagement.courseEditor.tabs.details")}</TabsTrigger>
                                 <TabsTrigger value="attachments">
                                   {t("digitalProductsManagement.courseEditor.curriculum.tabs.attachments")}
+                                </TabsTrigger>
+                                <TabsTrigger value="quiz">
+                                  {t("digitalProductsManagement.courseEditor.curriculum.tabs.quiz")}
                                 </TabsTrigger>
                               </TabsList>
                               <TabsContent value="details" className="space-y-3 p-3 pt-4">
@@ -1652,6 +1720,65 @@ export function CourseCurriculumTab({
                                     })}
                                   </ul>
                                 )}
+                              </TabsContent>
+                              <TabsContent value="quiz" className="space-y-3 p-3 pt-4">
+                                <div className="space-y-1">
+                                  <Label htmlFor={`lesson-quiz-embed-${lesson.id}`}>
+                                    {t("digitalProductsManagement.courseEditor.curriculum.quiz.embedCodeLabel")}
+                                  </Label>
+                                  <Textarea
+                                    id={`lesson-quiz-embed-${lesson.id}`}
+                                    rows={7}
+                                    className="font-mono text-sm"
+                                    value={lessonDraft.quizEmbedCode}
+                                    placeholder={t(
+                                      "digitalProductsManagement.courseEditor.curriculum.quiz.embedCodePlaceholder",
+                                    )}
+                                    onChange={(e) =>
+                                      setLessonDraftsById((prev) => ({
+                                        ...prev,
+                                        [lesson.id]: { ...lessonDraft, quizEmbedCode: e.target.value },
+                                      }))
+                                    }
+                                  />
+                                  <p className="text-xs text-muted-foreground">
+                                    {t("digitalProductsManagement.courseEditor.curriculum.quiz.helper")}
+                                  </p>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    disabled={quizSaving || isSaving}
+                                    onClick={() => {
+                                      const trimmed = lessonDraft.quizEmbedCode.trim();
+                                      void saveLessonQuizEmbed(
+                                        chapter.id,
+                                        lesson.id,
+                                        trimmed.length > 0 ? trimmed : null,
+                                      );
+                                    }}
+                                  >
+                                    {quizSaving ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      t("digitalProductsManagement.common.save")
+                                    )}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={
+                                      quizSaving ||
+                                      isSaving ||
+                                      (lesson.quizEmbedCode == null && lessonDraft.quizEmbedCode.trim().length === 0)
+                                    }
+                                    onClick={() => void saveLessonQuizEmbed(chapter.id, lesson.id, null)}
+                                  >
+                                    {t("digitalProductsManagement.courseEditor.curriculum.quiz.remove")}
+                                  </Button>
+                                </div>
                               </TabsContent>
                             </Tabs>
                           </div>
