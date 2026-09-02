@@ -8,6 +8,7 @@ import {
   hasOnlineCoursesAddon,
   isBookingAddonValue,
   enforceSingleBookingAddon,
+  enrichStructureForDigitalProducts,
 } from "@/lib/get-started-addons";
 
 const GOAL_PAGE_MAP: Record<string, string[]> = {
@@ -55,6 +56,7 @@ const GOAL_DISPLAY_MAP: Record<string, string> = {
 function computeSuggestedStructure(
   businessType: string | undefined,
   goals: string[] | undefined,
+  selectedAddons?: string[],
 ): string[] {
   const pages = new Set<string>();
 
@@ -70,7 +72,7 @@ function computeSuggestedStructure(
       (GOAL_PAGE_MAP[goalKey] ?? []).forEach((p) => pages.add(p));
     });
 
-  return Array.from(pages);
+  return enrichStructureForDigitalProducts(Array.from(pages), selectedAddons);
 }
 
 const ALL_ADDONS = [
@@ -227,7 +229,21 @@ export default function StepRecommendation({
 
   const businessType = form.watch("businessType");
   const goals = form.watch("goals");
-  const suggestedStructure = computeSuggestedStructure(businessType, goals ?? []);
+
+  const suggestedAddonValues = enforceSingleBookingAddon(
+    computeSuggestedAddons(businessType, goals ?? []),
+  );
+
+  const rawSelectedAddons = form.watch("selectedAddons");
+  const selectedAddons = enforceSingleBookingAddon(
+    rawSelectedAddons !== undefined ? rawSelectedAddons : suggestedAddonValues,
+  );
+
+  const suggestedStructure = computeSuggestedStructure(
+    businessType,
+    goals ?? [],
+    selectedAddons,
+  );
 
   const getPageLabel = (page: string): string => {
     const result = t(`getStarted.websiteStructure.pages.${page}`);
@@ -239,15 +255,6 @@ export default function StepRecommendation({
     if (!key) return value;
     return t(`getStarted.recommendation.addons.${key}`);
   };
-
-  const suggestedAddonValues = enforceSingleBookingAddon(
-    computeSuggestedAddons(businessType, goals ?? []),
-  );
-
-  const rawSelectedAddons = form.watch("selectedAddons");
-  const selectedAddons = enforceSingleBookingAddon(
-    rawSelectedAddons !== undefined ? rawSelectedAddons : suggestedAddonValues,
-  );
 
   const toggleAddon = (value: string) => {
     form.setValue("suggestedAddons", suggestedAddonValues);

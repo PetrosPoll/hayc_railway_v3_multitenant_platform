@@ -10,6 +10,9 @@ export type BookingAddonValue = (typeof BOOKING_ADDON_VALUES)[number];
 
 export const ONLINE_COURSES_ADDON_VALUE = "Online Courses";
 
+/** Suggested page when the digital products (e-courses) add-on is selected. */
+export const PHYSICAL_PRODUCTS_SHOWCASE_PAGE = "Physical Products Showcase";
+
 export const ALL_GET_STARTED_ADDONS = [
   { key: "onlineCourses", value: "Online Courses" },
   { key: "servicesBooking", value: "Services Booking" },
@@ -81,4 +84,13 @@ export function hasAnyBookingAddon(selected: string[]): boolean {
 
 export function hasOnlineCoursesAddon(selected: string[]): boolean {
   return selected.some((v) => GET_STARTED_ADDON_ID_MAP[v] === "lms");
+}
+
+export function enrichStructureForDigitalProducts(
+  pages: string[],
+  selectedAddons?: string[] | null,
+): string[] {
+  if (!hasOnlineCoursesAddon(selectedAddons ?? [])) return pages;
+  if (pages.includes(PHYSICAL_PRODUCTS_SHOWCASE_PAGE)) return pages;
+  return [...pages, PHYSICAL_PRODUCTS_SHOWCASE_PAGE];
 }

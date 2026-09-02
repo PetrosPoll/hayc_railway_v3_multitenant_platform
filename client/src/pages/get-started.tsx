@@ -23,7 +23,10 @@ import StepSummary from "@/components/get-started/step-summary";
 import StepPricing from "@/components/get-started/step-pricing";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
 import { checkEmailExists } from "@/lib/api";
-import { enforceSingleBookingAddon } from "@/lib/get-started-addons";
+import {
+  enforceSingleBookingAddon,
+  enrichStructureForDigitalProducts,
+} from "@/lib/get-started-addons";
 // import { StepBusinessType } from "@/pages/get-started/steps/step-business-type";
 // import { StepGoal } from "@/pages/get-started/steps/step-goal";
 // import { StepRecommendation } from "@/pages/get-started/steps/step-recommendation";
@@ -137,6 +140,7 @@ const GOAL_DISPLAY_MAP: Record<string, string> = {
 function computeSuggestedStructure(
   businessType: string | undefined,
   goals: string[] | undefined,
+  selectedAddons?: string[],
 ): string[] {
   const pages = new Set<string>();
 
@@ -152,7 +156,7 @@ function computeSuggestedStructure(
       (GOAL_PAGE_MAP[goalKey] ?? []).forEach((p) => pages.add(p));
     });
 
-  return Array.from(pages);
+  return enrichStructureForDigitalProducts(Array.from(pages), selectedAddons);
 }
 
 const GOAL_ADDON_MAP: Record<string, string[]> = {
@@ -345,6 +349,7 @@ export default function GetStarted() {
       const suggestedStructure = computeSuggestedStructure(
         step3Values.businessType,
         step3Values.goals ?? [],
+        finalSelectedAddons,
       );
 
       const currentSuggested = computeSuggestedAddons(

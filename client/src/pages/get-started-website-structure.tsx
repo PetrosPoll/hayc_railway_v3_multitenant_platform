@@ -5,8 +5,12 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
+  enrichStructureForDigitalProducts,
+  PHYSICAL_PRODUCTS_SHOWCASE_PAGE,
+} from "@/lib/get-started-addons";
+import {
   Image, ShoppingBag, BookOpen, Users, MapPin, Briefcase, Newspaper,
-  CalendarDays, GraduationCap, Handshake, AlertCircle,
+  CalendarDays, GraduationCap, Handshake, Store, AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -17,7 +21,7 @@ import {
 
 const ALL_PAGES = [
   "Home", "About", "Services", "Contact", "Booking",
-  "Gallery", "Products",
+  "Gallery", "Products", PHYSICAL_PRODUCTS_SHOWCASE_PAGE,
   "Blog", "Team", "Location", "Portfolio", "Press",
   "Events", "Careers", "Partners",
 ];
@@ -42,6 +46,7 @@ const PAGE_IMG_ICONS: Record<string, string> = {
 const PAGE_LUCIDE_ICONS: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
   Gallery: Image,
   Products: ShoppingBag,
+  [PHYSICAL_PRODUCTS_SHOWCASE_PAGE]: Store,
   Blog: BookOpen,
   Team: Users,
   Location: MapPin,
@@ -182,6 +187,7 @@ export default function GetStartedWebsiteStructure() {
       .then((data) => {
         const structure = data?.submission?.suggestedStructure;
         const confirmed = data?.submission?.confirmedPages;
+        const selectedAddons = data?.submission?.selectedAddons;
 
         const plan = data?.submission?.selectedPlan;
         if (plan) {
@@ -190,7 +196,10 @@ export default function GetStartedWebsiteStructure() {
         }
 
         if (Array.isArray(structure) && structure.length > 0) {
-          const trimmed = filterSelectablePages(structure).slice(0, planLimit);
+          const trimmed = enrichStructureForDigitalProducts(
+            filterSelectablePages(structure),
+            selectedAddons,
+          ).slice(0, planLimit);
           setRecommendedPages(trimmed);
 
           if (Array.isArray(confirmed) && confirmed.length > 0) {
