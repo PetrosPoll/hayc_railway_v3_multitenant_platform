@@ -5,9 +5,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
-  Image, ShoppingBag, Tag, HelpCircle, MessageSquare,
-  BookOpen, Users, MapPin, Briefcase, Newspaper,
-  CalendarDays, GraduationCap, Handshake, Star, AlertCircle,
+  Image, ShoppingBag, BookOpen, Users, MapPin, Briefcase, Newspaper,
+  CalendarDays, GraduationCap, Handshake, AlertCircle,
 } from "lucide-react";
 import {
   Dialog,
@@ -18,10 +17,17 @@ import {
 
 const ALL_PAGES = [
   "Home", "About", "Services", "Contact", "Booking",
-  "Gallery", "Products", "Pricing", "FAQ", "Testimonials",
+  "Gallery", "Products",
   "Blog", "Team", "Location", "Portfolio", "Press",
-  "Events", "Careers", "Partners", "Reviews",
+  "Events", "Careers", "Partners",
 ];
+
+/** Sections shown as pages in older flows — not selectable as standalone pages. */
+const LEGACY_SECTION_PAGES = new Set(["Pricing", "FAQ", "Testimonials", "Reviews"]);
+
+function filterSelectablePages(pages: string[]): string[] {
+  return pages.filter((page) => !LEGACY_SECTION_PAGES.has(page));
+}
 
 const CLOUDINARY_BASE = "https://res.cloudinary.com/dem12vqtl/image/upload";
 
@@ -36,9 +42,6 @@ const PAGE_IMG_ICONS: Record<string, string> = {
 const PAGE_LUCIDE_ICONS: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
   Gallery: Image,
   Products: ShoppingBag,
-  Pricing: Tag,
-  FAQ: HelpCircle,
-  Testimonials: MessageSquare,
   Blog: BookOpen,
   Team: Users,
   Location: MapPin,
@@ -47,7 +50,6 @@ const PAGE_LUCIDE_ICONS: Record<string, React.ComponentType<{ className?: string
   Events: CalendarDays,
   Careers: GraduationCap,
   Partners: Handshake,
-  Reviews: Star,
 };
 
 const WEBSITE_ICON = `${CLOUDINARY_BASE}/cmd-icon_vunwc0.svg`;
@@ -188,11 +190,11 @@ export default function GetStartedWebsiteStructure() {
         }
 
         if (Array.isArray(structure) && structure.length > 0) {
-          const trimmed = structure.slice(0, planLimit);
+          const trimmed = filterSelectablePages(structure).slice(0, planLimit);
           setRecommendedPages(trimmed);
 
           if (Array.isArray(confirmed) && confirmed.length > 0) {
-            setSelectedPages(confirmed);
+            setSelectedPages(filterSelectablePages(confirmed));
           } else {
             setSelectedPages(trimmed);
           }
@@ -219,8 +221,9 @@ export default function GetStartedWebsiteStructure() {
     : t("getStarted.websiteStructure.pageLimit.current");
 
   const getPageLabel = (page: string): string => {
-    if (!ALL_PAGES.includes(page)) return page;
-    return t(`getStarted.websiteStructure.pages.${page}`);
+    const key = `getStarted.websiteStructure.pages.${page}`;
+    const translated = t(key);
+    return translated !== key ? translated : page;
   };
 
   const togglePage = (page: string) => {

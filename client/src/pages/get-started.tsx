@@ -95,9 +95,9 @@ export type WizardValues = z.infer<typeof wizardSchema>;
 const GOAL_PAGE_MAP: Record<string, string[]> = {
   get_enquiries: ["Contact"],
   book_appointments: ["Booking"],
-  sell_products: ["Products", "Pricing"],
+  sell_products: ["Products"],
   showcase_work: ["Gallery"],
-  build_trust: ["Testimonials"],
+  build_trust: [],
   share_information: ["Blog"],
   something_else: [],
 };
@@ -107,7 +107,7 @@ const BUSINESS_TYPE_PAGE_MAP: Record<string, string[]> = {
   service_business: ["Home", "About", "Services", "Contact"],
   personal_brand: ["Home", "About", "Blog", "Contact"],
   creative_business: ["Home", "About", "Gallery", "Contact"],
-  online_store: ["Home", "Products", "Pricing", "Contact"],
+  online_store: ["Home", "Products", "Contact"],
   hospitality_travel: ["Home", "About", "Booking", "Contact", "Location"],
   health_wellness: ["Home", "About", "Services", "Booking", "Contact"],
   other: ["Home", "About", "Services", "Contact"],
