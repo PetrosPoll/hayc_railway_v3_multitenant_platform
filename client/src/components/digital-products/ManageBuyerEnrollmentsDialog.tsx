@@ -9,6 +9,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -62,6 +72,7 @@ export function ManageBuyerEnrollmentsDialog({
   const { toast } = useToast();
   const [pendingCourseId, setPendingCourseId] = useState<string | null>(null);
   const [editEnrollment, setEditEnrollment] = useState<NormalizedEnrollment | null>(null);
+  const [confirmUnenrollCourse, setConfirmUnenrollCourse] = useState<Product | null>(null);
 
   const sortedCourses = useMemo(() => {
     return [...courses].sort((a, b) => {
@@ -116,6 +127,7 @@ export function ManageBuyerEnrollmentsDialog({
           : t("digitalProductsManagement.buyers.enrollments.enrollSuccess"),
       });
       onChanged();
+      if (enrolled) setConfirmUnenrollCourse(null);
     } catch {
       toast({
         title: enrolled
@@ -215,7 +227,7 @@ export function ManageBuyerEnrollmentsDialog({
                                   size="sm"
                                   variant="outline"
                                   disabled={!buyer?.id || busy || pendingCourseId !== null}
-                                  onClick={() => void runEnrollment(course.id, true)}
+                                  onClick={() => setConfirmUnenrollCourse(course)}
                                 >
                                   {busy ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -293,6 +305,48 @@ export function ManageBuyerEnrollmentsDialog({
         enrollment={editEnrollment}
         onSaved={onChanged}
       />
+
+      <AlertDialog
+        open={!!confirmUnenrollCourse}
+        onOpenChange={(next) => {
+          if (!next && !pendingCourseId) setConfirmUnenrollCourse(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("digitalProductsManagement.buyers.enrollments.unenrollConfirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("digitalProductsManagement.buyers.enrollments.unenrollConfirmDescription", {
+                name: buyerLabel,
+                course: confirmUnenrollCourse?.title || "—",
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!pendingCourseId}>
+              {t("digitalProductsManagement.common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={!!pendingCourseId}
+              onClick={(e) => {
+                e.preventDefault();
+                if (confirmUnenrollCourse) {
+                  void runEnrollment(confirmUnenrollCourse.id, true);
+                }
+              }}
+            >
+              {pendingCourseId === confirmUnenrollCourse?.id ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t("digitalProductsManagement.buyers.enrollments.unenrollConfirmAction")
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
