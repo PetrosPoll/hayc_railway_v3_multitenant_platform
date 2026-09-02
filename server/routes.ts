@@ -23918,6 +23918,104 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
+  const hdpEnrollmentAccessBodySchema = z.object({
+    buyerId: z.string().uuid(),
+    courseId: z.string().uuid(),
+    accessDays: z.number().int().positive().nullable(),
+  });
+
+  app.patch("/api/hdp/enrollments/:siteId/access", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const website = await authorizeHdpSiteAccess(req, res, siteId, true);
+      if (!website) return;
+
+      let body: z.infer<typeof hdpEnrollmentAccessBodySchema>;
+      try {
+        body = hdpEnrollmentAccessBodySchema.parse(req.body);
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          return res.status(400).json({ error: "Invalid request", details: err.errors });
+        }
+        throw err;
+      }
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(
+        `${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/enrollments/access`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-internal-token": HDP_INTERNAL_TOKEN,
+          },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (internalRes.status === 204) {
+        return res.sendStatus(204);
+      }
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error updating HDP enrollment access:", error);
+      res.status(500).json({ error: "Failed to update enrollment access" });
+    }
+  });
+
+  app.get("/api/hdp/analytics/:siteId/overview", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const website = await authorizeHdpSiteAccess(req, res, siteId, false);
+      if (!website) return;
+
+      const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res.status(503).json({ error: "HDP internal service not configured" });
+      }
+
+      const internalRes = await fetch(
+        `${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/analytics/overview`,
+        {
+          method: "GET",
+          headers: {
+            "x-internal-token": HDP_INTERNAL_TOKEN,
+          },
+        },
+      );
+
+      const contentType = internalRes.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        return res.status(internalRes.status).json(await internalRes.json());
+      }
+
+      return res.status(internalRes.status).send(await internalRes.text());
+    } catch (error: any) {
+      console.error("Error fetching HDP analytics overview:", error);
+      res.status(500).json({ error: "Failed to fetch analytics overview" });
+    }
+  });
+
   app.post("/api/hdp/products/:siteId/sync", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });

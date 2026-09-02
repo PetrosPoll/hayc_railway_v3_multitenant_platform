@@ -29,13 +29,14 @@ import { DemoBuyerCredentialsPanel } from "@/components/digital-products/DemoBuy
 import { ManageBuyerEnrollmentsDialog } from "@/components/digital-products/ManageBuyerEnrollmentsDialog";
 import { CourseEditorView } from "@/components/digital-products/CourseEditorView";
 import { CoursePreviewModal } from "@/components/digital-products/CoursePreviewModal";
+import { DigitalProductsAnalytics } from "@/components/digital-products/DigitalProductsAnalytics";
 
 interface Props {
   siteId: string;
   /** Website progress id — for media library API */
   websiteId: number;
-  /** Courses list vs buyers — controlled by website dashboard sidebar */
-  listMode?: "courses" | "buyers";
+  /** Courses list vs buyers vs analytics — controlled by website dashboard sidebar */
+  listMode?: "courses" | "buyers" | "analytics";
 }
 
 function typeLabel(type: ProductType): string {
@@ -604,7 +605,9 @@ export function DigitalProductsTab({
       </Card>
       ) : null}
 
-      {listMode === "buyers" ? (
+      {listMode === "analytics" ? (
+        <DigitalProductsAnalytics siteId={siteId} />
+      ) : listMode === "buyers" ? (
         buyersLoading ? (
           <Card>
             <CardContent className="py-12 flex items-center justify-center">

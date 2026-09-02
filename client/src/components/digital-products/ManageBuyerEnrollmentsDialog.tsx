@@ -10,11 +10,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
+  formatEnrollmentAccessLabel,
+  getBuyerEnrollment,
   isBuyerEnrolledInCourse,
   type NormalizedBuyer,
+  type NormalizedEnrollment,
 } from "@/components/digital-products/buyersTableUtils";
+import { EditEnrollmentAccessDialog } from "@/components/digital-products/EditEnrollmentAccessDialog";
 import type { Product } from "@/types/digital-products";
 
 type Props = {
@@ -25,6 +30,21 @@ type Props = {
   courses: Product[];
   onChanged: () => void;
 };
+
+function CompletionBar({ percent }: { percent: number }) {
+  const clamped = Math.min(100, Math.max(0, percent));
+  return (
+    <div className="flex items-center gap-2 min-w-[8rem]">
+      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full bg-[#ED4C14] transition-all"
+          style={{ width: `${clamped}%` }}
+        />
+      </div>
+      <span className="text-xs tabular-nums text-muted-foreground w-9 text-right">{clamped}%</span>
+    </div>
+  );
+}
 
 export function ManageBuyerEnrollmentsDialog({
   open,
@@ -37,6 +57,7 @@ export function ManageBuyerEnrollmentsDialog({
   const { t } = useTranslation();
   const { toast } = useToast();
   const [pendingCourseId, setPendingCourseId] = useState<string | null>(null);
+  const [editEnrollment, setEditEnrollment] = useState<NormalizedEnrollment | null>(null);
 
   const sortedCourses = useMemo(() => {
     return [...courses].sort((a, b) => {
@@ -44,6 +65,19 @@ export function ManageBuyerEnrollmentsDialog({
       return a.title.localeCompare(b.title);
     });
   }, [courses]);
+
+  const { enrolledCourses, availableCourses } = useMemo(() => {
+    const enrolled: Product[] = [];
+    const available: Product[] = [];
+    for (const course of sortedCourses) {
+      if (buyer && isBuyerEnrolledInCourse(buyer, course.id, course.title)) {
+        enrolled.push(course);
+      } else {
+        available.push(course);
+      }
+    }
+    return { enrolledCourses: enrolled, availableCourses: available };
+  }, [sortedCourses, buyer]);
 
   const buyerLabel = buyer?.name?.trim() || buyer?.email || "—";
 
@@ -91,73 +125,152 @@ export function ManageBuyerEnrollmentsDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg flex flex-col max-h-[90dvh] p-0 gap-0">
-        <div className="shrink-0 px-6 pt-6 pb-4 pr-14">
-          <DialogHeader className="text-left">
-            <DialogTitle>{t("digitalProductsManagement.buyers.enrollments.title")}</DialogTitle>
-            <DialogDescription>
-              {t("digitalProductsManagement.buyers.enrollments.subtitle", { name: buyerLabel })}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-2xl flex flex-col max-h-[90dvh] p-0 gap-0">
+          <div className="shrink-0 px-6 pt-6 pb-4 pr-14">
+            <DialogHeader className="text-left">
+              <DialogTitle>{t("digitalProductsManagement.buyers.enrollments.title")}</DialogTitle>
+              <DialogDescription>
+                {t("digitalProductsManagement.buyers.enrollments.subtitle", { name: buyerLabel })}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
-        <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-2">
-          {sortedCourses.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              {t("digitalProductsManagement.buyers.enrollments.noCourses")}
-            </p>
-          ) : (
-            <ul className="divide-y rounded-md border">
-              {sortedCourses.map((course) => {
-                const enrolled = buyer
-                  ? isBuyerEnrolledInCourse(buyer, course.id, course.title)
-                  : false;
-                const busy = pendingCourseId === course.id;
-                return (
-                  <li
-                    key={course.id}
-                    className="flex items-center justify-between gap-3 px-3 py-3"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-medium truncate">{course.title || "—"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {course.status === "published"
-                          ? t("digitalProductsManagement.status.published")
-                          : t("digitalProductsManagement.status.draft")}
-                        {enrolled
-                          ? ` · ${t("digitalProductsManagement.buyers.enrollments.enrolled")}`
-                          : ` · ${t("digitalProductsManagement.buyers.enrollments.notEnrolled")}`}
-                      </p>
-                    </div>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={enrolled ? "outline" : "default"}
-                      disabled={!buyer?.id || busy || pendingCourseId !== null}
-                      onClick={() => void runEnrollment(course.id, enrolled)}
-                    >
-                      {busy ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : enrolled ? (
-                        t("digitalProductsManagement.buyers.enrollments.unenroll")
-                      ) : (
-                        t("digitalProductsManagement.buyers.enrollments.enroll")
-                      )}
-                    </Button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+          <div className="flex-1 overflow-y-auto min-h-0 px-6 pb-2 space-y-6">
+            {sortedCourses.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                {t("digitalProductsManagement.buyers.enrollments.noCourses")}
+              </p>
+            ) : (
+              <>
+                {enrolledCourses.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">
+                      {t("digitalProductsManagement.buyers.enrollments.enrolledSection")}
+                    </p>
+                    <ul className="divide-y rounded-md border">
+                      {enrolledCourses.map((course) => {
+                        const enrollment = buyer
+                          ? getBuyerEnrollment(buyer, course.id, course.title)
+                          : undefined;
+                        const busy = pendingCourseId === course.id;
+                        return (
+                          <li key={course.id} className="px-3 py-3 space-y-2">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0 space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium truncate">{course.title || "—"}</p>
+                                  {enrollment?.accessExpired ? (
+                                    <Badge variant="destructive" className="text-xs">
+                                      {t("digitalProductsManagement.buyers.enrollments.expired")}
+                                    </Badge>
+                                  ) : null}
+                                </div>
+                                {enrollment ? (
+                                  <>
+                                    <p className="text-xs text-muted-foreground">
+                                      {formatEnrollmentAccessLabel(enrollment, t)}
+                                    </p>
+                                    <CompletionBar percent={enrollment.completionPercent} />
+                                  </>
+                                ) : null}
+                              </div>
+                              <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+                                {enrollment ? (
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    disabled={!buyer?.id || busy}
+                                    onClick={() => setEditEnrollment(enrollment)}
+                                  >
+                                    {t("digitalProductsManagement.buyers.enrollments.editAccess")}
+                                  </Button>
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={!buyer?.id || busy || pendingCourseId !== null}
+                                  onClick={() => void runEnrollment(course.id, true)}
+                                >
+                                  {busy ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    t("digitalProductsManagement.buyers.enrollments.unenroll")
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
 
-        <DialogFooter className="shrink-0 px-6 py-4 border-t">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            {t("digitalProductsManagement.common.cancel")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+                {availableCourses.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium">
+                      {t("digitalProductsManagement.buyers.enrollments.availableSection")}
+                    </p>
+                    <ul className="divide-y rounded-md border">
+                      {availableCourses.map((course) => {
+                        const busy = pendingCourseId === course.id;
+                        return (
+                          <li
+                            key={course.id}
+                            className="flex items-center justify-between gap-3 px-3 py-3"
+                          >
+                            <div className="min-w-0">
+                              <p className="font-medium truncate">{course.title || "—"}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {course.status === "published"
+                                  ? t("digitalProductsManagement.status.published")
+                                  : t("digitalProductsManagement.status.draft")}
+                              </p>
+                            </div>
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={!buyer?.id || busy || pendingCourseId !== null}
+                              onClick={() => void runEnrollment(course.id, false)}
+                            >
+                              {busy ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                t("digitalProductsManagement.buyers.enrollments.enroll")
+                              )}
+                            </Button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
+
+          <DialogFooter className="shrink-0 px-6 py-4 border-t">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              {t("digitalProductsManagement.common.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <EditEnrollmentAccessDialog
+        open={!!editEnrollment}
+        onOpenChange={(next) => {
+          if (!next) setEditEnrollment(null);
+        }}
+        siteId={siteId}
+        buyerId={buyer?.id ?? ""}
+        enrollment={editEnrollment}
+        onSaved={onChanged}
+      />
+    </>
   );
 }

@@ -169,8 +169,8 @@ type SidebarMenuContentProps = {
   }>;
   activeSection: string;
   setActiveSection: (section: string) => void;
-  digitalProductsSubView: "courses" | "buyers";
-  setDigitalProductsSubView: (view: "courses" | "buyers") => void;
+  digitalProductsSubView: "courses" | "buyers" | "analytics";
+  setDigitalProductsSubView: (view: "courses" | "buyers" | "analytics") => void;
   setBillingView: (view: any) => void;
   setNewsletterView: (view: any) => void;
   handleLogout: () => void;
@@ -291,6 +291,8 @@ function SidebarMenuContent({
             sectionActive && digitalProductsSubView === "courses";
           const buyersActive =
             sectionActive && digitalProductsSubView === "buyers";
+          const analyticsActive =
+            sectionActive && digitalProductsSubView === "analytics";
           return (
             <SidebarMenuItem key={item.id}>
               <SidebarMenuButton
@@ -327,6 +329,29 @@ function SidebarMenuContent({
                         <Users className="h-4 w-4" />
                         <span>
                           {t("digitalProductsManagement.filters.buyers")}
+                        </span>
+                      </button>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                  <SidebarMenuSubItem>
+                    <SidebarMenuSubButton
+                      asChild
+                      isActive={analyticsActive}
+                      size="md"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleMenuClick(() => {
+                            setActiveSection("digital-products");
+                            setDigitalProductsSubView("analytics");
+                          });
+                        }}
+                        data-testid="menu-digital-products-analytics"
+                      >
+                        <BarChart className="h-4 w-4" />
+                        <span>
+                          {t("digitalProductsManagement.filters.analytics")}
                         </span>
                       </button>
                     </SidebarMenuSubButton>
@@ -427,7 +452,7 @@ export default function WebsiteDashboard() {
   const [contentEditorOpen, setContentEditorOpen] = useState(false);
 
   const [digitalProductsSubView, setDigitalProductsSubView] = useState<
-    "courses" | "buyers"
+    "courses" | "buyers" | "analytics"
   >("courses");
 
   // HDP brand config modal state

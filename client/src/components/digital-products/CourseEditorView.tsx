@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Product, ProductStatus } from "@/types/digital-products";
+import type { Product, ProductStatus, CourseAccessType } from "@/types/digital-products";
 import { CourseCurriculumTab } from "@/components/digital-products/CourseCurriculumTab";
 import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
 
@@ -30,6 +30,8 @@ interface CourseFormState {
   price: string;
   certificateEnabled: boolean;
   status: ProductStatus;
+  accessType: CourseAccessType;
+  accessDays: string;
 }
 
 const DEFAULT_FORM: CourseFormState = {
@@ -42,6 +44,8 @@ const DEFAULT_FORM: CourseFormState = {
   price: "0.00",
   certificateEnabled: false,
   status: "draft",
+  accessType: "lifetime",
+  accessDays: "60",
 };
 
 function toForm(source: Record<string, unknown> | null | undefined): CourseFormState {
@@ -67,6 +71,11 @@ function toForm(source: Record<string, unknown> | null | undefined): CourseFormS
     price: Number.isFinite(parsedPrice) ? parsedPrice.toString() : "0.00",
     certificateEnabled: source.certificateEnabled === true,
     status: source.status === "published" ? "published" : "draft",
+    accessType: source.accessType === "limited" ? "limited" : "lifetime",
+    accessDays:
+      source.accessDays != null && Number.isFinite(Number(source.accessDays))
+        ? String(Math.max(1, Math.round(Number(source.accessDays))))
+        : "60",
   };
 }
 
@@ -82,6 +91,8 @@ function toPayload(form: CourseFormState) {
     price: Number(Number(form.price).toFixed(2)),
     certificateEnabled: form.certificateEnabled,
     status: form.status,
+    accessType: form.accessType,
+    accessDays: form.accessType === "limited" ? Number(form.accessDays) : null,
   };
 }
 
@@ -206,8 +217,20 @@ export function CourseEditorView({
     return changes;
   }, [currentPayload, originalPayload]);
 
+  const hasValidAccess =
+    form.accessType === "lifetime" ||
+    (form.accessDays.trim().length > 0 &&
+      Number.isInteger(Number(form.accessDays)) &&
+      Number(form.accessDays) > 0);
+
   const hasUnsavedChanges = Object.keys(changedFields).length > 0;
-  const canSave = !!siteId && form.title.trim().length > 0 && hasUnsavedChanges && !isSaving && !isLoading;
+  const canSave =
+    !!siteId &&
+    form.title.trim().length > 0 &&
+    hasUnsavedChanges &&
+    hasValidAccess &&
+    !isSaving &&
+    !isLoading;
 
   const onTotalLessonMinutesChange = useCallback((totalMinutes: number) => {
     setForm((prev) => ({
@@ -226,6 +249,18 @@ export function CourseEditorView({
 
   const onSave = async () => {
     if (!canSave) return;
+
+    if (form.accessType === "limited") {
+      const days = Number.parseInt(form.accessDays, 10);
+      if (!Number.isFinite(days) || days < 1) {
+        toast({
+          title: t("digitalProductsManagement.courseEditor.access.invalidDays"),
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
       const url = isEditMode && courseId
@@ -403,6 +438,48 @@ export function CourseEditorView({
               value={form.price}
               onChange={(e) => setForm((prev) => ({ ...prev, price: e.target.value }))}
             />
+          </div>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <div>
+              <Label>{t("digitalProductsManagement.courseEditor.access.title")}</Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("digitalProductsManagement.courseEditor.access.description")}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={form.accessType === "lifetime" ? "default" : "outline"}
+                onClick={() => setForm((prev) => ({ ...prev, accessType: "lifetime" }))}
+              >
+                {t("digitalProductsManagement.courseEditor.access.lifetime")}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={form.accessType === "limited" ? "default" : "outline"}
+                onClick={() => setForm((prev) => ({ ...prev, accessType: "limited" }))}
+              >
+                {t("digitalProductsManagement.courseEditor.access.limited")}
+              </Button>
+            </div>
+            {form.accessType === "limited" ? (
+              <div className="space-y-2">
+                <Label htmlFor="course-access-days">
+                  {t("digitalProductsManagement.courseEditor.access.daysLabel")}
+                </Label>
+                <Input
+                  id="course-access-days"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={form.accessDays}
+                  onChange={(e) => setForm((prev) => ({ ...prev, accessDays: e.target.value }))}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-2">

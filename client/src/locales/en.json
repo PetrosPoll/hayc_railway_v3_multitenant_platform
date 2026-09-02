@@ -2802,7 +2802,8 @@
         "filters": {
             "courses": "Courses",
             "products": "Products",
-            "buyers": "Buyers"
+            "buyers": "Buyers",
+            "analytics": "Analytics"
         },
         "buyers": {
             "loadError": "Could not load buyers. Please try again.",
@@ -2831,7 +2832,20 @@
                 "enrollSuccess": "Buyer enrolled",
                 "unenrollSuccess": "Buyer unenrolled",
                 "enrollFailed": "Could not enroll buyer. Please try again.",
-                "unenrollFailed": "Could not unenroll buyer. Please try again."
+                "unenrollFailed": "Could not unenroll buyer. Please try again.",
+                "enrolledSection": "Enrolled courses",
+                "availableSection": "Available courses",
+                "expired": "Expired",
+                "editAccess": "Edit access",
+                "editAccessTitle": "Edit access duration",
+                "editAccessSubtitle": "Override access for {{course}}",
+                "daysRemaining": "{{count}} days remaining",
+                "expiresAt": "Expires {{date}}",
+                "limitedDays": "{{count}} days access",
+                "accessOverrideHint": "Expiry is calculated from the original enrollment date.",
+                "accessInvalidDays": "Enter a valid number of access days.",
+                "accessUpdateSuccess": "Access updated",
+                "accessUpdateFailed": "Could not update access. Please try again."
             },
             "demoBuyer": {
                 "title": "Create a demo buyer",
@@ -2847,6 +2861,33 @@
                 "copyEmail": "Copy email",
                 "copyPassword": "Copy password",
                 "copyFailed": "Could not copy to clipboard"
+            }
+        },
+        "analytics": {
+            "title": "Course analytics",
+            "subtitle": "Enrollment and learning activity for your digital products.",
+            "loadError": "Could not load analytics. Please try again.",
+            "cards": {
+                "totalStudents": "Total students",
+                "activeAccess": "Active access",
+                "newEnrollments30d": "New enrollments (30d)",
+                "expired": "Expired access"
+            },
+            "coursesTable": {
+                "title": "Courses",
+                "course": "Course",
+                "enrollments": "Enrollments",
+                "avgCompletion": "Avg. completion",
+                "completed": "Completed",
+                "empty": "No course data yet."
+            },
+            "recentActivity": {
+                "title": "Recent activity",
+                "email": "Email",
+                "course": "Course",
+                "lastActivity": "Last activity",
+                "completion": "Completion",
+                "empty": "No recent activity yet."
             }
         },
         "create": {
@@ -2924,6 +2965,14 @@
                 "language": "Language",
                 "estimatedDurationMinutes": "Estimated Duration (minutes)",
                 "priceEuro": "Price (€)"
+            },
+            "access": {
+                "title": "Access duration",
+                "description": "How long buyers can access this course after purchase.",
+                "lifetime": "Lifetime access",
+                "limited": "Limited access",
+                "daysLabel": "Access days",
+                "invalidDays": "Enter a positive number of access days."
             },
             "certificate": {
                 "issueOnCompletion": "Issue certificate on completion",
