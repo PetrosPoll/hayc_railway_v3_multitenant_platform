@@ -85,6 +85,7 @@ import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
 import { getConfig, putConfig, getConfigHistory, getConfigSnapshot, restoreConfig } from "./s3-config";
+import { normalizeSyncedHdpProduct } from "@shared/hdp-enroll";
 import {
   computeProductChurnStats,
   filterRowsByProductType,
@@ -24116,6 +24117,13 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       )
         .trim()
         .replace(/\/$/, "");
+      const normalizedProducts = (products as unknown[])
+        .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+        .map((item) =>
+          hdpPublicUrl
+            ? normalizeSyncedHdpProduct(item, siteId, hdpPublicUrl)
+            : item,
+        );
       const config = await getConfig(siteId);
       const existingDpc =
         config.digitalProductsConfig &&
@@ -24128,8 +24136,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         digitalProductsConfig: {
           ...existingDpc,
           enabled: true,
+          enrollmentMode: "redirect",
           lastSyncedAt,
-          products,
+          products: normalizedProducts,
           ...(hdpPublicUrl ? { hdpPublicUrl } : {}),
         },
       };

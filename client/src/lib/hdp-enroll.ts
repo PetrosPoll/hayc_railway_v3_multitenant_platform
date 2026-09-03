@@ -1,3 +1,8 @@
+import {
+  appendReturnUrlToEnrollUrl,
+  buildHdpEnrollUrl as buildSharedHdpEnrollUrl,
+} from "@shared/hdp-enroll";
+
 /** Public HDP store base URL (customer-facing enrollment pages). */
 export const HDP_PUBLIC_BASE_URL = (
   (import.meta.env.VITE_HDP_PUBLIC_URL as string | undefined) ??
@@ -12,16 +17,10 @@ export function buildHdpEnrollUrl(params: {
   returnUrl?: string;
   preview?: boolean;
 }): string {
-  const url = new URL(`${HDP_PUBLIC_BASE_URL}/enroll`);
-  url.searchParams.set("siteId", params.siteId);
-  url.searchParams.set("courseId", params.courseId);
-  if (params.returnUrl) {
-    url.searchParams.set("returnUrl", params.returnUrl);
-  }
-  if (params.preview) {
-    url.searchParams.set("preview", "true");
-  }
-  return url.toString();
+  return buildSharedHdpEnrollUrl({
+    hdpPublicUrl: HDP_PUBLIC_BASE_URL,
+    ...params,
+  });
 }
 
 export function resolveEnrollUrl(params: {
@@ -35,14 +34,15 @@ export function resolveEnrollUrl(params: {
     params.returnUrl ?? (typeof window !== "undefined" ? window.location.href : undefined);
 
   if (typeof params.enrollUrl === "string" && params.enrollUrl.startsWith("https://")) {
-    const url = new URL(params.enrollUrl);
+    let url = params.enrollUrl;
     if (fallbackReturnUrl) {
-      url.searchParams.set("returnUrl", fallbackReturnUrl);
+      url = appendReturnUrlToEnrollUrl(url, fallbackReturnUrl);
     }
     if (params.preview) {
-      url.searchParams.set("preview", "true");
+      const sep = url.includes("?") ? "&" : "?";
+      url = `${url}${sep}preview=true`;
     }
-    return url.toString();
+    return url;
   }
 
   return buildHdpEnrollUrl({
@@ -51,6 +51,15 @@ export function resolveEnrollUrl(params: {
     returnUrl: fallbackReturnUrl,
     preview: params.preview,
   });
+}
+
+/** Same-tab redirect to HDP enroll page — no modal, no iframe. */
+export function redirectToHdpEnroll(params: {
+  enrollUrl: string;
+  returnUrl?: string;
+}): void {
+  const returnUrl = params.returnUrl ?? window.location.href;
+  window.location.href = appendReturnUrlToEnrollUrl(params.enrollUrl, returnUrl);
 }
 
 export function openHdpEnrollPage(
