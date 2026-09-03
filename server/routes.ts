@@ -6375,6 +6375,116 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ----- Internal API: HDP buyer password-reset email (token-auth, machine-to-machine) -----
+  app.post("/internal/websites/:websiteId/emails/password-reset", internalAuth, async (req, res) => {
+    const bodySchema = z.object({
+      to: z.string().email(),
+      resetUrl: z.string().url(),
+      buyerName: z.string().nullable().optional(),
+      language: z.enum(["el", "en"]),
+    });
+    const parseResult = bodySchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({ error: "Validation failed", details: parseResult.error.flatten() });
+    }
+
+    const { to, resetUrl, language } = parseResult.data;
+    let parsedResetUrl: URL;
+    try {
+      parsedResetUrl = new URL(resetUrl);
+    } catch {
+      return res.status(400).json({ error: "Validation failed" });
+    }
+    if (parsedResetUrl.protocol !== "https:" && parsedResetUrl.protocol !== "http:") {
+      return res.status(400).json({ error: "Validation failed" });
+    }
+
+    const buyerName = parseResult.data.buyerName?.trim() || "";
+    const websiteIdParam = req.params.websiteId;
+    const parsedId = parseInt(websiteIdParam, 10);
+    const lookupByNumericId =
+      !Number.isNaN(parsedId) && String(parsedId) === websiteIdParam;
+
+    try {
+      const [wp] = await db
+        .select({
+          id: websiteProgress.id,
+          projectName: websiteProgress.projectName,
+          domain: websiteProgress.domain,
+          contactEmail: websiteProgress.contactEmail,
+          siteId: websiteProgress.siteId,
+        })
+        .from(websiteProgress)
+        .where(
+          lookupByNumericId
+            ? eq(websiteProgress.id, parsedId)
+            : eq(websiteProgress.siteId, websiteIdParam),
+        );
+
+      if (!wp) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      const brandName = (wp.projectName || wp.domain || "").trim();
+      const fromEmail =
+        process.env.INTERNAL_EMAIL_FROM_HDP ||
+        process.env.INTERNAL_EMAIL_FROM ||
+        process.env.EMAIL_FROM ||
+        "notifications@hayc.gr";
+      const fromName = brandName || "Hayc";
+      const replyTo = wp.contactEmail?.trim() || undefined;
+      const subject = language === "el" ? "Επαναφορά κωδικού" : "Reset your password";
+      const html = loadTemplate(
+        "hdp-password-reset.html",
+        { buyerName, resetUrl, brandName, email: to },
+        language,
+      );
+      const text = language === "el"
+        ? [
+            buyerName ? `Γεια σου ${buyerName},` : "",
+            "Λάβαμε αίτημα επαναφοράς του κωδικού σου. Ο σύνδεσμος λήγει σε 1 ώρα.",
+            resetUrl,
+            "Αν δεν έκανες εσύ αυτό το αίτημα, μπορείς να αγνοήσεις αυτό το email.",
+          ].filter(Boolean).join("\n\n")
+        : [
+            buyerName ? `Hello ${buyerName},` : "",
+            "We received a request to reset your password. This link expires in 1 hour.",
+            resetUrl,
+            "If you did not request this, you can ignore this email.",
+          ].filter(Boolean).join("\n\n");
+
+      console.log("[internal/websites/:websiteId/emails/password-reset] sending", {
+        websiteId: wp.id,
+        siteId: wp.siteId,
+        to,
+        language,
+      });
+
+      const result = await EmailService.sendEmail({
+        to,
+        subject,
+        message: text,
+        fromEmail,
+        fromName,
+        html,
+        replyToAddresses: replyTo ? [replyTo] : undefined,
+      });
+
+      if (!result.success) {
+        console.error("[internal/websites/:websiteId/emails/password-reset] send failed", {
+          websiteId: wp.id,
+          error: result.error,
+        });
+        return res.status(500).json({ error: "Failed to send email" });
+      }
+
+      return res.status(200).json({ ok: true });
+    } catch (error) {
+      console.error("[internal/websites/:websiteId/emails/password-reset] Error:", error);
+      return res.status(500).json({ error: "Failed to send email" });
+    }
+  });
+
   // Function to submit lead to HubSpot using Contacts API
   async function submitToHubSpot(data: any) {
     const apiKey = process.env.HUBSPOT_API_KEY;
