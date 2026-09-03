@@ -17,6 +17,7 @@ import {
 import type { Product, ProductStatus, CourseAccessType } from "@/types/digital-products";
 import { CourseCurriculumTab } from "@/components/digital-products/CourseCurriculumTab";
 import { CourseEnrollmentLinkSection } from "@/components/digital-products/CourseEnrollmentLinkSection";
+import { VideoUrlHelper } from "@/components/digital-products/VideoUrlHelper";
 import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
 import { accessToggleButtonClass } from "@/components/digital-products/accessToggleStyles";
 
@@ -408,6 +409,7 @@ export function CourseEditorView({
               placeholder={t("digitalProductsManagement.courseEditor.curriculum.placeholders.videoUrl")}
               onChange={(e) => setForm((prev) => ({ ...prev, previewVideoUrl: e.target.value }))}
             />
+            <VideoUrlHelper />
           </div>
 
           <div className="space-y-2">

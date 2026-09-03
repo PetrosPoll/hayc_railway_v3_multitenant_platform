@@ -2980,6 +2980,25 @@
                 "estimatedDurationMinutes": "Estimated Duration (minutes)",
                 "priceEuro": "Price (€)"
             },
+            "videoUrlHelper": {
+                "trigger": "How do I get the link?",
+                "title": "How to add a video from YouTube or Vimeo",
+                "youtubeTitle": "YouTube (recommended for courses)",
+                "youtubeStep1": "Upload the video in YouTube Studio → Content.",
+                "youtubeStep2": "Visibility: choose <bold>Unlisted</bold> (not Public, not Private).",
+                "youtubePublic": "<bold>Public</bold> = visible to everyone on YouTube",
+                "youtubePrivate": "<bold>Private</bold> = will not play for your students on the site",
+                "youtubeUnlisted": "<bold>Unlisted</bold> = not listed on YouTube, but plays inside the lesson",
+                "youtubeStep3": "Make sure embedding is enabled (YouTube Studio → video → Details / embed allowed).",
+                "youtubeStep4": "Open Video details and copy the <bold>Video link</bold> (e.g. https://youtu.be/xxxxx) from the right column under the preview.",
+                "youtubeStep5": "Paste the link here.",
+                "screenshotAlt": "YouTube Studio Video details showing the Video link in the right column",
+                "screenshotCaption": "In YouTube Studio → Video details: copy the Video link. For courses set Visibility = Unlisted (not Private).",
+                "vimeoTitle": "Vimeo",
+                "vimeoStep1": "Upload the video to Vimeo.",
+                "vimeoStep2": "Privacy: Anyone with the link / Hide from Vimeo (not Public on the feed if you do not want it public).",
+                "vimeoStep3": "Copy the video link (vimeo.com/...) and paste it here."
+            },
             "access": {
                 "title": "Access duration",
                 "description": "How long buyers can access this course after purchase.",
@@ -3028,7 +3047,7 @@
                 "placeholders": {
                     "lessonTitle": "Lesson title",
                     "chapterTitle": "Chapter title",
-                    "videoUrl": "Paste Vimeo or video URL"
+                    "videoUrl": "Paste YouTube or Vimeo URL"
                 },
                 "validation": {
                     "titleRequired": "Title is required"

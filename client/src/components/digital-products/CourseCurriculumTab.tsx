@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
 import { LessonDescriptionField } from "@/components/digital-products/LessonDescriptionField";
+import { VideoUrlHelper } from "@/components/digital-products/VideoUrlHelper";
 import {
   Select,
   SelectContent,
@@ -1304,6 +1305,7 @@ export function CourseCurriculumTab({
                         setChapterDraft((prev) => ({ ...prev, introVideoUrl: e.target.value }))
                       }
                     />
+                    <VideoUrlHelper />
                   </div>
                   <div className="space-y-1">
                     <Label>{t("digitalProductsManagement.table.status")}</Label>
@@ -1525,6 +1527,7 @@ export function CourseCurriculumTab({
                                       </span>
                                     ) : null}
                                   </div>
+                                  <VideoUrlHelper />
                                 </div>
                                 <div className="space-y-1">
                                   <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.durationMinutes")}</Label>
@@ -1847,6 +1850,7 @@ export function CourseCurriculumTab({
                             </span>
                           ) : null}
                         </div>
+                        <VideoUrlHelper />
                       </div>
                       <div className="space-y-1">
                         <Label>{t("digitalProductsManagement.courseEditor.curriculum.fields.durationMinutes")}</Label>
@@ -1980,6 +1984,7 @@ export function CourseCurriculumTab({
                 setNewChapterDraft((prev) => ({ ...prev, introVideoUrl: e.target.value }))
               }
             />
+            <VideoUrlHelper />
           </div>
           <div className="space-y-1">
             <Label>{t("digitalProductsManagement.table.status")}</Label>

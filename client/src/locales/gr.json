@@ -2980,6 +2980,25 @@
                 "estimatedDurationMinutes": "Εκτιμώμενη διάρκεια (λεπτά)",
                 "priceEuro": "Τιμή (€)"
             },
+            "videoUrlHelper": {
+                "trigger": "Πώς παίρνω το link;",
+                "title": "Πώς να βάλεις βίντεο από YouTube ή Vimeo",
+                "youtubeTitle": "YouTube (προτεινόμενο για courses)",
+                "youtubeStep1": "Ανέβασε το βίντεο στο YouTube Studio → Content.",
+                "youtubeStep2": "Visibility: επίλεξε <bold>Unlisted</bold> (όχι Public, όχι Private).",
+                "youtubePublic": "<bold>Public</bold> = φαίνεται σε όλους στο YouTube",
+                "youtubePrivate": "<bold>Private</bold> = δεν παίζει για τους μαθητές σου στο site",
+                "youtubeUnlisted": "<bold>Unlisted</bold> = δεν εμφανίζεται στο YouTube, αλλά παίζει μέσα στο μάθημα",
+                "youtubeStep3": "Βεβαιώσου ότι το embedding είναι ενεργό (YouTube Studio → βίντεο → Details / embed allowed).",
+                "youtubeStep4": "Άνοιξε Video details και αντέγραψε το <bold>Video link</bold> (π.χ. https://youtu.be/xxxxx) από τη δεξιά στήλη κάτω από το preview.",
+                "youtubeStep5": "Επικόλλησε το link εδώ.",
+                "screenshotAlt": "YouTube Studio Video details με το Video link στη δεξιά στήλη",
+                "screenshotCaption": "Στο YouTube Studio → Video details: αντέγραψε το Video link. Για μαθήματα βάλε Visibility = Unlisted (όχι Private).",
+                "vimeoTitle": "Vimeo",
+                "vimeoStep1": "Ανέβασε το βίντεο στο Vimeo.",
+                "vimeoStep2": "Privacy: Anyone with the link / Hide from Vimeo (όχι Public στο feed αν δεν το θέλεις δημόσιο).",
+                "vimeoStep3": "Αντέγραψε το video link (vimeo.com/...) και επικόλλησέ το εδώ."
+            },
             "access": {
                 "title": "Διάρκεια πρόσβασης",
                 "description": "Πόσο διάστημα έχουν πρόσβαση οι αγοραστές μετά την αγορά.",
@@ -3028,7 +3047,7 @@
                 "placeholders": {
                     "lessonTitle": "Τίτλος μαθήματος",
                     "chapterTitle": "Τίτλος ενότητας",
-                    "videoUrl": "Επικολλήστε URL από Vimeo ή άλλο βίντεο"
+                    "videoUrl": "Επικολλήστε URL από YouTube ή Vimeo"
                 },
                 "validation": {
                     "titleRequired": "Ο τίτλος είναι υποχρεωτικός"
