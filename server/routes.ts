@@ -24108,6 +24108,14 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       }
 
       const lastSyncedAt = new Date().toISOString();
+      const hdpPublicUrl = (
+        process.env.HDP_PUBLIC_URL ??
+        process.env.HDP_INTERNAL_URL ??
+        process.env.VITE_HDP_INTERNAL_URL ??
+        ""
+      )
+        .trim()
+        .replace(/\/$/, "");
       const config = await getConfig(siteId);
       const existingDpc =
         config.digitalProductsConfig &&
@@ -24122,6 +24130,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           enabled: true,
           lastSyncedAt,
           products,
+          ...(hdpPublicUrl ? { hdpPublicUrl } : {}),
         },
       };
       await putConfig(siteId, updatedConfig, { skipHistory: true });

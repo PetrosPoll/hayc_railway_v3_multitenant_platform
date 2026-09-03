@@ -28,7 +28,8 @@ import { CreateDemoBuyerDialog, type DemoBuyerCredentials } from "@/components/d
 import { DemoBuyerCredentialsPanel } from "@/components/digital-products/DemoBuyerCredentialsPanel";
 import { ManageBuyerEnrollmentsDialog } from "@/components/digital-products/ManageBuyerEnrollmentsDialog";
 import { CourseEditorView } from "@/components/digital-products/CourseEditorView";
-import { CoursePreviewModal } from "@/components/digital-products/CoursePreviewModal";
+import { HdpEnrollmentWidgetModal } from "@/components/digital-products/HdpEnrollmentWidgetModal";
+import { HdpPurchaseSuccessBanner } from "@/components/digital-products/HdpPurchaseSuccessBanner";
 import { DigitalProductsAnalytics } from "@/components/digital-products/DigitalProductsAnalytics";
 
 interface Props {
@@ -43,9 +44,6 @@ function typeLabel(type: ProductType): string {
   if (type === "course") return "course";
   return type;
 }
-
-const HDP_WIDGET_BASE =
-  (import.meta.env.VITE_HDP_INTERNAL_URL as string | undefined)?.trim().replace(/\/$/, "") || "https://hdp.hayc.gr";
 
 export function DigitalProductsTab({
   siteId,
@@ -295,11 +293,6 @@ export function DigitalProductsTab({
     setPreviewCourse(product);
   }, []);
 
-  const previewIframeSrc = useMemo(() => {
-    if (!previewCourse || previewCourse.type !== "course") return null;
-    return `${HDP_WIDGET_BASE}/widget?siteId=${encodeURIComponent(siteId)}&courseId=${encodeURIComponent(previewCourse.id)}&preview=true`;
-  }, [previewCourse, siteId]);
-
   const handleStatusToggle = async (id: string, currentStatus: ProductStatus) => {
     const nextStatus: ProductStatus = currentStatus === "published" ? "draft" : "published";
 
@@ -471,6 +464,7 @@ export function DigitalProductsTab({
 
   return (
     <div>
+      <HdpPurchaseSuccessBanner />
       <h2 className="text-2xl font-bold mb-2">{t("digitalProductsManagement.title")}</h2>
 
       {/* Mobile layout */}
@@ -742,12 +736,14 @@ export function DigitalProductsTab({
         onChanged={() => void fetchBuyers()}
       />
 
-      <CoursePreviewModal
+      <HdpEnrollmentWidgetModal
         open={!!previewCourse}
         onOpenChange={(open) => {
           if (!open) setPreviewCourse(null);
         }}
-        src={previewIframeSrc}
+        siteId={siteId}
+        courseId={previewCourse?.type === "course" ? previewCourse.id : null}
+        preview
       />
     </div>
   );
