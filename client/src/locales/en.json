@@ -2932,8 +2932,14 @@
             "retry": "Retry",
             "dismiss": "Dismiss"
         },
-        "widget": {
-            "purchaseSuccess": "Your purchase was completed successfully!"
+        "enroll": {
+            "purchaseSuccess": "Your purchase was completed! Sign in to access your course.",
+            "enrollmentLink": "Enrollment link",
+            "enrollmentLinkHint": "Share this link or use it on your website enroll/buy buttons. Buyers complete registration on the HDP enrollment page.",
+            "copyLink": "Copy link",
+            "linkCopied": "Link copied",
+            "copyFailed": "Could not copy link",
+            "previewLink": "Preview"
         },
         "empty": {
             "noProducts": "No products yet. Click Create to add your first one.",

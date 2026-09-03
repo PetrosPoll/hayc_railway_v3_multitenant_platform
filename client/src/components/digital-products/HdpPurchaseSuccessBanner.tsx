@@ -16,7 +16,7 @@ export function HdpPurchaseSuccessBanner() {
     >
       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-400" aria-hidden />
       <p className="flex-1 text-sm font-medium">
-        {t("digitalProductsManagement.widget.purchaseSuccess")}
+        {t("digitalProductsManagement.enroll.purchaseSuccess")}
       </p>
       <Button
         type="button"

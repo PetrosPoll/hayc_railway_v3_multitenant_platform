@@ -13,6 +13,8 @@ export interface Product {
   status: ProductStatus;
   accessType?: CourseAccessType;
   accessDays?: number | null;
+  /** Primary enrollment page URL from HDP. */
+  enrollUrl?: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { clearPurchaseSuccessQueryParam, hasPurchaseSuccessQueryParam } from "@/lib/hdp-widget";
+import { clearPurchaseSuccessQueryParam, hasPurchaseSuccessQueryParam } from "@/lib/hdp-enroll";
 
 export function useHdpPurchaseSuccess(): { visible: boolean; dismiss: () => void } {
   const [visible, setVisible] = useState(false);

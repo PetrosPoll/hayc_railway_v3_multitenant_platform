@@ -28,8 +28,9 @@ import { CreateDemoBuyerDialog, type DemoBuyerCredentials } from "@/components/d
 import { DemoBuyerCredentialsPanel } from "@/components/digital-products/DemoBuyerCredentialsPanel";
 import { ManageBuyerEnrollmentsDialog } from "@/components/digital-products/ManageBuyerEnrollmentsDialog";
 import { CourseEditorView } from "@/components/digital-products/CourseEditorView";
-import { HdpEnrollmentWidgetModal } from "@/components/digital-products/HdpEnrollmentWidgetModal";
 import { HdpPurchaseSuccessBanner } from "@/components/digital-products/HdpPurchaseSuccessBanner";
+import { normalizeHdpProductsPayload } from "@/components/digital-products/hdpProductUtils";
+import { openHdpEnrollPage } from "@/lib/hdp-enroll";
 import { DigitalProductsAnalytics } from "@/components/digital-products/DigitalProductsAnalytics";
 
 interface Props {
@@ -69,7 +70,6 @@ export function DigitalProductsTab({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [brandModalOpen, setBrandModalOpen] = useState(false);
-  const [previewCourse, setPreviewCourse] = useState<Product | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [syncedPublishedIds, setSyncedPublishedIds] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -115,13 +115,7 @@ export function DigitalProductsTab({
         throw new Error("Failed to load products");
       }
       const data = await productsRes.json();
-      if (Array.isArray(data)) {
-        setProducts(data as Product[]);
-      } else if (Array.isArray((data as { products?: Product[] }).products)) {
-        setProducts((data as { products: Product[] }).products);
-      } else {
-        setProducts([]);
-      }
+      setProducts(normalizeHdpProductsPayload(data));
     } catch (_err) {
       setError(t("digitalProductsManagement.toasts.failedToLoadProducts"));
     } finally {
@@ -288,10 +282,21 @@ export function DigitalProductsTab({
     }
   };
 
-  const handlePreviewCourse = useCallback((product: Product) => {
-    if (product.type !== "course") return;
-    setPreviewCourse(product);
-  }, []);
+  const handlePreviewCourse = useCallback(
+    (product: Product) => {
+      if (product.type !== "course") return;
+      openHdpEnrollPage(
+        {
+          siteId,
+          courseId: product.id,
+          enrollUrl: product.enrollUrl,
+          preview: true,
+        },
+        { newTab: true },
+      );
+    },
+    [siteId],
+  );
 
   const handleStatusToggle = async (id: string, currentStatus: ProductStatus) => {
     const nextStatus: ProductStatus = currentStatus === "published" ? "draft" : "published";
@@ -736,15 +741,6 @@ export function DigitalProductsTab({
         onChanged={() => void fetchBuyers()}
       />
 
-      <HdpEnrollmentWidgetModal
-        open={!!previewCourse}
-        onOpenChange={(open) => {
-          if (!open) setPreviewCourse(null);
-        }}
-        siteId={siteId}
-        courseId={previewCourse?.type === "course" ? previewCourse.id : null}
-        preview
-      />
     </div>
   );
 }

@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import type { Product, ProductStatus, CourseAccessType } from "@/types/digital-products";
 import { CourseCurriculumTab } from "@/components/digital-products/CourseCurriculumTab";
+import { CourseEnrollmentLinkSection } from "@/components/digital-products/CourseEnrollmentLinkSection";
 import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
 import { accessToggleButtonClass } from "@/components/digital-products/accessToggleStyles";
 
@@ -128,6 +129,7 @@ export function CourseEditorView({
   const [isSaving, setIsSaving] = useState(false);
   const [isPickingImage, setIsPickingImage] = useState(false);
   const [resolvedTitle, setResolvedTitle] = useState(t("digitalProductsManagement.courseEditor.defaultNewCourseTitle"));
+  const [enrollUrl, setEnrollUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isEditMode) {
@@ -135,6 +137,7 @@ export function CourseEditorView({
       setForm(DEFAULT_FORM);
       setOriginalPayload(createPayload);
       setResolvedTitle(t("digitalProductsManagement.courseEditor.defaultNewCourseTitle"));
+      setEnrollUrl(null);
       setIsLoading(false);
       return;
     }
@@ -157,6 +160,7 @@ export function CourseEditorView({
             setForm(mapped);
             setOriginalPayload(toPayload(mapped));
             setResolvedTitle(mapped.title || t("digitalProductsManagement.courseEditor.defaultCourseTitle"));
+            setEnrollUrl(typeof source.enrollUrl === "string" ? source.enrollUrl : null);
           }
           return;
         }
@@ -184,6 +188,7 @@ export function CourseEditorView({
           setForm(mapped);
           setOriginalPayload(toPayload(mapped));
           setResolvedTitle(mapped.title || t("digitalProductsManagement.courseEditor.defaultCourseTitle"));
+          setEnrollUrl(typeof found.enrollUrl === "string" ? found.enrollUrl : null);
         }
       } catch (_error) {
         if (!cancelled) {
@@ -223,6 +228,12 @@ export function CourseEditorView({
     (form.accessDays.trim().length > 0 &&
       Number.isInteger(Number(form.accessDays)) &&
       Number(form.accessDays) > 0);
+
+  const displayedEnrollUrl = useMemo(() => {
+    if (!courseId) return enrollUrl;
+    const fromProducts = products.find((p) => p.id === courseId)?.enrollUrl;
+    return fromProducts ?? enrollUrl;
+  }, [products, courseId, enrollUrl]);
 
   const hasUnsavedChanges = Object.keys(changedFields).length > 0;
   const canSave =
@@ -484,6 +495,10 @@ export function CourseEditorView({
               </div>
             ) : null}
           </div>
+
+          {isEditMode && courseId ? (
+            <CourseEnrollmentLinkSection siteId={siteId} courseId={courseId} enrollUrl={displayedEnrollUrl} />
+          ) : null}
 
           <div className="space-y-2">
             <Label htmlFor="course-status">{t("digitalProductsManagement.table.status")}</Label>
