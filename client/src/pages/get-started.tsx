@@ -346,12 +346,6 @@ export default function GetStarted() {
     } else if (currentStep === 2) {
       const step3Values = form.getValues();
 
-      const suggestedStructure = computeSuggestedStructure(
-        step3Values.businessType,
-        step3Values.goals ?? [],
-        finalSelectedAddons,
-      );
-
       const currentSuggested = computeSuggestedAddons(
         step3Values.businessType,
         step3Values.goals ?? [],
@@ -360,6 +354,12 @@ export default function GetStarted() {
 
       const finalSelectedAddons = enforceSingleBookingAddon(
         currentSelected !== undefined ? currentSelected : currentSuggested,
+      );
+
+      const suggestedStructure = computeSuggestedStructure(
+        step3Values.businessType,
+        step3Values.goals ?? [],
+        finalSelectedAddons,
       );
 
       form.setValue("suggestedStructure", suggestedStructure);

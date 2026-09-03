@@ -669,9 +669,9 @@ function PreCheckoutPage({
                           €{calculateTotals().totalToday.toFixed(2)}
                           {plan.setupFee > 0 && !isResumeFlow
                             ? " " + t("preCheckout.today")
-                          {isYearly
-                            ? ` ${t("preCheckout.perYear")} · ${t("preCheckout.vatIncluded")}`
-                            : ` ${t("preCheckout.perMonth")} · ${t("preCheckout.vatIncluded")}`}
+                            : (isYearly
+                                ? ` ${t("preCheckout.perYear")} · ${t("preCheckout.vatIncluded")}`
+                                : ` ${t("preCheckout.perMonth")} · ${t("preCheckout.vatIncluded")}`)}
                         </span>
                       </div>
 
