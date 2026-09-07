@@ -7,7 +7,7 @@ import {
 } from "@/components/ui/accordion"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X, MoreHorizontal, BarChart3, Search } from "lucide-react"
+import { Check, Loader2, Plus, Trash2, FileText, Pencil, Copy, Mail, ArrowUpDown, ArrowUp, ArrowDown, X, MoreHorizontal, BarChart3, Search, Send } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "@/hooks/use-toast"
@@ -88,6 +88,9 @@ function WebsiteProgressRowActions({
   onOpenAnalyticsDialog,
   onOpenNewsletterDialog,
   onRequestDelete,
+  onSendToHaycHub,
+  isSendingToHaycHub,
+  onboardingCompleted,
   updateBookingMutation,
   updatePaymentsMutation,
   updateDigitalProductsMutation,
@@ -99,6 +102,9 @@ function WebsiteProgressRowActions({
   onOpenAnalyticsDialog: () => void
   onOpenNewsletterDialog: () => void
   onRequestDelete: () => void
+  onSendToHaycHub: () => void
+  isSendingToHaycHub?: boolean
+  onboardingCompleted?: boolean
   updateBookingMutation: {
     mutate: (v: { websiteId: number; bookingEnabled: boolean }) => void;
     isPending: boolean;
@@ -140,6 +146,23 @@ function WebsiteProgressRowActions({
           <DropdownMenuItem onSelect={onOpenGetStartedForm}>
             <FileText className="h-4 w-4" />
             View get-started form
+          </DropdownMenuItem>
+        )}
+        {canManageWebsites && (
+          <DropdownMenuItem
+            disabled={!onboardingCompleted || isSendingToHaycHub}
+            onSelect={() => {
+              if (!onboardingCompleted || isSendingToHaycHub) return;
+              onSendToHaycHub();
+            }}
+            data-testid={`menu-send-haychub-${website.id}`}
+          >
+            {isSendingToHaycHub ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+            {onboardingCompleted ? "Send to HaycHub" : "Send to HaycHub (form not completed)"}
           </DropdownMenuItem>
         )}
         <DropdownMenuItem
@@ -1276,6 +1299,33 @@ export function AdminWebsiteProgress() {
     }
   });
 
+  const notifyHaycHubMutation = useMutation({
+    mutationFn: async (websiteId: number) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}/notify-haychub`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.error || "Failed to notify HaycHub");
+      }
+      return body as { success: boolean; status: number; created: boolean };
+    },
+    onSuccess: (data) => {
+      toast({
+        description: data.created
+          ? "HaycHub project created"
+          : "HaycHub project already existed",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        description: error.message || "Failed to notify HaycHub",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (isLoading) return <div>Loading...</div>
 
   const filteredWebsites = websites
@@ -1640,6 +1690,15 @@ export function AdminWebsiteProgress() {
                     <WebsiteProgressRowActions
                       website={website}
                       canManageWebsites={userPermissions?.canManageWebsites}
+                      onboardingCompleted={
+                        website.onboardingStatus === "completed" ||
+                        gsPresenceMap.get(website.id) === "completed"
+                      }
+                      isSendingToHaycHub={
+                        notifyHaycHubMutation.isPending &&
+                        notifyHaycHubMutation.variables === website.id
+                      }
+                      onSendToHaycHub={() => notifyHaycHubMutation.mutate(website.id)}
                       onOpenOnboarding={() => {
                         setSelectedWebsiteId(website.id);
                         setOnboardingDialogView("onboarding");
@@ -2880,6 +2939,27 @@ export function AdminWebsiteProgress() {
           ) : null}
 
           <DialogFooter>
+            {userPermissions?.canManageWebsites && selectedWebsiteId && (
+              <Button
+                variant="outline"
+                disabled={
+                  notifyHaycHubMutation.isPending ||
+                  !(
+                    onboardingResponse?.status === "completed" ||
+                    onboardingDialogGsSubmission?.status === "completed"
+                  )
+                }
+                onClick={() => notifyHaycHubMutation.mutate(selectedWebsiteId)}
+              >
+                {notifyHaycHubMutation.isPending &&
+                notifyHaycHubMutation.variables === selectedWebsiteId ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+                Send to HaycHub
+              </Button>
+            )}
             <Button onClick={() => setIsOnboardingDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>

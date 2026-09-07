@@ -89,6 +89,7 @@ import {
   serializeOnboardingForm,
   websiteUrlFromOnboarding,
 } from "./services/haychub-webhook";
+import { notifyHaycHubFromWebsiteOnboarding } from "./services/haychub-notify-from-website";
 import { getConfig, putConfig, getConfigHistory, getConfigSnapshot, restoreConfig } from "./s3-config";
 import { normalizeSyncedHdpProduct } from "@shared/hdp-enroll";
 import {
@@ -15835,6 +15836,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching onboarding form response:", err);
       res.status(500).json({ error: "Failed to fetch onboarding form response" });
+    }
+  });
+
+  app.post("/api/admin/websites/:id/notify-haychub", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const staff = await storage.getUserById(req.user.id);
+      if (!staff || !hasPermission(staff.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const websiteId = parseInt(req.params.id);
+      if (!Number.isFinite(websiteId)) {
+        return res.status(400).json({ error: "Invalid website ID" });
+      }
+
+      const result = await notifyHaycHubFromWebsiteOnboarding(websiteId);
+      if (!result.ok) {
+        return res.status(result.httpStatus).json({ error: result.error });
+      }
+
+      return res.json({
+        success: true,
+        status: result.status,
+        created: result.status === 201,
+      });
+    } catch (err) {
+      console.error("[HaycHub] Admin notify error:", err);
+      return res.status(500).json({ error: "Failed to notify HaycHub" });
     }
   });
 
