@@ -87,8 +87,26 @@ export function formatGsValue(field: string, value: unknown, t: TFunction): stri
   if (value === null || value === undefined || value === "") return "—";
 
   if (Array.isArray(value)) {
-    const resolved = value.map((v) => resolveValue(t, field, String(v))).filter(Boolean).join(", ");
+    if (value.length === 0) return "—";
+    const resolved = value
+      .map((v) => {
+        if (v && typeof v === "object") {
+          const item = v as { url?: string; name?: string };
+          return item.name || item.url || JSON.stringify(v);
+        }
+        return resolveValue(t, field, String(v));
+      })
+      .filter(Boolean)
+      .join(", ");
     return resolved || "—";
+  }
+
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "—";
+    }
   }
 
   return resolveValue(t, field, String(value));

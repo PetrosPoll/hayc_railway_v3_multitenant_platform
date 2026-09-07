@@ -1018,14 +1018,30 @@ export function AdminWebsiteProgress() {
     enabled: !!selectedWebsiteId && isOnboardingDialogOpen,
   });
 
-  const onboardingDialogGsSubmission = onboardingDialogGsResponse?.submissions?.[0] ?? null;
+  const onboardingDialogGsId = onboardingDialogGsResponse?.submissions?.[0]?.id ?? null;
+
+  const { data: onboardingDialogGsFull, isLoading: isLoadingOnboardingGsFull } = useQuery({
+    queryKey: ["/api/admin/get-started-submissions", onboardingDialogGsId],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/admin/get-started-submissions/${onboardingDialogGsId}`,
+        { credentials: "include" }
+      );
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    },
+    enabled: !!onboardingDialogGsId && isOnboardingDialogOpen,
+  });
+
+  const onboardingDialogGsSubmission =
+    onboardingDialogGsFull?.submission ?? null;
 
   // Auto-switch to get-started tab when only a get-started submission exists (no old onboarding form)
   useEffect(() => {
-    if (!isLoadingOnboarding && !isLoadingOnboardingGs && !onboardingResponse && onboardingDialogGsSubmission) {
+    if (!isLoadingOnboarding && !isLoadingOnboardingGs && !onboardingResponse && onboardingDialogGsId) {
       setOnboardingDialogView("get-started");
     }
-  }, [isLoadingOnboarding, isLoadingOnboardingGs, onboardingResponse, onboardingDialogGsSubmission]);
+  }, [isLoadingOnboarding, isLoadingOnboardingGs, onboardingResponse, onboardingDialogGsId]);
 
   const { data: gsPresenceResponse } = useQuery({
     queryKey: ["/api/admin/get-started-submissions/presence"],
@@ -2491,7 +2507,7 @@ export function AdminWebsiteProgress() {
           </DialogHeader>
 
           {/* Tab switcher — only rendered when both form types exist */}
-          {(onboardingResponse || onboardingDialogGsSubmission) && (
+          {(onboardingResponse || onboardingDialogGsId) && (
             <div className="flex gap-2 border-b pb-2">
               {onboardingResponse && (
                 <button
@@ -2505,7 +2521,7 @@ export function AdminWebsiteProgress() {
                   Onboarding Form {onboardingResponse.id ? `#${onboardingResponse.id}` : ""}
                 </button>
               )}
-              {onboardingDialogGsSubmission && (
+              {onboardingDialogGsId && (
                 <button
                   onClick={() => setOnboardingDialogView("get-started")}
                   className={`text-sm px-3 py-1 rounded-t font-medium transition-colors ${
@@ -2514,13 +2530,13 @@ export function AdminWebsiteProgress() {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  Get-started Submission #{onboardingDialogGsSubmission.id}
+                  Get-started Submission #{onboardingDialogGsId}
                 </button>
               )}
             </div>
           )}
 
-          {(isLoadingOnboarding || isLoadingOnboardingGs) ? (
+          {(isLoadingOnboarding || isLoadingOnboardingGs || (!!onboardingDialogGsId && isLoadingOnboardingGsFull)) ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
@@ -2533,8 +2549,12 @@ export function AdminWebsiteProgress() {
               const s = onboardingDialogGsSubmission;
               const Row = ({ label, field, value }: { label: string; field: string; value: unknown }) => {
                 const display = formatGsValue(field, value, t);
-                if (display === "—") return null;
-                return <div><Label className="text-sm font-medium">{label}</Label><p className="text-sm">{display}</p></div>;
+                return (
+                  <div>
+                    <Label className="text-sm font-medium">{label}</Label>
+                    <p className="text-sm whitespace-pre-wrap">{display}</p>
+                  </div>
+                );
               };
               return (
                 <div className="space-y-6">
@@ -2574,21 +2594,36 @@ export function AdminWebsiteProgress() {
                     </div>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-lg mb-3">Onboarding (Steps 6–9)</h3>
+                    <h3 className="font-semibold text-lg mb-3">Onboarding — Step 6</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <Row label="Business Name" field="businessName" value={s.businessName} />
                       <Row label="Business Description" field="businessDescription" value={s.businessDescription} />
                       <Row label="Services" field="services" value={s.services} />
                       <Row label="Had Website Before" field="hadWebsiteBefore" value={s.hadWebsiteBefore} />
                       <Row label="Previous Platform" field="previousWebsitePlatform" value={s.previousWebsitePlatform} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Onboarding — Step 7</h3>
+                    <div className="grid grid-cols-2 gap-4">
                       <Row label="Self Description" field="selfDescription" value={s.selfDescription} />
                       <Row label="Biggest Concerns" field="biggestConcerns" value={s.biggestConcerns} />
                       <Row label="Heard About Us" field="heardAboutUs" value={s.heardAboutUs} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Onboarding — Step 8</h3>
+                    <div className="grid grid-cols-2 gap-4">
                       <Row label="Confirmed Pages" field="confirmedPages" value={s.confirmedPages} />
                       <Row label="Pages Notes" field="pagesNotes" value={s.pagesNotes} />
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Onboarding — Step 9</h3>
+                    <div className="grid grid-cols-2 gap-4">
                       <Row label="Website Content" field="websiteContent" value={s.websiteContent} />
                       <Row label="Success Vision" field="successVision" value={s.successVision} />
-                      <Row label="Media URLs" field="mediaUrls" value={s.mediaUrls?.length ? `${s.mediaUrls.length} file(s)` : null} />
+                      <Row label="Media URLs" field="mediaUrls" value={s.mediaUrls} />
                     </div>
                   </div>
                   <div>
@@ -2946,7 +2981,7 @@ export function AdminWebsiteProgress() {
                   notifyHaycHubMutation.isPending ||
                   !(
                     onboardingResponse?.status === "completed" ||
-                    onboardingDialogGsSubmission?.status === "completed"
+                    onboardingDialogGsFull?.submission?.status === "completed"
                   )
                 }
                 onClick={() => notifyHaycHubMutation.mutate(selectedWebsiteId)}
