@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   compactHaycHubPayload,
   deliverHaycHubCustomerPaid,
-  shouldNotifyHaycHubOfCustomerPaid,
+  serializeOnboardingForm,
+  websiteUrlFromOnboarding,
 } from "./haychub-webhook";
 
 function jsonResponse(status: number, body: unknown = {}) {
@@ -23,55 +24,6 @@ const payload = {
   paidAmountCents: 49000,
 };
 
-describe("shouldNotifyHaycHubOfCustomerPaid", () => {
-  it("fires for a paid first plan", () => {
-    expect(
-      shouldNotifyHaycHubOfCustomerPaid({
-        isResume: false,
-        paymentStatus: "paid",
-        hasPriorPlanSubscription: false,
-      }),
-    ).toBe(true);
-  });
-
-  it("fires for fully discounted checkout", () => {
-    expect(
-      shouldNotifyHaycHubOfCustomerPaid({
-        paymentStatus: "no_payment_required",
-        hasPriorPlanSubscription: false,
-      }),
-    ).toBe(true);
-  });
-
-  it("does not fire on resume", () => {
-    expect(
-      shouldNotifyHaycHubOfCustomerPaid({
-        isResume: "true",
-        paymentStatus: "paid",
-        hasPriorPlanSubscription: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("does not fire on pending payment", () => {
-    expect(
-      shouldNotifyHaycHubOfCustomerPaid({
-        paymentStatus: "unpaid",
-        hasPriorPlanSubscription: false,
-      }),
-    ).toBe(false);
-  });
-
-  it("does not fire when the user already has a plan", () => {
-    expect(
-      shouldNotifyHaycHubOfCustomerPaid({
-        paymentStatus: "paid",
-        hasPriorPlanSubscription: true,
-      }),
-    ).toBe(false);
-  });
-});
-
 describe("compactHaycHubPayload", () => {
   it("drops empty optional fields", () => {
     expect(
@@ -90,6 +42,23 @@ describe("compactHaycHubPayload", () => {
     });
   });
 
+  it("keeps the full onboarding form snapshot", () => {
+    const onboardingForm = { businessName: "Floral Studio", services: "bouquets" };
+    expect(
+      compactHaycHubPayload({
+        haycCustomerId: "123",
+        name: "Maria",
+        email: "maria@example.com",
+        onboardingForm,
+      }),
+    ).toEqual({
+      haycCustomerId: "123",
+      name: "Maria",
+      email: "maria@example.com",
+      onboardingForm,
+    });
+  });
+
   it("returns null without required fields", () => {
     expect(
       compactHaycHubPayload({
@@ -98,6 +67,35 @@ describe("compactHaycHubPayload", () => {
         email: "maria@example.com",
       }),
     ).toBeNull();
+  });
+});
+
+describe("serializeOnboardingForm", () => {
+  it("serializes dates", () => {
+    expect(
+      serializeOnboardingForm({
+        businessName: "Floral Studio",
+        createdAt: new Date("2026-09-07T00:00:00.000Z"),
+      }),
+    ).toEqual({
+      businessName: "Floral Studio",
+      createdAt: "2026-09-07T00:00:00.000Z",
+    });
+  });
+});
+
+describe("websiteUrlFromOnboarding", () => {
+  it("uses existing domain when the customer already has one", () => {
+    expect(
+      websiteUrlFromOnboarding({
+        hasDomain: "yes",
+        existingDomain: "floral.gr",
+      }),
+    ).toBe("https://floral.gr");
+  });
+
+  it("omits unknown urls", () => {
+    expect(websiteUrlFromOnboarding({ hasDomain: "no" })).toBeUndefined();
   });
 });
 

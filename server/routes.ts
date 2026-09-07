@@ -86,7 +86,8 @@ import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
 import {
   notifyHaycHubCustomerPaid,
-  shouldNotifyHaycHubOfCustomerPaid,
+  serializeOnboardingForm,
+  websiteUrlFromOnboarding,
 } from "./services/haychub-webhook";
 import { getConfig, putConfig, getConfigHistory, getConfigSnapshot, restoreConfig } from "./s3-config";
 import { normalizeSyncedHdpProduct } from "@shared/hdp-enroll";
@@ -3531,6 +3532,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
         .where(eq(getStartedSubmissions.sessionId, sessionId));
 
+      const completedSubmission = {
+        ...submission,
+        status: "completed" as const,
+        submissionId,
+        websiteProgressId: websiteProgressEntry.id,
+      };
+
       res.json({
         success: true,
         submissionId,
@@ -3539,6 +3547,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       setImmediate(async () => {
+        try {
+          let paidAmountCents: number | undefined;
+          if (submission.checkoutSessionId) {
+            try {
+              const checkoutSession = await stripe.checkout.sessions.retrieve(
+                submission.checkoutSessionId,
+              );
+              if (typeof checkoutSession.amount_total === "number") {
+                paidAmountCents = checkoutSession.amount_total;
+              }
+            } catch (amountErr) {
+              console.warn(
+                "[HaycHub] Could not read checkout amount for onboarding notify:",
+                amountErr,
+              );
+            }
+          }
+          notifyHaycHubCustomerPaid({
+            haycCustomerId: String(req.user.id),
+            name: submission.fullName || req.user.username,
+            email: submission.email,
+            businessName: submission.businessName || undefined,
+            phone: submission.contactPhone || undefined,
+            plan: submission.selectedPlan || undefined,
+            language:
+              submission.websiteLanguage || req.user.language || undefined,
+            paidAmountCents,
+            onboardingForm: serializeOnboardingForm(completedSubmission),
+          });
+        } catch (hubErr) {
+          console.error(
+            "[HaycHub] Failed to queue onboarding notification (request unaffected):",
+            hubErr,
+          );
+        }
+
         const preferredLanguage = normalizeEmailLanguage(
           req.user.language || submission.websiteLanguage,
         );
@@ -4637,46 +4681,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get user's language preference from the database
             const userLanguage = normalizeEmailLanguage(user.language);
             const isResumeFlow = session.metadata?.isResume === "true";
-
-            const hasPriorPlanSubscription = userSubscriptions.some(
-              (sub) =>
-                sub.productType !== "addon" &&
-                sub.stripeSubscriptionId !== stripeSubscription.id,
-            );
-            if (
-              shouldNotifyHaycHubOfCustomerPaid({
-                isResume: isResumeFlow,
-                paymentStatus: session.payment_status,
-                hasPriorPlanSubscription,
-              })
-            ) {
-              try {
-                const stripeCustomerName =
-                  "name" in customer ? customer.name : null;
-                notifyHaycHubCustomerPaid({
-                  haycCustomerId: String(user.id),
-                  name:
-                    stripeCustomerName ||
-                    session.customer_details?.name ||
-                    session.metadata?.username ||
-                    user.username,
-                  email: customerEmail,
-                  phone: session.metadata?.phone || user.phone || undefined,
-                  plan: planId,
-                  language:
-                    user.language || session.metadata?.language || undefined,
-                  paidAmountCents:
-                    typeof session.amount_total === "number"
-                      ? session.amount_total
-                      : undefined,
-                });
-              } catch (hubErr) {
-                console.error(
-                  "[HaycHub] Failed to queue customer-paid notification (checkout unaffected):",
-                  hubErr,
-                );
-              }
-            }
 
             // Get add-on subscriptions for THIS subscription only (not all user's addons)
             const addonSubscriptions = userSubscriptions.filter(sub => 
@@ -8239,6 +8243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'completed', // Set status to completed on final submission
         };
 
+        let savedForm = existingRecord;
         if (existingRecord) {
           // Update existing record (draft or completed) to completed status
           const updateResult = await db
@@ -8249,12 +8254,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             })
             .where(eq(onboardingFormResponses.id, existingRecord.id))
             .returning();
+          savedForm = updateResult[0] ?? existingRecord;
         } else {
           // Create new completed record
           const insertResult = await db.insert(onboardingFormResponses).values({
             ...formResponseData,
             status: 'completed', // Explicitly set status to completed on final submission
           }).returning();
+          savedForm = insertResult[0];
         }
 
         // Link subscription to website progress if subscriptionId is provided
@@ -8326,6 +8333,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Send emails asynchronously after response (fire-and-forget)
         setImmediate(async () => {
+          try {
+            const planSub = await db
+              .select({
+                tier: subscriptionsTable.tier,
+                productId: subscriptionsTable.productId,
+              })
+              .from(subscriptionsTable)
+              .where(
+                and(
+                  eq(subscriptionsTable.userId, websiteProgressEntry.userId),
+                  eq(subscriptionsTable.websiteProgressId, websiteProgressEntry.id),
+                  eq(subscriptionsTable.productType, "plan"),
+                ),
+              )
+              .limit(1)
+              .then((rows) => rows[0]);
+
+            notifyHaycHubCustomerPaid({
+              haycCustomerId: String(websiteProgressEntry.userId),
+              name: data.contactName,
+              email: accountEmail || data.contactEmail,
+              businessName: data.businessName,
+              phone: data.contactPhone,
+              websiteUrl: websiteUrlFromOnboarding({
+                hasDomain: data.hasDomain,
+                existingDomain: data.existingDomain,
+                websiteLink: data.websiteLink,
+              }),
+              plan: planSub?.tier || planSub?.productId || undefined,
+              language: data.websiteLanguage || undefined,
+              onboardingForm: serializeOnboardingForm(savedForm ?? formResponseData),
+            });
+          } catch (hubErr) {
+            console.error(
+              "[HaycHub] Failed to queue onboarding notification (request unaffected):",
+              hubErr,
+            );
+          }
+
           // Get user's preferred language
           const preferredLanguage = getPreferredLanguage(req);
 

@@ -12,6 +12,7 @@ export interface HaycHubCustomerPaidPayload {
   plan?: string;
   language?: string;
   paidAmountCents?: number;
+  onboardingForm?: Record<string, unknown>;
 }
 
 export interface HaycHubDeliverDeps {
@@ -69,23 +70,45 @@ export function compactHaycHubPayload(
   ) {
     body.paidAmountCents = Math.round(payload.paidAmountCents);
   }
+  if (
+    payload.onboardingForm &&
+    typeof payload.onboardingForm === "object" &&
+    !Array.isArray(payload.onboardingForm)
+  ) {
+    body.onboardingForm = payload.onboardingForm;
+  }
 
   return body;
 }
 
-export function shouldNotifyHaycHubOfCustomerPaid(input: {
-  isResume?: boolean | string | null;
-  paymentStatus?: string | null;
-  hasPriorPlanSubscription: boolean;
-}): boolean {
-  const isResume = input.isResume === true || input.isResume === "true";
-  if (isResume || input.hasPriorPlanSubscription) {
-    return false;
+export function serializeOnboardingForm(
+  form: unknown,
+): Record<string, unknown> | undefined {
+  if (!form || typeof form !== "object") {
+    return undefined;
   }
-  return (
-    input.paymentStatus === "paid" ||
-    input.paymentStatus === "no_payment_required"
-  );
+  try {
+    return JSON.parse(JSON.stringify(form)) as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
+}
+
+export function websiteUrlFromOnboarding(input: {
+  hasDomain?: string | null;
+  existingDomain?: string | null;
+  websiteLink?: string | null;
+}): string | undefined {
+  const raw =
+    input.hasDomain === "yes" && isNonEmptyString(input.existingDomain)
+      ? input.existingDomain.trim()
+      : isNonEmptyString(input.websiteLink)
+        ? input.websiteLink.trim()
+        : "";
+  if (!raw) {
+    return undefined;
+  }
+  return /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
 }
 
 function isRetryableStatus(status: number): boolean {
@@ -96,15 +119,15 @@ function isRetryableStatus(status: number): boolean {
 }
 
 /**
- * Fire-and-forget Hub notify after a new customer's first paid plan.
- * Checkout / Stripe webhook must not await this.
+ * Fire-and-forget Hub notify after onboarding form completion.
+ * The HTTP handler must not await this.
  */
 export function notifyHaycHubCustomerPaid(
   payload: HaycHubCustomerPaidPayload,
   deps?: HaycHubDeliverDeps,
 ): void {
   void deliverHaycHubCustomerPaid(payload, deps).catch((error) => {
-    console.error(`${LOG_PREFIX} Unexpected error (checkout unaffected)`, {
+    console.error(`${LOG_PREFIX} Unexpected error (request unaffected)`, {
       error: error instanceof Error ? error.message : error,
     });
   });
