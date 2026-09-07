@@ -84,6 +84,10 @@ import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUr
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
+import {
+  notifyHaycHubCustomerPaid,
+  shouldNotifyHaycHubOfCustomerPaid,
+} from "./services/haychub-webhook";
 import { getConfig, putConfig, getConfigHistory, getConfigSnapshot, restoreConfig } from "./s3-config";
 import { normalizeSyncedHdpProduct } from "@shared/hdp-enroll";
 import {
@@ -4633,6 +4637,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Get user's language preference from the database
             const userLanguage = normalizeEmailLanguage(user.language);
             const isResumeFlow = session.metadata?.isResume === "true";
+
+            const hasPriorPlanSubscription = userSubscriptions.some(
+              (sub) =>
+                sub.productType !== "addon" &&
+                sub.stripeSubscriptionId !== stripeSubscription.id,
+            );
+            if (
+              shouldNotifyHaycHubOfCustomerPaid({
+                isResume: isResumeFlow,
+                paymentStatus: session.payment_status,
+                hasPriorPlanSubscription,
+              })
+            ) {
+              try {
+                const stripeCustomerName =
+                  "name" in customer ? customer.name : null;
+                notifyHaycHubCustomerPaid({
+                  haycCustomerId: String(user.id),
+                  name:
+                    stripeCustomerName ||
+                    session.customer_details?.name ||
+                    session.metadata?.username ||
+                    user.username,
+                  email: customerEmail,
+                  phone: session.metadata?.phone || user.phone || undefined,
+                  plan: planId,
+                  language:
+                    user.language || session.metadata?.language || undefined,
+                  paidAmountCents:
+                    typeof session.amount_total === "number"
+                      ? session.amount_total
+                      : undefined,
+                });
+              } catch (hubErr) {
+                console.error(
+                  "[HaycHub] Failed to queue customer-paid notification (checkout unaffected):",
+                  hubErr,
+                );
+              }
+            }
 
             // Get add-on subscriptions for THIS subscription only (not all user's addons)
             const addonSubscriptions = userSubscriptions.filter(sub => 
