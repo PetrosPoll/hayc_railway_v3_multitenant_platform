@@ -81,6 +81,7 @@ import {
   recordPromoRedemption,
 } from "./promo-codes";
 import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUrl, generateUnsubscribeFooter, resolveUnsubscribeBaseUrl } from "./unsubscribe-utils";
+import { sendMetaEvent } from "./lib/meta-capi";
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
@@ -6957,6 +6958,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const meetingSchema = z.object({
       email: z.string().email(),
       meetingDate: z.string(),
+      marketingConsent: z.boolean(),
+      landingUrl: z.string().url(),
     });
 
     try {
@@ -6988,6 +6991,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await updateHubSpotContact(data.email, properties);
       
       console.log(`✅ HubSpot contact updated with meeting info for ${data.email}`);
+
+      if (data.marketingConsent === true) {
+        void sendMetaEvent({
+          eventName: "Schedule",
+          email: data.email,
+          sourceUrl: data.landingUrl,
+        });
+      }
 
       res.json({
         success: true,

@@ -6,6 +6,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { ChevronUp, Star, Phone, Mail, CheckCircle, Clock, Shield, Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { getStoredUTMParams } from "@/lib/utm";
+import { getStoredConsent } from "@/lib/cookie-consent";
 import { useNavigate } from "react-router-dom";
 import { GET_STARTED_DEFAULT_PATH } from "@/lib/get-started-default-path";
 import {
@@ -363,6 +364,8 @@ export function WebsiteCreationLanding({
                 body: JSON.stringify({
                   email: submittedEmail,
                   meetingDate: meetingDateString,
+                  marketingConsent: getStoredConsent()?.marketing === true,
+                  landingUrl: window.location.href,
                 }),
               });
               
