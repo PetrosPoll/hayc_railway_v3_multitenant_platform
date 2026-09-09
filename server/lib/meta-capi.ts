@@ -42,9 +42,10 @@ export async function sendMetaEvent({
     );
 
     console.log(`📊 Meta CAPI response status: ${response.status}`);
+    const responseBody = await response.text();
+    console.log(`📊 Meta CAPI response body: ${responseBody}`);
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Meta CAPI request failed:", response.status, errorText);
+      console.error("Meta CAPI request failed:", response.status, responseBody);
     }
   } catch (error) {
     console.error("Meta CAPI error:", error);
