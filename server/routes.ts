@@ -6992,6 +6992,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`✅ HubSpot contact updated with meeting info for ${data.email}`);
 
+      console.log(`🔔 marketingConsent value received: ${data.marketingConsent} (type: ${typeof data.marketingConsent})`);
       if (data.marketingConsent === true) {
         void sendMetaEvent({
           eventName: "Schedule",

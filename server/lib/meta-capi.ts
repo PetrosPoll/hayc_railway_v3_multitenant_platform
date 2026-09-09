@@ -21,6 +21,7 @@ export async function sendMetaEvent({
       .update(email.toLowerCase().trim())
       .digest("hex");
 
+    console.log(`📊 Sending Meta CAPI event: ${eventName} for ${email}, pixelId present: ${!!pixelId}, token present: ${!!accessToken}`);
     const response = await fetch(
       `https://graph.facebook.com/v21.0/${pixelId}/events?access_token=${accessToken}`,
       {
@@ -40,6 +41,7 @@ export async function sendMetaEvent({
       },
     );
 
+    console.log(`📊 Meta CAPI response status: ${response.status}`);
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Meta CAPI request failed:", response.status, errorText);
