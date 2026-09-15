@@ -12127,7 +12127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const { contacts: contactsData, websiteProgressId } = req.body;
+      const { contacts: contactsData, websiteProgressId, updateExisting } = req.body;
 
       // Debug logging
       console.log("[BULK IMPORT DEBUG] Request body keys:", Object.keys(req.body || {}));
@@ -12169,6 +12169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const results = {
         imported: 0,
+        updated: 0,
         skipped: 0,
         errors: [] as Array<{ email: string; error: string }>,
       };
@@ -12203,7 +12204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate all contacts first
-      const validContacts: Array<{ first_name: string | null; last_name: string | null; email: string; status: AllowedStatus; tags: number[] }> = [];
+      const validContacts: Array<{ first_name: string | null; last_name: string | null; email: string; status: AllowedStatus; statusProvided: boolean; tags: number[] }> = [];
       const contactEmails: string[] = [];
       
       for (const contactData of contactsData) {
@@ -12219,6 +12220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           last_name: last_name || null,
           email: email.toLowerCase().trim(),
           status: mapImportStatus(status),
+          statusProvided: status !== undefined && status !== null && String(status).trim() !== '',
           tags: Array.isArray(tags) ? tags : [],
         });
         contactEmails.push(email.toLowerCase().trim());
@@ -12230,7 +12232,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Batch check for existing contacts (single query)
       const existingContacts = await db
-        .select({ email: contacts.email })
+        .select({ id: contacts.id, email: contacts.email })
         .from(contacts)
         .where(
           and(
@@ -12239,20 +12241,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           )
         );
 
-      const existingEmailsSet = new Set(existingContacts.map(c => c.email.toLowerCase()));
+      const existingByEmail = new Map(existingContacts.map(c => [c.email.toLowerCase(), c]));
+      const shouldUpdate = Boolean(updateExisting);
+      const contactsToCreate = validContacts.filter(c => !existingByEmail.has(c.email.toLowerCase()));
+      const contactsToUpdate = validContacts.filter(c => existingByEmail.has(c.email.toLowerCase()));
 
-      // Filter out existing contacts
-      const contactsToCreate = validContacts.filter(c => !existingEmailsSet.has(c.email.toLowerCase()));
-      results.skipped = validContacts.length - contactsToCreate.length;
+      if (!shouldUpdate) {
+        results.skipped = contactsToUpdate.length;
+      }
 
-      if (contactsToCreate.length === 0) {
+      if (contactsToCreate.length === 0 && (!shouldUpdate || contactsToUpdate.length === 0)) {
         return res.json(results);
       }
 
       // Pre-fetch all tags for this website (single query)
       const allTags = await storage.getTags(websiteProgressId);
       const tagMap = new Map(allTags.map(tag => [tag.id, tag]));
+      const tagAssignments: Array<{ contactId: number; tagId: number }> = [];
 
+      if (shouldUpdate && contactsToUpdate.length > 0) {
+        for (const contact of contactsToUpdate) {
+          const existing = existingByEmail.get(contact.email.toLowerCase());
+          if (!existing) continue;
+          const updates: Record<string, any> = {};
+          if (contact.first_name) updates.firstName = contact.first_name;
+          if (contact.last_name) updates.lastName = contact.last_name;
+          if (contact.statusProvided) updates.status = contact.status;
+          if (Object.keys(updates).length > 0) {
+            await storage.updateContact(existing.id, websiteProgressId, updates);
+          }
+          for (const tagId of contact.tags) {
+            const tag = tagMap.get(tagId);
+            if (tag && tag.websiteProgressId === websiteProgressId) {
+              tagAssignments.push({ contactId: existing.id, tagId });
+            }
+          }
+        }
+        results.updated = contactsToUpdate.length;
+      }
+
+      if (contactsToCreate.length > 0) {
       // Prepare contacts for bulk insert
       const contactsToInsert = contactsToCreate.map(contact => ({
         firstName: contact.first_name,
@@ -12272,7 +12300,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       results.imported = insertedContacts.length;
 
       // Prepare tag assignments for bulk insert
-      const tagAssignments: Array<{ contactId: number; tagId: number }> = [];
       const contactEmailToIdMap = new Map(insertedContacts.map(c => [c.email.toLowerCase(), c.id]));
 
       for (const contactData of contactsToCreate) {
@@ -12285,6 +12312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             tagAssignments.push({ contactId, tagId });
           }
         }
+      }
       }
 
       // Bulk insert tag assignments (single query)
@@ -13418,7 +13446,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     try {
-      const { contacts: contactsData } = req.body;
+      const { contacts: contactsData, updateExisting } = req.body;
 
       if (!Array.isArray(contactsData)) {
         return res.status(400).json({ error: "Contacts array is required" });
@@ -13426,6 +13454,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const results = {
         imported: 0,
+        updated: 0,
         skipped: 0,
         errors: [] as Array<{ email: string; error: string }>,
       };
@@ -13460,7 +13489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate all contacts first
-      const validContacts: Array<{ first_name: string | null; last_name: string | null; email: string; status: AllowedStatus; tags: number[] }> = [];
+      const validContacts: Array<{ first_name: string | null; last_name: string | null; email: string; status: AllowedStatus; statusProvided: boolean; tags: number[] }> = [];
       const contactEmails: string[] = [];
       
       for (const contactData of contactsData) {
@@ -13476,6 +13505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           last_name: last_name || null,
           email: email.toLowerCase().trim(),
           status: mapImportStatus(status),
+          statusProvided: status !== undefined && status !== null && String(status).trim() !== '',
           tags: Array.isArray(tags) ? tags : [],
         });
         contactEmails.push(email.toLowerCase().trim());
@@ -13487,17 +13517,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Batch check for existing contacts (single query)
       const existingContacts = await db
-        .select({ email: adminContacts.email })
+        .select({ id: adminContacts.id, email: adminContacts.email })
         .from(adminContacts)
         .where(inArray(adminContacts.email, contactEmails));
 
-      const existingEmailsSet = new Set(existingContacts.map(c => c.email.toLowerCase()));
+      const existingByEmail = new Map(existingContacts.map(c => [c.email.toLowerCase(), c]));
+      const shouldUpdate = Boolean(updateExisting);
+      const contactsToCreate = validContacts.filter(c => !existingByEmail.has(c.email.toLowerCase()));
+      const contactsToUpdate = validContacts.filter(c => existingByEmail.has(c.email.toLowerCase()));
 
-      // Filter out existing contacts
-      const contactsToCreate = validContacts.filter(c => !existingEmailsSet.has(c.email.toLowerCase()));
-      results.skipped = validContacts.length - contactsToCreate.length;
+      if (!shouldUpdate) {
+        results.skipped = contactsToUpdate.length;
+      }
 
-      if (contactsToCreate.length === 0) {
+      if (contactsToCreate.length === 0 && (!shouldUpdate || contactsToUpdate.length === 0)) {
         return res.json(results);
       }
 
@@ -13506,7 +13539,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .select()
         .from(adminTags);
       const tagMap = new Map(allTags.map(tag => [tag.id, tag]));
+      const tagAssignments: Array<{ contactId: number; tagId: number }> = [];
 
+      if (shouldUpdate && contactsToUpdate.length > 0) {
+        for (const contact of contactsToUpdate) {
+          const existing = existingByEmail.get(contact.email.toLowerCase());
+          if (!existing) continue;
+          const updates: Record<string, any> = { updatedAt: new Date() };
+          if (contact.first_name) updates.firstName = contact.first_name;
+          if (contact.last_name) updates.lastName = contact.last_name;
+          if (contact.statusProvided) updates.status = contact.status;
+          await db
+            .update(adminContacts)
+            .set(updates)
+            .where(eq(adminContacts.id, existing.id));
+          for (const tagId of contact.tags) {
+            if (tagMap.has(tagId)) {
+              tagAssignments.push({ contactId: existing.id, tagId });
+            }
+          }
+        }
+        results.updated = contactsToUpdate.length;
+      }
+
+      if (contactsToCreate.length > 0) {
       // Prepare contacts for bulk insert
       const contactsToInsert = contactsToCreate.map(contact => ({
         firstName: contact.first_name,
@@ -13523,8 +13579,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       results.imported = insertedContacts.length;
 
-      // Prepare tag assignments for bulk insert
-      const tagAssignments: Array<{ contactId: number; tagId: number }> = [];
       const contactEmailToIdMap = new Map(insertedContacts.map(c => [c.email.toLowerCase(), c.id]));
 
       for (const contactData of contactsToCreate) {
@@ -13536,6 +13590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             tagAssignments.push({ contactId, tagId });
           }
         }
+      }
       }
 
       // Bulk insert tag assignments (single query)

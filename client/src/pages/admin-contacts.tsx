@@ -46,6 +46,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 const contactFormSchema = z.object({
   first_name: z.string().optional(),
@@ -71,6 +73,7 @@ export default function AdminContacts() {
   const [parsedContacts, setParsedContacts] = useState<any[]>([]);
   const [csvDuplicates, setCsvDuplicates] = useState<string[]>([]);
   const [csvExisting, setCsvExisting] = useState<string[]>([]);
+  const [importExistingMode, setImportExistingMode] = useState<"skip" | "update">("skip");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
@@ -475,12 +478,11 @@ export default function AdminContacts() {
         continue;
       }
 
-      if (existingContactEmails.has(email)) {
-        existingEmails.add(email);
-        continue;
-      }
-
       emailSet.add(email);
+      const alreadyExists = existingContactEmails.has(email);
+      if (alreadyExists) {
+        existingEmails.add(email);
+      }
 
       let tagIds: number[] = [];
       let tagNames: string[] = [];
@@ -513,9 +515,10 @@ export default function AdminContacts() {
         email: values[emailIndex].trim(),
         first_name: first_name,
         last_name: last_name,
-        status: statusIndex !== -1 ? (values[statusIndex] || 'pending').toLowerCase() : 'pending',
+        status: statusIndex !== -1 && values[statusIndex] ? values[statusIndex].toLowerCase() : undefined,
         tagIds: tagIds,
         tagNames: tagNames,
+        exists: alreadyExists,
       });
     }
 
@@ -640,11 +643,11 @@ export default function AdminContacts() {
     // - "unsubscribed", "cleaned", "bounced", "inactive" → unsubscribed
     // - empty or unknown → pending
     const sampleData = [
-      ["email", "first_name", "last_name", "status"],
-      ["john.doe@example.com", "John", "Doe", "subscribed"],
-      ["jane.smith@example.com", "Jane", "Smith", "active"],
-      ["alice.brown@example.com", "Alice", "Brown", "unsubscribed"],
-      ["charlie.wilson@example.com", "Charlie", "Wilson", ""],
+      ["email", "first_name", "last_name", "status", "tags"],
+      ["john.doe@example.com", "John", "Doe", "subscribed", "newsletter, vip, customers"],
+      ["jane.smith@example.com", "Jane", "Smith", "active", "newsletter, vip, webinar, customers"],
+      ["alice.brown@example.com", "Alice", "Brown", "unsubscribed", "newsletter"],
+      ["charlie.wilson@example.com", "Charlie", "Wilson", "", ""],
     ];
     const csvContent = sampleData.map(row => row.map(escapeCsvValue).join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -664,6 +667,7 @@ export default function AdminContacts() {
       const chunkSize = 500;
       const totalContacts = contacts.length;
       let importedCount = 0;
+      let updatedCount = 0;
       let skippedCount = 0;
       const errors: Array<{ email: string; error: string }> = [];
       const allImportedContacts: any[] = [];
@@ -676,14 +680,16 @@ export default function AdminContacts() {
         }));
         const response = await apiRequest("POST", "/api/admin/contacts/bulk-import", {
           contacts: contactsWithTags,
+          updateExisting: importExistingMode === "update",
         });
         const data = await response.json();
         importedCount += data.imported;
+        updatedCount += data.updated || 0;
         skippedCount += data.skipped;
         errors.push(...data.errors);
         allImportedContacts.push(...chunk);
       }
-      return { imported: importedCount, skipped: skippedCount, errors, allImportedContacts };
+      return { imported: importedCount, updated: updatedCount, skipped: skippedCount, errors, allImportedContacts };
     },
     onSuccess: async (data: any, variables: any[]) => {
       await refetchContacts();
@@ -781,7 +787,7 @@ export default function AdminContacts() {
 
       queryClient.invalidateQueries({ queryKey: ["/api/admin/contacts"] });
       
-      let description = `Imported ${data.imported} contacts, skipped ${data.skipped} existing contacts`;
+      let description = `Imported ${data.imported} contacts, updated ${data.updated || 0}, skipped ${importExistingMode === "skip" ? csvExisting.length : (data.skipped || 0)}`;
       if (tagsToCreate.size > 0) {
         description += `, created ${tagsToCreate.size} new tag${tagsToCreate.size > 1 ? 's' : ''}`;
       }
@@ -799,6 +805,7 @@ export default function AdminContacts() {
       setParsedContacts([]);
       setCsvDuplicates([]);
       setCsvExisting([]);
+      setImportExistingMode("skip");
       setImportMode("single");
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -814,7 +821,10 @@ export default function AdminContacts() {
   });
 
   const handleBulkImport = () => {
-    if (parsedContacts.length === 0) {
+    const contactsToSend = importExistingMode === "update"
+      ? parsedContacts
+      : parsedContacts.filter((contact) => !contact.exists);
+    if (contactsToSend.length === 0) {
       toast({
         title: "Error",
         description: "No contacts to import",
@@ -822,7 +832,7 @@ export default function AdminContacts() {
       });
       return;
     }
-    bulkImportMutation.mutate(parsedContacts);
+    bulkImportMutation.mutate(contactsToSend);
   };
 
   const filteredContacts = contacts.filter((contact: any) => {
@@ -1371,7 +1381,7 @@ export default function AdminContacts() {
                     </Tooltip>
                   </TooltipProvider>
                   <p className="text-xs text-muted-foreground mt-1">
-                    CSV should contain columns: email, first_name/last_name or name (optional), status (optional), tags (optional)
+                    CSV should contain columns: email, first_name/last_name or name (optional), status (optional), tags (optional, comma-separated, e.g. newsletter, vip, customers)
                   </p>
                 </div>
 
@@ -1379,11 +1389,13 @@ export default function AdminContacts() {
                   <div className="border rounded-md p-3 bg-muted/50">
                     <p className="text-sm font-medium mb-2">
                       Found {parsedContacts.length} contacts
+                      {csvExisting.length > 0 ? ` · ${csvExisting.length} already exist` : ""}
                     </p>
                     <div className="max-h-48 overflow-y-auto space-y-1">
                       {parsedContacts.slice(0, 10).map((contact, idx) => (
                         <div key={idx} className="text-xs text-muted-foreground">
                           {contact.email} {contact.first_name || contact.last_name ? `(${[contact.first_name, contact.last_name].filter(Boolean).join(' ')})` : ''}
+                          {contact.exists ? " · existing" : ""}
                         </div>
                       ))}
                       {parsedContacts.length > 10 && (
@@ -1395,6 +1407,28 @@ export default function AdminContacts() {
                   </div>
                 )}
 
+                {csvExisting.length > 0 && (
+                  <RadioGroup
+                    value={importExistingMode}
+                    onValueChange={(value) => setImportExistingMode(value as "skip" | "update")}
+                    className="gap-3"
+                    data-testid="import-existing-mode"
+                  >
+                    <div className="flex items-start space-x-2">
+                      <RadioGroupItem value="skip" id="admin-import-skip" className="mt-0.5" />
+                      <Label htmlFor="admin-import-skip" className="font-normal cursor-pointer">
+                        Skip existing contacts
+                      </Label>
+                    </div>
+                    <div className="flex items-start space-x-2">
+                      <RadioGroupItem value="update" id="admin-import-update" className="mt-0.5" />
+                      <Label htmlFor="admin-import-update" className="font-normal cursor-pointer">
+                        Update existing contacts (name, status, add tags)
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                )}
+
                 <div className="flex gap-2 justify-end">
                   <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
                     Cancel
@@ -1402,7 +1436,8 @@ export default function AdminContacts() {
                   <Button
                     type="button"
                     onClick={handleBulkImport}
-                    disabled={bulkImportMutation.isPending || parsedContacts.length === 0}
+                    disabled={bulkImportMutation.isPending || (importExistingMode === "update" ? parsedContacts.length === 0 : parsedContacts.filter((c) => !c.exists).length === 0)}
+                    data-testid="button-import-contacts"
                   >
                     {bulkImportMutation.isPending ? "Importing..." : "Import"}
                   </Button>

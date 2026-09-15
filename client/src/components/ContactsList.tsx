@@ -31,14 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { useTranslation } from "react-i18next";
 
 interface ContactsListProps {
@@ -77,6 +72,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
   const [parsedContacts, setParsedContacts] = useState<any[]>([]);
   const [csvDuplicates, setCsvDuplicates] = useState<string[]>([]);
   const [csvExisting, setCsvExisting] = useState<string[]>([]);
+  const [importExistingMode, setImportExistingMode] = useState<"skip" | "update">("skip");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
@@ -499,13 +495,11 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
         continue;
       }
 
-      // Check if email already exists in contacts list
-      if (existingContactEmails.has(email)) {
-        existingEmails.add(email);
-        continue;
-      }
-
       emailSet.add(email);
+      const alreadyExists = existingContactEmails.has(email);
+      if (alreadyExists) {
+        existingEmails.add(email);
+      }
 
       // Parse tags from CSV if tags column exists
       let tagIds: number[] = [];
@@ -539,9 +533,10 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
         email: values[emailIndex].trim(), // Keep original case
         first_name: first_name,
         last_name: last_name,
-        status: statusIndex !== -1 ? (values[statusIndex] || 'pending').toLowerCase() : 'pending',
+        status: statusIndex !== -1 && values[statusIndex] ? values[statusIndex].toLowerCase() : undefined,
         tagIds: tagIds,
         tagNames: tagNames, // Store tag names for post-import processing
+        exists: alreadyExists,
       });
     }
 
@@ -679,11 +674,11 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
     // - "unsubscribed", "cleaned", "bounced", "inactive" → unsubscribed
     // - empty or unknown → pending
     const sampleData = [
-      ["email", "first_name", "last_name", "status"],
-      ["john.doe@example.com", "John", "Doe", "subscribed"],
-      ["jane.smith@example.com", "Jane", "Smith", "active"],
-      ["alice.brown@example.com", "Alice", "Brown", "unsubscribed"],
-      ["charlie.wilson@example.com", "Charlie", "Wilson", ""],
+      ["email", "first_name", "last_name", "status", "tags"],
+      ["john.doe@example.com", "John", "Doe", "subscribed", "newsletter, vip, customers"],
+      ["jane.smith@example.com", "Jane", "Smith", "active", "newsletter, vip, webinar, customers"],
+      ["alice.brown@example.com", "Alice", "Brown", "unsubscribed", "newsletter"],
+      ["charlie.wilson@example.com", "Charlie", "Wilson", "", ""],
     ];
     const csvContent = sampleData.map(row => row.map(escapeCsvValue).join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -703,6 +698,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       const BATCH_SIZE = 500;
       const allResults = {
         imported: 0,
+        updated: 0,
         skipped: 0,
         errors: [] as Array<{ email: string; error: string }>,
       };
@@ -720,12 +716,14 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
         const response = await apiRequest("POST", "/api/contacts/bulk-import", {
           contacts: contactsWithTags,
           websiteProgressId,
+          updateExisting: importExistingMode === "update",
         });
         
         const batchResult = await response.json();
         
         // Aggregate results
         allResults.imported += batchResult.imported || 0;
+        allResults.updated += batchResult.updated || 0;
         allResults.skipped += batchResult.skipped || 0;
         if (batchResult.errors && Array.isArray(batchResult.errors)) {
           allResults.errors.push(...batchResult.errors);
@@ -845,7 +843,11 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       // Invalidate queries to refresh UI
       queryClient.invalidateQueries({ queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`] });
       
-      let description = `Imported ${data.imported} contacts, skipped ${data.skipped} existing contacts`;
+      let description = t("newsletter.importSummary", {
+        imported: data.imported,
+        updated: data.updated || 0,
+        skipped: importExistingMode === "skip" ? csvExisting.length : (data.skipped || 0),
+      });
       if (tagsToCreate.size > 0) {
         description += `, created ${tagsToCreate.size} new tag${tagsToCreate.size > 1 ? 's' : ''}`;
       }
@@ -863,6 +865,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       setParsedContacts([]);
       setCsvDuplicates([]);
       setCsvExisting([]);
+      setImportExistingMode("skip");
       setImportMode("single");
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
@@ -878,7 +881,10 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
   });
 
   const handleBulkImport = () => {
-    if (parsedContacts.length === 0) {
+    const contactsToSend = importExistingMode === "update"
+      ? parsedContacts
+      : parsedContacts.filter((contact) => !contact.exists);
+    if (contactsToSend.length === 0) {
       toast({
         title: t("forgotPassword.error"),
         description: t("newsletter.noContactsToImport"),
@@ -886,7 +892,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       });
       return;
     }
-    bulkImportMutation.mutate(parsedContacts);
+    bulkImportMutation.mutate(contactsToSend);
   };
 
   // Filter contacts based on search query, status, and tags
@@ -1485,11 +1491,13 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 <div className="border rounded-md p-3 bg-muted/50">
                   <p className="text-sm font-medium mb-2">
                     {t("newsletter.found")} {parsedContacts.length} {t("newsletter.toastContact")}
+                    {csvExisting.length > 0 ? ` · ${csvExisting.length} ${t("newsletter.alreadyExist")}` : ""}
                   </p>
                   <div className="max-h-48 overflow-y-auto space-y-1">
                     {parsedContacts.slice(0, 10).map((contact, idx) => (
                       <div key={idx} className="text-xs text-muted-foreground">
                         {contact.email} {contact.first_name || contact.last_name ? `(${[contact.first_name, contact.last_name].filter(Boolean).join(' ')})` : ''}
+                        {contact.exists ? ` · ${t("newsletter.existingContact")}` : ""}
                       </div>
                     ))}
                     {parsedContacts.length > 10 && (
@@ -1501,6 +1509,28 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 </div>
               )}
 
+              {csvExisting.length > 0 && (
+                <RadioGroup
+                  value={importExistingMode}
+                  onValueChange={(value) => setImportExistingMode(value as "skip" | "update")}
+                  className="gap-3"
+                  data-testid="import-existing-mode"
+                >
+                  <div className="flex items-start space-x-2">
+                    <RadioGroupItem value="skip" id="import-skip" className="mt-0.5" />
+                    <Label htmlFor="import-skip" className="font-normal cursor-pointer">
+                      {t("newsletter.importSkipExisting")}
+                    </Label>
+                  </div>
+                  <div className="flex items-start space-x-2">
+                    <RadioGroupItem value="update" id="import-update" className="mt-0.5" />
+                    <Label htmlFor="import-update" className="font-normal cursor-pointer">
+                      {t("newsletter.importUpdateExisting")}
+                    </Label>
+                  </div>
+                </RadioGroup>
+              )}
+
               <div className="flex gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => setShowAddDialog(false)}>
                   {t("newsletter.cancel")}
@@ -1508,7 +1538,8 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 <Button
                   type="button"
                   onClick={handleBulkImport}
-                  disabled={bulkImportMutation.isPending || parsedContacts.length === 0}
+                  disabled={bulkImportMutation.isPending || (importExistingMode === "update" ? parsedContacts.length === 0 : parsedContacts.filter((c) => !c.exists).length === 0)}
+                  data-testid="button-import-contacts"
                 >
                   {bulkImportMutation.isPending ? t("newsletter.importing") : t("newsletter.import")}
                 </Button>
