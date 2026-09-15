@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, Plus, Edit3, Trash2, Tag as TagIcon, Upload, X, Download, ArrowLeft, Loader2 } from "lucide-react";
+import { Users, Plus, Edit3, Trash2, Tag as TagIcon, Upload, X, Download, ArrowLeft, Loader2, Search, Filter } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -51,7 +51,7 @@ const contactFormSchema = z.object({
   first_name: z.string().optional(),
   last_name: z.string().optional(),
   email: z.string().email("Invalid email").min(1, "Email is required"),
-  status: z.enum(["pending", "active", "confirmed", "unsubscribed"]),
+  status: z.enum(["pending", "active", "unsubscribed"]),
   tagIds: z.array(z.number()),
 });
 
@@ -78,8 +78,11 @@ export default function AdminContacts() {
   const [showBulkTagsDialog, setShowBulkTagsDialog] = useState(false);
   const [showBulkStatusDialog, setShowBulkStatusDialog] = useState(false);
   const [bulkSelectedTagIds, setBulkSelectedTagIds] = useState<number[]>([]);
-  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<"pending" | "active" | "confirmed" | "unsubscribed">("pending");
+  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<"pending" | "active" | "unsubscribed">("pending");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [tagFilter, setTagFilter] = useState<string>("all");
 
   // Fetch admin contacts
   const { data: contacts = [], isLoading: contactsLoading, refetch: refetchContacts } = useQuery<any[]>({
@@ -278,7 +281,7 @@ export default function AdminContacts() {
 
   // Bulk update status mutation
   const bulkUpdateStatusMutation = useMutation({
-    mutationFn: async ({ contactIds, status }: { contactIds: number[]; status: "pending" | "active" | "confirmed" | "unsubscribed" }) => {
+    mutationFn: async ({ contactIds, status }: { contactIds: number[]; status: "pending" | "active" | "unsubscribed" }) => {
       const updatePromises = contactIds.map((contactId) =>
         apiRequest("PUT", `/api/admin/contacts/${contactId}`, {
           status,
@@ -314,7 +317,7 @@ export default function AdminContacts() {
       first_name: contact.first_name || "",
       last_name: contact.last_name || "",
       email: contact.email,
-      status: contact.status,
+      status: contact.status === "confirmed" || contact.status === "subscribed" ? "active" : contact.status,
       tagIds: contact.tags?.map((t: any) => t.id) || [],
     });
     setShowEditDialog(true);
@@ -633,15 +636,13 @@ export default function AdminContacts() {
     };
 
     // Sample data showing various status values that are auto-mapped during import:
-    // - "subscribed", "active", "yes", "true" → active
-    // - "confirmed", "verified" → confirmed
+    // - "subscribed", "active", "yes", "true", "confirmed" → active
     // - "unsubscribed", "cleaned", "bounced", "inactive" → unsubscribed
     // - empty or unknown → pending
     const sampleData = [
       ["email", "first_name", "last_name", "status"],
       ["john.doe@example.com", "John", "Doe", "subscribed"],
       ["jane.smith@example.com", "Jane", "Smith", "active"],
-      ["bob.johnson@example.com", "Bob", "Johnson", "confirmed"],
       ["alice.brown@example.com", "Alice", "Brown", "unsubscribed"],
       ["charlie.wilson@example.com", "Charlie", "Wilson", ""],
     ];
@@ -824,11 +825,41 @@ export default function AdminContacts() {
     bulkImportMutation.mutate(parsedContacts);
   };
 
+  const filteredContacts = contacts.filter((contact: any) => {
+    const searchLower = searchQuery.toLowerCase().trim();
+    if (searchLower) {
+      const fullName = `${contact.first_name || contact.firstName || ""} ${contact.last_name || contact.lastName || ""}`.toLowerCase();
+      const email = (contact.email || "").toLowerCase();
+      if (!fullName.includes(searchLower) && !email.includes(searchLower)) {
+        return false;
+      }
+    }
+
+    if (statusFilter !== "all") {
+      if (statusFilter === "active") {
+        if (contact.status !== "active" && contact.status !== "confirmed" && contact.status !== "subscribed") {
+          return false;
+        }
+      } else if (contact.status !== statusFilter) {
+        return false;
+      }
+    }
+
+    if (tagFilter !== "all") {
+      const contactTagIds = contact.tags?.map((t: any) => t.id.toString()) || [];
+      if (!contactTagIds.includes(tagFilter)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   // Pagination calculations
-  const totalPages = Math.max(1, Math.ceil(contacts.length / itemsPerPage));
+  const totalPages = Math.max(1, Math.ceil(filteredContacts.length / itemsPerPage));
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedContacts = contacts.slice(startIndex, endIndex);
+  const paginatedContacts = filteredContacts.slice(startIndex, endIndex);
 
   // Calculate which pages to show
   const getPagesToShow = (): number[] => {
@@ -867,6 +898,10 @@ export default function AdminContacts() {
   useEffect(() => {
     setCurrentPage(1);
   }, [itemsPerPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, tagFilter]);
 
   // Clear selection when contacts change
   useEffect(() => {
@@ -934,12 +969,90 @@ export default function AdminContacts() {
             </div>
           </CardHeader>
           <CardContent>
+            {contacts.length > 0 && (
+              <div className="mb-4 flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                    data-testid="input-search-contacts"
+                  />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-status-filter">
+                    <Filter className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="active">Subscribed</SelectItem>
+                    <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={tagFilter} onValueChange={setTagFilter}>
+                  <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-tag-filter">
+                    <TagIcon className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Tag" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Tags</SelectItem>
+                    {tags.map((tag: any) => (
+                      <SelectItem key={tag.id} value={tag.id.toString()}>
+                        {tag.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {(searchQuery || statusFilter !== "all" || tagFilter !== "all") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setStatusFilter("all");
+                      setTagFilter("all");
+                    }}
+                    className="whitespace-nowrap"
+                    data-testid="button-clear-filters"
+                  >
+                    <X className="h-4 w-4 mr-1" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            )}
+            {contacts.length > 0 && filteredContacts.length !== contacts.length && (
+              <div className="mb-4 text-sm text-muted-foreground">
+                Showing {filteredContacts.length} of {contacts.length} contacts
+              </div>
+            )}
             {contacts.length === 0 ? (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
                 <p className="text-muted-foreground mb-4">
                   No contacts yet. Add your first contact to get started.
                 </p>
+              </div>
+            ) : filteredContacts.length === 0 ? (
+              <div className="text-center py-12">
+                <Search className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4">
+                  No contacts match your filters
+                </p>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                    setTagFilter("all");
+                  }}
+                >
+                  Clear Filters
+                </Button>
               </div>
             ) : (
               <>
@@ -951,10 +1064,10 @@ export default function AdminContacts() {
                       </span>
                       <div className="flex items-center gap-2">
                         <Checkbox
-                          checked={selectedContacts.length === contacts.length}
+                          checked={filteredContacts.length > 0 && selectedContacts.length === filteredContacts.length && filteredContacts.every((c: any) => selectedContacts.includes(c.id))}
                           onCheckedChange={(checked) => {
                             if (checked) {
-                              setSelectedContacts(contacts.map((contact) => contact.id));
+                              setSelectedContacts(filteredContacts.map((contact: any) => contact.id));
                             } else {
                               setSelectedContacts([]);
                             }
@@ -1049,20 +1162,18 @@ export default function AdminContacts() {
                           <TableCell>
                             <Badge
                               variant={
-                                contact.status === "active" || contact.status === "confirmed"
+                                contact.status === "active" || contact.status === "confirmed" || contact.status === "subscribed"
                                   ? "default"
                                   : contact.status === "unsubscribed"
                                     ? "destructive"
                                     : "secondary"
                               }
                             >
-                              {contact.status === "active" 
-                                ? "Subscribed" 
-                                : contact.status === "confirmed"
-                                  ? "Confirmed"
-                                  : contact.status === "unsubscribed"
-                                    ? "Unsubscribed"
-                                    : "Pending"}
+                              {contact.status === "unsubscribed"
+                                ? "Unsubscribed"
+                                : contact.status === "pending"
+                                  ? "Pending"
+                                  : "Subscribed"}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
@@ -1357,7 +1468,6 @@ export default function AdminContacts() {
                           <SelectContent>
                             <SelectItem value="pending">Pending</SelectItem>
                             <SelectItem value="active">Subscribed</SelectItem>
-                            <SelectItem value="confirmed">Confirmed</SelectItem>
                             <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1505,7 +1615,6 @@ export default function AdminContacts() {
                         <SelectContent>
                           <SelectItem value="pending">Pending</SelectItem>
                           <SelectItem value="active">Subscribed</SelectItem>
-                          <SelectItem value="confirmed">Confirmed</SelectItem>
                           <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1638,7 +1747,7 @@ export default function AdminContacts() {
             <div className="space-y-4">
               <Select
                 value={bulkSelectedStatus}
-                onValueChange={(value: "pending" | "active" | "confirmed" | "unsubscribed") => setBulkSelectedStatus(value)}
+                onValueChange={(value: "pending" | "active" | "unsubscribed") => setBulkSelectedStatus(value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select status" />
@@ -1646,7 +1755,6 @@ export default function AdminContacts() {
                 <SelectContent>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="active">Subscribed</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="unsubscribed">Unsubscribed</SelectItem>
                 </SelectContent>
               </Select>

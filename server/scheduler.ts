@@ -203,7 +203,7 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
     if (campaign.tagIds && campaign.tagIds.length > 0) {
       const allContacts = await storage.getContactsByTags(campaign.websiteProgressId, campaign.tagIds);
       recipients = allContacts.filter(
-        (c) => c.status === "active" || c.status === "confirmed" || c.status === "pending",
+        (c) => c.status === "active" || c.status === "confirmed" || c.status === "pending" || c.status === "subscribed",
       );
     } else if (campaign.groupName) {
       const subscribers = await storage.getNewsletterSubscribersByGroup(
@@ -211,12 +211,12 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
         campaign.websiteProgressId,
       );
       recipients = subscribers.filter(
-        (s) => s.status === "active" || s.status === "confirmed" || s.status === "pending",
+        (s) => s.status === "active" || s.status === "confirmed" || s.status === "pending" || s.status === "subscribed",
       );
     } else {
       const allContacts = await storage.getContacts(campaign.websiteProgressId);
       recipients = allContacts.filter(
-        (c) => c.status === "active" || c.status === "confirmed" || c.status === "pending",
+        (c) => c.status === "active" || c.status === "confirmed" || c.status === "pending" || c.status === "subscribed",
       );
     }
 

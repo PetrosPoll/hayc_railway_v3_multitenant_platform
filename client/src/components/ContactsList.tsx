@@ -53,7 +53,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     email: z.string().email(t("forgotPassword.emailRequired")).min(1, t("forgotPassword.emailRequiredMessage")),
-    status: z.enum(["pending", "active", "confirmed", "unsubscribed"]),
+    status: z.enum(["pending", "active", "unsubscribed"]),
     tagIds: z.array(z.number()),
   });
 
@@ -68,7 +68,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
   const [showBulkTagsDialog, setShowBulkTagsDialog] = useState(false);
   const [showBulkStatusDialog, setShowBulkStatusDialog] = useState(false);
   const [bulkSelectedTagIds, setBulkSelectedTagIds] = useState<number[]>([]);
-  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<"pending" | "active" | "confirmed" | "unsubscribed">("pending");
+  const [bulkSelectedStatus, setBulkSelectedStatus] = useState<"pending" | "active" | "unsubscribed">("pending");
   const [editingContact, setEditingContact] = useState<any>(null);
   const [deletingContactId, setDeletingContactId] = useState<number | null>(null);
   const [importMode, setImportMode] = useState<"single" | "bulk">("single");
@@ -255,7 +255,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       first_name: contact.firstName || "",
       last_name: contact.lastName || "",
       email: contact.email,
-      status: contact.status,
+      status: contact.status === "confirmed" || contact.status === "subscribed" ? "active" : contact.status,
       tagIds: contact.tags?.map((t: any) => t.id) || [],
     });
     setShowEditDialog(true);
@@ -321,7 +321,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
 
   // Bulk update status mutation
   const bulkUpdateStatusMutation = useMutation({
-    mutationFn: async ({ contactIds, status }: { contactIds: number[]; status: "pending" | "active" | "confirmed" | "unsubscribed" }) => {
+    mutationFn: async ({ contactIds, status }: { contactIds: number[]; status: "pending" | "active" | "unsubscribed" }) => {
       const updatePromises = contactIds.map((contactId) =>
         apiRequest("PUT", `/api/contacts/${contactId}`, {
           websiteProgressId,
@@ -675,15 +675,13 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
     };
 
     // Sample data showing various status values that are auto-mapped during import:
-    // - "subscribed", "active", "yes", "true" → active
-    // - "confirmed", "verified" → confirmed
+    // - "subscribed", "active", "yes", "true", "confirmed" → active
     // - "unsubscribed", "cleaned", "bounced", "inactive" → unsubscribed
     // - empty or unknown → pending
     const sampleData = [
       ["email", "first_name", "last_name", "status"],
       ["john.doe@example.com", "John", "Doe", "subscribed"],
       ["jane.smith@example.com", "Jane", "Smith", "active"],
-      ["bob.johnson@example.com", "Bob", "Johnson", "confirmed"],
       ["alice.brown@example.com", "Alice", "Brown", "unsubscribed"],
       ["charlie.wilson@example.com", "Charlie", "Wilson", ""],
     ];
@@ -904,8 +902,14 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
     }
     
     // Status filter
-    if (statusFilter !== "all" && contact.status !== statusFilter) {
-      return false;
+    if (statusFilter !== "all") {
+      if (statusFilter === "active") {
+        if (contact.status !== "active" && contact.status !== "confirmed" && contact.status !== "subscribed") {
+          return false;
+        }
+      } else if (contact.status !== statusFilter) {
+        return false;
+      }
     }
     
     // Tag filter
@@ -1059,7 +1063,6 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                   <SelectItem value="all">{t("newsletter.allStatuses") || "All Statuses"}</SelectItem>
                   <SelectItem value="pending">{t("newsletter.statusPending") || "Pending"}</SelectItem>
                   <SelectItem value="active">{t("newsletter.statusActive") || "Active"}</SelectItem>
-                  <SelectItem value="confirmed">{t("newsletter.statusConfirmed") || "Confirmed"}</SelectItem>
                   <SelectItem value="unsubscribed">{t("newsletter.statusUnsubscribed") || "Unsubscribed"}</SelectItem>
                 </SelectContent>
               </Select>
@@ -1270,20 +1273,18 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                       <TableCell>
                         <Badge
                           variant={
-                            contact.status === "active" || contact.status === "confirmed"
+                            contact.status === "active" || contact.status === "confirmed" || contact.status === "subscribed"
                               ? "default"
                               : contact.status === "unsubscribed"
                                 ? "destructive"
                                 : "secondary"
                           }
                         >
-                          {contact.status === "active"
-                            ? t("newsletter.statusActive")
-                            : contact.status === "confirmed"
-                              ? t("newsletter.statusConfirmed")
-                              : contact.status === "unsubscribed"
-                                ? t("newsletter.statusUnsubscribed")
-                                : t("newsletter.statusPending")}
+                          {contact.status === "unsubscribed"
+                            ? t("newsletter.statusUnsubscribed")
+                            : contact.status === "pending"
+                              ? t("newsletter.statusPending")
+                              : t("newsletter.statusActive")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
@@ -1573,7 +1574,6 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                         <SelectContent>
                           <SelectItem value="pending">{t("newsletter.pending")}</SelectItem>
                           <SelectItem value="active">{t("newsletter.active")}</SelectItem>
-                          <SelectItem value="confirmed">{t("newsletter.confirmed")}</SelectItem>
                           <SelectItem value="unsubscribed">{t("newsletter.unsubscribed")}</SelectItem>
                         </SelectContent>
                       </Select>
@@ -1724,7 +1724,6 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                       <SelectContent>
                         <SelectItem value="pending">{t("newsletter.pending")}</SelectItem>
                         <SelectItem value="active">{t("newsletter.active")}</SelectItem>
-                        <SelectItem value="confirmed">{t("newsletter.confirmed")}</SelectItem>
                         <SelectItem value="unsubscribed">{t("newsletter.unsubscribed")}</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1820,7 +1819,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
           <div className="space-y-4">
             <Select
               value={bulkSelectedStatus}
-              onValueChange={(value: "pending" | "active" | "confirmed" | "unsubscribed") => setBulkSelectedStatus(value)}
+              onValueChange={(value: "pending" | "active" | "unsubscribed") => setBulkSelectedStatus(value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder={t("newsletter.selectStatus")} />
@@ -1828,7 +1827,6 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
               <SelectContent>
                 <SelectItem value="pending">{t("newsletter.pending")}</SelectItem>
                 <SelectItem value="active">{t("newsletter.active")}</SelectItem>
-                <SelectItem value="confirmed">{t("newsletter.confirmed")}</SelectItem>
                 <SelectItem value="unsubscribed">{t("newsletter.unsubscribed")}</SelectItem>
               </SelectContent>
             </Select>
@@ -1860,7 +1858,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
           <div className="space-y-4">
             <Select
               value={bulkSelectedStatus}
-              onValueChange={(value: "pending" | "active" | "confirmed" | "unsubscribed") => setBulkSelectedStatus(value)}
+              onValueChange={(value: "pending" | "active" | "unsubscribed") => setBulkSelectedStatus(value)}
             >
               <SelectTrigger>
                 <SelectValue placeholder={t("newsletter.selectStatus")} />
@@ -1868,7 +1866,6 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
               <SelectContent>
                 <SelectItem value="pending">{t("newsletter.pending")}</SelectItem>
                 <SelectItem value="active">{t("newsletter.active")}</SelectItem>
-                <SelectItem value="confirmed">{t("newsletter.confirmed")}</SelectItem>
                 <SelectItem value="unsubscribed">{t("newsletter.unsubscribed")}</SelectItem>
               </SelectContent>
             </Select>

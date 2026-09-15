@@ -489,7 +489,7 @@ export class DatabaseStorage implements IStorage {
     const [subscriber] = await db
       .update(newsletterSubscribers)
       .set({ 
-        status: 'confirmed',
+        status: 'active',
         confirmedAt: new Date(),
         confirmationToken: null,
         updatedAt: new Date()
@@ -1144,7 +1144,7 @@ export class DatabaseStorage implements IStorage {
     const [contact] = await db
       .update(contacts)
       .set({
-        status: 'confirmed',
+        status: 'active',
         confirmedAt: new Date(),
         confirmationToken: null,
         updatedAt: new Date(),

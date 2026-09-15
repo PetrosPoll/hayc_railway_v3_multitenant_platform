@@ -61,10 +61,19 @@ function buildScheduledDateFromParts(
 }
 
 const CONTACT_STATUSES = [
-  { value: 'confirmed' },
   { value: 'active' },
   { value: 'pending' },
 ] as const;
+
+function normalizeContactStatus(status: string) {
+  return status === 'confirmed' || status === 'subscribed' ? 'active' : status;
+}
+
+function normalizeStatusFilters(filters?: string[]) {
+  const fallback = ['active', 'pending'];
+  if (!filters?.length) return fallback;
+  return Array.from(new Set(filters.map((status) => normalizeContactStatus(status))));
+}
 
 const createCampaignFormSchema = (t: (key: string) => string) => z.object({
   title: z.string().min(1, t("dashboard.campaigns.wizard.validation.titleRequired")),
@@ -72,7 +81,7 @@ const createCampaignFormSchema = (t: (key: string) => string) => z.object({
   purpose: z.string().optional(),
   tagIds: z.array(z.number()).default([]),
   excludedTagIds: z.array(z.number()).default([]),
-  statusFilters: z.array(z.string()).default(['confirmed', 'active', 'pending']),
+  statusFilters: z.array(z.string()).default(['active', 'pending']),
   subject: z.string().min(1, t("dashboard.campaigns.wizard.validation.subjectRequired")),
   senderName: z.string().min(1, t("dashboard.campaigns.wizard.validation.senderNameRequired")),
   senderEmail: z.string().email(t("dashboard.campaigns.wizard.validation.validEmailRequired")).min(1, t("dashboard.campaigns.wizard.validation.senderEmailRequired")),
@@ -120,7 +129,7 @@ export function CampaignWizard({
       purpose: editingCampaign?.purpose || '',
       tagIds: editingCampaign?.tagIds || [],
       excludedTagIds: editingCampaign?.excludedTagIds || [],
-      statusFilters: editingCampaign?.statusFilters || ['confirmed', 'active', 'pending'],
+      statusFilters: normalizeStatusFilters(editingCampaign?.statusFilters),
       subject: editingCampaign?.subject || '',
       senderName: editingCampaign?.senderName || '',
       senderEmail: editingCampaign?.senderEmail || '',
@@ -184,7 +193,7 @@ export function CampaignWizard({
         purpose: editingCampaign?.purpose || '',
         tagIds: editingCampaign?.tagIds || [],
         excludedTagIds: editingCampaign?.excludedTagIds || [],
-        statusFilters: editingCampaign?.statusFilters || ['confirmed', 'active', 'pending'],
+        statusFilters: normalizeStatusFilters(editingCampaign?.statusFilters),
         subject: editingCampaign?.subject || '',
         senderName: editingCampaign?.senderName || '',
         senderEmail: editingCampaign?.senderEmail || '',
@@ -229,7 +238,7 @@ export function CampaignWizard({
   // Watch selected tags, excluded tags, and status filters
   const selectedTagIds = form.watch('tagIds') || [];
   const excludedTagIds = form.watch('excludedTagIds') || [];
-  const selectedStatusFilters = form.watch('statusFilters') || ['confirmed', 'active', 'pending'];
+  const selectedStatusFilters = form.watch('statusFilters') || ['active', 'pending'];
 
   // Fetch contacts for the selected tags (or all contacts if no tags selected)
   const { data: contacts = [] } = useQuery<any[]>({
@@ -257,7 +266,7 @@ export function CampaignWizard({
   // Filter contacts by selected statuses and exclude contacts with excluded tags
   const filteredContacts = contacts.filter(c => {
     // Filter by status first
-    if (!selectedStatusFilters.includes(c.status)) return false;
+    if (!selectedStatusFilters.includes(normalizeContactStatus(c.status))) return false;
     
     // Filter out contacts with excluded tags
     if (excludedTagIds.length > 0) {
@@ -271,7 +280,7 @@ export function CampaignWizard({
 
   // Get contacts that are being excluded (for preview)
   const excludedContacts = contacts.filter(c => {
-    if (!selectedStatusFilters.includes(c.status)) return false;
+    if (!selectedStatusFilters.includes(normalizeContactStatus(c.status))) return false;
     if (excludedTagIds.length > 0) {
       const contactTagIds = getContactTagIds(c);
       return contactTagIds.some(tagId => excludedTagIds.includes(tagId));

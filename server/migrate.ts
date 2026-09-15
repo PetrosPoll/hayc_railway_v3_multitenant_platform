@@ -20,6 +20,11 @@ export async function runMigrations() {
 
   try {
     await migrate(db, { migrationsFolder: "./migrations" });
+    await pool.query(`
+      UPDATE contacts SET status = 'active', updated_at = NOW() WHERE status = 'confirmed';
+      UPDATE admin_contacts SET status = 'active', updated_at = NOW() WHERE status IN ('confirmed', 'subscribed');
+      UPDATE newsletter_subscribers SET status = 'active', updated_at = NOW() WHERE status = 'confirmed';
+    `);
     console.log("✅ Migrations completed successfully");
   } catch (error) {
     console.error("❌ Migration failed:", error);

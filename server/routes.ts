@@ -10804,9 +10804,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get recipient count for the campaign
       let recipientCount = 0;
-      const activeStatuses = statusFilters && statusFilters.length > 0 
-        ? statusFilters 
-        : ['confirmed', 'active', 'pending'];
+      const activeStatuses = statusFilters && statusFilters.length > 0
+        ? statusFilters.map((s: string) => s === 'confirmed' ? 'active' : s)
+        : ['active', 'pending'];
       
       let allContacts: any[] = [];
       if (tagIds && tagIds.length > 0) {
@@ -10817,7 +10817,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Filter by status
-      let activeContacts = allContacts.filter(c => activeStatuses.includes(c.status));
+      let activeContacts = allContacts.filter(c => {
+        const status = c.status === 'confirmed' || c.status === 'subscribed' ? 'active' : c.status;
+        return activeStatuses.includes(status);
+      });
       
       // Filter out contacts with excluded tags
       const excludedTagIdsNormalized = (excludedTagIds || []).map((id: any) => typeof id === 'number' ? id : parseInt(id)).filter((id: number) => !isNaN(id));
@@ -10910,9 +10913,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Always recalculate recipient count based on current tags, excluded tags, and status filters
-      const activeStatuses = statusFilters && statusFilters.length > 0 
-        ? statusFilters 
-        : ['confirmed', 'active', 'pending'];
+      const activeStatuses = statusFilters && statusFilters.length > 0
+        ? statusFilters.map((s: string) => s === 'confirmed' ? 'active' : s)
+        : ['active', 'pending'];
       
       const currentTagIds = tagIds !== undefined ? tagIds : existingCampaign.tagIds;
       const currentExcludedTagIds = excludedTagIds !== undefined ? excludedTagIds : (existingCampaign.excludedTagIds || []);
@@ -10929,7 +10932,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Filter by status
-      let activeContacts = allContacts.filter(c => activeStatuses.includes(c.status));
+      let activeContacts = allContacts.filter(c => {
+        const status = c.status === 'confirmed' || c.status === 'subscribed' ? 'active' : c.status;
+        return activeStatuses.includes(status);
+      });
       
       // Filter out contacts with excluded tags
       if (excludedTagIdsNormalized.length > 0) {
@@ -11178,14 +11184,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Calculate recipient count based on tagIds and excludedTagIds
       let recipientCount = 0;
       if (campaign.tagIds && campaign.tagIds.length > 0) {
-        const activeStatuses = ['confirmed', 'active', 'pending'];
+        const activeStatuses = ['active', 'pending'];
         let allContacts: any[] = [];
         
         if (campaign.tagIds.length > 0) {
           allContacts = await storage.getContactsByTags(websiteProgressId, campaign.tagIds);
         }
         
-        let activeContacts = allContacts.filter(c => activeStatuses.includes(c.status));
+        let activeContacts = allContacts.filter(c => {
+        const status = c.status === 'confirmed' || c.status === 'subscribed' ? 'active' : c.status;
+        return activeStatuses.includes(status);
+      });
         
         // Filter out contacts with excluded tags
         const excludedTagIds = campaign.excludedTagIds || [];
@@ -11341,8 +11350,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Accept contacts with status 'active', 'confirmed', or 'pending' (migrated from legacy subscribers)
       // Use campaign's status filters if available, otherwise default to all active statuses
-      const statusFilters = campaign.statusFilters || ['confirmed', 'active', 'pending'];
-      recipients = allContacts.filter(c => statusFilters.includes(c.status));
+      const statusFilters = (campaign.statusFilters || ['active', 'pending']).map((s: string) => s === 'confirmed' ? 'active' : s);
+      recipients = allContacts.filter(c => {
+        const status = c.status === 'confirmed' || c.status === 'subscribed' ? 'active' : c.status;
+        return statusFilters.includes(status);
+      });
       
       // Filter out contacts with excluded tags
       const excludedTagIds = campaign.excludedTagIds || [];
@@ -11925,7 +11937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: last_name || null,
         email,
         websiteProgressId,
-        status: status || 'pending',
+        status: status === 'confirmed' || status === 'subscribed' ? 'active' : (status || 'pending'),
         subscribedAt: new Date(),
       });
 
@@ -11981,7 +11993,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (first_name !== undefined) updates.firstName = first_name;
       if (last_name !== undefined) updates.lastName = last_name;
       if (email !== undefined) updates.email = email;
-      if (status !== undefined) updates.status = status;
+      if (status !== undefined) {
+        updates.status = status === "confirmed" || status === "subscribed" ? "active" : status;
+      }
 
       const contact = await storage.updateContact(contactId, websiteProgressId, updates);
       res.json(contact);
@@ -12161,7 +12175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Helper function to map status values from other platforms to our system
       // Allowed statuses in our system
-      const ALLOWED_STATUSES = ['pending', 'active', 'confirmed', 'unsubscribed'] as const;
+      const ALLOWED_STATUSES = ['pending', 'active', 'unsubscribed'] as const;
       type AllowedStatus = typeof ALLOWED_STATUSES[number];
       
       function mapImportStatus(status: string | undefined | null): AllowedStatus {
@@ -12170,13 +12184,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const normalized = status.toLowerCase().trim();
         
         // Map to "active" - common values from other platforms meaning subscribed
-        if (['subscribed', 'active', 'yes', 'true', '1', 'opted_in', 'opt_in', 'optin'].includes(normalized)) {
+        if (['subscribed', 'active', 'yes', 'true', '1', 'opted_in', 'opt_in', 'optin', 'confirmed', 'verified', 'double_opt_in', 'double_optin'].includes(normalized)) {
           return 'active';
-        }
-        
-        // Map to "confirmed" - verified/double opt-in contacts
-        if (['confirmed', 'verified', 'double_opt_in', 'double_optin'].includes(normalized)) {
-          return 'confirmed';
         }
         
         // Map to "unsubscribed" - contacts who opted out
@@ -13161,7 +13170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create contact
       const result = await db.execute(sql`
         INSERT INTO admin_contacts (first_name, last_name, email, status, created_at, updated_at)
-        VALUES (${first_name || null}, ${last_name || null}, ${email}, ${status || 'pending'}, NOW(), NOW())
+        VALUES (${first_name || null}, ${last_name || null}, ${email}, ${status === 'confirmed' || status === 'subscribed' ? 'active' : (status || 'pending')}, NOW(), NOW())
         RETURNING *
       `);
 
@@ -13272,7 +13281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (status !== undefined) {
         setParts.push(`status = $${values.length + 1}`);
-        values.push(status);
+        values.push(status === 'confirmed' || status === 'subscribed' ? 'active' : status);
       }
       setParts.push('updated_at = NOW()');
 
@@ -13423,7 +13432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Helper function to map status values from other platforms to our system
       // Allowed statuses in our system
-      const ALLOWED_STATUSES = ['pending', 'active', 'confirmed', 'unsubscribed'] as const;
+      const ALLOWED_STATUSES = ['pending', 'active', 'unsubscribed'] as const;
       type AllowedStatus = typeof ALLOWED_STATUSES[number];
       
       function mapImportStatus(status: string | undefined | null): AllowedStatus {
@@ -13432,13 +13441,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const normalized = status.toLowerCase().trim();
         
         // Map to "active" - common values from other platforms meaning subscribed
-        if (['subscribed', 'active', 'yes', 'true', '1', 'opted_in', 'opt_in', 'optin'].includes(normalized)) {
+        if (['subscribed', 'active', 'yes', 'true', '1', 'opted_in', 'opt_in', 'optin', 'confirmed', 'verified', 'double_opt_in', 'double_optin'].includes(normalized)) {
           return 'active';
-        }
-        
-        // Map to "confirmed" - verified/double opt-in contacts
-        if (['confirmed', 'verified', 'double_opt_in', 'double_optin'].includes(normalized)) {
-          return 'confirmed';
         }
         
         // Map to "unsubscribed" - contacts who opted out
@@ -13872,7 +13876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             FROM admin_contacts c
             INNER JOIN admin_contact_tags ct ON c.id = ct.contact_id
             WHERE ct.tag_id IN (${sql.join(validTagIds.map(id => sql`${id}`), sql`, `)})
-            AND c.status IN ('active', 'confirmed', 'pending')
+            AND c.status IN ('active', 'pending', 'confirmed', 'subscribed')
           `);
 
           let allContacts = contactsResult.rows || [];
@@ -14035,7 +14039,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             FROM admin_contacts c
             INNER JOIN admin_contact_tags ct ON c.id = ct.contact_id
             WHERE ct.tag_id IN (${sql.join(currentTagIds.map((id: number) => sql`${id}`), sql`, `)})
-            AND c.status IN ('active', 'confirmed', 'pending')
+            AND c.status IN ('active', 'pending', 'confirmed', 'subscribed')
           `);
 
           let allContacts = contactsResult.rows || [];
@@ -14313,7 +14317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           FROM admin_contacts c
           INNER JOIN admin_contact_tags ct ON c.id = ct.contact_id
           WHERE ct.tag_id IN (${sql.join(campaign.tag_ids.map((id: number) => sql`${id}`), sql`, `)})
-          AND c.status IN ('active', 'confirmed', 'pending')
+          AND c.status IN ('active', 'pending', 'confirmed', 'subscribed')
         `);
 
         let allContacts = contactsResult.rows || [];
@@ -22167,7 +22171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: normalizedEmail,
         firstName: firstName?.trim() || null,
         lastName: lastName?.trim() || null,
-        status: "subscribed",
+        status: "active",
       });
 
       return res.status(200).json({ success: true });
@@ -22325,7 +22329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if already confirmed
-      if (subscriber.status === 'confirmed') {
+      if (subscriber.status === 'active' || subscriber.status === 'confirmed') {
         return res.status(200).send(`
           <html>
             <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; text-align: center;">

@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Plus, Loader2, TrendingUp, Users, Calendar, BarChart3, Copy, Edit, X, ArrowLeft, Trash2 } from "lucide-react";
+import { Mail, Plus, Loader2, TrendingUp, Users, Calendar, BarChart3, Copy, Edit, X, ArrowLeft, Trash2, Search, ArrowUpDown } from "lucide-react";
 import { AdminCampaignWizard } from "@/components/AdminCampaignWizard";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -28,6 +30,8 @@ export default function AdminCampaigns() {
   const [editingCampaign, setEditingCampaign] = useState<any>(null);
   const [sendingCampaignId, setSendingCampaignId] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("date-desc");
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<number>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const { toast } = useToast();
@@ -62,10 +66,44 @@ export default function AdminCampaigns() {
     },
   });
 
-  const filteredCampaigns = campaigns?.filter(campaign => {
-    if (statusFilter === "all") return true;
-    return campaign.status === statusFilter;
-  }) || [];
+  const filteredCampaigns = useMemo(() => {
+    if (!campaigns) return [];
+
+    let result = campaigns.filter(campaign => {
+      if (statusFilter !== "all" && campaign.status !== statusFilter) return false;
+
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          campaign.title?.toLowerCase().includes(query) ||
+          campaign.subject?.toLowerCase().includes(query) ||
+          campaign.description?.toLowerCase().includes(query)
+        );
+      }
+      return true;
+    });
+
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case "date-desc":
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+        case "date-asc":
+          return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        case "title-asc":
+          return (a.title || "").localeCompare(b.title || "");
+        case "title-desc":
+          return (b.title || "").localeCompare(a.title || "");
+        case "opens-desc":
+          return (b.openCount || 0) - (a.openCount || 0);
+        case "clicks-desc":
+          return (b.clickCount || 0) - (a.clickCount || 0);
+        default:
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      }
+    });
+
+    return result;
+  }, [campaigns, statusFilter, searchQuery, sortBy]);
 
   // Send campaign mutation
   const sendCampaignMutation = useMutation({
@@ -459,7 +497,8 @@ export default function AdminCampaigns() {
       all: "No campaigns yet. Create your first campaign to get started.",
       draft: "No draft campaigns. Create a new campaign to begin.",
       scheduled: "No scheduled campaigns. Schedule a campaign to see it here.",
-      sent: "No sent campaigns yet. Send a campaign to see analytics here."
+      sent: "No sent campaigns yet. Send a campaign to see analytics here.",
+      failed: "No failed campaigns."
     };
 
     return (
@@ -510,7 +549,7 @@ export default function AdminCampaigns() {
       <div className="space-y-6" data-testid="campaigns-list">
 
       <Tabs value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setSelectedCampaigns(new Set()); }} data-testid="campaigns-tabs">
-        <TabsList className="grid w-full grid-cols-4" data-testid="campaigns-tabs-list">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-5 gap-1 h-auto" data-testid="campaigns-tabs-list">
           <TabsTrigger value="all" data-testid="tab-all">
             All ({campaigns?.length || 0})
           </TabsTrigger>
@@ -523,23 +562,50 @@ export default function AdminCampaigns() {
           <TabsTrigger value="sent" data-testid="tab-sent">
             Sent ({campaigns?.filter(c => c.status === "sent").length || 0})
           </TabsTrigger>
+          <TabsTrigger value="failed" data-testid="tab-failed">
+            Failed ({campaigns?.filter(c => c.status === "failed").length || 0})
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value={statusFilter} className="space-y-4 mt-6" data-testid={`tab-content-${statusFilter}`}>
-          {filteredCampaigns.length > 0 && (
-            <div className="flex items-center justify-between mb-4 p-3 bg-muted/50 rounded-lg">
+        <TabsContent value={statusFilter} className="space-y-4 mt-4" data-testid={`tab-content-${statusFilter}`}>
+          {(campaigns?.length ?? 0) > 0 && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 bg-muted/50 rounded-lg" data-testid="campaigns-filters">
               <div className="flex items-center gap-3">
                 <Checkbox
                   checked={filteredCampaigns.length > 0 && filteredCampaigns.every(c => selectedCampaigns.has(c.id))}
                   onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
                   data-testid="select-all-checkbox"
                 />
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">
                   {selectedCampaigns.size > 0 
                     ? `${selectedCampaigns.size} selected` 
                     : "Select all"}
                 </span>
               </div>
+              <div className="relative flex-1 w-full sm:w-auto">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t("dashboard.campaigns.searchPlaceholder")}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-campaigns"
+                />
+              </div>
+              <Select value={sortBy} onValueChange={setSortBy}>
+                <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-sort-campaigns">
+                  <ArrowUpDown className="h-4 w-4 mr-2" />
+                  <SelectValue placeholder={t("dashboard.campaigns.sortPlaceholder")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date-desc">{t("dashboard.campaigns.sort.newestFirst")}</SelectItem>
+                  <SelectItem value="date-asc">{t("dashboard.campaigns.sort.oldestFirst")}</SelectItem>
+                  <SelectItem value="title-asc">{t("dashboard.campaigns.sort.titleAZ")}</SelectItem>
+                  <SelectItem value="title-desc">{t("dashboard.campaigns.sort.titleZA")}</SelectItem>
+                  <SelectItem value="opens-desc">{t("dashboard.campaigns.sort.mostOpens")}</SelectItem>
+                  <SelectItem value="clicks-desc">{t("dashboard.campaigns.sort.mostClicks")}</SelectItem>
+                </SelectContent>
+              </Select>
               {selectedCampaigns.size > 0 && (
                 <Button
                   variant="destructive"

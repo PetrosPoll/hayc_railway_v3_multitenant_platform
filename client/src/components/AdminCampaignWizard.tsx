@@ -216,7 +216,7 @@ export function AdminCampaignWizard({
   // Filter contacts based on excluded tags
   const activeContacts = contacts.filter(c => {
     // Filter by status first
-    if (c.status !== 'active' && c.status !== 'confirmed' && c.status !== 'pending') {
+    if (c.status !== 'active' && c.status !== 'confirmed' && c.status !== 'pending' && c.status !== 'subscribed') {
       return false;
     }
     // Filter out contacts that have any excluded tags
@@ -230,7 +230,7 @@ export function AdminCampaignWizard({
 
   // Get contacts that are being excluded (for preview)
   const excludedContacts = contacts.filter(c => {
-    if (c.status !== 'active' && c.status !== 'confirmed' && c.status !== 'pending') {
+    if (c.status !== 'active' && c.status !== 'confirmed' && c.status !== 'pending' && c.status !== 'subscribed') {
       return false;
     }
     if (excludedTagIds.length > 0) {
