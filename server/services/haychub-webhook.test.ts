@@ -202,4 +202,19 @@ describe("deliverHaycHubCustomerPaid", () => {
     expect(fetchFn).toHaveBeenCalledTimes(3);
     expect(sleep.mock.calls.map((c) => c[0])).toEqual([1000, 2000]);
   });
+
+  it("honors maxAttempts of 1 without sleeping", async () => {
+    const fetchFn = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
+    const sleep = vi.fn().mockResolvedValue(undefined);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await deliverHaycHubCustomerPaid(payload, {
+      fetchFn,
+      sleep,
+      env,
+      maxAttempts: 1,
+    });
+    expect(result).toEqual({ ok: false });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(sleep).not.toHaveBeenCalled();
+  });
 });

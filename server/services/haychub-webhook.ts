@@ -19,6 +19,8 @@ export interface HaycHubDeliverDeps {
   fetchFn?: typeof fetch;
   sleep?: (ms: number) => Promise<void>;
   env?: NodeJS.ProcessEnv;
+  maxAttempts?: number;
+  requestTimeoutMs?: number;
 }
 
 function defaultSleep(ms: number): Promise<void> {
@@ -140,6 +142,8 @@ export async function deliverHaycHubCustomerPaid(
   const env = deps.env ?? process.env;
   const fetchFn = deps.fetchFn ?? fetch;
   const sleep = deps.sleep ?? defaultSleep;
+  const maxAttempts = Math.max(1, deps.maxAttempts ?? MAX_ATTEMPTS);
+  const requestTimeoutMs = Math.max(1, deps.requestTimeoutMs ?? REQUEST_TIMEOUT_MS);
 
   const url = env.HAYCHUB_WEBHOOK_URL?.trim();
   const secret = env.HAYCHUB_WEBHOOK_SECRET?.trim();
@@ -164,10 +168,11 @@ export async function deliverHaycHubCustomerPaid(
   }
 
   const jsonBody = JSON.stringify(body);
+  let lastStatus: number | undefined;
 
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    const timeoutId = setTimeout(() => controller.abort(), requestTimeoutMs);
     try {
       const response = await fetchFn(url, {
         method: "POST",
@@ -198,6 +203,7 @@ export async function deliverHaycHubCustomerPaid(
         return { ok: true, status: response.status };
       }
 
+      lastStatus = response.status;
       const retryable = isRetryableStatus(response.status);
       console.error(`${LOG_PREFIX} Customer-paid notification failed`, {
         haycCustomerId: body.haycCustomerId,
@@ -219,14 +225,15 @@ export async function deliverHaycHubCustomerPaid(
       clearTimeout(timeoutId);
     }
 
-    if (attempt < MAX_ATTEMPTS - 1) {
+    if (attempt < maxAttempts - 1) {
       await sleep(backoffMs(attempt));
     }
   }
 
   console.error(`${LOG_PREFIX} Customer-paid notification gave up after retries`, {
     haycCustomerId: body.haycCustomerId,
-    attempts: MAX_ATTEMPTS,
+    attempts: maxAttempts,
+    status: lastStatus,
   });
-  return { ok: false };
+  return lastStatus === undefined ? { ok: false } : { ok: false, status: lastStatus };
 }

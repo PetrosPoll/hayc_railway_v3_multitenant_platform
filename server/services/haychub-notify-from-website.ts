@@ -169,12 +169,15 @@ export async function notifyHaycHubFromWebsiteOnboarding(
         onboardingForm: serializeOnboardingForm(oldForm),
       };
 
-  const result = await deliverHaycHubCustomerPaid(payload);
+  const result = await deliverHaycHubCustomerPaid(payload, {
+    maxAttempts: 1,
+    requestTimeoutMs: 8_000,
+  });
   if (result.ok && (result.status === 200 || result.status === 201)) {
     return { ok: true, status: result.status };
   }
 
-  if (result.status === 400 || result.status === 401 || result.status === 503) {
+  if (result.status === 400 || result.status === 401) {
     return {
       ok: false,
       httpStatus: result.status,
@@ -184,7 +187,9 @@ export async function notifyHaycHubFromWebsiteOnboarding(
 
   return {
     ok: false,
-    httpStatus: 502,
-    error: "HaycHub did not accept the notification",
+    httpStatus: 422,
+    error: result.status
+      ? `HaycHub did not accept the notification (${result.status})`
+      : "HaycHub did not accept the notification",
   };
 }
