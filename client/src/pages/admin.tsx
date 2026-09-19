@@ -62,6 +62,7 @@ import { AdminWebsiteChanges } from "@/components/ui/admin-website-changes";
 import { CancelledDueToPaymentFailureList } from "@/components/admin-cancelled-payment-failures";
 import { AdminWebsiteInvoices } from "@/components/ui/admin-website-invoices";
 import AdminGetStartedSubmissions from "@/components/ui/admin-get-started-submissions";
+import AdminWebsiteContactSubmissions from "@/components/ui/admin-website-contact-submissions";
 import AdminAmbassadors from "@/components/ui/admin-ambassadors";
 import { PlatformUsageAnalytics } from "@/components/ui/platform-usage-analytics";
 import { Switch } from "@/components/ui/switch";
@@ -1636,6 +1637,9 @@ export default function AdminDashboard() {
                     <TabsTrigger value="website-changes" className="w-full justify-start rounded-md px-3 py-2.5">
                       Website Changes
                     </TabsTrigger>
+                    <TabsTrigger value="contact-submissions" className="w-full justify-start rounded-md px-3 py-2.5">
+                      Contact forms
+                    </TabsTrigger>
                   </>
                 )}
                 {userPermissions?.canViewTips && (
@@ -2669,6 +2673,9 @@ export default function AdminDashboard() {
                 </h2>
                 <AdminWebsiteChanges />
               </section>
+            </TabsContent>
+            <TabsContent value="contact-submissions" className="mt-0">
+              <AdminWebsiteContactSubmissions />
             </TabsContent>
             <TabsContent value="tips" className="mt-0">
               <section>

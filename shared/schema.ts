@@ -1598,3 +1598,41 @@ export type PromoCode = typeof promoCodes.$inferSelect;
 export type InsertPromoCode = z.infer<typeof insertPromoCodeSchema>;
 export type PromoRedemption = typeof promoRedemptions.$inferSelect;
 export type InsertPromoRedemption = z.infer<typeof insertPromoRedemptionSchema>;
+
+export const websiteContactSubmissions = pgTable(
+  "website_contact_submissions",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id"),
+    siteId: text("site_id").notNull(),
+    siteLabel: text("site_label"),
+    name: text("name").notNull(),
+    email: text("email").notNull(),
+    phone: text("phone"),
+    message: text("message").notNull(),
+    extraFields: jsonb("extra_fields").$type<Record<string, string>>(),
+    ownerEmail: text("owner_email").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+  },
+  (table) => ({
+    createdAtIdx: index("website_contact_submissions_created_at_idx").on(
+      table.createdAt,
+    ),
+    websiteIdx: index("website_contact_submissions_website_idx").on(
+      table.websiteProgressId,
+    ),
+  }),
+);
+
+export const insertWebsiteContactSubmissionSchema = createInsertSchema(
+  websiteContactSubmissions,
+).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type WebsiteContactSubmission =
+  typeof websiteContactSubmissions.$inferSelect;
+export type InsertWebsiteContactSubmission = z.infer<
+  typeof insertWebsiteContactSubmissionSchema
+>;

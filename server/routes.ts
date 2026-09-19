@@ -63,6 +63,7 @@ import {
   internalEmailLog,
   internalBusinessEmailSettings,
   platformAnalyticsEvents,
+  websiteContactSubmissions,
 } from "@shared/schema";
 import fs from "fs";
 import path from "path";
@@ -16079,6 +16080,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/admin/website-contact-submissions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canViewWebsites")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const page = Math.max(1, parseInt((req.query.page as string) ?? "1", 10) || 1);
+      const limit = 20;
+      const offset = (page - 1) * limit;
+      const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+
+      const searchCondition = q
+        ? or(
+            like(websiteContactSubmissions.email, `%${q}%`),
+            like(websiteContactSubmissions.name, `%${q}%`),
+            like(websiteContactSubmissions.siteId, `%${q}%`),
+            like(websiteContactSubmissions.siteLabel, `%${q}%`),
+            like(websiteContactSubmissions.ownerEmail, `%${q}%`),
+          )
+        : undefined;
+
+      const submissions = await db
+        .select()
+        .from(websiteContactSubmissions)
+        .where(searchCondition)
+        .orderBy(desc(websiteContactSubmissions.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      const totalCount = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(websiteContactSubmissions)
+        .where(searchCondition)
+        .then((rows) => Number(rows[0]?.count ?? 0));
+
+      return res.json({
+        submissions,
+        pagination: {
+          page,
+          limit,
+          total: totalCount,
+          pages: Math.max(1, Math.ceil(totalCount / limit)),
+        },
+      });
+    } catch (err) {
+      console.error("GET /api/admin/website-contact-submissions error:", err);
+      return res.status(500).json({ error: "Failed to fetch submissions" });
+    }
+  });
+
   // Get customer's own onboarding form responses
   app.get("/api/websites/:id/onboarding-form", async (req, res) => {
     if (!req.isAuthenticated()) {
@@ -22068,20 +22123,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return null;
   }
 
-  function publicContactExtraFieldsHtml(body: Record<string, unknown>): string {
-    const rows: string[] = [];
+  function collectPublicContactExtraFields(body: Record<string, unknown>): Record<string, string> {
+    const extras: Record<string, string> = {};
     for (const [rawKey, rawVal] of Object.entries(body)) {
       if (PUBLIC_CONTACT_RESERVED_KEYS.has(rawKey) || PUBLIC_CONTACT_SKIP_KEYS.has(rawKey)) continue;
       if (rawKey.length === 0 || rawKey.length > PUBLIC_CONTACT_MAX_KEY_LEN) continue;
       const formatted = formatPublicContactValue(rawVal);
       if (!formatted) continue;
-      const valueHtml = escapeHtml(formatted).replace(/\n/g, "<br>");
-      rows.push(
-        `<div class="info-row"><span><strong>${escapeHtml(rawKey)}: &nbsp;</strong></span><span>${valueHtml}</span></div>`,
-      );
-      if (rows.length >= PUBLIC_CONTACT_MAX_EXTRA_FIELDS) break;
+      extras[rawKey] = formatted;
+      if (Object.keys(extras).length >= PUBLIC_CONTACT_MAX_EXTRA_FIELDS) break;
     }
-    return rows.join("\n");
+    return extras;
+  }
+
+  function publicContactExtraFieldsHtml(extras: Record<string, string>): string {
+    return Object.entries(extras)
+      .map(([rawKey, formatted]) => {
+        const valueHtml = escapeHtml(formatted).replace(/\n/g, "<br>");
+        return `<div class="info-row"><span><strong>${escapeHtml(rawKey)}: &nbsp;</strong></span><span>${valueHtml}</span></div>`;
+      })
+      .join("\n");
   }
 
   app.options("/public/contact", publicContactCorsMiddleware);
@@ -22123,7 +22184,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const { siteId, name, email, message } = parseResult.data;
       const phone = typeof body.phone === "string" ? body.phone.trim() : formatPublicContactValue(body.phone);
-      const extraFields = publicContactExtraFieldsHtml(body);
+      const extraFields = collectPublicContactExtraFields(body);
+      const extraFieldsHtml = publicContactExtraFieldsHtml(extraFields);
 
       const [website] = await db
         .select()
@@ -22158,6 +22220,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const senderName = (website.projectName || onboardingIdentity?.businessName || website.domain || "Client").trim();
       const siteLabel = website.projectName ?? website.domain;
 
+      try {
+        await db.insert(websiteContactSubmissions).values({
+          websiteProgressId: website.id,
+          siteId,
+          siteLabel: siteLabel || null,
+          name,
+          email,
+          phone: phone || null,
+          message,
+          extraFields: Object.keys(extraFields).length > 0 ? extraFields : null,
+          ownerEmail,
+        });
+      } catch (logErr) {
+        console.error("[public/contact] failed to store submission:", logErr);
+      }
+
       // Email 1 — Notification to business owner
       const ownerSubject = `New contact form message from ${name} — ${siteLabel}`;
       const ownerHtml = loadTemplate(
@@ -22166,7 +22244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: escapeHtml(name),
           email: escapeHtml(email),
           phone: escapeHtml(phone || "N/A"),
-          extraFields: extraFields.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
+          extraFields: extraFieldsHtml.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
           message: escapeHtml(message),
           siteLabel: escapeHtml(siteLabel),
         },

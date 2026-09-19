@@ -155,6 +155,13 @@
       "when": 1788129791971,
       "tag": "0021_violet_blacklash",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1789821854980,
+      "tag": "0022_bizarre_magdalene",
+      "breakpoints": true
     }
   ]
 }
