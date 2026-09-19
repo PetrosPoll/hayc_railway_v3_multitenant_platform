@@ -22034,18 +22034,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     legacyHeaders: false,
   });
 
+  const PUBLIC_CONTACT_RESERVED_KEYS = new Set([
+    "siteId",
+    "_hp",
+    "name",
+    "email",
+    "message",
+    "phone",
+  ]);
+  const PUBLIC_CONTACT_SKIP_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+  const PUBLIC_CONTACT_MAX_EXTRA_FIELDS = 40;
+  const PUBLIC_CONTACT_MAX_KEY_LEN = 80;
+  const PUBLIC_CONTACT_MAX_VALUE_LEN = 2000;
+
+  function formatPublicContactValue(value: unknown): string | null {
+    if (value === undefined || value === null) return null;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed ? trimmed.slice(0, PUBLIC_CONTACT_MAX_VALUE_LEN) : null;
+    }
+    if (typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    if (Array.isArray(value) || typeof value === "object") {
+      try {
+        const serialized = JSON.stringify(value);
+        if (!serialized || serialized === "{}" || serialized === "[]") return null;
+        return serialized.slice(0, PUBLIC_CONTACT_MAX_VALUE_LEN);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  function publicContactExtraFieldsHtml(body: Record<string, unknown>): string {
+    const rows: string[] = [];
+    for (const [rawKey, rawVal] of Object.entries(body)) {
+      if (PUBLIC_CONTACT_RESERVED_KEYS.has(rawKey) || PUBLIC_CONTACT_SKIP_KEYS.has(rawKey)) continue;
+      if (rawKey.length === 0 || rawKey.length > PUBLIC_CONTACT_MAX_KEY_LEN) continue;
+      const formatted = formatPublicContactValue(rawVal);
+      if (!formatted) continue;
+      const valueHtml = escapeHtml(formatted).replace(/\n/g, "<br>");
+      rows.push(
+        `<div class="info-row"><span><strong>${escapeHtml(rawKey)}: &nbsp;</strong></span><span>${valueHtml}</span></div>`,
+      );
+      if (rows.length >= PUBLIC_CONTACT_MAX_EXTRA_FIELDS) break;
+    }
+    return rows.join("\n");
+  }
+
   app.options("/public/contact", publicContactCorsMiddleware);
   app.post("/public/contact", publicContactCorsMiddleware, publicContactLimiter, async (req, res) => {
     try {
-      const body = req.body as {
-        siteId?: string;
-        name?: string;
-        email?: string;
-        message?: string;
-        phone?: string;
-        age?: string | number;
-        _hp?: string;
-      };
+      const body = (req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? req.body
+        : {}) as Record<string, unknown>;
 
       if (body._hp !== undefined && body._hp !== null && String(body._hp).trim() !== "") {
         return res.status(200).json({ success: true });
@@ -22078,8 +22122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: String(msg) });
       }
       const { siteId, name, email, message } = parseResult.data;
-      const phone = body.phone;
-      const age = body.age !== undefined ? String(body.age) : undefined;
+      const phone = typeof body.phone === "string" ? body.phone.trim() : formatPublicContactValue(body.phone);
+      const extraFields = publicContactExtraFieldsHtml(body);
 
       const [website] = await db
         .select()
@@ -22121,8 +22165,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           name: escapeHtml(name),
           email: escapeHtml(email),
-          phone: phone ?? "N/A",
-          age: age ?? "N/A",
+          phone: escapeHtml(phone || "N/A"),
+          extraFields: extraFields.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
           message: escapeHtml(message),
           siteLabel: escapeHtml(siteLabel),
         },
