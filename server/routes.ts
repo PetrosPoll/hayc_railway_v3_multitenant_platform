@@ -22257,6 +22257,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "public-contact-visitor-confirmation.html",
         {
           name: escapeHtml(name),
+          email: escapeHtml(email),
+          phone: escapeHtml(phone || "N/A"),
+          extraFields: extraFieldsHtml.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
           message: escapeHtml(message),
           siteLabel: escapeHtml(siteLabel),
         },
