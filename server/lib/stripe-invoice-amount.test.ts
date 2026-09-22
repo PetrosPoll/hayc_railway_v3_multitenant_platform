@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   chargedCentsForInvoiceLine,
   discountedDraftAmount,
+  paidCentsForInvoiceLine,
   type InvoiceAmountLine,
   type InvoiceAmountSource,
 } from "./stripe-invoice-amount";
@@ -71,6 +72,24 @@ describe("chargedCentsForInvoiceLine", () => {
     });
 
     expect(chargedCentsForInvoiceLine(invoice, line)).toBe(3400);
+  });
+
+  it("uses the paid invoice total when the coupon is not copied onto the line", () => {
+    const line: InvoiceAmountLine = {
+      id: "il_legacy",
+      amount: 3900,
+      discountable: true,
+      discount_amounts: [],
+      price: { unit_amount: 3900 },
+    };
+    const invoice = invoiceWith(line, {
+      subtotal: 3900,
+      total: 3400,
+      amount_paid: 3400,
+    });
+
+    expect(paidCentsForInvoiceLine(invoice, line)).toBe(3400);
+    expect(discountedDraftAmount(3900, line, invoice)).toBe(3400);
   });
 
   it("adds exclusive tax on top of the discounted line", () => {

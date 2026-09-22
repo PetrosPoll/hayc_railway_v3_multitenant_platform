@@ -86,6 +86,7 @@ import { sendMetaEvent } from "./lib/meta-capi";
 import {
   chargedCentsForInvoiceLine,
   discountedDraftAmount,
+  paidCentsForInvoiceLine,
 } from "./lib/stripe-invoice-amount";
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
@@ -530,10 +531,31 @@ function findInvoiceLineForSubscription(
   if (stripeSub) {
     const resolvedItemId = resolveStripeSubscriptionItemId(subscription, stripeSub);
     if (resolvedItemId) {
-      return invoice.lines.data.find(
+      const byResolvedItem = invoice.lines.data.find(
         (line) => getInvoiceLineSubscriptionItemId(line) === resolvedItemId,
       );
+      if (byResolvedItem) return byResolvedItem;
     }
+  }
+
+  const legacyPrefix = subscription.tier?.startsWith("legacy_")
+    ? subscription.tier.slice("legacy_".length)
+    : null;
+  if (legacyPrefix?.startsWith("price_")) {
+    const byLegacyPrice = invoice.lines.data.find((line) => {
+      const priceRef = line.price;
+      const priceId = typeof priceRef === "string" ? priceRef : priceRef?.id;
+      return Boolean(priceId?.startsWith(legacyPrefix));
+    });
+    if (byLegacyPrice) return byLegacyPrice;
+  }
+
+  if (subscription.tier?.startsWith("legacy_")) {
+    const setupFeeLine = findSetupFeeInvoiceLine(invoice);
+    const billableLines = invoice.lines.data.filter(
+      (line) => line.amount > 0 && line !== setupFeeLine,
+    );
+    if (billableLines.length === 1) return billableLines[0];
   }
 
   return undefined;
@@ -615,8 +637,10 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
   for (const sub of subscriptions) {
     const lineItem = findInvoiceLineForSubscription(invoice, sub, stripeSubscription);
     const amount = lineItem
-      ? chargedCentsForInvoiceLine(invoice, lineItem)
-      : (sub.price ?? 0);
+      ? paidCentsForInvoiceLine(invoice, lineItem)
+      : subscriptions.length === 1 && invoice.amount_paid > 0
+        ? invoice.amount_paid
+        : (sub.price ?? 0);
 
     if (amount <= 0) {
       console.warn(
@@ -800,6 +824,7 @@ type ReconcilableDraft = {
 
 const reconciledDraftIds = new Set<number>();
 const paidInvoicesByStripeSubscription = new Map<string, Stripe.Invoice[]>();
+const stripeSubscriptionCache = new Map<string, Stripe.Subscription>();
 
 function isUnissuedDraft(invoice: ReconcilableDraft): boolean {
   return invoice.status === "DRAFT" && !invoice.wrappInvoiceId && !invoice.pdfUrl;
@@ -867,9 +892,10 @@ function pickStripeInvoiceForDraft(
   draft: ReconcilableDraft,
   invoices: Stripe.Invoice[],
   subscription: InvoiceSubscriptionRecord,
+  stripeSub?: Stripe.Subscription,
 ): { invoice: Stripe.Invoice; line: Stripe.InvoiceLineItem } | null {
   const withLine = invoices.flatMap((invoice) => {
-    const line = findInvoiceLineForSubscription(invoice, subscription);
+    const line = findInvoiceLineForSubscription(invoice, subscription, stripeSub);
     return line ? [{ invoice, line }] : [];
   });
 
@@ -908,9 +934,21 @@ async function reconcileSubscriptionDrafts(
     return;
   }
 
+  let stripeSub: Stripe.Subscription | undefined;
+  try {
+    const cached = stripeSubscriptionCache.get(subscription.stripeSubscriptionId);
+    stripeSub = cached ?? await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+    if (!cached) stripeSubscriptionCache.set(subscription.stripeSubscriptionId, stripeSub);
+  } catch (error) {
+    console.error(
+      `[Invoice discount] Could not load Stripe subscription ${subscription.stripeSubscriptionId}:`,
+      error,
+    );
+  }
+
   const invoices = await loadPaidStripeInvoices(subscription.stripeSubscriptionId);
   for (const draft of drafts) {
-    const match = pickStripeInvoiceForDraft(draft, invoices, subscription);
+    const match = pickStripeInvoiceForDraft(draft, invoices, subscription, stripeSub);
     if (match) await applyDiscountedDraftAmount(draft, match.invoice, match.line);
   }
 }

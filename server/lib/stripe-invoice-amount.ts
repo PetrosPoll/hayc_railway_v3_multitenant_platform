@@ -11,11 +11,14 @@ export type InvoiceAmountLine = {
   discount_amounts?: DiscountAmount[] | null;
   tax_amounts?: TaxAmount[] | null;
   pretax_credit_amounts?: PretaxCredit[] | null;
+  unitAmount?: number | null;
+  price?: { unit_amount?: number | null } | string | null;
 };
 
 export type InvoiceAmountSource = {
   subtotal?: number | null;
   total?: number | null;
+  amount_paid?: number | null;
   total_discount_amounts?: DiscountAmount[] | null;
   lines?: { data?: InvoiceAmountLine[] | null; has_more?: boolean } | null;
 };
@@ -36,7 +39,27 @@ function exclusiveTaxCents(line: InvoiceAmountLine): number {
 }
 
 function invoiceDiscountCents(invoice: InvoiceAmountSource): number {
-  return (invoice.total_discount_amounts ?? []).reduce((sum, discount) => sum + discount.amount, 0);
+  const explicit = (invoice.total_discount_amounts ?? []).reduce(
+    (sum, discount) => sum + discount.amount,
+    0,
+  );
+  if (explicit > 0) return explicit;
+  if (
+    invoice.subtotal != null &&
+    invoice.total != null &&
+    invoice.subtotal > invoice.total
+  ) {
+    return invoice.subtotal - invoice.total;
+  }
+  return 0;
+}
+
+function listAmountCents(line: InvoiceAmountLine): number {
+  if (line.unitAmount != null) return line.unitAmount;
+  if (line.price && typeof line.price !== "string" && line.price.unit_amount != null) {
+    return line.price.unit_amount;
+  }
+  return line.amount;
 }
 
 /** Stripe line `amount` sums to `subtotal` (before invoice discounts) on API 2024-06-20. */
@@ -107,9 +130,26 @@ export function chargedCentsForInvoiceLine(
   return Math.max(0, line.amount - discount + tax);
 }
 
+function positiveLines(invoice: InvoiceAmountSource): InvoiceAmountLine[] {
+  return (invoice.lines?.data ?? []).filter((line) => line.amount > 0);
+}
+
+/** What the customer paid for this line. Single-line invoices use the paid invoice total. */
+export function paidCentsForInvoiceLine(
+  invoice: InvoiceAmountSource,
+  line: InvoiceAmountLine,
+): number {
+  const fromParts = chargedCentsForInvoiceLine(invoice, line);
+  if (positiveLines(invoice).length !== 1) return fromParts;
+
+  const paid = invoice.amount_paid ?? invoice.total ?? null;
+  if (paid != null && paid > 0 && paid < fromParts) return paid;
+  return fromParts;
+}
+
 /**
- * Drafts were stored from the pre-discount line amount.
- * Returns the discounted charge only when that stored amount is the list line amount.
+ * Drafts were stored from the Stripe price (before discount).
+ * Returns the paid amount when that stored figure is the list price.
  */
 export function discountedDraftAmount(
   storedAmount: number | null | undefined,
@@ -117,7 +157,14 @@ export function discountedDraftAmount(
   invoice: InvoiceAmountSource,
 ): number | null {
   if (storedAmount == null) return null;
-  const charged = chargedCentsForInvoiceLine(invoice, line);
-  if (charged < storedAmount && storedAmount === line.amount) return charged;
+  const charged = paidCentsForInvoiceLine(invoice, line);
+  const listAmount = listAmountCents(line);
+  if (
+    charged > 0 &&
+    charged < storedAmount &&
+    (storedAmount === line.amount || storedAmount === listAmount)
+  ) {
+    return charged;
+  }
   return null;
 }
