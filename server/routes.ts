@@ -83,6 +83,10 @@ import {
 } from "./promo-codes";
 import { verifyUnsubscribeToken, generateUnsubscribeToken, generateUnsubscribeUrl, generateUnsubscribeFooter, resolveUnsubscribeBaseUrl } from "./unsubscribe-utils";
 import { sendMetaEvent } from "./lib/meta-capi";
+import {
+  chargedCentsForInvoiceLine,
+  discountedDraftAmount,
+} from "./lib/stripe-invoice-amount";
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
 import { handleWrappPdfGenerationWebhook } from "./services/wrapp-webhook";
@@ -610,7 +614,9 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
 
   for (const sub of subscriptions) {
     const lineItem = findInvoiceLineForSubscription(invoice, sub, stripeSubscription);
-    const amount = lineItem?.amount ?? sub.price ?? 0;
+    const amount = lineItem
+      ? chargedCentsForInvoiceLine(invoice, lineItem)
+      : (sub.price ?? 0);
 
     if (amount <= 0) {
       console.warn(
@@ -633,7 +639,26 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
       .limit(1)
       .then((rows) => rows[0]);
 
-    if (existingInvoice) continue;
+    if (existingInvoice) {
+      const corrected = lineItem
+        ? discountedDraftAmount(existingInvoice.amount, lineItem, invoice)
+        : null;
+      if (
+        corrected != null &&
+        existingInvoice.status === "DRAFT" &&
+        !existingInvoice.wrappInvoiceId &&
+        !existingInvoice.pdfUrl
+      ) {
+        await db
+          .update(websiteInvoices)
+          .set({ amount: corrected })
+          .where(eq(websiteInvoices.id, existingInvoice.id));
+        console.log(
+          `[Invoice discount] Updated draft ${existingInvoice.id}: ${existingInvoice.amount} -> ${corrected} cents`,
+        );
+      }
+      continue;
+    }
 
     const { title, description } = buildDraftInvoiceCopy(sub);
 
@@ -650,6 +675,7 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
   }
 
   const setupFeeLine = findSetupFeeInvoiceLine(invoice);
+  const setupFeeAmount = setupFeeLine ? chargedCentsForInvoiceLine(invoice, setupFeeLine) : 0;
   if (setupFeeLine && setupFeeLine.amount > 0) {
     const setupFeeConditions = [
       eq(websiteInvoices.websiteProgressId, websiteProgressId),
@@ -669,16 +695,34 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
       .then((rows) => rows[0]);
 
     if (!existingSetupFee) {
-      await createDraftInvoice({
-        websiteProgressId,
-        subscriptionId: null,
-        paymentIntentId,
-        title: "Invoice for Website Setup Fee",
-        description: "One-time website setup fee",
-        amount: setupFeeLine.amount,
-        currency,
-        context: `${context} (setup fee)`,
-      });
+      if (setupFeeAmount > 0) {
+        await createDraftInvoice({
+          websiteProgressId,
+          subscriptionId: null,
+          paymentIntentId,
+          title: "Invoice for Website Setup Fee",
+          description: "One-time website setup fee",
+          amount: setupFeeAmount,
+          currency,
+          context: `${context} (setup fee)`,
+        });
+      }
+    } else {
+      const corrected = discountedDraftAmount(existingSetupFee.amount, setupFeeLine, invoice);
+      if (
+        corrected != null &&
+        existingSetupFee.status === "DRAFT" &&
+        !existingSetupFee.wrappInvoiceId &&
+        !existingSetupFee.pdfUrl
+      ) {
+        await db
+          .update(websiteInvoices)
+          .set({ amount: corrected })
+          .where(eq(websiteInvoices.id, existingSetupFee.id));
+        console.log(
+          `[Invoice discount] Updated setup-fee draft ${existingSetupFee.id}: ${existingSetupFee.amount} -> ${corrected} cents`,
+        );
+      }
     }
   }
 }
@@ -741,6 +785,190 @@ async function allocateUniqueUsernameForCheckout(preferred: string): Promise<str
     candidate = `${base}_${randomBytes(3).toString("hex")}`.slice(0, 63);
   }
   throw new Error("Could not allocate unique username after retries");
+}
+
+type ReconcilableDraft = {
+  id: number;
+  amount: number | null;
+  status: string | null;
+  wrappInvoiceId: string | null;
+  pdfUrl: string | null;
+  subscriptionId: number | null;
+  paymentIntentId: string | null;
+  issueDate: Date | string | null;
+};
+
+const reconciledDraftIds = new Set<number>();
+const paidInvoicesByStripeSubscription = new Map<string, Stripe.Invoice[]>();
+
+function isUnissuedDraft(invoice: ReconcilableDraft): boolean {
+  return invoice.status === "DRAFT" && !invoice.wrappInvoiceId && !invoice.pdfUrl;
+}
+
+function stripePaymentIntentId(invoice: Stripe.Invoice): string | null {
+  if (!invoice.payment_intent) return null;
+  return typeof invoice.payment_intent === "string"
+    ? invoice.payment_intent
+    : invoice.payment_intent.id;
+}
+
+function invoicePaidDate(invoice: Stripe.Invoice): Date {
+  return invoice.status_transitions?.paid_at
+    ? new Date(invoice.status_transitions.paid_at * 1000)
+    : new Date(invoice.created * 1000);
+}
+
+async function mapWithConcurrency<T>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  if (items.length === 0) return;
+  let index = 0;
+  async function worker() {
+    while (index < items.length) {
+      const current = items[index];
+      index += 1;
+      await fn(current);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+}
+
+async function loadPaidStripeInvoices(stripeSubscriptionId: string): Promise<Stripe.Invoice[]> {
+  const cached = paidInvoicesByStripeSubscription.get(stripeSubscriptionId);
+  if (cached) return cached;
+  const list = await stripe.invoices.list({
+    subscription: stripeSubscriptionId,
+    status: "paid",
+    limit: 36,
+  });
+  paidInvoicesByStripeSubscription.set(stripeSubscriptionId, list.data);
+  return list.data;
+}
+
+async function applyDiscountedDraftAmount(
+  draft: ReconcilableDraft,
+  stripeInvoice: Stripe.Invoice,
+  line: Stripe.InvoiceLineItem,
+): Promise<void> {
+  const corrected = discountedDraftAmount(draft.amount, line, stripeInvoice);
+  if (corrected == null) return;
+  const previous = draft.amount;
+  await db
+    .update(websiteInvoices)
+    .set({ amount: corrected })
+    .where(eq(websiteInvoices.id, draft.id));
+  draft.amount = corrected;
+  console.log(`[Invoice discount] Draft ${draft.id}: ${previous} -> ${corrected} cents`);
+}
+
+function pickStripeInvoiceForDraft(
+  draft: ReconcilableDraft,
+  invoices: Stripe.Invoice[],
+  subscription: InvoiceSubscriptionRecord,
+): { invoice: Stripe.Invoice; line: Stripe.InvoiceLineItem } | null {
+  const withLine = invoices.flatMap((invoice) => {
+    const line = findInvoiceLineForSubscription(invoice, subscription);
+    return line ? [{ invoice, line }] : [];
+  });
+
+  if (draft.paymentIntentId) {
+    const byPayment = withLine.find(
+      (entry) => stripePaymentIntentId(entry.invoice) === draft.paymentIntentId,
+    );
+    if (byPayment) return byPayment;
+  }
+
+  if (!draft.issueDate) return null;
+  const issue = new Date(draft.issueDate);
+  const inMonth = withLine.filter((entry) => {
+    const paidAt = invoicePaidDate(entry.invoice);
+    return paidAt.getMonth() === issue.getMonth() && paidAt.getFullYear() === issue.getFullYear();
+  });
+  const preDiscount = inMonth.find((entry) => entry.line.amount === draft.amount);
+  if (preDiscount) return preDiscount;
+  return inMonth.length === 1 ? inMonth[0] : null;
+}
+
+async function reconcileSubscriptionDrafts(
+  subscriptionId: number,
+  drafts: ReconcilableDraft[],
+): Promise<void> {
+  const [subscription] = await db
+    .select()
+    .from(subscriptionsTable)
+    .where(eq(subscriptionsTable.id, subscriptionId))
+    .limit(1);
+
+  if (
+    !subscription?.stripeSubscriptionId ||
+    subscription.stripeSubscriptionId.startsWith("sub_sched_")
+  ) {
+    return;
+  }
+
+  const invoices = await loadPaidStripeInvoices(subscription.stripeSubscriptionId);
+  for (const draft of drafts) {
+    const match = pickStripeInvoiceForDraft(draft, invoices, subscription);
+    if (match) await applyDiscountedDraftAmount(draft, match.invoice, match.line);
+  }
+}
+
+async function reconcileSetupFeeDraft(draft: ReconcilableDraft): Promise<void> {
+  if (!draft.paymentIntentId) return;
+
+  const paymentIntent = await stripe.paymentIntents.retrieve(draft.paymentIntentId, {
+    expand: ["invoice"],
+  });
+  const invoiceRef = paymentIntent.invoice;
+  const stripeInvoice =
+    invoiceRef && typeof invoiceRef !== "string"
+      ? invoiceRef
+      : typeof invoiceRef === "string"
+        ? await stripe.invoices.retrieve(invoiceRef)
+        : null;
+  if (!stripeInvoice) return;
+
+  const line = findSetupFeeInvoiceLine(stripeInvoice);
+  if (line) await applyDiscountedDraftAmount(draft, stripeInvoice, line);
+}
+
+async function reconcileUnissuedDraftAmounts(drafts: ReconcilableDraft[]): Promise<void> {
+  const pending = drafts.filter(
+    (draft) => isUnissuedDraft(draft) && !reconciledDraftIds.has(draft.id),
+  );
+  const bySubscription = new Map<number, ReconcilableDraft[]>();
+  const setupFees: ReconcilableDraft[] = [];
+
+  for (const draft of pending) {
+    reconciledDraftIds.add(draft.id);
+    if (draft.subscriptionId) {
+      const group = bySubscription.get(draft.subscriptionId) ?? [];
+      group.push(draft);
+      bySubscription.set(draft.subscriptionId, group);
+    } else if (draft.paymentIntentId) {
+      setupFees.push(draft);
+    }
+  }
+
+  await mapWithConcurrency([...bySubscription.entries()], 5, async ([subscriptionId, group]) => {
+    try {
+      await reconcileSubscriptionDrafts(subscriptionId, group);
+    } catch (error) {
+      for (const draft of group) reconciledDraftIds.delete(draft.id);
+      console.error(`[Invoice discount] Failed to reconcile subscription ${subscriptionId}:`, error);
+    }
+  });
+
+  await mapWithConcurrency(setupFees, 5, async (draft) => {
+    try {
+      await reconcileSetupFeeDraft(draft);
+    } catch (error) {
+      reconciledDraftIds.delete(draft.id);
+      console.error(`[Invoice discount] Failed to reconcile draft ${draft.id}:`, error);
+    }
+  });
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -16253,6 +16481,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
+      await reconcileUnissuedDraftAmounts(invoicesWithWebsites);
+
       res.json(invoicesWithWebsites);
     } catch (err) {
       console.error("Error fetching all invoices:", err);
@@ -16483,6 +16713,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ 
           success: false, 
           message: "Invoice not found or not in DRAFT status" 
+        });
+      }
+
+      reconciledDraftIds.delete(invoice.id);
+      await reconcileUnissuedDraftAmounts([invoice]);
+      if (!invoice.amount || invoice.amount <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invoice amount is zero after the Stripe discount",
         });
       }
 
