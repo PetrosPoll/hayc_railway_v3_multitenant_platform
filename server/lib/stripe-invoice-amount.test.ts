@@ -92,6 +92,22 @@ describe("chargedCentsForInvoiceLine", () => {
     expect(discountedDraftAmount(3900, line, invoice)).toBe(3400);
   });
 
+  it("replaces a catalog price of 39 with the paid 35 when the line is already discounted", () => {
+    const line: InvoiceAmountLine = {
+      id: "il_legacy",
+      amount: 3500,
+      discountable: true,
+      discount_amounts: [],
+    };
+    const invoice = invoiceWith(line, {
+      subtotal: 3900,
+      total: 3500,
+      amount_paid: 3500,
+    });
+
+    expect(discountedDraftAmount(3900, line, invoice, 3900)).toBe(3500);
+  });
+
   it("adds exclusive tax on top of the discounted line", () => {
     const line: InvoiceAmountLine = {
       id: "il_plan",

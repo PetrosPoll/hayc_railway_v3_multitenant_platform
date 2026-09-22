@@ -33,6 +33,10 @@ import { useTranslation } from "react-i18next";
 import { Download, Upload, Trash2, ChevronDown, ChevronRight, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Info, Pencil, RefreshCw, Plus } from "lucide-react";
 import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 
+function completedInvoiceRowClass(status: string | null | undefined) {
+  return (status ?? "").toUpperCase() === "COMPLETED" ? "bg-green-50 hover:bg-green-50" : undefined;
+}
+
 export function AdminWebsiteInvoices() {
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -1220,7 +1224,7 @@ export function AdminWebsiteInvoices() {
                       const planSubscription = subscriptions.find((sub: any) => sub.productType === "plan");
                       const canCreateWithWrapp = planSubscription?.classificationType && planSubscription?.invoiceTypeCode && planSubscription?.productName;
                       return (
-                        <TableRow key={invoice.id}>
+                        <TableRow key={invoice.id} className={completedInvoiceRowClass(invoice.status)}>
                           <TableCell>
                             {invoice.invoiceNumber || `#${invoice.id}`}
                           </TableCell>
@@ -1572,7 +1576,7 @@ export function AdminWebsiteInvoices() {
                                   (billingData?.invoiceTypeCode || planSubscription?.invoiceTypeCode) &&
                                   (billingData?.productName || planSubscription?.productName);
                                 return (
-                                <TableRow key={invoice.id}>
+                                <TableRow key={invoice.id} className={completedInvoiceRowClass(invoice.status)}>
                                   <TableCell>
                                     {invoice.invoiceNumber || `#${invoice.id}`}
                                   </TableCell>

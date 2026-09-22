@@ -558,6 +558,11 @@ function findInvoiceLineForSubscription(
     if (billableLines.length === 1) return billableLines[0];
   }
 
+  const subscriptionLines = invoice.lines.data.filter(
+    (line) => line.type === "subscription" && line.amount > 0 && !line.proration,
+  );
+  if (subscriptionLines.length === 1) return subscriptionLines[0];
+
   return undefined;
 }
 
@@ -876,8 +881,18 @@ async function applyDiscountedDraftAmount(
   draft: ReconcilableDraft,
   stripeInvoice: Stripe.Invoice,
   line: Stripe.InvoiceLineItem,
+  catalogCents?: number | null,
 ): Promise<void> {
-  const corrected = discountedDraftAmount(draft.amount, line, stripeInvoice);
+  let invoice = stripeInvoice;
+  let matchedLine = line;
+  try {
+    invoice = await stripe.invoices.retrieve(stripeInvoice.id);
+    matchedLine = invoice.lines.data.find((item) => item.id === line.id) ?? line;
+  } catch (error) {
+    console.error(`[Invoice discount] Could not retrieve Stripe invoice ${stripeInvoice.id}:`, error);
+  }
+
+  const corrected = discountedDraftAmount(draft.amount, matchedLine, invoice, catalogCents);
   if (corrected == null) return;
   const previous = draft.amount;
   await db
@@ -912,6 +927,17 @@ function pickStripeInvoiceForDraft(
     const paidAt = invoicePaidDate(entry.invoice);
     return paidAt.getMonth() === issue.getMonth() && paidAt.getFullYear() === issue.getFullYear();
   });
+  const discounted = inMonth.filter((entry) => {
+    const paid = paidCentsForInvoiceLine(entry.invoice, entry.line);
+    return draft.amount != null && paid > 0 && paid < draft.amount;
+  });
+  if (discounted.length === 1) return discounted[0];
+  if (discounted.length > 1) {
+    return discounted.sort(
+      (a, b) => invoicePaidDate(b.invoice).getTime() - invoicePaidDate(a.invoice).getTime(),
+    )[0];
+  }
+
   const preDiscount = inMonth.find((entry) => entry.line.amount === draft.amount);
   if (preDiscount) return preDiscount;
   return inMonth.length === 1 ? inMonth[0] : null;
@@ -949,7 +975,11 @@ async function reconcileSubscriptionDrafts(
   const invoices = await loadPaidStripeInvoices(subscription.stripeSubscriptionId);
   for (const draft of drafts) {
     const match = pickStripeInvoiceForDraft(draft, invoices, subscription, stripeSub);
-    if (match) await applyDiscountedDraftAmount(draft, match.invoice, match.line);
+    if (!match) {
+      reconciledDraftIds.delete(draft.id);
+      continue;
+    }
+    await applyDiscountedDraftAmount(draft, match.invoice, match.line, subscription.price);
   }
 }
 

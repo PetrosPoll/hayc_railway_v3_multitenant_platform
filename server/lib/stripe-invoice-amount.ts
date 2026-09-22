@@ -51,6 +51,14 @@ function invoiceDiscountCents(invoice: InvoiceAmountSource): number {
   ) {
     return invoice.subtotal - invoice.total;
   }
+  if (
+    invoice.subtotal != null &&
+    invoice.amount_paid != null &&
+    invoice.amount_paid > 0 &&
+    invoice.subtotal > invoice.amount_paid
+  ) {
+    return invoice.subtotal - invoice.amount_paid;
+  }
   return 0;
 }
 
@@ -147,24 +155,33 @@ export function paidCentsForInvoiceLine(
   return fromParts;
 }
 
+function draftMatchesPrice(
+  storedAmount: number,
+  line: InvoiceAmountLine,
+  invoice: InvoiceAmountSource,
+  catalogCents?: number | null,
+): boolean {
+  const listAmount = listAmountCents(line);
+  if (storedAmount === line.amount || storedAmount === listAmount) return true;
+  if (catalogCents == null || storedAmount !== catalogCents) return false;
+  if (line.amount === catalogCents || listAmount === catalogCents) return true;
+  // Draft kept the catalog price while this invoice's only line is already the paid amount.
+  return positiveLines(invoice).length === 1 && line.amount > 0 && line.amount < catalogCents;
+}
+
 /**
  * Drafts were stored from the Stripe price (before discount).
- * Returns the paid amount when that stored figure is the list price.
+ * `catalogCents` is the subscription price, used when the invoice line is already discounted.
  */
 export function discountedDraftAmount(
   storedAmount: number | null | undefined,
   line: InvoiceAmountLine,
   invoice: InvoiceAmountSource,
+  catalogCents?: number | null,
 ): number | null {
   if (storedAmount == null) return null;
   const charged = paidCentsForInvoiceLine(invoice, line);
-  const listAmount = listAmountCents(line);
-  if (
-    charged > 0 &&
-    charged < storedAmount &&
-    (storedAmount === line.amount || storedAmount === listAmount)
-  ) {
-    return charged;
-  }
-  return null;
+  if (charged <= 0 || charged >= storedAmount) return null;
+  if (!draftMatchesPrice(storedAmount, line, invoice, catalogCents)) return null;
+  return charged;
 }
