@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  centsAfterCoupon,
   chargedCentsForInvoiceLine,
   discountedDraftAmount,
+  lowestPriceAfterCoupons,
   paidCentsForInvoiceLine,
   type InvoiceAmountLine,
   type InvoiceAmountSource,
@@ -90,6 +92,12 @@ describe("chargedCentsForInvoiceLine", () => {
 
     expect(paidCentsForInvoiceLine(invoice, line)).toBe(3400);
     expect(discountedDraftAmount(3900, line, invoice)).toBe(3400);
+  });
+
+  it("takes a fixed coupon off the catalog price", () => {
+    expect(centsAfterCoupon(3900, { amount_off: 400 })).toBe(3500);
+    expect(centsAfterCoupon(3045, { amount_off: 145 })).toBe(2900);
+    expect(lowestPriceAfterCoupons(3900, [{ percent_off: 10 }, { amount_off: 400 }])).toBe(3500);
   });
 
   it("replaces a catalog price of 39 with the paid 35 when the line is already discounted", () => {

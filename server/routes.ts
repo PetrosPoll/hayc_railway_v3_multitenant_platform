@@ -86,7 +86,9 @@ import { sendMetaEvent } from "./lib/meta-capi";
 import {
   chargedCentsForInvoiceLine,
   discountedDraftAmount,
+  lowestPriceAfterCoupons,
   paidCentsForInvoiceLine,
+  type StripeCouponLike,
 } from "./lib/stripe-invoice-amount";
 import { wrappApiService } from "./services/wrapp-api";
 import jwt from "jsonwebtoken";
@@ -641,11 +643,24 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
 
   for (const sub of subscriptions) {
     const lineItem = findInvoiceLineForSubscription(invoice, sub, stripeSubscription);
-    const amount = lineItem
+    let amount = lineItem
       ? paidCentsForInvoiceLine(invoice, lineItem)
       : subscriptions.length === 1 && invoice.amount_paid > 0
         ? invoice.amount_paid
         : (sub.price ?? 0);
+
+    const subscriptionCoupon = stripeSubscription?.discount?.coupon;
+    if (
+      subscriptionCoupon &&
+      typeof subscriptionCoupon !== "string" &&
+      sub.price &&
+      amount === sub.price
+    ) {
+      const discounted = lowestPriceAfterCoupons(amount, [subscriptionCoupon], {
+        applyAmountOff: !stripeSubscription || stripeSubscription.items.data.length <= 1,
+      });
+      if (discounted != null) amount = discounted;
+    }
 
     if (amount <= 0) {
       console.warn(
@@ -877,6 +892,73 @@ async function loadPaidStripeInvoices(stripeSubscriptionId: string): Promise<Str
   return list.data;
 }
 
+function pushCoupon(
+  coupons: StripeCouponLike[],
+  coupon: Stripe.Coupon | string | null | undefined,
+) {
+  if (coupon && typeof coupon !== "string") coupons.push(coupon);
+}
+
+function couponsForSubscriptionDraft(
+  stripeSub: Stripe.Subscription,
+  subscription: InvoiceSubscriptionRecord,
+): { shared: StripeCouponLike[]; item: StripeCouponLike[] } {
+  const shared: StripeCouponLike[] = [];
+  pushCoupon(shared, stripeSub.discount?.coupon);
+  for (const discount of stripeSub.discounts ?? []) {
+    if (typeof discount !== "string") pushCoupon(shared, discount.coupon);
+  }
+
+  const customer = stripeSub.customer;
+  if (customer && typeof customer !== "string" && !customer.deleted) {
+    pushCoupon(shared, customer.discount?.coupon);
+  }
+
+  const legacyPrefix = subscription.tier?.startsWith("legacy_")
+    ? subscription.tier.slice("legacy_".length)
+    : null;
+  const item =
+    stripeSub.items.data.find((entry) => entry.id === subscription.stripeSubscriptionItemId) ??
+    (legacyPrefix
+      ? stripeSub.items.data.find((entry) => entry.price.id.startsWith(legacyPrefix))
+      : undefined) ??
+    (stripeSub.items.data.length === 1 ? stripeSub.items.data[0] : undefined);
+
+  const itemCoupons: StripeCouponLike[] = [];
+  for (const discount of item?.discounts ?? []) {
+    if (typeof discount !== "string") pushCoupon(itemCoupons, discount.coupon);
+  }
+
+  return { shared, item: itemCoupons };
+}
+
+async function applySubscriptionCouponToDraft(
+  draft: ReconcilableDraft,
+  catalogCents: number | null,
+  stripeSub: Stripe.Subscription,
+  subscription: InvoiceSubscriptionRecord,
+): Promise<void> {
+  if (draft.amount == null || catalogCents == null || draft.amount !== catalogCents) return;
+
+  const { shared, item } = couponsForSubscriptionDraft(stripeSub, subscription);
+  const singleItem = stripeSub.items.data.length <= 1;
+  const discounted = [
+    lowestPriceAfterCoupons(draft.amount, shared, { applyAmountOff: singleItem }),
+    lowestPriceAfterCoupons(draft.amount, item, { applyAmountOff: true }),
+  ]
+    .filter((amount): amount is number => amount != null)
+    .sort((a, b) => a - b)[0];
+  if (discounted == null || discounted >= draft.amount) return;
+
+  const previous = draft.amount;
+  await db
+    .update(websiteInvoices)
+    .set({ amount: discounted })
+    .where(eq(websiteInvoices.id, draft.id));
+  draft.amount = discounted;
+  console.log(`[Invoice discount] Draft ${draft.id}: ${previous} -> ${discounted} cents from Stripe coupon`);
+}
+
 async function applyDiscountedDraftAmount(
   draft: ReconcilableDraft,
   stripeInvoice: Stripe.Invoice,
@@ -963,7 +1045,9 @@ async function reconcileSubscriptionDrafts(
   let stripeSub: Stripe.Subscription | undefined;
   try {
     const cached = stripeSubscriptionCache.get(subscription.stripeSubscriptionId);
-    stripeSub = cached ?? await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId);
+    stripeSub = cached ?? await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId, {
+      expand: ["discount.coupon", "discounts", "items.data.discounts", "customer.discount.coupon"],
+    });
     if (!cached) stripeSubscriptionCache.set(subscription.stripeSubscriptionId, stripeSub);
   } catch (error) {
     console.error(
@@ -973,13 +1057,57 @@ async function reconcileSubscriptionDrafts(
   }
 
   const invoices = await loadPaidStripeInvoices(subscription.stripeSubscriptionId);
+  const singleItem = stripeSub?.items.data.length === 1;
+  const catalogCents =
+    subscription.price ??
+    (singleItem ? stripeSub?.items.data[0]?.price.unit_amount ?? null : null);
+
   for (const draft of drafts) {
+    if (stripeSub) {
+      await applySubscriptionCouponToDraft(draft, catalogCents, stripeSub, subscription);
+    }
+
+    if (
+      singleItem &&
+      draft.amount != null &&
+      catalogCents != null &&
+      draft.amount === catalogCents &&
+      draft.issueDate
+    ) {
+      const issue = new Date(draft.issueDate);
+      const paidThisMonth = invoices.filter((invoice) => {
+        const paidAt = invoicePaidDate(invoice);
+        return (
+          paidAt.getMonth() === issue.getMonth() &&
+          paidAt.getFullYear() === issue.getFullYear() &&
+          invoice.amount_paid > 0 &&
+          invoice.amount_paid < draft.amount!
+        );
+      });
+      const closest = paidThisMonth.sort((a, b) => {
+        const distance = (invoice: Stripe.Invoice) =>
+          Math.abs((invoice.subtotal ?? invoice.amount_paid) - catalogCents);
+        return distance(a) - distance(b);
+      })[0];
+      if (closest) {
+        const previous = draft.amount;
+        await db
+          .update(websiteInvoices)
+          .set({ amount: closest.amount_paid })
+          .where(eq(websiteInvoices.id, draft.id));
+        draft.amount = closest.amount_paid;
+        console.log(
+          `[Invoice discount] Draft ${draft.id}: ${previous} -> ${closest.amount_paid} cents from amount paid`,
+        );
+      }
+    }
+
     const match = pickStripeInvoiceForDraft(draft, invoices, subscription, stripeSub);
     if (!match) {
       reconciledDraftIds.delete(draft.id);
       continue;
     }
-    await applyDiscountedDraftAmount(draft, match.invoice, match.line, subscription.price);
+    await applyDiscountedDraftAmount(draft, match.invoice, match.line, catalogCents);
   }
 }
 

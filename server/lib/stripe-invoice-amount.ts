@@ -169,6 +169,46 @@ function draftMatchesPrice(
   return positiveLines(invoice).length === 1 && line.amount > 0 && line.amount < catalogCents;
 }
 
+export type StripeCouponLike = {
+  percent_off?: number | null;
+  amount_off?: number | null;
+};
+
+/** Catalog price after a Stripe coupon. Amount-off applies only when asked, so it is not subtracted from every item. */
+export function centsAfterCoupon(
+  catalogCents: number,
+  coupon: StripeCouponLike | null | undefined,
+  options?: { applyAmountOff?: boolean },
+): number | null {
+  if (!coupon || catalogCents <= 0) return null;
+
+  if (coupon.percent_off != null && coupon.percent_off > 0) {
+    const paid = Math.round((catalogCents * (100 - coupon.percent_off)) / 100);
+    return paid > 0 && paid < catalogCents ? paid : null;
+  }
+
+  if (options?.applyAmountOff !== false && coupon.amount_off != null && coupon.amount_off > 0) {
+    const paid = catalogCents - coupon.amount_off;
+    return paid > 0 && paid < catalogCents ? paid : null;
+  }
+
+  return null;
+}
+
+/** Lowest price after every coupon that applies to this catalog amount. */
+export function lowestPriceAfterCoupons(
+  catalogCents: number,
+  coupons: Array<StripeCouponLike | null | undefined>,
+  options?: { applyAmountOff?: boolean },
+): number | null {
+  let lowest: number | null = null;
+  for (const coupon of coupons) {
+    const paid = centsAfterCoupon(catalogCents, coupon, options);
+    if (paid != null && (lowest == null || paid < lowest)) lowest = paid;
+  }
+  return lowest;
+}
+
 /**
  * Drafts were stored from the Stripe price (before discount).
  * `catalogCents` is the subscription price, used when the invoice line is already discounted.
