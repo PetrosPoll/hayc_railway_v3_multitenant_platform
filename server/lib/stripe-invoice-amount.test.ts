@@ -100,6 +100,23 @@ describe("chargedCentsForInvoiceLine", () => {
     expect(lowestPriceAfterCoupons(3900, [{ percent_off: 10 }, { amount_off: 400 }])).toBe(3500);
   });
 
+  it("uses the discounted line even when the invoice has other lines", () => {
+    const plan: InvoiceAmountLine = {
+      id: "il_plan",
+      amount: 3500,
+      price: { unit_amount: 3900 },
+    };
+    const addon: InvoiceAmountLine = { id: "il_addon", amount: 1000 };
+    const invoice: InvoiceAmountSource = {
+      subtotal: 4900,
+      total: 4500,
+      amount_paid: 4500,
+      lines: { data: [plan, addon] },
+    };
+
+    expect(discountedDraftAmount(3900, plan, invoice, 3900)).toBe(3500);
+  });
+
   it("replaces a catalog price of 39 with the paid 35 when the line is already discounted", () => {
     const line: InvoiceAmountLine = {
       id: "il_legacy",

@@ -222,6 +222,7 @@ export function discountedDraftAmount(
   if (storedAmount == null) return null;
   const charged = paidCentsForInvoiceLine(invoice, line);
   if (charged <= 0 || charged >= storedAmount) return null;
+  if (catalogCents != null && storedAmount === catalogCents) return charged;
   if (!draftMatchesPrice(storedAmount, line, invoice, catalogCents)) return null;
   return charged;
 }

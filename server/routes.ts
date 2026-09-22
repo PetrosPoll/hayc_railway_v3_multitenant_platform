@@ -552,6 +552,15 @@ function findInvoiceLineForSubscription(
     if (byLegacyPrice) return byLegacyPrice;
   }
 
+  if (subscription.price) {
+    const byCatalogPrice = invoice.lines.data.find((line) => {
+      const priceRef = line.price;
+      const unitAmount = priceRef && typeof priceRef !== "string" ? priceRef.unit_amount : null;
+      return unitAmount === subscription.price || line.amount === subscription.price;
+    });
+    if (byCatalogPrice) return byCatalogPrice;
+  }
+
   if (subscription.tier?.startsWith("legacy_")) {
     const setupFeeLine = findSetupFeeInvoiceLine(invoice);
     const billableLines = invoice.lines.data.filter(
@@ -996,19 +1005,19 @@ function pickStripeInvoiceForDraft(
     return line ? [{ invoice, line }] : [];
   });
 
-  if (draft.paymentIntentId) {
-    const byPayment = withLine.find(
-      (entry) => stripePaymentIntentId(entry.invoice) === draft.paymentIntentId,
-    );
-    if (byPayment) return byPayment;
-  }
-
   if (!draft.issueDate) return null;
   const issue = new Date(draft.issueDate);
   const inMonth = withLine.filter((entry) => {
     const paidAt = invoicePaidDate(entry.invoice);
     return paidAt.getMonth() === issue.getMonth() && paidAt.getFullYear() === issue.getFullYear();
   });
+
+  if (draft.paymentIntentId) {
+    const byPayment = inMonth.find(
+      (entry) => stripePaymentIntentId(entry.invoice) === draft.paymentIntentId,
+    );
+    if (byPayment) return byPayment;
+  }
   const discounted = inMonth.filter((entry) => {
     const paid = paidCentsForInvoiceLine(entry.invoice, entry.line);
     return draft.amount != null && paid > 0 && paid < draft.amount;
@@ -1131,9 +1140,7 @@ async function reconcileSetupFeeDraft(draft: ReconcilableDraft): Promise<void> {
 }
 
 async function reconcileUnissuedDraftAmounts(drafts: ReconcilableDraft[]): Promise<void> {
-  const pending = drafts.filter(
-    (draft) => isUnissuedDraft(draft) && !reconciledDraftIds.has(draft.id),
-  );
+  const pending = drafts.filter((draft) => isUnissuedDraft(draft));
   const bySubscription = new Map<number, ReconcilableDraft[]>();
   const setupFees: ReconcilableDraft[] = [];
 
