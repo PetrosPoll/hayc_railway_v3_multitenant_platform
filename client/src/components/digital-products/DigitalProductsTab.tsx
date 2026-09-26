@@ -32,13 +32,14 @@ import { HdpPurchaseSuccessBanner } from "@/components/digital-products/HdpPurch
 import { normalizeHdpProductsPayload } from "@/components/digital-products/hdpProductUtils";
 import { openHdpEnrollPage } from "@/lib/hdp-enroll";
 import { DigitalProductsAnalytics } from "@/components/digital-products/DigitalProductsAnalytics";
+import { DigitalProductsCoupons } from "@/components/digital-products/DigitalProductsCoupons";
 
 interface Props {
   siteId: string;
   /** Website progress id — for media library API */
   websiteId: number;
   /** Courses list vs buyers vs analytics — controlled by website dashboard sidebar */
-  listMode?: "courses" | "buyers" | "analytics";
+  listMode?: "courses" | "buyers" | "analytics" | "coupons";
 }
 
 function typeLabel(type: ProductType): string {
@@ -439,6 +440,10 @@ export function DigitalProductsTab({
       setIsSyncing(false);
     }
   };
+
+  if (listMode === "coupons") {
+    return <DigitalProductsCoupons siteId={siteId} />;
+  }
 
   if (listMode === "courses" && (view === "course-new" || view === "course-edit")) {
     return (

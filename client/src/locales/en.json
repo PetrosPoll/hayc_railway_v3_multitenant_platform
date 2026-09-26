@@ -2807,7 +2807,65 @@
             "courses": "Courses",
             "products": "Products",
             "buyers": "Buyers",
-            "analytics": "Analytics"
+            "analytics": "Analytics",
+            "coupons": "Coupons"
+        },
+        "coupons": {
+            "title": "Coupons",
+            "create": "Create coupon",
+            "createHint": "The code applies on the enrollment page before checkout.",
+            "empty": "No coupons yet.",
+            "loadError": "Could not load coupons. Please try again.",
+            "created": "Coupon created",
+            "updated": "Coupon updated",
+            "deactivated": "Coupon deactivated",
+            "edit": "Edit",
+            "editTitle": "Edit coupon limits",
+            "editHint": "Update redemption limit and expiry for {{code}}. Discount amount and code stay the same.",
+            "deactivate": "Deactivate",
+            "deactivateTitle": "Deactivate coupon?",
+            "deactivateConfirm": "Deactivate this coupon? Buyers will no longer be able to use it.",
+            "clearHint": "Leave a field empty to remove the limit or expiry.",
+            "scopeAll": "All courses",
+            "scopeCourse": "Specific course",
+            "discountPercent": "{{value}}%",
+            "redemptionsUnlimited": "{{count}} / ∞",
+            "redemptionsLimited": "{{count}} / {{max}}",
+            "statusActive": "Active",
+            "statusInactive": "Inactive",
+            "columns": {
+                "code": "Code",
+                "discount": "Discount",
+                "scope": "Scope",
+                "redemptions": "Redemptions",
+                "expires": "Expires",
+                "status": "Status",
+                "actions": "Actions"
+            },
+            "fields": {
+                "code": "Code",
+                "discountType": "Discount type",
+                "percentOff": "Percent off",
+                "amountEuros": "Amount (EUR)",
+                "scope": "Applies to",
+                "maxRedemptions": "Max redemptions",
+                "expiresAt": "Expires",
+                "active": "Active"
+            },
+            "discountTypes": {
+                "percent": "Percent",
+                "fixed": "Fixed amount"
+            },
+            "errors": {
+                "code": "Code must be 2–40 characters.",
+                "percent": "Percent off must be a whole number from 1 to 100.",
+                "amount": "Enter a positive euro amount.",
+                "maxRedemptions": "Max redemptions must be a positive whole number.",
+                "expires": "Enter a valid expiry date.",
+                "duplicate": "Coupon code already exists for this site",
+                "paymentsNotConfigured": "Payments not configured for this site",
+                "generic": "Could not save the coupon. Please try again."
+            }
         },
         "buyers": {
             "loadError": "Could not load buyers. Please try again.",
