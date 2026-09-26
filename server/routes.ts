@@ -24280,6 +24280,137 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
+  const proxyHdpCoupons = async (
+    req: any,
+    res: any,
+    siteId: string,
+    suffix: string,
+    method: string,
+    body?: unknown,
+  ) => {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Not authenticated" });
+      return;
+    }
+
+    const user = await storage.getUserById(req.user.id);
+    if (!user) {
+      res.status(403).json({ error: "Not authorized" });
+      return;
+    }
+
+    const website = await db
+      .select()
+      .from(websiteProgress)
+      .where(eq(websiteProgress.siteId, siteId))
+      .then((rows) => rows[0]);
+
+    if (!website) {
+      res.status(404).json({ error: "Site not found" });
+      return;
+    }
+
+    if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+      res.status(403).json({
+        error: method === "GET" ? "Not authorized to access this site" : "Not authorized to modify this site",
+      });
+      return;
+    }
+
+    const HDP_INTERNAL_URL = process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+    const HDP_INTERNAL_TOKEN = process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+    if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+      res.status(503).json({ error: "HDP internal service not configured" });
+      return;
+    }
+
+    const headers: Record<string, string> = {
+      "x-internal-token": HDP_INTERNAL_TOKEN,
+    };
+    if (body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+
+    const internalRes = await fetch(
+      `${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/coupons${suffix}`,
+      {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
+    );
+
+    if (internalRes.status === 204) {
+      res.sendStatus(204);
+      return;
+    }
+
+    const contentType = internalRes.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      res.status(internalRes.status).json(await internalRes.json());
+      return;
+    }
+
+    res.status(internalRes.status).send(await internalRes.text());
+  };
+
+  app.get("/api/hdp/coupons/:siteId", async (req, res) => {
+    try {
+      await proxyHdpCoupons(req, res, req.params.siteId, "", "GET");
+    } catch (error: any) {
+      console.error("Error fetching HDP coupons:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to fetch HDP coupons" });
+      }
+    }
+  });
+
+  app.post("/api/hdp/coupons/:siteId", async (req, res) => {
+    try {
+      await proxyHdpCoupons(req, res, req.params.siteId, "", "POST", req.body);
+    } catch (error: any) {
+      console.error("Error creating HDP coupon:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to create HDP coupon" });
+      }
+    }
+  });
+
+  app.patch("/api/hdp/coupons/:siteId/:couponId", async (req, res) => {
+    try {
+      await proxyHdpCoupons(
+        req,
+        res,
+        req.params.siteId,
+        `/${encodeURIComponent(req.params.couponId)}`,
+        "PATCH",
+        req.body,
+      );
+    } catch (error: any) {
+      console.error("Error updating HDP coupon:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to update HDP coupon" });
+      }
+    }
+  });
+
+  app.delete("/api/hdp/coupons/:siteId/:couponId", async (req, res) => {
+    try {
+      await proxyHdpCoupons(
+        req,
+        res,
+        req.params.siteId,
+        `/${encodeURIComponent(req.params.couponId)}`,
+        "DELETE",
+      );
+    } catch (error: any) {
+      console.error("Error deactivating HDP coupon:", error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Failed to deactivate HDP coupon" });
+      }
+    }
+  });
+
   app.get("/api/hdp/buyers/:siteId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
