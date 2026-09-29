@@ -6,6 +6,7 @@ import {
   lowestPriceAfterCoupons,
   paidCentsForInvoiceLine,
   upcomingInvoiceChargedCents,
+  sharedDraftAmountFromUpcoming,
   type InvoiceAmountLine,
   type InvoiceAmountSource,
 } from "./stripe-invoice-amount";
@@ -186,5 +187,25 @@ describe("chargedCentsForInvoiceLine", () => {
 
     expect(upcomingInvoiceChargedCents(invoice, undefined, { allowInvoiceTotal: true })).toBe(3599);
     expect(upcomingInvoiceChargedCents(invoice, line, { allowInvoiceTotal: true })).toBe(3599);
+  });
+
+  it("takes the upcoming amount-off even when a leftover Stripe item adds another line", () => {
+    const plan: InvoiceAmountLine = {
+      id: "il_plan",
+      amount: 3900,
+      discountable: true,
+      discount_amounts: [],
+    };
+    const leftover: InvoiceAmountLine = { id: "il_old", amount: 1000 };
+    const invoice: InvoiceAmountSource = {
+      subtotal: 4900,
+      total: 4599,
+      amount_due: 4599,
+      amount_paid: 0,
+      total_discount_amounts: [{ amount: 301 }],
+      lines: { data: [plan, leftover] },
+    };
+
+    expect(sharedDraftAmountFromUpcoming(3900, invoice)).toBe(3599);
   });
 });

@@ -39,7 +39,7 @@ function exclusiveTaxCents(line: InvoiceAmountLine): number {
     .reduce((sum, tax) => sum + tax.amount, 0);
 }
 
-function invoiceDiscountCents(invoice: InvoiceAmountSource): number {
+export function invoiceDiscountCents(invoice: InvoiceAmountSource): number {
   const explicit = (invoice.total_discount_amounts ?? []).reduce(
     (sum, discount) => sum + discount.amount,
     0,
@@ -166,7 +166,7 @@ export function paidCentsForInvoiceLine(
 /**
  * Amount Stripe will charge for this hayc row.
  * `allowInvoiceTotal` is for a single hayc product on the Stripe subscription:
- * leftover Stripe items must not block using the upcoming total.
+ * leftover Stripe items must not block using the upcoming total or invoice discount.
  */
 export function upcomingInvoiceChargedCents(
   invoice: InvoiceAmountSource,
@@ -175,13 +175,35 @@ export function upcomingInvoiceChargedCents(
 ): number | null {
   if (line) {
     const paid = paidCentsForInvoiceLine(invoice, line);
-    if (paid > 0) return paid;
+    if (paid > 0) {
+      if (options?.allowInvoiceTotal) {
+        const settled = settledInvoiceCents(invoice);
+        if (settled != null && settled > 0 && settled < paid) return settled;
+      }
+      return paid;
+    }
   }
   if (!options?.allowInvoiceTotal) return null;
-  if (invoice.lines?.has_more && !line) return null;
-  if (positiveLines(invoice).length > 1) return null;
   const settled = settledInvoiceCents(invoice);
   return settled != null && settled > 0 ? settled : null;
+}
+
+/**
+ * One hayc product on the Stripe sub: take the upcoming invoice discount off the draft,
+ * even when leftover Stripe items add extra lines.
+ */
+export function sharedDraftAmountFromUpcoming(
+  draftAmount: number,
+  invoice: InvoiceAmountSource,
+): number | null {
+  if (draftAmount <= 0) return null;
+  const discount = invoiceDiscountCents(invoice);
+  const afterDiscount = discount > 0 ? draftAmount - discount : null;
+  const settled = settledInvoiceCents(invoice);
+  const candidates = [afterDiscount, settled]
+    .filter((amount): amount is number => amount != null && amount > 0 && amount < draftAmount)
+    .sort((a, b) => a - b);
+  return candidates[0] ?? null;
 }
 
 function draftMatchesPrice(

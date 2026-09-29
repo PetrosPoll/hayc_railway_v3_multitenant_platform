@@ -88,6 +88,7 @@ import {
   discountedDraftAmount,
   lowestPriceAfterCoupons,
   paidCentsForInvoiceLine,
+  sharedDraftAmountFromUpcoming,
   upcomingInvoiceChargedCents,
   type StripeCouponLike,
 } from "./lib/stripe-invoice-amount";
@@ -934,27 +935,45 @@ async function haycSubscriptionCountForStripeId(stripeSubscriptionId: string): P
   const [row] = await db
     .select({ count: sql<number>`count(*)` })
     .from(subscriptionsTable)
-    .where(eq(subscriptionsTable.stripeSubscriptionId, stripeSubscriptionId));
+    .where(
+      and(
+        eq(subscriptionsTable.stripeSubscriptionId, stripeSubscriptionId),
+        or(
+          eq(subscriptionsTable.status, "active"),
+          eq(subscriptionsTable.status, "trialing"),
+        ),
+      ),
+    );
   const count = Number(row?.count ?? 0);
   haycStripeSubCountCache.set(stripeSubscriptionId, count);
   return count;
 }
 
-async function loadUpcomingStripeInvoice(stripeSubscriptionId: string): Promise<Stripe.Invoice | null> {
+async function loadUpcomingStripeInvoice(
+  stripeSubscriptionId: string,
+  customerId?: string | null,
+): Promise<Stripe.Invoice | null> {
   if (upcomingInvoiceByStripeSubscription.has(stripeSubscriptionId)) {
     return upcomingInvoiceByStripeSubscription.get(stripeSubscriptionId) ?? null;
   }
+  const params: Stripe.InvoiceRetrieveUpcomingParams = {
+    subscription: stripeSubscriptionId,
+    expand: ["discounts.coupon", "discount.coupon"],
+  };
+  if (customerId) params.customer = customerId;
+
   try {
-    const upcoming = await stripe.invoices.retrieveUpcoming({
-      subscription: stripeSubscriptionId,
-    });
+    const upcoming = await stripe.invoices.retrieveUpcoming(params);
     upcomingInvoiceByStripeSubscription.set(stripeSubscriptionId, upcoming);
     return upcoming;
   } catch (retrieveError) {
     try {
-      const preview = await stripe.invoices.createPreview({
+      const previewParams: Stripe.InvoiceCreatePreviewParams = {
         subscription: stripeSubscriptionId,
-      });
+        expand: ["discounts.coupon", "discount.coupon"],
+      };
+      if (customerId) previewParams.customer = customerId;
+      const preview = await stripe.invoices.createPreview(previewParams);
       upcomingInvoiceByStripeSubscription.set(stripeSubscriptionId, preview);
       return preview;
     } catch (previewError) {
@@ -1089,14 +1108,26 @@ async function applyUpcomingInvoiceAmountToDraft(
 ): Promise<void> {
   if (draft.amount == null || draft.amount <= 0) return;
 
-  const upcoming = await loadUpcomingStripeInvoice(stripeSubscriptionId);
+  const customerId =
+    stripeSub?.customer && typeof stripeSub.customer !== "string" && !stripeSub.customer.deleted
+      ? stripeSub.customer.id
+      : typeof stripeSub?.customer === "string"
+        ? stripeSub.customer
+        : null;
+  const upcoming = await loadUpcomingStripeInvoice(stripeSubscriptionId, customerId);
   if (!upcoming) return;
 
   const upcomingLine = findInvoiceLineForSubscription(upcoming, subscription, stripeSub);
-  const charged = upcomingInvoiceChargedCents(upcoming, upcomingLine, {
+  const fromLine = upcomingInvoiceChargedCents(upcoming, upcomingLine, {
     allowInvoiceTotal: applySharedAmountOff,
   });
-  if (charged == null || charged <= 0 || charged >= draft.amount) return;
+  const fromInvoice = applySharedAmountOff
+    ? sharedDraftAmountFromUpcoming(draft.amount, upcoming)
+    : null;
+  const charged = [fromLine, fromInvoice]
+    .filter((amount): amount is number => amount != null && amount > 0 && amount < draft.amount!)
+    .sort((a, b) => a - b)[0];
+  if (charged == null) return;
 
   const previous = draft.amount;
   await db
@@ -1514,15 +1545,15 @@ async function forceCorrectUnissuedDraftAmounts(drafts: ReconcilableDraft[]): Pr
     bySubscription.set(draft.subscriptionId, group);
   }
 
-  let updated = 0;
+  const counts: number[] = [];
   await mapWithConcurrency([...bySubscription.entries()], 5, async ([subscriptionId, group]) => {
     try {
-      updated += await forceCorrectSubscriptionDrafts(subscriptionId, group);
+      counts.push(await forceCorrectSubscriptionDrafts(subscriptionId, group));
     } catch (error) {
       console.error(`[Invoice discount] Failed to force-correct subscription ${subscriptionId}:`, error);
     }
   });
-  return updated;
+  return counts.reduce((sum, n) => sum + n, 0);
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
