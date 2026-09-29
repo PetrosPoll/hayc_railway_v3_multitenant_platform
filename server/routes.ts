@@ -1039,6 +1039,179 @@ async function reconcileUnissuedDraftAmounts(drafts: ReconcilableDraft[]): Promi
   });
 }
 
+function pickStripeInvoiceForDraftForce(
+  draft: ReconcilableDraft,
+  invoices: Stripe.Invoice[],
+  subscription: InvoiceSubscriptionRecord,
+  stripeSub?: Stripe.Subscription,
+): { invoice: Stripe.Invoice; line: Stripe.InvoiceLineItem } | null {
+  const withLine = invoices.flatMap((invoice) => {
+    const line = findInvoiceLineForSubscription(invoice, subscription, stripeSub);
+    return line ? [{ invoice, line }] : [];
+  });
+  if (withLine.length === 0) return null;
+
+  const newest = (entries: typeof withLine) =>
+    entries.sort(
+      (a, b) => invoicePaidDate(b.invoice).getTime() - invoicePaidDate(a.invoice).getTime(),
+    )[0];
+
+  if (!draft.issueDate) return newest(withLine);
+
+  const issue = new Date(draft.issueDate);
+  const inMonth = withLine.filter((entry) => {
+    const paidAt = invoicePaidDate(entry.invoice);
+    return paidAt.getMonth() === issue.getMonth() && paidAt.getFullYear() === issue.getFullYear();
+  });
+  const pool = inMonth.length > 0 ? inMonth : withLine;
+
+  if (draft.paymentIntentId) {
+    const byPayment = pool.find(
+      (entry) => stripePaymentIntentId(entry.invoice) === draft.paymentIntentId,
+    );
+    if (byPayment) return byPayment;
+  }
+
+  const cheaper = pool.filter((entry) => {
+    const paid = paidCentsForInvoiceLine(entry.invoice, entry.line);
+    return draft.amount != null && paid > 0 && paid < draft.amount;
+  });
+  if (cheaper.length > 0) return newest(cheaper);
+  return newest(pool);
+}
+
+async function forceApplyCouponToDraft(
+  draft: ReconcilableDraft,
+  catalogCents: number | null,
+  stripeSub: Stripe.Subscription,
+  subscription: InvoiceSubscriptionRecord,
+): Promise<void> {
+  if (draft.amount == null || draft.amount <= 0) return;
+
+  const { shared, item } = couponsForSubscriptionDraft(stripeSub, subscription);
+  const singleItem = stripeSub.items.data.length <= 1;
+  const itemUnit =
+    stripeSub.items.data.length === 1
+      ? stripeSub.items.data[0]?.price.unit_amount ?? null
+      : null;
+  const bases = [...new Set(
+    [draft.amount, catalogCents, itemUnit].filter((n): n is number => n != null && n > 0),
+  )];
+
+  let lowest: number | null = null;
+  for (const base of bases) {
+    for (const paid of [
+      lowestPriceAfterCoupons(base, shared, { applyAmountOff: singleItem }),
+      lowestPriceAfterCoupons(base, item, { applyAmountOff: true }),
+    ]) {
+      if (paid != null && paid > 0 && paid < draft.amount && (lowest == null || paid < lowest)) {
+        lowest = paid;
+      }
+    }
+  }
+  if (lowest == null) return;
+
+  const previous = draft.amount;
+  await db
+    .update(websiteInvoices)
+    .set({ amount: lowest })
+    .where(eq(websiteInvoices.id, draft.id));
+  draft.amount = lowest;
+  console.log(`[Invoice discount] Forced draft ${draft.id}: ${previous} -> ${lowest} cents from coupon`);
+}
+
+async function forceCorrectSubscriptionDrafts(
+  subscriptionId: number,
+  drafts: ReconcilableDraft[],
+): Promise<number> {
+  const [subscription] = await db
+    .select()
+    .from(subscriptionsTable)
+    .where(eq(subscriptionsTable.id, subscriptionId))
+    .limit(1);
+
+  if (
+    !subscription?.stripeSubscriptionId ||
+    subscription.stripeSubscriptionId.startsWith("sub_sched_")
+  ) {
+    return 0;
+  }
+
+  let stripeSub: Stripe.Subscription | undefined;
+  try {
+    const cached = stripeSubscriptionCache.get(subscription.stripeSubscriptionId);
+    stripeSub = cached ?? await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId, {
+      expand: ["discount.coupon", "discounts", "items.data.discounts", "customer.discount.coupon"],
+    });
+    if (!cached) stripeSubscriptionCache.set(subscription.stripeSubscriptionId, stripeSub);
+  } catch (error) {
+    console.error(
+      `[Invoice discount] Could not load Stripe subscription ${subscription.stripeSubscriptionId}:`,
+      error,
+    );
+  }
+
+  const invoices = await loadPaidStripeInvoices(subscription.stripeSubscriptionId);
+  const singleItem = stripeSub?.items.data.length === 1;
+  const catalogCents =
+    subscription.price ??
+    (singleItem ? stripeSub?.items.data[0]?.price.unit_amount ?? null : null);
+
+  let updated = 0;
+  for (const draft of drafts) {
+    const before = draft.amount;
+    if (stripeSub) {
+      await forceApplyCouponToDraft(draft, catalogCents, stripeSub, subscription);
+    }
+
+    const match = pickStripeInvoiceForDraftForce(draft, invoices, subscription, stripeSub);
+    if (match) {
+      let invoice = match.invoice;
+      let matchedLine = match.line;
+      try {
+        invoice = await stripe.invoices.retrieve(match.invoice.id);
+        matchedLine = invoice.lines.data.find((item) => item.id === match.line.id) ?? match.line;
+      } catch (error) {
+        console.error(`[Invoice discount] Could not retrieve Stripe invoice ${match.invoice.id}:`, error);
+      }
+      const charged = paidCentsForInvoiceLine(invoice, matchedLine);
+      if (charged > 0 && draft.amount != null && charged < draft.amount) {
+        await db
+          .update(websiteInvoices)
+          .set({ amount: charged })
+          .where(eq(websiteInvoices.id, draft.id));
+        draft.amount = charged;
+        console.log(`[Invoice discount] Forced draft ${draft.id}: ${before} -> ${charged} cents from paid invoice`);
+      }
+    }
+
+    if (before != null && draft.amount != null && draft.amount < before) updated += 1;
+  }
+  return updated;
+}
+
+async function forceCorrectUnissuedDraftAmounts(drafts: ReconcilableDraft[]): Promise<number> {
+  const pending = drafts.filter((draft) => isUnissuedDraft(draft));
+  const bySubscription = new Map<number, ReconcilableDraft[]>();
+
+  for (const draft of pending) {
+    if (!draft.subscriptionId) continue;
+    const group = bySubscription.get(draft.subscriptionId) ?? [];
+    group.push(draft);
+    bySubscription.set(draft.subscriptionId, group);
+  }
+
+  let updated = 0;
+  await mapWithConcurrency([...bySubscription.entries()], 5, async ([subscriptionId, group]) => {
+    try {
+      updated += await forceCorrectSubscriptionDrafts(subscriptionId, group);
+    } catch (error) {
+      console.error(`[Invoice discount] Failed to force-correct subscription ${subscriptionId}:`, error);
+    }
+  });
+  return updated;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupAuth(app);
@@ -16555,6 +16728,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching all invoices:", err);
       res.status(500).json({ error: "Failed to fetch invoices" });
+    }
+  });
+
+  app.post("/api/admin/invoices/fix-draft-discounts", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const invoices = await storage.getAllWebsiteInvoices();
+      const pending = invoices.filter(
+        (invoice) => invoice.status === "DRAFT" && !invoice.wrappInvoiceId && !invoice.pdfUrl,
+      );
+      paidInvoicesByStripeSubscription.clear();
+      stripeSubscriptionCache.clear();
+      const updated = await forceCorrectUnissuedDraftAmounts(pending);
+      return res.json({ success: true, updated, scanned: pending.length });
+    } catch (err) {
+      console.error("Error fixing draft invoice discounts:", err);
+      return res.status(500).json({ error: "Failed to fix draft discounts" });
     }
   });
 

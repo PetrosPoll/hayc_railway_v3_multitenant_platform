@@ -367,6 +367,34 @@ export function AdminWebsiteInvoices() {
     },
   });
 
+  const fixDraftDiscountsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/admin/invoices/fix-draft-discounts", {
+        method: "POST",
+        credentials: "include",
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to fix draft discounts");
+      }
+      return result as { updated: number; scanned: number };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
+      toast({
+        title: "Success",
+        description: `Updated ${result.updated} of ${result.scanned} to-do invoices from Stripe discounts.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Create draft invoice mutation
   const createDraftMutation = useMutation({
     mutationFn: async (data: { websiteProgressId: number; title: string; description: string; amount: string; currency: string }) => {
@@ -1146,7 +1174,32 @@ export function AdminWebsiteInvoices() {
           </div>
         ) : (
           <div className="p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-center justify-end mb-3">
+            <div className="flex items-center justify-between mb-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (
+                    confirm(
+                      "Update all to-do draft amounts from Stripe (paid amount after discount)? This only changes unissued drafts.",
+                    )
+                  ) {
+                    fixDraftDiscountsMutation.mutate();
+                  }
+                }}
+                disabled={fixDraftDiscountsMutation.isPending || draftInvoices.length === 0}
+              >
+                {fixDraftDiscountsMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Fixing amounts...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Fix discount amounts
+                  </>
+                )}
+              </Button>
               <div className="flex items-center gap-2">
                 <Label htmlFor="draft-year-filter" className="text-sm">
                   Filter:
