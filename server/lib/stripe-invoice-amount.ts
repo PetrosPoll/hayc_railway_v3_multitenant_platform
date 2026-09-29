@@ -18,6 +18,7 @@ export type InvoiceAmountLine = {
 export type InvoiceAmountSource = {
   subtotal?: number | null;
   total?: number | null;
+  amount_due?: number | null;
   amount_paid?: number | null;
   total_discount_amounts?: DiscountAmount[] | null;
   lines?: { data?: InvoiceAmountLine[] | null; has_more?: boolean } | null;
@@ -142,6 +143,13 @@ function positiveLines(invoice: InvoiceAmountSource): InvoiceAmountLine[] {
   return (invoice.lines?.data ?? []).filter((line) => line.amount > 0);
 }
 
+function settledInvoiceCents(invoice: InvoiceAmountSource): number | null {
+  if (invoice.amount_paid != null && invoice.amount_paid > 0) return invoice.amount_paid;
+  if (invoice.amount_due != null && invoice.amount_due > 0) return invoice.amount_due;
+  if (invoice.total != null && invoice.total > 0) return invoice.total;
+  return null;
+}
+
 /** What the customer paid for this line. Single-line invoices use the paid invoice total. */
 export function paidCentsForInvoiceLine(
   invoice: InvoiceAmountSource,
@@ -150,12 +158,30 @@ export function paidCentsForInvoiceLine(
   const fromParts = chargedCentsForInvoiceLine(invoice, line);
   if (positiveLines(invoice).length !== 1) return fromParts;
 
-  const settled =
-    invoice.amount_paid != null && invoice.amount_paid > 0
-      ? invoice.amount_paid
-      : invoice.total ?? null;
+  const settled = settledInvoiceCents(invoice);
   if (settled != null && settled > 0 && settled < fromParts) return settled;
   return fromParts;
+}
+
+/**
+ * Amount Stripe will charge for this hayc row.
+ * `allowInvoiceTotal` is for a single hayc product on the Stripe subscription:
+ * leftover Stripe items must not block using the upcoming total.
+ */
+export function upcomingInvoiceChargedCents(
+  invoice: InvoiceAmountSource,
+  line?: InvoiceAmountLine | null,
+  options?: { allowInvoiceTotal?: boolean },
+): number | null {
+  if (line) {
+    const paid = paidCentsForInvoiceLine(invoice, line);
+    if (paid > 0) return paid;
+  }
+  if (!options?.allowInvoiceTotal) return null;
+  if (invoice.lines?.has_more && !line) return null;
+  if (positiveLines(invoice).length > 1) return null;
+  const settled = settledInvoiceCents(invoice);
+  return settled != null && settled > 0 ? settled : null;
 }
 
 function draftMatchesPrice(
