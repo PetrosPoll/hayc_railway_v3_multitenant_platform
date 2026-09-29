@@ -395,6 +395,44 @@ export function AdminWebsiteInvoices() {
     },
   });
 
+  const recreateDraftMutation = useMutation({
+    mutationFn: async (invoiceId: number) => {
+      const response = await fetch(`/api/admin/invoices/${invoiceId}/recreate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to recreate draft invoice");
+      }
+      return result as {
+        deletedId: number;
+        stripeInvoiceId: string;
+        recreated: { id: number; amount: number | null; currency: string | null } | null;
+      };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
+      const amountLabel =
+        result.recreated?.amount != null
+          ? ` €${(result.recreated.amount / 100).toFixed(2)}`
+          : "";
+      toast({
+        title: "Draft recreated",
+        description: result.recreated
+          ? `Deleted #${result.deletedId}, created #${result.recreated.id}${amountLabel} from Stripe ${result.stripeInvoiceId}.`
+          : `Deleted #${result.deletedId}, but no new draft was created from Stripe.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Create draft invoice mutation
   const createDraftMutation = useMutation({
     mutationFn: async (data: { websiteProgressId: number; title: string; description: string; amount: string; currency: string }) => {
@@ -1168,85 +1206,91 @@ export function AdminWebsiteInvoices() {
       </div>
 
       {invoiceFilter === "draft" ? (
-        draftInvoices.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
-            No to do invoices — create with Wrapp to move them out of this list
-          </div>
-        ) : (
-          <div className="p-4 bg-muted/50 rounded-lg">
-            <div className="flex items-center justify-between mb-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (
-                    confirm(
-                      "Update all to-do draft amounts from Stripe (paid amount after discount)? This only changes unissued drafts.",
-                    )
-                  ) {
-                    fixDraftDiscountsMutation.mutate();
-                  }
-                }}
-                disabled={fixDraftDiscountsMutation.isPending || draftInvoices.length === 0}
-              >
-                {fixDraftDiscountsMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Fixing amounts...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Fix discount amounts
-                  </>
-                )}
-              </Button>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="draft-year-filter" className="text-sm">
-                  Filter:
-                </Label>
-                <Select
-                  value={draftYearFilter.toString()}
-                  onValueChange={(value) => {
-                    setDraftYearFilter(parseInt(value));
+        <div className="p-4 bg-muted/50 rounded-lg">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              {draftInvoices.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (
+                      confirm(
+                        "Update all to-do draft amounts from Stripe (paid amount after discount)? This only changes unissued drafts.",
+                      )
+                    ) {
+                      fixDraftDiscountsMutation.mutate();
+                    }
                   }}
+                  disabled={fixDraftDiscountsMutation.isPending}
                 >
-                  <SelectTrigger className="w-[120px]" id="draft-year-filter">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2026">2026</SelectItem>
-                    <SelectItem value="2025">2025</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={draftMonthFilter.toString()}
-                  onValueChange={(value) => {
-                    setDraftMonthFilter(parseInt(value));
-                  }}
-                >
-                  <SelectTrigger className="w-[150px]" id="draft-month-filter">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const month = i + 1;
-                      const monthDate = new Date(draftYearFilter, month - 1, 1);
-                      const monthName = monthDate.toLocaleDateString('en-US', { month: 'long' });
-                      return (
-                        <SelectItem key={month} value={month.toString()}>
-                          {monthName}
-                        </SelectItem>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-              </div>
+                  {fixDraftDiscountsMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Fixing amounts...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Fix discount amounts
+                    </>
+                  )}
+                </Button>
+              )}
             </div>
-            {(() => {
+            <div className="flex items-center gap-2">
+              <Label htmlFor="draft-year-filter" className="text-sm">
+                Filter:
+              </Label>
+              <Select
+                value={draftYearFilter.toString()}
+                onValueChange={(value) => {
+                  setDraftYearFilter(parseInt(value));
+                }}
+              >
+                <SelectTrigger className="w-[120px]" id="draft-year-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="2026">2026</SelectItem>
+                  <SelectItem value="2025">2025</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={draftMonthFilter.toString()}
+                onValueChange={(value) => {
+                  setDraftMonthFilter(parseInt(value));
+                }}
+              >
+                <SelectTrigger className="w-[150px]" id="draft-month-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const month = i + 1;
+                    const monthDate = new Date(draftYearFilter, month - 1, 1);
+                    const monthName = monthDate.toLocaleDateString("en-US", {
+                      month: "long",
+                    });
+                    return (
+                      <SelectItem key={month} value={month.toString()}>
+                        {monthName}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {draftInvoices.length === 0 ? (
+            <div className="text-center text-gray-500 py-8">
+              No to do invoices — create with Wrapp to move them out of this list
+            </div>
+          ) : (
+            (() => {
               const filteredInvoices = filterInvoicesByMonth(
                 draftInvoices,
                 draftYearFilter,
-                draftMonthFilter
+                draftMonthFilter,
               );
 
               return filteredInvoices.length === 0 ? (
@@ -1270,31 +1314,41 @@ export function AdminWebsiteInvoices() {
                   </TableHeader>
                   <TableBody>
                     {filteredInvoices.map((invoice: any) => {
-                      const invoiceType = invoice.description?.toLowerCase().includes('add-on') ? 'Addon' : 'Plan';
-                      const website = (websitesData as any)?.websites?.find((w: any) => w.id === invoice.websiteProgressId);
+                      const invoiceType = invoice.description
+                        ?.toLowerCase()
+                        .includes("add-on")
+                        ? "Addon"
+                        : "Plan";
+                      const website = (websitesData as any)?.websites?.find(
+                        (w: any) => w.id === invoice.websiteProgressId,
+                      );
                       const userEmail = website?.userEmail || "N/A";
                       const subscriptions = (subscriptionsData as any[]) || [];
-                      const planSubscription = subscriptions.find((sub: any) => sub.productType === "plan");
-                      const canCreateWithWrapp = planSubscription?.classificationType && planSubscription?.invoiceTypeCode && planSubscription?.productName;
+                      const planSubscription = subscriptions.find(
+                        (sub: any) => sub.productType === "plan",
+                      );
+                      const canCreateWithWrapp =
+                        planSubscription?.classificationType &&
+                        planSubscription?.invoiceTypeCode &&
+                        planSubscription?.productName;
                       return (
-                        <TableRow key={invoice.id} className={completedInvoiceRowClass(invoice.status)}>
+                        <TableRow
+                          key={invoice.id}
+                          className={completedInvoiceRowClass(invoice.status)}
+                        >
                           <TableCell>
                             {invoice.invoiceNumber || `#${invoice.id}`}
                           </TableCell>
                           <TableCell>
                             <span className="text-sm">{userEmail}</span>
                           </TableCell>
-                          <TableCell>
-                            {invoice.status}
-                          </TableCell>
+                          <TableCell>{invoice.status}</TableCell>
                           <TableCell>{invoiceType}</TableCell>
                           <TableCell>{invoice.title}</TableCell>
                           <TableCell>
                             {formatAmount(invoice.amount, invoice.currency)}
                           </TableCell>
-                          <TableCell>
-                            {formatDate(invoice.issueDate)}
-                          </TableCell>
+                          <TableCell>{formatDate(invoice.issueDate)}</TableCell>
                           <TableCell>
                             {formatDate(invoice.createdAt)}
                           </TableCell>
@@ -1358,6 +1412,36 @@ export function AdminWebsiteInvoices() {
                                 View PDF
                               </Button>
                               }
+                              {invoice.status === "DRAFT" &&
+                                !invoice.wrappInvoiceId &&
+                                !invoice.pdfUrl &&
+                                invoice.subscriptionId && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (
+                                      confirm(
+                                        "Delete this draft and recreate it from the matching paid Stripe invoice?",
+                                      )
+                                    ) {
+                                      recreateDraftMutation.mutate(invoice.id);
+                                    }
+                                  }}
+                                  disabled={
+                                    recreateDraftMutation.isPending &&
+                                    recreateDraftMutation.variables === invoice.id
+                                  }
+                                  data-testid={`button-recreate-invoice-${invoice.id}`}
+                                >
+                                  {recreateDraftMutation.isPending &&
+                                  recreateDraftMutation.variables === invoice.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    "Recreate"
+                                  )}
+                                </Button>
+                              )}
                               {invoice.status === "DRAFT" && (
                               <Button
                                 variant="destructive"
@@ -1385,9 +1469,9 @@ export function AdminWebsiteInvoices() {
                   </TableBody>
                 </Table>
               );
-            })()}
-          </div>
-        )
+            })()
+          )}
+        </div>
       ) : websites.length === 0 ? (
         <div className="text-center text-gray-500 py-8">
           No websites found

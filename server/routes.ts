@@ -664,30 +664,35 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
 
   const currency = (invoice.currency || "eur").toUpperCase();
 
+  const haycRowsOnStripeSub = subscriptions.length;
+
   for (const sub of subscriptions) {
     const lineItem = findInvoiceLineForSubscription(invoice, sub, stripeSubscription);
     let amount = lineItem
       ? paidCentsForInvoiceLine(invoice, lineItem)
-      : subscriptions.length === 1 && invoice.amount_paid > 0
+      : haycRowsOnStripeSub === 1 && invoice.amount_paid > 0
         ? invoice.amount_paid
         : (sub.price ?? 0);
 
-    const subscriptionCoupon = stripeSubscription?.discount?.coupon;
-    if (
-      subscriptionCoupon &&
-      typeof subscriptionCoupon !== "string" &&
-      sub.price &&
-      amount === sub.price
-    ) {
-      const haycRowsOnStripeSub = stripeSubscription
-        ? subscriptions.filter(
-            (entry) => entry.stripeSubscriptionId === stripeSubscription.id,
-          ).length
-        : 1;
-      const discounted = lowestPriceAfterCoupons(amount, [subscriptionCoupon], {
-        applyAmountOff: haycRowsOnStripeSub <= 1,
-      });
-      if (discounted != null) amount = discounted;
+    // Single hayc product on this Stripe invoice: take the invoice discount even when
+    // leftover Stripe items leave the matched line at catalog price.
+    if (haycRowsOnStripeSub <= 1 && amount > 0) {
+      const fromInvoice = sharedDraftAmountFromUpcoming(amount, invoice);
+      if (fromInvoice != null) amount = fromInvoice;
+    } else {
+      const subscriptionCoupon = stripeSubscription?.discount?.coupon;
+      const resolvedCoupon =
+        subscriptionCoupon && typeof subscriptionCoupon !== "string"
+          ? subscriptionCoupon
+          : typeof subscriptionCoupon === "string"
+            ? await resolveStripeCoupon(subscriptionCoupon)
+            : null;
+      if (resolvedCoupon && sub.price && amount === sub.price) {
+        const discounted = lowestPriceAfterCoupons(amount, [resolvedCoupon], {
+          applyAmountOff: haycRowsOnStripeSub <= 1,
+        });
+        if (discounted != null) amount = discounted;
+      }
     }
 
     if (amount <= 0) {
@@ -712,9 +717,16 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
       .then((rows) => rows[0]);
 
     if (existingInvoice) {
-      const corrected = lineItem
-        ? discountedDraftAmount(existingInvoice.amount, lineItem, invoice)
+      let corrected = lineItem
+        ? discountedDraftAmount(existingInvoice.amount, lineItem, invoice, sub.price)
         : null;
+      if (
+        corrected == null &&
+        haycRowsOnStripeSub <= 1 &&
+        existingInvoice.amount != null
+      ) {
+        corrected = sharedDraftAmountFromUpcoming(existingInvoice.amount, invoice);
+      }
       if (
         corrected != null &&
         existingInvoice.status === "DRAFT" &&
@@ -5960,6 +5972,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 try {
                   stripeSubForInvoice = await stripe.subscriptions.retrieve(
                     invoice.subscription as string,
+                    {
+                      expand: [
+                        "discount.coupon",
+                        "discounts.coupon",
+                        "items.data.discounts.coupon",
+                      ],
+                    },
                   );
                 } catch (stripeSubError) {
                   console.warn(
@@ -17099,6 +17118,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fixing draft invoice discounts:", err);
       return res.status(500).json({ error: "Failed to fix draft discounts" });
+    }
+  });
+
+  // Admin: Delete one DRAFT and recreate it from the matching paid Stripe invoice
+  app.post("/api/admin/invoices/:invoiceId/recreate", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canManageWebsites")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const invoiceId = parseInt(req.params.invoiceId);
+      if (isNaN(invoiceId)) {
+        return res.status(400).json({ error: "Invalid invoice ID" });
+      }
+
+      const [draft] = await db
+        .select()
+        .from(websiteInvoices)
+        .where(eq(websiteInvoices.id, invoiceId))
+        .limit(1);
+
+      if (!draft) {
+        return res.status(404).json({ error: "Invoice not found" });
+      }
+      if (draft.status !== "DRAFT" || draft.wrappInvoiceId || draft.pdfUrl) {
+        return res.status(400).json({
+          error: "Only unissued To-do drafts can be recreated",
+        });
+      }
+      if (!draft.subscriptionId) {
+        return res.status(400).json({
+          error: "This draft has no subscription link; recreate is only for subscription invoices",
+        });
+      }
+      if (!draft.issueDate) {
+        return res.status(400).json({ error: "Draft has no issue date" });
+      }
+
+      const [subscription] = await db
+        .select()
+        .from(subscriptionsTable)
+        .where(eq(subscriptionsTable.id, draft.subscriptionId))
+        .limit(1);
+
+      if (!subscription?.stripeSubscriptionId) {
+        return res.status(400).json({ error: "Subscription has no Stripe subscription ID" });
+      }
+      if (subscription.stripeSubscriptionId.startsWith("sub_sched_")) {
+        return res.status(400).json({ error: "Scheduled subscriptions cannot recreate paid drafts yet" });
+      }
+      if (!subscription.websiteProgressId) {
+        return res.status(400).json({ error: "Subscription has no website" });
+      }
+
+      const issue = new Date(draft.issueDate);
+      const issueMonth = issue.getMonth();
+      const issueYear = issue.getFullYear();
+
+      const stripeSub = await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId, {
+        expand: [
+          "discount.coupon",
+          "discounts.coupon",
+          "items.data.discounts.coupon",
+        ],
+      });
+
+      const paidInvoices = await stripe.invoices.list({
+        subscription: subscription.stripeSubscriptionId,
+        status: "paid",
+        limit: 36,
+      });
+
+      const matchingInvoice = paidInvoices.data.find((invoice) => {
+        if (!invoice.paid || invoice.amount_paid <= 0) return false;
+        const paidAt = invoice.status_transitions?.paid_at
+          ? new Date(invoice.status_transitions.paid_at * 1000)
+          : new Date(invoice.created * 1000);
+        return paidAt.getMonth() === issueMonth && paidAt.getFullYear() === issueYear;
+      });
+
+      if (!matchingInvoice) {
+        return res.status(404).json({
+          error: `No paid Stripe invoice found for ${issueYear}-${String(issueMonth + 1).padStart(2, "0")}`,
+        });
+      }
+
+      const siblingSubs = await db
+        .select()
+        .from(subscriptionsTable)
+        .where(
+          and(
+            eq(subscriptionsTable.stripeSubscriptionId, subscription.stripeSubscriptionId),
+            eq(subscriptionsTable.websiteProgressId, subscription.websiteProgressId),
+          ),
+        );
+
+      await storage.deleteWebsiteInvoice(invoiceId);
+
+      await ensureDraftInvoicesForPaidInvoice({
+        websiteProgressId: subscription.websiteProgressId,
+        subscriptions: siblingSubs.length > 0 ? siblingSubs : [subscription],
+        invoice: matchingInvoice,
+        stripeSubscription: stripeSub,
+        context: `manual recreate draft ${invoiceId}`,
+      });
+
+      const [recreated] = await db
+        .select()
+        .from(websiteInvoices)
+        .where(
+          and(
+            eq(websiteInvoices.subscriptionId, draft.subscriptionId),
+            eq(websiteInvoices.websiteProgressId, draft.websiteProgressId),
+            sql`EXTRACT(MONTH FROM ${websiteInvoices.issueDate}) = ${issueMonth + 1}`,
+            sql`EXTRACT(YEAR FROM ${websiteInvoices.issueDate}) = ${issueYear}`,
+            eq(websiteInvoices.status, "DRAFT"),
+          ),
+        )
+        .orderBy(desc(websiteInvoices.id))
+        .limit(1);
+
+      return res.json({
+        success: true,
+        deletedId: invoiceId,
+        stripeInvoiceId: matchingInvoice.id,
+        recreated: recreated
+          ? { id: recreated.id, amount: recreated.amount, currency: recreated.currency }
+          : null,
+      });
+    } catch (err) {
+      console.error("Error recreating draft invoice:", err);
+      return res.status(500).json({ error: "Failed to recreate draft invoice" });
     }
   });
 
