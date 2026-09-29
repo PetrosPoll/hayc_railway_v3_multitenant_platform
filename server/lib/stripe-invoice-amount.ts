@@ -150,8 +150,11 @@ export function paidCentsForInvoiceLine(
   const fromParts = chargedCentsForInvoiceLine(invoice, line);
   if (positiveLines(invoice).length !== 1) return fromParts;
 
-  const paid = invoice.amount_paid ?? invoice.total ?? null;
-  if (paid != null && paid > 0 && paid < fromParts) return paid;
+  const settled =
+    invoice.amount_paid != null && invoice.amount_paid > 0
+      ? invoice.amount_paid
+      : invoice.total ?? null;
+  if (settled != null && settled > 0 && settled < fromParts) return settled;
   return fromParts;
 }
 

@@ -665,8 +665,13 @@ async function ensureDraftInvoicesForPaidInvoice(params: {
       sub.price &&
       amount === sub.price
     ) {
+      const haycRowsOnStripeSub = stripeSubscription
+        ? subscriptions.filter(
+            (entry) => entry.stripeSubscriptionId === stripeSubscription.id,
+          ).length
+        : 1;
       const discounted = lowestPriceAfterCoupons(amount, [subscriptionCoupon], {
-        applyAmountOff: !stripeSubscription || stripeSubscription.items.data.length <= 1,
+        applyAmountOff: haycRowsOnStripeSub <= 1,
       });
       if (discounted != null) amount = discounted;
     }
@@ -853,7 +858,9 @@ type ReconcilableDraft = {
 
 const reconciledDraftIds = new Set<number>();
 const paidInvoicesByStripeSubscription = new Map<string, Stripe.Invoice[]>();
+const upcomingInvoiceByStripeSubscription = new Map<string, Stripe.Invoice | null>();
 const stripeSubscriptionCache = new Map<string, Stripe.Subscription>();
+const haycStripeSubCountCache = new Map<string, number>();
 
 function isUnissuedDraft(invoice: ReconcilableDraft): boolean {
   return invoice.status === "DRAFT" && !invoice.wrappInvoiceId && !invoice.pdfUrl;
@@ -901,6 +908,34 @@ async function loadPaidStripeInvoices(stripeSubscriptionId: string): Promise<Str
   return list.data;
 }
 
+async function haycSubscriptionCountForStripeId(stripeSubscriptionId: string): Promise<number> {
+  const cached = haycStripeSubCountCache.get(stripeSubscriptionId);
+  if (cached != null) return cached;
+  const [row] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(subscriptionsTable)
+    .where(eq(subscriptionsTable.stripeSubscriptionId, stripeSubscriptionId));
+  const count = Number(row?.count ?? 0);
+  haycStripeSubCountCache.set(stripeSubscriptionId, count);
+  return count;
+}
+
+async function loadUpcomingStripeInvoice(stripeSubscriptionId: string): Promise<Stripe.Invoice | null> {
+  if (upcomingInvoiceByStripeSubscription.has(stripeSubscriptionId)) {
+    return upcomingInvoiceByStripeSubscription.get(stripeSubscriptionId) ?? null;
+  }
+  try {
+    const upcoming = await stripe.invoices.retrieveUpcoming({
+      subscription: stripeSubscriptionId,
+    });
+    upcomingInvoiceByStripeSubscription.set(stripeSubscriptionId, upcoming);
+    return upcoming;
+  } catch {
+    upcomingInvoiceByStripeSubscription.set(stripeSubscriptionId, null);
+    return null;
+  }
+}
+
 function pushCoupon(
   coupons: StripeCouponLike[],
   coupon: Stripe.Coupon | string | null | undefined,
@@ -946,13 +981,13 @@ async function applySubscriptionCouponToDraft(
   catalogCents: number | null,
   stripeSub: Stripe.Subscription,
   subscription: InvoiceSubscriptionRecord,
+  applySharedAmountOff: boolean,
 ): Promise<void> {
   if (draft.amount == null || catalogCents == null || draft.amount !== catalogCents) return;
 
   const { shared, item } = couponsForSubscriptionDraft(stripeSub, subscription);
-  const singleItem = stripeSub.items.data.length <= 1;
   const discounted = [
-    lowestPriceAfterCoupons(draft.amount, shared, { applyAmountOff: singleItem }),
+    lowestPriceAfterCoupons(draft.amount, shared, { applyAmountOff: applySharedAmountOff }),
     lowestPriceAfterCoupons(draft.amount, item, { applyAmountOff: true }),
   ]
     .filter((amount): amount is number => amount != null)
@@ -1066,18 +1101,29 @@ async function reconcileSubscriptionDrafts(
   }
 
   const invoices = await loadPaidStripeInvoices(subscription.stripeSubscriptionId);
-  const singleItem = stripeSub?.items.data.length === 1;
+  const haycCount = await haycSubscriptionCountForStripeId(subscription.stripeSubscriptionId);
+  const applySharedAmountOff = haycCount <= 1;
+  const matchedStripeItem = stripeSub?.items.data.find(
+    (entry) => entry.id === subscription.stripeSubscriptionItemId,
+  );
   const catalogCents =
     subscription.price ??
-    (singleItem ? stripeSub?.items.data[0]?.price.unit_amount ?? null : null);
+    matchedStripeItem?.price.unit_amount ??
+    (applySharedAmountOff ? stripeSub?.items.data[0]?.price.unit_amount ?? null : null);
 
   for (const draft of drafts) {
     if (stripeSub) {
-      await applySubscriptionCouponToDraft(draft, catalogCents, stripeSub, subscription);
+      await applySubscriptionCouponToDraft(
+        draft,
+        catalogCents,
+        stripeSub,
+        subscription,
+        applySharedAmountOff,
+      );
     }
 
     if (
-      singleItem &&
+      applySharedAmountOff &&
       draft.amount != null &&
       catalogCents != null &&
       draft.amount === catalogCents &&
@@ -1112,11 +1158,30 @@ async function reconcileSubscriptionDrafts(
     }
 
     const match = pickStripeInvoiceForDraft(draft, invoices, subscription, stripeSub);
-    if (!match) {
-      reconciledDraftIds.delete(draft.id);
-      continue;
+    if (match) {
+      await applyDiscountedDraftAmount(draft, match.invoice, match.line, catalogCents);
+    } else {
+      const upcoming = await loadUpcomingStripeInvoice(subscription.stripeSubscriptionId);
+      const upcomingLine = upcoming
+        ? findInvoiceLineForSubscription(upcoming, subscription, stripeSub)
+        : undefined;
+      if (upcoming && upcomingLine) {
+        const charged = paidCentsForInvoiceLine(upcoming, upcomingLine);
+        if (charged > 0 && draft.amount != null && charged < draft.amount) {
+          const previous = draft.amount;
+          await db
+            .update(websiteInvoices)
+            .set({ amount: charged })
+            .where(eq(websiteInvoices.id, draft.id));
+          draft.amount = charged;
+          console.log(
+            `[Invoice discount] Draft ${draft.id}: ${previous} -> ${charged} cents from upcoming invoice`,
+          );
+        }
+      } else {
+        reconciledDraftIds.delete(draft.id);
+      }
     }
-    await applyDiscountedDraftAmount(draft, match.invoice, match.line, catalogCents);
   }
 }
 
@@ -1224,11 +1289,11 @@ async function forceApplyCouponToDraft(
   if (draft.amount == null || draft.amount <= 0) return;
 
   const { shared, item } = couponsForSubscriptionDraft(stripeSub, subscription);
-  const singleItem = stripeSub.items.data.length <= 1;
+  const applySharedAmountOff = (await haycSubscriptionCountForStripeId(stripeSub.id)) <= 1;
   const itemUnit =
-    stripeSub.items.data.length === 1
-      ? stripeSub.items.data[0]?.price.unit_amount ?? null
-      : null;
+    stripeSub.items.data.find((entry) => entry.id === subscription.stripeSubscriptionItemId)
+      ?.price.unit_amount ??
+    (applySharedAmountOff ? stripeSub.items.data[0]?.price.unit_amount ?? null : null);
   const bases = [...new Set(
     [draft.amount, catalogCents, itemUnit].filter((n): n is number => n != null && n > 0),
   )];
@@ -1236,7 +1301,7 @@ async function forceApplyCouponToDraft(
   let lowest: number | null = null;
   for (const base of bases) {
     for (const paid of [
-      lowestPriceAfterCoupons(base, shared, { applyAmountOff: singleItem }),
+      lowestPriceAfterCoupons(base, shared, { applyAmountOff: applySharedAmountOff }),
       lowestPriceAfterCoupons(base, item, { applyAmountOff: true }),
     ]) {
       if (paid != null && paid > 0 && paid < draft.amount && (lowest == null || paid < lowest)) {
@@ -1287,10 +1352,15 @@ async function forceCorrectSubscriptionDrafts(
   }
 
   const invoices = await loadPaidStripeInvoices(subscription.stripeSubscriptionId);
-  const singleItem = stripeSub?.items.data.length === 1;
+  const haycCount = await haycSubscriptionCountForStripeId(subscription.stripeSubscriptionId);
+  const applySharedAmountOff = haycCount <= 1;
+  const matchedStripeItem = stripeSub?.items.data.find(
+    (entry) => entry.id === subscription.stripeSubscriptionItemId,
+  );
   const catalogCents =
     subscription.price ??
-    (singleItem ? stripeSub?.items.data[0]?.price.unit_amount ?? null : null);
+    matchedStripeItem?.price.unit_amount ??
+    (applySharedAmountOff ? stripeSub?.items.data[0]?.price.unit_amount ?? null : null);
 
   let updated = 0;
   for (const draft of drafts) {
@@ -1317,6 +1387,22 @@ async function forceCorrectSubscriptionDrafts(
           .where(eq(websiteInvoices.id, draft.id));
         draft.amount = charged;
         console.log(`[Invoice discount] Forced draft ${draft.id}: ${before} -> ${charged} cents from paid invoice`);
+      }
+    } else {
+      const upcoming = await loadUpcomingStripeInvoice(subscription.stripeSubscriptionId);
+      const upcomingLine = upcoming
+        ? findInvoiceLineForSubscription(upcoming, subscription, stripeSub)
+        : undefined;
+      if (upcoming && upcomingLine) {
+        const charged = paidCentsForInvoiceLine(upcoming, upcomingLine);
+        if (charged > 0 && draft.amount != null && charged < draft.amount) {
+          await db
+            .update(websiteInvoices)
+            .set({ amount: charged })
+            .where(eq(websiteInvoices.id, draft.id));
+          draft.amount = charged;
+          console.log(`[Invoice discount] Forced draft ${draft.id}: ${before} -> ${charged} cents from upcoming invoice`);
+        }
       }
     }
 
@@ -16881,7 +16967,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (invoice) => invoice.status === "DRAFT" && !invoice.wrappInvoiceId && !invoice.pdfUrl,
       );
       paidInvoicesByStripeSubscription.clear();
+      upcomingInvoiceByStripeSubscription.clear();
       stripeSubscriptionCache.clear();
+      haycStripeSubCountCache.clear();
       const updated = await forceCorrectUnissuedDraftAmounts(pending);
       return res.json({ success: true, updated, scanned: pending.length });
     } catch (err) {

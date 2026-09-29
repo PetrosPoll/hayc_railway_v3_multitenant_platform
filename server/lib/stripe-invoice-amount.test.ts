@@ -149,4 +149,22 @@ describe("chargedCentsForInvoiceLine", () => {
 
     expect(chargedCentsForInvoiceLine(invoice, line)).toBe(4216);
   });
+
+  it("uses upcoming invoice total when amount_paid is still zero", () => {
+    const line: InvoiceAmountLine = {
+      id: "il_plan",
+      amount: 3900,
+      discountable: true,
+      discount_amounts: [],
+    };
+    const invoice = invoiceWith(line, {
+      subtotal: 3900,
+      total: 3599,
+      amount_paid: 0,
+      total_discount_amounts: [{ amount: 301 }],
+    });
+
+    expect(paidCentsForInvoiceLine(invoice, line)).toBe(3599);
+    expect(discountedDraftAmount(3900, line, invoice)).toBe(3599);
+  });
 });
