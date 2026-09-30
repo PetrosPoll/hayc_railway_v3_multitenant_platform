@@ -1414,8 +1414,7 @@ export function AdminWebsiteInvoices() {
                               }
                               {invoice.status === "DRAFT" &&
                                 !invoice.wrappInvoiceId &&
-                                !invoice.pdfUrl &&
-                                invoice.subscriptionId && (
+                                !invoice.pdfUrl && (
                                 <Button
                                   variant="outline"
                                   size="sm"

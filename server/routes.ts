@@ -17124,13 +17124,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Admin: Delete one DRAFT and recreate it using the customer's next payment amount
   // (same discounted price shown on the account / upcoming invoice).
+  // Does not require the linked hayc subscription row to still exist (legacy OK).
   app.post("/api/admin/invoices/:invoiceId/recreate", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
     }
     try {
-      const user = await storage.getUserById(req.user.id);
-      if (!user || !hasPermission(user.role, "canManageWebsites")) {
+      const adminUser = await storage.getUserById(req.user.id);
+      if (!adminUser || !hasPermission(adminUser.role, "canManageWebsites")) {
         return res.status(403).json({ error: "Not authorized" });
       }
 
@@ -17153,119 +17154,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: "Only unissued To-do drafts can be recreated",
         });
       }
-      if (!draft.subscriptionId) {
+
+      const websiteProgressId = draft.websiteProgressId;
+      if (!websiteProgressId) {
+        return res.status(400).json({ error: "Draft has no website" });
+      }
+
+      const [website] = await db
+        .select({
+          id: websiteProgress.id,
+          userId: websiteProgress.userId,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteProgressId))
+        .limit(1);
+
+      if (!website?.userId) {
+        return res.status(404).json({ error: "Website for this draft was not found" });
+      }
+
+      const [customer] = await db
+        .select({
+          id: users.id,
+          stripeCustomerId: users.stripeCustomerId,
+        })
+        .from(users)
+        .where(eq(users.id, website.userId))
+        .limit(1);
+
+      if (!customer?.stripeCustomerId) {
         return res.status(400).json({
-          error: "This draft has no subscription link; recreate is only for subscription invoices",
+          error: "This customer has no Stripe customer ID, so next payment cannot be read",
         });
       }
 
-      const [subscription] = await db
+      // Optional: keep linking to the old hayc subscription id even if the row is gone.
+      const [linkedSubscription] = draft.subscriptionId
+        ? await db
+            .select()
+            .from(subscriptionsTable)
+            .where(eq(subscriptionsTable.id, draft.subscriptionId))
+            .limit(1)
+        : [undefined];
+
+      // Stripe subscription ids to try for upcoming invoice / next payment.
+      const stripeSubIds: string[] = [];
+      const pushStripeId = (id: string | null | undefined) => {
+        if (!id || id.startsWith("sub_sched_")) return;
+        if (!stripeSubIds.includes(id)) stripeSubIds.push(id);
+      };
+
+      pushStripeId(linkedSubscription?.stripeSubscriptionId);
+
+      const websiteSubs = await db
         .select()
         .from(subscriptionsTable)
-        .where(eq(subscriptionsTable.id, draft.subscriptionId))
-        .limit(1);
+        .where(eq(subscriptionsTable.websiteProgressId, websiteProgressId))
+        .orderBy(desc(subscriptionsTable.id));
 
-      if (!subscription) {
-        return res.status(404).json({ error: "Subscription linked to this draft was not found" });
+      for (const sub of websiteSubs) {
+        if (sub.status === "active" || sub.status === "trialing") {
+          pushStripeId(sub.stripeSubscriptionId);
+        }
+      }
+      for (const sub of websiteSubs) {
+        pushStripeId(sub.stripeSubscriptionId);
       }
 
-      const websiteProgressId = subscription.websiteProgressId ?? draft.websiteProgressId;
-      if (!websiteProgressId) {
-        return res.status(400).json({ error: "Subscription has no website" });
+      // Also ask Stripe what active subscriptions this customer has.
+      try {
+        const stripeSubs = await stripe.subscriptions.list({
+          customer: customer.stripeCustomerId,
+          status: "active",
+          limit: 10,
+        });
+        for (const sub of stripeSubs.data) pushStripeId(sub.id);
+      } catch (listError) {
+        console.warn(
+          `[Recreate draft ${invoiceId}] Could not list Stripe subscriptions for ${customer.stripeCustomerId}:`,
+          listError,
+        );
       }
 
-      // Resolve the Stripe subscription the account uses for next payment.
-      let stripeSubscriptionId =
-        subscription.stripeSubscriptionId &&
-        !subscription.stripeSubscriptionId.startsWith("sub_sched_")
-          ? subscription.stripeSubscriptionId
-          : null;
+      let upcoming: Stripe.Invoice | null = null;
+      let usedStripeSubscriptionId: string | null = null;
 
-      if (!stripeSubscriptionId) {
-        const [reactivated] = await db
-          .select()
-          .from(subscriptionsTable)
-          .where(eq(subscriptionsTable.reactivationOf, subscription.id))
-          .orderBy(desc(subscriptionsTable.id))
-          .limit(1);
-        if (
-          reactivated?.stripeSubscriptionId &&
-          !reactivated.stripeSubscriptionId.startsWith("sub_sched_")
-        ) {
-          stripeSubscriptionId = reactivated.stripeSubscriptionId;
+      for (const stripeSubscriptionId of stripeSubIds) {
+        const candidate = await loadUpcomingStripeInvoice(
+          stripeSubscriptionId,
+          customer.stripeCustomerId,
+        );
+        if (candidate && ((candidate.amount_due ?? 0) > 0 || (candidate.total ?? 0) > 0)) {
+          upcoming = candidate;
+          usedStripeSubscriptionId = stripeSubscriptionId;
+          break;
         }
       }
 
-      if (!stripeSubscriptionId) {
-        const websiteSubs = await db
-          .select()
-          .from(subscriptionsTable)
-          .where(eq(subscriptionsTable.websiteProgressId, websiteProgressId))
-          .orderBy(desc(subscriptionsTable.id));
-        const candidate =
-          websiteSubs.find(
-            (sub) =>
-              sub.stripeSubscriptionId &&
-              !sub.stripeSubscriptionId.startsWith("sub_sched_") &&
-              sub.productType === subscription.productType &&
-              (subscription.productId
-                ? sub.productId === subscription.productId
-                : sub.tier === subscription.tier),
-          ) ??
-          websiteSubs.find(
-            (sub) =>
-              sub.stripeSubscriptionId &&
-              !sub.stripeSubscriptionId.startsWith("sub_sched_") &&
-              sub.productType === "plan",
-          ) ??
-          websiteSubs.find(
-            (sub) =>
-              sub.stripeSubscriptionId &&
-              !sub.stripeSubscriptionId.startsWith("sub_sched_"),
-          );
-        stripeSubscriptionId = candidate?.stripeSubscriptionId ?? null;
+      // Last resort: upcoming by customer only.
+      if (!upcoming) {
+        try {
+          upcoming = await stripe.invoices.retrieveUpcoming({
+            customer: customer.stripeCustomerId,
+          });
+        } catch {
+          upcoming = null;
+        }
       }
 
-      if (!stripeSubscriptionId) {
-        return res.status(400).json({
-          error:
-            "Could not find a Stripe subscription for this customer to read the next payment amount",
-        });
-      }
-
-      const stripeSub = await stripe.subscriptions.retrieve(stripeSubscriptionId, {
-        expand: [
-          "discount.coupon",
-          "discounts.coupon",
-          "items.data.discounts.coupon",
-          "customer",
-        ],
-      });
-
-      const customerId =
-        typeof stripeSub.customer === "string"
-          ? stripeSub.customer
-          : stripeSub.customer && !stripeSub.customer.deleted
-            ? stripeSub.customer.id
-            : null;
-
-      const upcoming = await loadUpcomingStripeInvoice(stripeSubscriptionId, customerId);
       if (!upcoming) {
         return res.status(404).json({
-          error: "No upcoming Stripe invoice / next payment found for this subscription",
+          error: "No upcoming / next payment found for this customer in Stripe",
         });
       }
 
-      const upcomingLine = findInvoiceLineForSubscription(upcoming, subscription, stripeSub);
-      const fromLine = upcomingInvoiceChargedCents(upcoming, upcomingLine, {
-        allowInvoiceTotal: true,
-      });
-      const fromInvoice = sharedDraftAmountFromUpcoming(
-        draft.amount ?? subscription.price ?? upcomingLine?.amount ?? 0,
-        upcoming,
-      );
+      // Prefer the discounted total the customer will actually pay.
       const nextPaymentAmount =
-        [fromLine, fromInvoice, upcoming.amount_due, upcoming.total]
+        [upcoming.amount_due, upcoming.total]
           .filter((amount): amount is number => amount != null && amount > 0)
           .sort((a, b) => a - b)[0] ?? null;
 
@@ -17286,7 +17291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: nextPaymentAmount,
         currency: draft.currency || upcoming.currency || "eur",
         issueDate: draft.issueDate ? new Date(draft.issueDate) : null,
-        context: `manual recreate from next payment (old draft ${invoiceId})`,
+        context: `manual recreate from customer next payment (old draft ${invoiceId})`,
       });
 
       if (!recreated) {
@@ -17298,7 +17303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.json({
         success: true,
         deletedId: invoiceId,
-        stripeSubscriptionId,
+        stripeSubscriptionId: usedStripeSubscriptionId,
         nextPaymentAmount,
         recreated: {
           id: recreated.id,
