@@ -407,7 +407,7 @@ export function AdminWebsiteInvoices() {
       }
       return result as {
         deletedId: number;
-        stripeInvoiceId: string;
+        nextPaymentAmount?: number;
         recreated: { id: number; amount: number | null; currency: string | null } | null;
       };
     },
@@ -420,8 +420,8 @@ export function AdminWebsiteInvoices() {
       toast({
         title: "Draft recreated",
         description: result.recreated
-          ? `Deleted #${result.deletedId}, created #${result.recreated.id}${amountLabel} from Stripe ${result.stripeInvoiceId}.`
-          : `Deleted #${result.deletedId}, but no new draft was created from Stripe.`,
+          ? `Deleted #${result.deletedId}, created #${result.recreated.id}${amountLabel} from the customer's next payment.`
+          : `Deleted #${result.deletedId}, but no new draft was created.`,
       });
     },
     onError: (error: Error) => {
@@ -1422,7 +1422,7 @@ export function AdminWebsiteInvoices() {
                                   onClick={() => {
                                     if (
                                       confirm(
-                                        "Delete this draft and recreate it from the matching paid Stripe invoice?",
+                                        "Delete this draft and recreate it using the customer's next payment amount (with discount)?",
                                       )
                                     ) {
                                       recreateDraftMutation.mutate(invoice.id);
