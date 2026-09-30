@@ -17122,9 +17122,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: Delete one DRAFT and recreate it using the customer's next payment amount
-  // (same discounted price shown on the account / upcoming invoice).
-  // Does not require the linked hayc subscription row to still exist (legacy OK).
+  // Admin: Delete one DRAFT and recreate it.
+  // Body: { amountEuros?: number } — if set, use that amount; otherwise use customer's next payment.
   app.post("/api/admin/invoices/:invoiceId/recreate", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -17160,123 +17159,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Draft has no website" });
       }
 
-      const [website] = await db
-        .select({
-          id: websiteProgress.id,
-          userId: websiteProgress.userId,
-        })
-        .from(websiteProgress)
-        .where(eq(websiteProgress.id, websiteProgressId))
-        .limit(1);
+      let nextPaymentAmount: number | null = null;
+      let usedStripeSubscriptionId: string | null = null;
+      let amountSource: "manual" | "next_payment" = "next_payment";
+      let currency = (draft.currency || "eur").toLowerCase();
 
-      if (!website?.userId) {
-        return res.status(404).json({ error: "Website for this draft was not found" });
-      }
+      const manualEuros =
+        req.body?.amountEuros != null && req.body?.amountEuros !== ""
+          ? Number(req.body.amountEuros)
+          : req.body?.amount != null && req.body?.amount !== ""
+            ? Number(req.body.amount)
+            : NaN;
 
-      const [customer] = await db
-        .select({
-          id: users.id,
-          stripeCustomerId: users.stripeCustomerId,
-        })
-        .from(users)
-        .where(eq(users.id, website.userId))
-        .limit(1);
+      if (Number.isFinite(manualEuros) && manualEuros > 0) {
+        nextPaymentAmount = Math.round(manualEuros * 100);
+        amountSource = "manual";
+      } else {
+        const [website] = await db
+          .select({
+            id: websiteProgress.id,
+            userId: websiteProgress.userId,
+          })
+          .from(websiteProgress)
+          .where(eq(websiteProgress.id, websiteProgressId))
+          .limit(1);
 
-      if (!customer?.stripeCustomerId) {
-        return res.status(400).json({
-          error: "This customer has no Stripe customer ID, so next payment cannot be read",
-        });
-      }
+        if (!website?.userId) {
+          return res.status(404).json({ error: "Website for this draft was not found" });
+        }
 
-      // Optional: keep linking to the old hayc subscription id even if the row is gone.
-      const [linkedSubscription] = draft.subscriptionId
-        ? await db
-            .select()
-            .from(subscriptionsTable)
-            .where(eq(subscriptionsTable.id, draft.subscriptionId))
-            .limit(1)
-        : [undefined];
+        const [customer] = await db
+          .select({
+            id: users.id,
+            stripeCustomerId: users.stripeCustomerId,
+          })
+          .from(users)
+          .where(eq(users.id, website.userId))
+          .limit(1);
 
-      // Stripe subscription ids to try for upcoming invoice / next payment.
-      const stripeSubIds: string[] = [];
-      const pushStripeId = (id: string | null | undefined) => {
-        if (!id || id.startsWith("sub_sched_")) return;
-        if (!stripeSubIds.includes(id)) stripeSubIds.push(id);
-      };
+        if (!customer?.stripeCustomerId) {
+          return res.status(400).json({
+            error: "This customer has no Stripe customer ID, so next payment cannot be read. Pass amountEuros instead.",
+          });
+        }
 
-      pushStripeId(linkedSubscription?.stripeSubscriptionId);
+        const [linkedSubscription] = draft.subscriptionId
+          ? await db
+              .select()
+              .from(subscriptionsTable)
+              .where(eq(subscriptionsTable.id, draft.subscriptionId))
+              .limit(1)
+          : [undefined];
 
-      const websiteSubs = await db
-        .select()
-        .from(subscriptionsTable)
-        .where(eq(subscriptionsTable.websiteProgressId, websiteProgressId))
-        .orderBy(desc(subscriptionsTable.id));
+        const stripeSubIds: string[] = [];
+        const pushStripeId = (id: string | null | undefined) => {
+          if (!id || id.startsWith("sub_sched_")) return;
+          if (!stripeSubIds.includes(id)) stripeSubIds.push(id);
+        };
 
-      for (const sub of websiteSubs) {
-        if (sub.status === "active" || sub.status === "trialing") {
+        pushStripeId(linkedSubscription?.stripeSubscriptionId);
+
+        const websiteSubs = await db
+          .select()
+          .from(subscriptionsTable)
+          .where(eq(subscriptionsTable.websiteProgressId, websiteProgressId))
+          .orderBy(desc(subscriptionsTable.id));
+
+        for (const sub of websiteSubs) {
+          if (sub.status === "active" || sub.status === "trialing") {
+            pushStripeId(sub.stripeSubscriptionId);
+          }
+        }
+        for (const sub of websiteSubs) {
           pushStripeId(sub.stripeSubscriptionId);
         }
-      }
-      for (const sub of websiteSubs) {
-        pushStripeId(sub.stripeSubscriptionId);
-      }
 
-      // Also ask Stripe what active subscriptions this customer has.
-      try {
-        const stripeSubs = await stripe.subscriptions.list({
-          customer: customer.stripeCustomerId,
-          status: "active",
-          limit: 10,
-        });
-        for (const sub of stripeSubs.data) pushStripeId(sub.id);
-      } catch (listError) {
-        console.warn(
-          `[Recreate draft ${invoiceId}] Could not list Stripe subscriptions for ${customer.stripeCustomerId}:`,
-          listError,
-        );
-      }
-
-      let upcoming: Stripe.Invoice | null = null;
-      let usedStripeSubscriptionId: string | null = null;
-
-      for (const stripeSubscriptionId of stripeSubIds) {
-        const candidate = await loadUpcomingStripeInvoice(
-          stripeSubscriptionId,
-          customer.stripeCustomerId,
-        );
-        if (candidate && ((candidate.amount_due ?? 0) > 0 || (candidate.total ?? 0) > 0)) {
-          upcoming = candidate;
-          usedStripeSubscriptionId = stripeSubscriptionId;
-          break;
-        }
-      }
-
-      // Last resort: upcoming by customer only.
-      if (!upcoming) {
         try {
-          upcoming = await stripe.invoices.retrieveUpcoming({
+          const stripeSubs = await stripe.subscriptions.list({
             customer: customer.stripeCustomerId,
+            status: "active",
+            limit: 10,
           });
-        } catch {
-          upcoming = null;
+          for (const sub of stripeSubs.data) pushStripeId(sub.id);
+        } catch (listError) {
+          console.warn(
+            `[Recreate draft ${invoiceId}] Could not list Stripe subscriptions for ${customer.stripeCustomerId}:`,
+            listError,
+          );
         }
+
+        let upcoming: Stripe.Invoice | null = null;
+        for (const stripeSubscriptionId of stripeSubIds) {
+          const candidate = await loadUpcomingStripeInvoice(
+            stripeSubscriptionId,
+            customer.stripeCustomerId,
+          );
+          if (candidate && ((candidate.amount_due ?? 0) > 0 || (candidate.total ?? 0) > 0)) {
+            upcoming = candidate;
+            usedStripeSubscriptionId = stripeSubscriptionId;
+            break;
+          }
+        }
+
+        if (!upcoming) {
+          try {
+            upcoming = await stripe.invoices.retrieveUpcoming({
+              customer: customer.stripeCustomerId,
+            });
+          } catch {
+            upcoming = null;
+          }
+        }
+
+        if (!upcoming) {
+          return res.status(404).json({
+            error: "No upcoming / next payment found for this customer in Stripe. Pass amountEuros instead.",
+          });
+        }
+
+        nextPaymentAmount =
+          [upcoming.amount_due, upcoming.total]
+            .filter((amount): amount is number => amount != null && amount > 0)
+            .sort((a, b) => a - b)[0] ?? null;
+        currency = draft.currency || upcoming.currency || "eur";
       }
 
-      if (!upcoming) {
+      if (nextPaymentAmount == null || nextPaymentAmount <= 0) {
         return res.status(404).json({
-          error: "No upcoming / next payment found for this customer in Stripe",
-        });
-      }
-
-      // Prefer the discounted total the customer will actually pay.
-      const nextPaymentAmount =
-        [upcoming.amount_due, upcoming.total]
-          .filter((amount): amount is number => amount != null && amount > 0)
-          .sort((a, b) => a - b)[0] ?? null;
-
-      if (nextPaymentAmount == null) {
-        return res.status(404).json({
-          error: "Could not resolve the next payment amount from Stripe",
+          error: "Could not resolve a positive amount for the new draft",
         });
       }
 
@@ -17289,9 +17299,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: draft.title,
         description: draft.description ?? "",
         amount: nextPaymentAmount,
-        currency: draft.currency || upcoming.currency || "eur",
+        currency,
         issueDate: draft.issueDate ? new Date(draft.issueDate) : null,
-        context: `manual recreate from customer next payment (old draft ${invoiceId})`,
+        context: `manual recreate (${amountSource}, old draft ${invoiceId})`,
       });
 
       if (!recreated) {
@@ -17304,11 +17314,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         deletedId: invoiceId,
         stripeSubscriptionId: usedStripeSubscriptionId,
+        amountSource,
         nextPaymentAmount,
         recreated: {
           id: recreated.id,
           amount: nextPaymentAmount,
-          currency: draft.currency || upcoming.currency || "eur",
+          currency,
         },
       });
     } catch (err) {

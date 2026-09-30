@@ -367,39 +367,21 @@ export function AdminWebsiteInvoices() {
     },
   });
 
-  const fixDraftDiscountsMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/admin/invoices/fix-draft-discounts", {
-        method: "POST",
-        credentials: "include",
-      });
-      const result = await response.json();
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || "Failed to fix draft discounts");
-      }
-      return result as { updated: number; scanned: number };
-    },
-    onSuccess: (result) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/invoices"] });
-      toast({
-        title: "Success",
-        description: `Updated ${result.updated} of ${result.scanned} to-do invoices from Stripe discounts.`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
   const recreateDraftMutation = useMutation({
-    mutationFn: async (invoiceId: number) => {
+    mutationFn: async ({
+      invoiceId,
+      amountEuros,
+    }: {
+      invoiceId: number;
+      amountEuros?: number;
+    }) => {
       const response = await fetch(`/api/admin/invoices/${invoiceId}/recreate`, {
         method: "POST",
         credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          amountEuros != null ? { amountEuros } : {},
+        ),
       });
       const result = await response.json();
       if (!response.ok || !result.success) {
@@ -407,6 +389,7 @@ export function AdminWebsiteInvoices() {
       }
       return result as {
         deletedId: number;
+        amountSource?: "manual" | "next_payment";
         nextPaymentAmount?: number;
         recreated: { id: number; amount: number | null; currency: string | null } | null;
       };
@@ -417,10 +400,12 @@ export function AdminWebsiteInvoices() {
         result.recreated?.amount != null
           ? ` €${(result.recreated.amount / 100).toFixed(2)}`
           : "";
+      const sourceLabel =
+        result.amountSource === "manual" ? "manual amount" : "next payment";
       toast({
         title: "Draft recreated",
         description: result.recreated
-          ? `Deleted #${result.deletedId}, created #${result.recreated.id}${amountLabel} from the customer's next payment.`
+          ? `Deleted #${result.deletedId}, created #${result.recreated.id}${amountLabel} (${sourceLabel}).`
           : `Deleted #${result.deletedId}, but no new draft was created.`,
       });
     },
@@ -1207,36 +1192,7 @@ export function AdminWebsiteInvoices() {
 
       {invoiceFilter === "draft" ? (
         <div className="p-4 bg-muted/50 rounded-lg">
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              {draftInvoices.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    if (
-                      confirm(
-                        "Update all to-do draft amounts from Stripe (paid amount after discount)? This only changes unissued drafts.",
-                      )
-                    ) {
-                      fixDraftDiscountsMutation.mutate();
-                    }
-                  }}
-                  disabled={fixDraftDiscountsMutation.isPending}
-                >
-                  {fixDraftDiscountsMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Fixing amounts...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Fix discount amounts
-                    </>
-                  )}
-                </Button>
-              )}
-            </div>
+          <div className="flex items-center justify-end mb-3 flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <Label htmlFor="draft-year-filter" className="text-sm">
                 Filter:
@@ -1419,46 +1375,58 @@ export function AdminWebsiteInvoices() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => {
+                                    const currentEuros =
+                                      invoice.amount != null
+                                        ? (invoice.amount / 100).toFixed(2)
+                                        : "";
+                                    const entered = window.prompt(
+                                      "Recreate draft amount in €.\nLeave as-is / empty to use the customer's next payment from Stripe.",
+                                      currentEuros,
+                                    );
+                                    if (entered === null) return;
+                                    const trimmed = entered.trim();
+                                    const amountEuros =
+                                      trimmed === ""
+                                        ? undefined
+                                        : Number(trimmed.replace(",", "."));
                                     if (
-                                      confirm(
-                                        "Delete this draft and recreate it using the customer's next payment amount (with discount)?",
+                                      amountEuros != null &&
+                                      (!Number.isFinite(amountEuros) || amountEuros <= 0)
+                                    ) {
+                                      toast({
+                                        title: "Invalid amount",
+                                        description: "Enter a positive euro amount, or leave empty for next payment.",
+                                        variant: "destructive",
+                                      });
+                                      return;
+                                    }
+                                    if (
+                                      !confirm(
+                                        amountEuros != null
+                                          ? `Delete this draft and recreate it with €${amountEuros.toFixed(2)}?`
+                                          : "Delete this draft and recreate it using the customer's next payment amount (with discount)?",
                                       )
                                     ) {
-                                      recreateDraftMutation.mutate(invoice.id);
+                                      return;
                                     }
+                                    recreateDraftMutation.mutate({
+                                      invoiceId: invoice.id,
+                                      amountEuros,
+                                    });
                                   }}
                                   disabled={
                                     recreateDraftMutation.isPending &&
-                                    recreateDraftMutation.variables === invoice.id
+                                    recreateDraftMutation.variables?.invoiceId === invoice.id
                                   }
                                   data-testid={`button-recreate-invoice-${invoice.id}`}
                                 >
                                   {recreateDraftMutation.isPending &&
-                                  recreateDraftMutation.variables === invoice.id ? (
+                                  recreateDraftMutation.variables?.invoiceId === invoice.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
                                   ) : (
                                     "Recreate"
                                   )}
                                 </Button>
-                              )}
-                              {invoice.status === "DRAFT" && (
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                onClick={() => {
-                                  if (
-                                    confirm(
-                                      "Are you sure you want to delete this draft invoice? This cannot be undone."
-                                    )
-                                  ) {
-                                    deleteInvoiceMutation.mutate(invoice.id);
-                                  }
-                                }}
-                                disabled={deleteInvoiceMutation.isPending}
-                                data-testid={`button-delete-invoice-${invoice.id}`}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
                               )}
                             </div>
                           </TableCell>
