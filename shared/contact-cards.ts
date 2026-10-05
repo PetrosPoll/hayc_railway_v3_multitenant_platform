@@ -1,4 +1,4 @@
-/** Demo στοιχεία για τις κάρτες. Άλλαξέ τα εδώ. */
+/** Στοιχεία καρτών. Ρόλος και κείμενο μένουν επεξεργάσιμα εδώ. */
 
 export type ContactCardLinkKind =
   | "phone"
@@ -35,8 +35,8 @@ export const CONTACT_CARDS: ContactCard[] = [
       {
         kind: "phone",
         label: "Τηλέφωνο",
-        text: "+30 690 000 0000",
-        href: "tel:+306900000000",
+        text: "+30 698 224 9034",
+        href: "tel:+306982249034",
       },
       {
         kind: "website",
@@ -48,25 +48,13 @@ export const CONTACT_CARDS: ContactCard[] = [
         kind: "instagram",
         label: "Instagram",
         text: "Instagram",
-        href: "https://instagram.com/hayc.gr",
-      },
-      {
-        kind: "facebook",
-        label: "Facebook",
-        text: "Facebook",
-        href: "https://facebook.com/hayc.gr",
+        href: "https://www.instagram.com/petros_pollakis/",
       },
       {
         kind: "linkedin",
         label: "LinkedIn",
         text: "LinkedIn",
-        href: "https://www.linkedin.com/in/petros-pollakis",
-      },
-      {
-        kind: "email",
-        label: "Email",
-        text: "petros.demo@hayc.gr",
-        href: "mailto:petros.demo@hayc.gr",
+        href: "https://www.linkedin.com/in/petros-pollakis-740924163/",
       },
     ],
   },
@@ -80,8 +68,8 @@ export const CONTACT_CARDS: ContactCard[] = [
       {
         kind: "phone",
         label: "Τηλέφωνο",
-        text: "+30 690 000 0001",
-        href: "tel:+306900000001",
+        text: "+30 698 658 7889",
+        href: "tel:+306986587889",
       },
       {
         kind: "website",
@@ -93,25 +81,13 @@ export const CONTACT_CARDS: ContactCard[] = [
         kind: "instagram",
         label: "Instagram",
         text: "Instagram",
-        href: "https://instagram.com/hayc.gr",
-      },
-      {
-        kind: "facebook",
-        label: "Facebook",
-        text: "Facebook",
-        href: "https://facebook.com/hayc.gr",
+        href: "https://www.instagram.com/a_kritikou/",
       },
       {
         kind: "linkedin",
         label: "LinkedIn",
         text: "LinkedIn",
-        href: "https://www.linkedin.com/in/alexandra-kritikou",
-      },
-      {
-        kind: "email",
-        label: "Email",
-        text: "alexandra.demo@hayc.gr",
-        href: "mailto:alexandra.demo@hayc.gr",
+        href: "https://www.linkedin.com/in/alexandra-kritikou/",
       },
     ],
   },

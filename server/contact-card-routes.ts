@@ -21,24 +21,8 @@ function originFrom(req: Request): string {
 }
 
 export function registerContactCardRoutes(app: Express): void {
-  app.get("/cards/:slug/qr.png", async (req, res) => {
-    const card = getContactCard(slugFrom(req));
-    if (!card) {
-      res.status(404).json({ message: "Η κάρτα δεν βρέθηκε." });
-      return;
-    }
-
-    try {
-      const png = await buildContactCardQrPng(contactCardUrl(card.slug, originFrom(req)));
-      res.set({
-        "Content-Type": "image/png",
-        "Cache-Control": "public, max-age=86400",
-      });
-      res.send(png);
-    } catch (error) {
-      console.error("Contact card QR failed:", error);
-      res.status(500).json({ message: "Το QR δεν δημιουργήθηκε." });
-    }
+  app.get("/card/:slug/download", async (req, res) => {
+    await sendQrDownload(req, res);
   });
 
   app.get("/cards/:slug/wallet", (req, res) => {
@@ -57,6 +41,28 @@ export function registerContactCardRoutes(app: Express): void {
   app.get("/cards/:slug/pass.pkpass", async (req, res) => {
     await sendPass(req, res);
   });
+}
+
+async function sendQrDownload(req: Request, res: Response): Promise<void> {
+  const card = getContactCard(slugFrom(req));
+  if (!card) {
+    res.status(404).json({ message: "Η κάρτα δεν βρέθηκε." });
+    return;
+  }
+
+  try {
+    const png = await buildContactCardQrPng(contactCardUrl(card.slug, originFrom(req)));
+    res.set({
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${card.slug}-qr.png"`,
+      "Cache-Control": "no-store",
+      "X-Content-Type-Options": "nosniff",
+    });
+    res.send(png);
+  } catch (error) {
+    console.error("Contact card QR failed:", error);
+    res.status(500).json({ message: "Το QR δεν δημιουργήθηκε." });
+  }
 }
 
 async function sendPass(req: Request, res: Response): Promise<void> {

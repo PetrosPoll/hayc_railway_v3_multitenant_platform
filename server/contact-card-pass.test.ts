@@ -16,6 +16,12 @@ describe("contact cards", () => {
   it("keeps a public page for Petros and Alexandra", () => {
     expect(getContactCard("petros-pollakis")?.name).toBe("Πέτρος Πολλάκης");
     expect(getContactCard("alexandra-kritikou")?.name).toBe("Αλεξάνδρα Κριτικού");
+    expect(getContactCard("petros-pollakis")?.links.find((link) => link.kind === "phone")?.href).toBe(
+      "tel:+306982249034",
+    );
+    expect(getContactCard("alexandra-kritikou")?.links.find((link) => link.kind === "instagram")?.href).toBe(
+      "https://www.instagram.com/a_kritikou/",
+    );
     expect(getContactCard("missing")).toBeUndefined();
   });
 
