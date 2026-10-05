@@ -7,7 +7,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { isContactCardPath } from "@shared/contact-cards";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -68,6 +69,8 @@ function CategoryRow({
 
 export function CookieConsentProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
+  const location = useLocation();
+  const hideBanner = isContactCardPath(location.pathname);
   const [consent, setConsent] = useState<CookieConsentPreferences | null>(() => getStoredConsent());
   const [bannerVisible, setBannerVisible] = useState(() => getStoredConsent() === null);
   const [preferencesOpen, setPreferencesOpen] = useState(false);
@@ -128,7 +131,7 @@ export function CookieConsentProvider({ children }: { children: ReactNode }) {
     <CookieConsentContext.Provider value={contextValue}>
       {children}
 
-      {bannerVisible && (
+      {bannerVisible && !hideBanner && (
         <div
           className="fixed inset-x-0 bottom-0 z-[100] border-t border-white/10 bg-[#00070f]/95 p-4 shadow-2xl backdrop-blur-md sm:p-6"
           role="dialog"

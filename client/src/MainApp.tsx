@@ -60,6 +60,8 @@ import AdminTags from "@/pages/admin-tags";
 import AdminTemplates from "@/pages/admin-templates";
 import AdminEmailBuilder from "@/pages/admin-email-builder";
 import UnsubscribePage from "@/pages/unsubscribe";
+import ContactCardPage from "@/pages/contact-card";
+import { isContactCardPath } from "@shared/contact-cards";
 
 function ConditionalFooter() {
   const { user } = useAuth();
@@ -79,7 +81,8 @@ function ConditionalFooter() {
     location.pathname === "/reviews-program" ||
     location.pathname.includes("/email-builder") ||
     location.pathname.includes("/analytics") ||
-    location.pathname === "/unsubscribe"
+    location.pathname === "/unsubscribe" ||
+    isContactCardPath(location.pathname)
   ) {
     return null;
   }
@@ -99,7 +102,8 @@ function ConditionalNavMenu() {
     location.pathname.startsWith("/dashboard/website/") ||
     location.pathname.includes("/email-builder") ||
     location.pathname.includes("/analytics") ||
-    location.pathname === "/unsubscribe"
+    location.pathname === "/unsubscribe" ||
+    isContactCardPath(location.pathname)
   ) {
     return null;
   }
@@ -303,6 +307,7 @@ function MainAppContent() {
           <Route path="/billing-subscription-policy" element={<BillingSubscriptionPolicy />} />
           <Route path="/acceptable-use-policy" element={<AcceptableUsePolicy />} />
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
+          <Route path="/card/:slug" element={<ContactCardPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>

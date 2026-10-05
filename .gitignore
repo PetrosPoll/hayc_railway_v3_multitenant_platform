@@ -9,3 +9,6 @@ vite.config.ts.*
 .env
 .env.local
 .env.*.local
+
+# Apple Wallet signing keys
+certs/apple-wallet/

@@ -74,6 +74,7 @@ import { createHash, randomBytes } from "crypto";
 import rateLimit from "express-rate-limit";
 import { getPrices, initializePricingCache } from "./stripe/pricing";
 import { registerPromoCodeRoutes } from "./promo-code-routes";
+import { registerContactCardRoutes } from "./contact-card-routes";
 import {
   applyPromoToCheckoutSession,
   buildCheckoutEmailPricing,
@@ -1574,6 +1575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
   registerPromoCodeRoutes(app, stripe);
+  registerContactCardRoutes(app);
 
   // Initialize pricing cache on server startup
   // initializePricingCache().catch((error) => {
