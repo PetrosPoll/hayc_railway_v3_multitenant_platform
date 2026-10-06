@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Loader2, Zap } from "lucide-react";
+import { ArrowRight, FileText, Loader2, Mail, Zap } from "lucide-react";
 import type { SiteFormConfig, WebsiteFormAutomation } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { FormattedTextarea } from "@/components/ui/formatted-textarea";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,6 +29,20 @@ const DEFAULT_BODY = {
 
 function langKey(websiteLanguage?: string | null): "en" | "gr" {
   return websiteLanguage === "gr" || websiteLanguage === "el" ? "gr" : "en";
+}
+
+function extractLogoFromConfig(config: any): string {
+  const candidates = [
+    config?.navConfig?.logo,
+    config?.nav_config?.logo,
+    config?.nav?.logo,
+    config?.header?.logo,
+    config?.branding?.logo,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && /^https?:\/\//i.test(c.trim())) return c.trim();
+  }
+  return "";
 }
 
 export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomationsPanelProps) {
@@ -58,6 +73,17 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
     },
   });
 
+  const { data: siteConfig } = useQuery({
+    queryKey: ["/api/websites", websiteId, "site-config"],
+    queryFn: async () => {
+      const res = await fetch(`/api/websites/${websiteId}/site-config`, { credentials: "include" });
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+
+  const siteLogoUrl = useMemo(() => extractLogoFromConfig(siteConfig), [siteConfig]);
+
   const forms = formsData?.forms ?? [];
   const automationsByFormId = useMemo(() => {
     const map = new Map<string, WebsiteFormAutomation>();
@@ -71,6 +97,7 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
   const [enabled, setEnabled] = useState(true);
   const [visitorSubject, setVisitorSubject] = useState<string>(DEFAULT_SUBJECT[defaultsLang]);
   const [visitorBody, setVisitorBody] = useState<string>(DEFAULT_BODY[defaultsLang]);
+  const [logoUrl, setLogoUrl] = useState<string>("");
 
   useEffect(() => {
     if (!selectedFormId && forms.length > 0) {
@@ -85,12 +112,16 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
       setEnabled(existing.enabled);
       setVisitorSubject(existing.visitorSubject);
       setVisitorBody(existing.visitorBody);
+      setLogoUrl(existing.logoUrl || "");
     } else {
       setEnabled(true);
       setVisitorSubject(DEFAULT_SUBJECT[defaultsLang]);
       setVisitorBody(DEFAULT_BODY[defaultsLang]);
+      setLogoUrl("");
     }
   }, [selectedFormId, automationsByFormId, defaultsLang]);
+
+  const effectiveLogo = logoUrl.trim() || siteLogoUrl;
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -101,7 +132,12 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
           method: "PUT",
           credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ enabled, visitorSubject, visitorBody }),
+          body: JSON.stringify({
+            enabled,
+            visitorSubject,
+            visitorBody,
+            logoUrl: logoUrl.trim() || null,
+          }),
         },
       );
       if (!res.ok) {
@@ -156,7 +192,7 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
   }
 
   return (
-    <div className="space-y-4" data-testid="automations-panel">
+    <div className="space-y-6" data-testid="automations-panel">
       <div>
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Zap className="h-5 w-5" />
@@ -164,11 +200,60 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           {t("dashboard.automationsDescription") ||
-            "Write the full confirmation email visitors receive when they submit a form. If this is off, they get the default hayc email."}
+            "Connect a form to a confirmation email. When off, visitors get the default hayc email."}
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+      {/* Visual flow preview */}
+      {selectedForm && (
+        <div
+          className="rounded-xl border bg-muted/20 p-4 md:p-6 overflow-x-auto"
+          data-testid="automations-flow-preview"
+        >
+          <div className="flex items-center gap-3 md:gap-4 min-w-[520px] justify-center">
+            <div className="flex-1 max-w-[220px] rounded-lg border bg-background p-4 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
+                <FileText className="h-3.5 w-3.5" />
+                {t("dashboard.automationsTrigger") || "Trigger"}
+              </div>
+              <div className="font-semibold text-sm truncate">{selectedForm.name}</div>
+              <div className="text-xs text-muted-foreground mt-1 truncate">
+                {t("dashboard.automationsTriggerHint") || "When this form is submitted"}
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center gap-1 shrink-0 text-muted-foreground">
+              <ArrowRight className="h-5 w-5" />
+              <span className="text-[10px] uppercase tracking-wide">
+                {enabled
+                  ? t("dashboard.automationsThen") || "then"
+                  : t("dashboard.automationsDefault") || "default"}
+              </span>
+            </div>
+
+            <div
+              className={`flex-1 max-w-[220px] rounded-lg border p-4 shadow-sm ${
+                enabled ? "bg-background border-primary/40" : "bg-muted/40"
+              }`}
+            >
+              <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
+                <Mail className="h-3.5 w-3.5" />
+                {t("dashboard.automationsAction") || "Action"}
+              </div>
+              <div className="font-semibold text-sm">
+                {enabled
+                  ? t("dashboard.automationsSendCustom") || "Send custom email"
+                  : t("dashboard.automationsSendDefault") || "Send default email"}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1 truncate">
+                {enabled ? visitorSubject || "—" : t("dashboard.automationsPlatformDefault") || "Platform template"}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid gap-4 lg:grid-cols-[260px_1fr]">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
@@ -177,22 +262,32 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
           </CardHeader>
           <CardContent className="space-y-1 p-2">
             {forms.map((form) => {
-              const hasAutomation = automationsByFormId.has(form.id);
+              const existing = automationsByFormId.get(form.id);
               const isActive = selectedFormId === form.id;
               return (
                 <button
                   key={form.id}
                   type="button"
                   onClick={() => setSelectedFormId(form.id)}
-                  className={`w-full text-left rounded-md px-3 py-2 text-sm transition-colors ${
+                  className={`w-full text-left rounded-md px-3 py-2.5 text-sm transition-colors ${
                     isActive ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                   }`}
                   data-testid={`automation-form-${form.id}`}
                 >
                   <div className="font-medium truncate">{form.name}</div>
-                  <div className={`text-xs truncate ${isActive ? "opacity-80" : "text-muted-foreground"}`}>
-                    {form.id}
-                    {hasAutomation ? ` · ${t("dashboard.automationsConfigured") || "configured"}` : ""}
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-xs truncate ${isActive ? "opacity-80" : "text-muted-foreground"}`}>
+                      {form.id}
+                    </span>
+                    {existing?.enabled ? (
+                      <Badge variant={isActive ? "secondary" : "default"} className="text-[10px] h-5">
+                        {t("dashboard.automationsOn") || "On"}
+                      </Badge>
+                    ) : existing ? (
+                      <Badge variant="outline" className={`text-[10px] h-5 ${isActive ? "border-primary-foreground/40" : ""}`}>
+                        {t("dashboard.automationsOff") || "Off"}
+                      </Badge>
+                    ) : null}
                   </div>
                 </button>
               );
@@ -214,8 +309,8 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
                 })}
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
+            <CardContent className="space-y-5">
+              <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
                 <div>
                   <Label htmlFor="automation-enabled">
                     {t("dashboard.automationsEnabled") || "Use custom confirmation email"}
@@ -231,6 +326,34 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
                   onCheckedChange={setEnabled}
                   data-testid="automation-enabled-switch"
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="automation-logo">
+                  {t("dashboard.automationsLogo") || "Email logo URL"}
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.automationsLogoHint") ||
+                    "Leave empty to use your website logo. Hayc branding stays only as “Sent via Hayc” in the footer."}
+                </p>
+                <Input
+                  id="automation-logo"
+                  type="url"
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder={siteLogoUrl || "https://…"}
+                  disabled={!enabled}
+                  data-testid="automation-logo-input"
+                />
+                {effectiveLogo ? (
+                  <div className="rounded-md border bg-muted/20 p-3 flex items-center justify-center">
+                    <img
+                      src={effectiveLogo}
+                      alt="Logo preview"
+                      className="max-h-12 max-w-[160px] object-contain"
+                    />
+                  </div>
+                ) : null}
               </div>
 
               <div className="space-y-2">
@@ -253,7 +376,7 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   {t("dashboard.automationsBodyHint") ||
-                    "This is the full email content (not just an intro). Use the toolbar for bold, italic, and underline."}
+                    "This is the full email content. Use the toolbar for bold, italic, and underline."}
                 </p>
                 <FormattedTextarea
                   id="automation-body"

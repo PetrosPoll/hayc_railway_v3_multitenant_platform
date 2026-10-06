@@ -70,6 +70,7 @@ import {
   applyFormEmailPlaceholders,
   DEFAULT_VISITOR_INTRO,
   DEFAULT_VISITOR_SUBJECT,
+  extractLogoFromSiteConfig,
   formatAutomationBodyToHtml,
   parseSiteForms,
 } from "./lib/form-automations";
@@ -23381,9 +23382,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bodyHtml = formatAutomationBodyToHtml(
           applyFormEmailPlaceholders(automation.visitorBody, placeholderVars),
         ).replace(/\$/g, "&#36;");
+
+        let logoUrl = automation.logoUrl?.trim() || "";
+        if (!logoUrl && website.siteId) {
+          try {
+            const siteConfig = await getConfig(website.siteId);
+            logoUrl = extractLogoFromSiteConfig(siteConfig as Record<string, unknown>) || "";
+          } catch (logoErr) {
+            console.warn("[public/contact] could not load site logo:", logoErr);
+          }
+        }
+
         visitorHtml = loadTemplate(
           "public-contact-visitor-custom.html",
-          { bodyHtml },
+          {
+            bodyHtml,
+            logoUrl: logoUrl || "",
+            logoAlt: escapeHtml(siteLabel || "Logo"),
+          },
           emailLang,
         );
       } else {
@@ -24767,11 +24783,19 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         enabled: z.boolean(),
         visitorSubject: z.string().min(1).max(200),
         visitorBody: z.string().min(1).max(10000),
+        logoUrl: z
+          .union([z.string().url().max(2000), z.literal(""), z.null()])
+          .optional(),
       });
       const parsed = bodySchema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid automation data", details: parsed.error.errors });
       }
+
+      const logoUrlValue =
+        parsed.data.logoUrl && parsed.data.logoUrl.trim()
+          ? parsed.data.logoUrl.trim()
+          : null;
 
       const { website } = access as { website: typeof websiteProgress.$inferSelect };
       if (website.siteId) {
@@ -24808,6 +24832,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
             enabled: parsed.data.enabled,
             visitorSubject: parsed.data.visitorSubject,
             visitorBody: parsed.data.visitorBody,
+            logoUrl: logoUrlValue,
             updatedAt: new Date(),
           })
           .where(eq(websiteFormAutomations.id, existing.id))
@@ -24821,6 +24846,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
             enabled: parsed.data.enabled,
             visitorSubject: parsed.data.visitorSubject,
             visitorBody: parsed.data.visitorBody,
+            logoUrl: logoUrlValue,
           })
           .returning();
       }

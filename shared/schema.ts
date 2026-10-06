@@ -1657,6 +1657,7 @@ export const websiteFormAutomations = pgTable(
     enabled: boolean("enabled").notNull().default(true),
     visitorSubject: text("visitor_subject").notNull(),
     visitorBody: text("visitor_body").notNull(),
+    logoUrl: text("logo_url"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

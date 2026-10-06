@@ -169,6 +169,13 @@
       "when": 1791254731398,
       "tag": "0023_superb_multiple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791306672488,
+      "tag": "0024_worthless_william_stryker",
+      "breakpoints": true
     }
   ]
 }

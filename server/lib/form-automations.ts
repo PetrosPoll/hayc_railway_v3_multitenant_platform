@@ -34,6 +34,26 @@ export function applyFormEmailPlaceholders(
     .replace(/\{\{\s*siteLabel\s*\}\}/gi, vars.siteLabel);
 }
 
+/** Prefer common site-config logo paths used by client templates. */
+export function extractLogoFromSiteConfig(
+  config: Record<string, unknown> | null | undefined,
+): string | null {
+  if (!config || typeof config !== "object") return null;
+  const candidates = [
+    (config as any)?.navConfig?.logo,
+    (config as any)?.nav_config?.logo,
+    (config as any)?.nav?.logo,
+    (config as any)?.header?.logo,
+    (config as any)?.branding?.logo,
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && /^https?:\/\//i.test(c.trim())) {
+      return c.trim();
+    }
+  }
+  return null;
+}
+
 function escapeHtmlText(s: string): string {
   return s
     .replace(/&/g, "&amp;")

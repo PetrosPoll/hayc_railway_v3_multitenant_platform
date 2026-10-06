@@ -1,0 +1,1 @@
+ALTER TABLE "website_form_automations" ADD COLUMN "logo_url" text;

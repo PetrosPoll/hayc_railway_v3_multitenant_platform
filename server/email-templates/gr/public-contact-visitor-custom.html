@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="el">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light only" />
     <meta name="supported-color-schemes" content="light" />
-    <title>Message — HAYC</title>
+    <title>Message</title>
     <style>
       body {
         font-family: "Helvetica Neue", Arial, sans-serif;
@@ -31,7 +31,7 @@
         text-align: center;
         margin-top: 30px;
         font-size: 12px;
-        color: #222;
+        color: #666;
         padding-top: 20px;
         border-top: 1px solid #e1e4e8;
       }
@@ -39,6 +39,7 @@
   </head>
   <body>
     <div class="container">
+      {{#if logoUrl}}
       <table
         role="presentation"
         cellspacing="0"
@@ -54,22 +55,22 @@
             style="background-color: #ffffff; padding: 12px 0"
           >
             <img
-              src="https://res.cloudinary.com/dem12vqtl/image/upload/f_auto,q_auto/public/images/hayc-logo.png"
-              width="120"
-              height="40"
-              alt="hayc"
-              style="display: block; border: 0; outline: none; text-decoration: none; width: 120px; max-width: 120px; height: auto"
+              src="{{logoUrl}}"
+              width="160"
+              alt="{{logoAlt}}"
+              style="display: block; border: 0; outline: none; text-decoration: none; max-width: 160px; height: auto; margin: 0 auto"
             />
           </td>
         </tr>
       </table>
+      {{/if}}
 
       <div class="content">
         {{bodyHtml}}
       </div>
 
       <div class="footer">
-        <p style="margin: 0;">Sent via Hayc — {{baseUrl}}</p>
+        <p style="margin: 0;">Αποστολή μέσω Hayc</p>
       </div>
     </div>
   </body>
