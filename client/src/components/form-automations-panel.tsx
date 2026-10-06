@@ -6,9 +6,9 @@ import type { SiteFormConfig, WebsiteFormAutomation } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { FormattedTextarea } from "@/components/ui/formatted-textarea";
 import { useToast } from "@/hooks/use-toast";
 
 type FormAutomationsPanelProps = {
@@ -22,8 +22,8 @@ const DEFAULT_SUBJECT = {
 } as const;
 
 const DEFAULT_BODY = {
-  en: "Hi {{name}}, thank you for reaching out. We have received your message and will get back to you as soon as possible.",
-  gr: "Γεια σου {{name}}, ευχαριστούμε που επικοινωνήσατε μαζί μας. Λάβαμε το μήνυμά σας και θα επικοινωνήσουμε μαζί σας το συντομότερο δυνατό.",
+  en: "Hi {{name}},\n\nThank you for reaching out. We have received your message and will get back to you as soon as possible.\n\n— The {{siteLabel}} team",
+  gr: "Γεια σου {{name}},\n\nΕυχαριστούμε που επικοινωνήσατε μαζί μας. Λάβαμε το μήνυμά σας και θα επικοινωνήσουμε μαζί σας το συντομότερο δυνατό.\n\n— Η ομάδα {{siteLabel}}",
 } as const;
 
 function langKey(websiteLanguage?: string | null): "en" | "gr" {
@@ -148,7 +148,7 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
           </CardTitle>
           <CardDescription>
             {t("dashboard.automationsEmptyDescription") ||
-              "Name a form in the Content Editor first. Once forms are registered in your site config, you can choose the auto-reply email for each one here."}
+              "No forms found for this site yet. Once forms are registered in site config, they will appear here."}
           </CardDescription>
         </CardHeader>
       </Card>
@@ -164,7 +164,7 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
           {t("dashboard.automationsDescription") ||
-            "When someone submits a form, send them a custom confirmation email."}
+            "Write the full confirmation email visitors receive when they submit a form. If this is off, they get the default hayc email."}
         </p>
       </div>
 
@@ -218,11 +218,11 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <Label htmlFor="automation-enabled">
-                    {t("dashboard.automationsEnabled") || "Send confirmation email"}
+                    {t("dashboard.automationsEnabled") || "Use custom confirmation email"}
                   </Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     {t("dashboard.automationsEnabledHint") ||
-                      "When off, visitors get the default platform confirmation."}
+                      "When off, visitors get the default platform confirmation (with submission details)."}
                   </p>
                 </div>
                 <Switch
@@ -242,6 +242,7 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
                   value={visitorSubject}
                   onChange={(e) => setVisitorSubject(e.target.value)}
                   maxLength={200}
+                  disabled={!enabled}
                   data-testid="automation-subject-input"
                 />
               </div>
@@ -250,20 +251,31 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
                 <Label htmlFor="automation-body">
                   {t("dashboard.automationsBody") || "Email body"}
                 </Label>
-                <Textarea
+                <p className="text-xs text-muted-foreground">
+                  {t("dashboard.automationsBodyHint") ||
+                    "This is the full email content (not just an intro). Use the toolbar for bold, italic, and underline."}
+                </p>
+                <FormattedTextarea
                   id="automation-body"
                   value={visitorBody}
                   onChange={(e) => setVisitorBody(e.target.value)}
-                  rows={8}
-                  maxLength={5000}
+                  rows={12}
+                  maxLength={10000}
+                  disabled={!enabled}
+                  showPreview
                   data-testid="automation-body-input"
+                  className="min-h-[200px]"
                 />
               </div>
 
               <div className="flex justify-end">
                 <Button
                   onClick={() => saveMutation.mutate()}
-                  disabled={saveMutation.isPending || !visitorSubject.trim() || !visitorBody.trim()}
+                  disabled={
+                    saveMutation.isPending ||
+                    !visitorSubject.trim() ||
+                    !visitorBody.trim()
+                  }
                   data-testid="automation-save-button"
                 >
                   {saveMutation.isPending ? (

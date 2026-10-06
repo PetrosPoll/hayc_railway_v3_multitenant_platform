@@ -34,6 +34,81 @@ export function applyFormEmailPlaceholders(
     .replace(/\{\{\s*siteLabel\s*\}\}/gi, vars.siteLabel);
 }
 
+function escapeHtmlText(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Convert automation body (plain text + **bold** / *italic* / __underline__) to safe HTML.
+ */
+export function formatAutomationBodyToHtml(input: string): string {
+  const parts: string[] = [];
+  let i = 0;
+  let plain = "";
+
+  const flushPlain = () => {
+    if (!plain) return;
+    parts.push(escapeHtmlText(plain).replace(/\n/g, "<br>"));
+    plain = "";
+  };
+
+  const findClosing = (marker: string, from: number): number => {
+    let idx = from;
+    while (idx < input.length) {
+      const found = input.indexOf(marker, idx);
+      if (found === -1) return -1;
+      if (marker === "*" && input.startsWith("**", found)) {
+        idx = found + 2;
+        continue;
+      }
+      return found;
+    }
+    return -1;
+  };
+
+  while (i < input.length) {
+    if (input.startsWith("**", i)) {
+      const end = findClosing("**", i + 2);
+      if (end !== -1) {
+        flushPlain();
+        const inner = input.slice(i + 2, end);
+        parts.push(`<strong>${escapeHtmlText(inner).replace(/\n/g, "<br>")}</strong>`);
+        i = end + 2;
+        continue;
+      }
+    }
+    if (input.startsWith("__", i)) {
+      const end = findClosing("__", i + 2);
+      if (end !== -1) {
+        flushPlain();
+        const inner = input.slice(i + 2, end);
+        parts.push(`<u>${escapeHtmlText(inner).replace(/\n/g, "<br>")}</u>`);
+        i = end + 2;
+        continue;
+      }
+    }
+    if (input[i] === "*" && !input.startsWith("**", i)) {
+      const end = findClosing("*", i + 1);
+      if (end !== -1) {
+        flushPlain();
+        const inner = input.slice(i + 1, end);
+        parts.push(`<em>${escapeHtmlText(inner).replace(/\n/g, "<br>")}</em>`);
+        i = end + 1;
+        continue;
+      }
+    }
+    plain += input[i];
+    i += 1;
+  }
+  flushPlain();
+  return parts.join("");
+}
+
 export const DEFAULT_VISITOR_SUBJECT = {
   en: "We received your message — {{siteLabel}}",
   gr: "Λάβαμε το μήνυμά σας — {{siteLabel}}",

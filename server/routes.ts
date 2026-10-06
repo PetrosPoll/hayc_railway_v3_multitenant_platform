@@ -70,6 +70,7 @@ import {
   applyFormEmailPlaceholders,
   DEFAULT_VISITOR_INTRO,
   DEFAULT_VISITOR_SUBJECT,
+  formatAutomationBodyToHtml,
   parseSiteForms,
 } from "./lib/form-automations";
 import fs from "fs";
@@ -23354,15 +23355,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         automation = row;
       }
 
-      const subjectTemplate =
-        automation?.visitorSubject || DEFAULT_VISITOR_SUBJECT[emailLang];
-      const introTemplate =
-        automation?.visitorBody || DEFAULT_VISITOR_INTRO[emailLang];
-      const visitorSubject = applyFormEmailPlaceholders(subjectTemplate, placeholderVars);
-      const introText = escapeHtml(
-        applyFormEmailPlaceholders(introTemplate, placeholderVars),
-      ).replace(/\n/g, "<br>");
-
       // Email 1 — Notification to business owner
       const ownerSubject = `New contact form message from ${name} — ${siteLabel}`;
       const ownerHtml = loadTemplate(
@@ -23378,20 +23370,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      // Email 2 — Confirmation to visitor (custom automation or localized default)
-      const visitorHtml = loadTemplate(
-        "public-contact-visitor-confirmation.html",
-        {
-          introText,
-          name: escapeHtml(name),
-          email: escapeHtml(email),
-          phone: escapeHtml(phone || "N/A"),
-          extraFields: extraFieldsHtml.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
-          message: escapeHtml(message),
-          siteLabel: escapeHtml(siteLabel),
-        },
-        emailLang,
-      );
+      // Email 2 — Visitor confirmation: full custom body when automation is on, else default template
+      let visitorSubject: string;
+      let visitorHtml: string;
+      if (automation) {
+        visitorSubject = applyFormEmailPlaceholders(
+          automation.visitorSubject,
+          placeholderVars,
+        );
+        const bodyHtml = formatAutomationBodyToHtml(
+          applyFormEmailPlaceholders(automation.visitorBody, placeholderVars),
+        ).replace(/\$/g, "&#36;");
+        visitorHtml = loadTemplate(
+          "public-contact-visitor-custom.html",
+          { bodyHtml },
+          emailLang,
+        );
+      } else {
+        visitorSubject = applyFormEmailPlaceholders(
+          DEFAULT_VISITOR_SUBJECT[emailLang],
+          placeholderVars,
+        );
+        const introText = escapeHtml(
+          applyFormEmailPlaceholders(DEFAULT_VISITOR_INTRO[emailLang], placeholderVars),
+        ).replace(/\n/g, "<br>");
+        visitorHtml = loadTemplate(
+          "public-contact-visitor-confirmation.html",
+          {
+            introText,
+            name: escapeHtml(name),
+            email: escapeHtml(email),
+            phone: escapeHtml(phone || "N/A"),
+            extraFields: extraFieldsHtml.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
+            message: escapeHtml(message),
+            siteLabel: escapeHtml(siteLabel),
+          },
+          emailLang,
+        );
+      }
 
       const [ownerResult, visitorResult] = await Promise.all([
         EmailService.sendEmail({
@@ -24750,7 +24766,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const bodySchema = z.object({
         enabled: z.boolean(),
         visitorSubject: z.string().min(1).max(200),
-        visitorBody: z.string().min(1).max(5000),
+        visitorBody: z.string().min(1).max(10000),
       });
       const parsed = bodySchema.safeParse(req.body);
       if (!parsed.success) {
