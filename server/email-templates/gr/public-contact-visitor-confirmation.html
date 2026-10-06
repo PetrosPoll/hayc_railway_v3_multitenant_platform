@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="el">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <meta name="color-scheme" content="light only" />
     <meta name="supported-color-schemes" content="light" />
-<title>Message Received - HAYC</title>
+<title>Λάβαμε το μήνυμά σας - HAYC</title>
     <style>
       body {
         font-family: "Helvetica Neue", Arial, sans-serif;
@@ -82,7 +82,7 @@
   <body>
     <div class="container">
       <div class="header">
-        <h1>Message Received</h1>
+        <h1>Λάβαμε το μήνυμά σας</h1>
       </div>
 
       <table
@@ -114,9 +114,9 @@
         <p>{{introText}}</p>
 
         <div class="message-details">
-          <h3>Your details</h3>
+          <h3>Τα στοιχεία σας</h3>
           <div class="info-row">
-            <span><strong>From: &nbsp;</strong></span>
+            <span><strong>Από: &nbsp;</strong></span>
             <span>{{name}}</span>
           </div>
           <div class="info-row">
@@ -124,7 +124,7 @@
             <span>{{email}}</span>
           </div>
           <div class="info-row">
-            <span><strong>Phone: &nbsp;</strong></span>
+            <span><strong>Τηλέφωνο: &nbsp;</strong></span>
             <span>{{phone}}</span>
           </div>
           {{#if extraFields}}
@@ -132,16 +132,16 @@
           {{/if}}
 
           <div class="message-text">
-            <strong>Message: &nbsp;</strong><br />
+            <strong>Μήνυμα: &nbsp;</strong><br />
             {{message}}
           </div>
         </div>
 
-        <p style="margin-top: 24px;">— The {{siteLabel}} team</p>
+        <p style="margin-top: 24px;">— Η ομάδα {{siteLabel}}</p>
       </div>
 
       <div class="footer">
-        <p style="margin: 0;">Sent via Hayc — {{baseUrl}}</p>
+        <p style="margin: 0;">Αποστολή μέσω Hayc — {{baseUrl}}</p>
       </div>
     </div>
   </body>

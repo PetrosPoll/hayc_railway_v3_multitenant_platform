@@ -384,7 +384,7 @@ interface ConfigSectionProps {
   onRequestPickImage?: (path: string) => void;
 }
 
-const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config", "digitalProductsConfig"];
+const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config", "digitalProductsConfig", "forms"];
 
 function isEmptyValue(value: unknown): boolean {
   if (value === null || value === undefined) return true;

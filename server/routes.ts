@@ -64,7 +64,14 @@ import {
   internalBusinessEmailSettings,
   platformAnalyticsEvents,
   websiteContactSubmissions,
+  websiteFormAutomations,
 } from "@shared/schema";
+import {
+  applyFormEmailPlaceholders,
+  DEFAULT_VISITOR_INTRO,
+  DEFAULT_VISITOR_SUBJECT,
+  parseSiteForms,
+} from "./lib/form-automations";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -23170,6 +23177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const PUBLIC_CONTACT_RESERVED_KEYS = new Set([
     "siteId",
+    "formId",
     "_hp",
     "name",
     "email",
@@ -23249,19 +23257,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: z.string().min(1, "name is required").max(100, "name must be at most 100 characters"),
         email: z.string().email("email must be a valid email address"),
         message: z.string().min(1, "message is required").max(2000, "message must be at most 2000 characters"),
+        formId: z.string().min(1).max(120).optional(),
       });
       const parseResult = contactSchema.safeParse({
         siteId: body.siteId,
         name: body.name,
         email: body.email,
         message: body.message,
+        formId:
+          typeof body.formId === "string" && body.formId.trim()
+            ? body.formId.trim()
+            : undefined,
       });
       if (!parseResult.success) {
         const first = parseResult.error.flatten().fieldErrors;
         const msg = Object.values(first).flat().find(Boolean) ?? "Validation failed";
         return res.status(400).json({ error: String(msg) });
       }
-      const { siteId, name, email, message } = parseResult.data;
+      const { siteId, name, email, message, formId } = parseResult.data;
       const phone = typeof body.phone === "string" ? body.phone.trim() : formatPublicContactValue(body.phone);
       const extraFields = collectPublicContactExtraFields(body);
       const extraFieldsHtml = publicContactExtraFieldsHtml(extraFields);
@@ -23304,6 +23317,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           websiteProgressId: website.id,
           siteId,
           siteLabel: siteLabel || null,
+          formId: formId || null,
           name,
           email,
           phone: phone || null,
@@ -23314,6 +23328,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (logErr) {
         console.error("[public/contact] failed to store submission:", logErr);
       }
+
+      const emailLang = normalizeEmailLanguage(website.websiteLanguage || "en");
+      const placeholderVars = {
+        name,
+        email,
+        phone: phone || "",
+        message,
+        siteLabel: siteLabel || "",
+      };
+
+      let automation: typeof websiteFormAutomations.$inferSelect | undefined;
+      if (formId) {
+        const [row] = await db
+          .select()
+          .from(websiteFormAutomations)
+          .where(
+            and(
+              eq(websiteFormAutomations.websiteProgressId, website.id),
+              eq(websiteFormAutomations.formId, formId),
+              eq(websiteFormAutomations.enabled, true),
+            ),
+          )
+          .limit(1);
+        automation = row;
+      }
+
+      const subjectTemplate =
+        automation?.visitorSubject || DEFAULT_VISITOR_SUBJECT[emailLang];
+      const introTemplate =
+        automation?.visitorBody || DEFAULT_VISITOR_INTRO[emailLang];
+      const visitorSubject = applyFormEmailPlaceholders(subjectTemplate, placeholderVars);
+      const introText = escapeHtml(
+        applyFormEmailPlaceholders(introTemplate, placeholderVars),
+      ).replace(/\n/g, "<br>");
 
       // Email 1 — Notification to business owner
       const ownerSubject = `New contact form message from ${name} — ${siteLabel}`;
@@ -23330,11 +23378,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      // Email 2 — Confirmation to visitor
-      const visitorSubject = `We received your message — ${siteLabel}`;
+      // Email 2 — Confirmation to visitor (custom automation or localized default)
       const visitorHtml = loadTemplate(
         "public-contact-visitor-confirmation.html",
         {
+          introText,
           name: escapeHtml(name),
           email: escapeHtml(email),
           phone: escapeHtml(phone || "N/A"),
@@ -23342,7 +23390,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: escapeHtml(message),
           siteLabel: escapeHtml(siteLabel),
         },
-        "en",
+        emailLang,
       );
 
       const [ownerResult, visitorResult] = await Promise.all([
@@ -24615,6 +24663,159 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   });
 
   // S3 site config routes
+  async function authorizeWebsiteAccess(req: express.Request, websiteId: number) {
+    if (!req.isAuthenticated() || !req.user) {
+      return { error: { status: 401 as const, body: { error: "Not authenticated" } } };
+    }
+    const user = await storage.getUserById(req.user.id);
+    if (!user) {
+      return { error: { status: 403 as const, body: { error: "Not authorized" } } };
+    }
+    const website = await db
+      .select()
+      .from(websiteProgress)
+      .where(eq(websiteProgress.id, websiteId))
+      .then((rows) => rows[0]);
+    if (!website) {
+      return { error: { status: 404 as const, body: { error: "Website not found" } } };
+    }
+    if (website.userId !== req.user.id && !hasPermission(user.role, "canManageWebsites")) {
+      return { error: { status: 403 as const, body: { error: "Not authorized to access this website" } } };
+    }
+    return { website, user };
+  }
+
+  app.get("/api/websites/:id/forms", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const { website } = access as { website: typeof websiteProgress.$inferSelect };
+      if (!website.siteId) {
+        return res.json({ forms: [] });
+      }
+      try {
+        const config = await getConfig(website.siteId);
+        return res.json({ forms: parseSiteForms(config as Record<string, unknown>) });
+      } catch (err: any) {
+        if (err?.message?.includes("not found")) {
+          return res.json({ forms: [] });
+        }
+        throw err;
+      }
+    } catch (error) {
+      console.error("Error fetching website forms:", error);
+      return res.status(500).json({ error: "Failed to fetch forms" });
+    }
+  });
+
+  app.get("/api/websites/:id/form-automations", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const automations = await db
+        .select()
+        .from(websiteFormAutomations)
+        .where(eq(websiteFormAutomations.websiteProgressId, websiteId));
+      return res.json({ automations });
+    } catch (error) {
+      console.error("Error fetching form automations:", error);
+      return res.status(500).json({ error: "Failed to fetch form automations" });
+    }
+  });
+
+  app.put("/api/websites/:id/form-automations/:formId", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const formId = decodeURIComponent(req.params.formId || "").trim();
+      if (Number.isNaN(websiteId) || !formId) {
+        return res.status(400).json({ error: "Invalid website id or formId" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+
+      const bodySchema = z.object({
+        enabled: z.boolean(),
+        visitorSubject: z.string().min(1).max(200),
+        visitorBody: z.string().min(1).max(5000),
+      });
+      const parsed = bodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid automation data", details: parsed.error.errors });
+      }
+
+      const { website } = access as { website: typeof websiteProgress.$inferSelect };
+      if (website.siteId) {
+        try {
+          const config = await getConfig(website.siteId);
+          const forms = parseSiteForms(config as Record<string, unknown>);
+          if (!forms.some((f) => f.id === formId)) {
+            return res.status(404).json({ error: "Form not found in site config" });
+          }
+        } catch (err: any) {
+          if (!err?.message?.includes("not found")) throw err;
+          return res.status(404).json({ error: "Form not found in site config" });
+        }
+      } else {
+        return res.status(404).json({ error: "No S3 site configured" });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(websiteFormAutomations)
+        .where(
+          and(
+            eq(websiteFormAutomations.websiteProgressId, websiteId),
+            eq(websiteFormAutomations.formId, formId),
+          ),
+        )
+        .limit(1);
+
+      let automation;
+      if (existing) {
+        [automation] = await db
+          .update(websiteFormAutomations)
+          .set({
+            enabled: parsed.data.enabled,
+            visitorSubject: parsed.data.visitorSubject,
+            visitorBody: parsed.data.visitorBody,
+            updatedAt: new Date(),
+          })
+          .where(eq(websiteFormAutomations.id, existing.id))
+          .returning();
+      } else {
+        [automation] = await db
+          .insert(websiteFormAutomations)
+          .values({
+            websiteProgressId: websiteId,
+            formId,
+            enabled: parsed.data.enabled,
+            visitorSubject: parsed.data.visitorSubject,
+            visitorBody: parsed.data.visitorBody,
+          })
+          .returning();
+      }
+
+      return res.json({ automation });
+    } catch (error) {
+      console.error("Error saving form automation:", error);
+      return res.status(500).json({ error: "Failed to save form automation" });
+    }
+  });
+
   app.get("/api/websites/:id/site-config", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });

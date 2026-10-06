@@ -162,6 +162,13 @@
       "when": 1789821854980,
       "tag": "0022_bizarre_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1791254731398,
+      "tag": "0023_superb_multiple_man",
+      "breakpoints": true
     }
   ]
 }

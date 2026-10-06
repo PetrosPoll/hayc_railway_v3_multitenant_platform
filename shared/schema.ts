@@ -1606,6 +1606,7 @@ export const websiteContactSubmissions = pgTable(
     websiteProgressId: integer("website_progress_id"),
     siteId: text("site_id").notNull(),
     siteLabel: text("site_label"),
+    formId: text("form_id"),
     name: text("name").notNull(),
     email: text("email").notNull(),
     phone: text("phone"),
@@ -1621,6 +1622,7 @@ export const websiteContactSubmissions = pgTable(
     websiteIdx: index("website_contact_submissions_website_idx").on(
       table.websiteProgressId,
     ),
+    formIdIdx: index("website_contact_submissions_form_id_idx").on(table.formId),
   }),
 );
 
@@ -1635,4 +1637,49 @@ export type WebsiteContactSubmission =
   typeof websiteContactSubmissions.$inferSelect;
 export type InsertWebsiteContactSubmission = z.infer<
   typeof insertWebsiteContactSubmissionSchema
+>;
+
+/** Forms registered in S3 site config (`config.forms`). */
+export type SiteFormConfig = {
+  id: string;
+  name: string;
+  page?: string;
+};
+
+export const websiteFormAutomations = pgTable(
+  "website_form_automations",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    formId: text("form_id").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    visitorSubject: text("visitor_subject").notNull(),
+    visitorBody: text("visitor_body").notNull(),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteFormUnique: unique("website_form_automations_website_form_unique").on(
+      table.websiteProgressId,
+      table.formId,
+    ),
+    websiteIdx: index("website_form_automations_website_idx").on(
+      table.websiteProgressId,
+    ),
+  }),
+);
+
+export const insertWebsiteFormAutomationSchema = createInsertSchema(
+  websiteFormAutomations,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type WebsiteFormAutomation = typeof websiteFormAutomations.$inferSelect;
+export type InsertWebsiteFormAutomation = z.infer<
+  typeof insertWebsiteFormAutomationSchema
 >;

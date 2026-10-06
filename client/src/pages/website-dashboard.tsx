@@ -68,6 +68,7 @@ import {
   Wallet,
   Film,
   Ticket,
+  Zap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/ui/authContext";
@@ -86,6 +87,7 @@ import { BOOKING_APP_BASE_URL } from "@/lib/utils";
 import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
+import { FormAutomationsPanel } from "@/components/form-automations-panel";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 import { DigitalProductsTab } from "@/components/digital-products/DigitalProductsTab";
 import {
@@ -151,6 +153,7 @@ type Website = {
    paymentsEnabled?: boolean;
   digitalProductsEnabled?: boolean;
   siteId?: string | null;
+  websiteLanguage?: string | null;
   stages: Array<{
     id: number;
     websiteProgressId: number;
@@ -1328,6 +1331,9 @@ export default function WebsiteDashboard() {
       { id: "media", label: t("dashboard.media") || "Media", icon: ImageIcon },
       { id: "billing", label: t("dashboard.billing") || "Billing", icon: CreditCard },
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
+      ...(website?.siteId
+        ? [{ id: "automations", label: t("dashboard.automations") || "Automations", icon: Zap }]
+        : []),
     ];
     const bookingItem = {
       id: "booking",
@@ -1564,6 +1570,16 @@ export default function WebsiteDashboard() {
                       {t("dashboard.newsletter") || "Newsletter"}
                     </BreadcrumbLink>
                   )}
+                </BreadcrumbItem>
+              </>
+            )}
+            {activeSection === "automations" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage data-testid="breadcrumb-automations">
+                    {t("dashboard.automations") || "Automations"}
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </>
             )}
@@ -4457,6 +4473,15 @@ export default function WebsiteDashboard() {
                   {newsletterView === "builder" && renderEmailBuilder()}
                   {newsletterView === "templates" && renderTemplatesView()}
                   {newsletterView === "campaigns" && renderCampaignsView()}
+                </div>
+              )}
+
+              {activeSection === "automations" && website?.siteId && (
+                <div data-testid="section-automations">
+                  <FormAutomationsPanel
+                    websiteId={Number(websiteId)}
+                    websiteLanguage={website.websiteLanguage}
+                  />
                 </div>
               )}
 
