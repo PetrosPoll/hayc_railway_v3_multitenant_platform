@@ -87,7 +87,7 @@ import { BOOKING_APP_BASE_URL } from "@/lib/utils";
 import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
-import { FormAutomationsPanel } from "@/components/form-automations-panel";
+import { AutomationBuilder } from "@/components/automations/AutomationBuilder";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 import { DigitalProductsTab } from "@/components/digital-products/DigitalProductsTab";
 import {
@@ -4478,7 +4478,7 @@ export default function WebsiteDashboard() {
 
               {activeSection === "automations" && website?.siteId && (
                 <div data-testid="section-automations">
-                  <FormAutomationsPanel
+                  <AutomationBuilder
                     websiteId={Number(websiteId)}
                     websiteLanguage={website.websiteLanguage}
                   />

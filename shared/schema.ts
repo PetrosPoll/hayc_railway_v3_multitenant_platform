@@ -1684,3 +1684,144 @@ export type WebsiteFormAutomation = typeof websiteFormAutomations.$inferSelect;
 export type InsertWebsiteFormAutomation = z.infer<
   typeof insertWebsiteFormAutomationSchema
 >;
+
+/** React Flow–compatible graph stored on workflows. */
+export type AutomationGraphNode = {
+  id: string;
+  type: "trigger" | "email" | "delay";
+  position: { x: number; y: number };
+  data: Record<string, unknown>;
+};
+
+export type AutomationGraphEdge = {
+  id: string;
+  source: string;
+  target: string;
+  sourceHandle?: string | null;
+  targetHandle?: string | null;
+};
+
+export type AutomationGraph = {
+  nodes: AutomationGraphNode[];
+  edges: AutomationGraphEdge[];
+};
+
+export type AutomationJobPayload = {
+  visitorEmail: string;
+  visitorName: string;
+  visitorPhone: string;
+  visitorMessage: string;
+  siteLabel: string;
+  siteId: string;
+  formId: string | null;
+  ownerEmail: string;
+  fromName: string;
+  language: string;
+};
+
+export const websiteEmailTemplates = pgTable(
+  "website_email_templates",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    name: text("name").notNull(),
+    subject: text("subject").notNull(),
+    body: text("body").notNull(),
+    logoUrl: text("logo_url"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteIdx: index("website_email_templates_website_idx").on(
+      table.websiteProgressId,
+    ),
+  }),
+);
+
+export const insertWebsiteEmailTemplateSchema = createInsertSchema(
+  websiteEmailTemplates,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type WebsiteEmailTemplate = typeof websiteEmailTemplates.$inferSelect;
+export type InsertWebsiteEmailTemplate = z.infer<
+  typeof insertWebsiteEmailTemplateSchema
+>;
+
+export const websiteAutomationWorkflows = pgTable(
+  "website_automation_workflows",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    name: text("name").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    triggerFormId: text("trigger_form_id").notNull(),
+    graph: jsonb("graph")
+      .$type<AutomationGraph>()
+      .notNull()
+      .default({ nodes: [], edges: [] }),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteIdx: index("website_automation_workflows_website_idx").on(
+      table.websiteProgressId,
+    ),
+    triggerIdx: index("website_automation_workflows_trigger_idx").on(
+      table.websiteProgressId,
+      table.triggerFormId,
+    ),
+  }),
+);
+
+export const insertWebsiteAutomationWorkflowSchema = createInsertSchema(
+  websiteAutomationWorkflows,
+).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type WebsiteAutomationWorkflow =
+  typeof websiteAutomationWorkflows.$inferSelect;
+export type InsertWebsiteAutomationWorkflow = z.infer<
+  typeof insertWebsiteAutomationWorkflowSchema
+>;
+
+export const websiteAutomationJobs = pgTable(
+  "website_automation_jobs",
+  {
+    id: serial("id").primaryKey(),
+    workflowId: integer("workflow_id")
+      .notNull()
+      .references(() => websiteAutomationWorkflows.id),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    nodeId: text("node_id").notNull(),
+    runAt: timestamp("run_at").notNull(),
+    status: text("status").notNull().default("pending"),
+    payload: jsonb("payload").$type<AutomationJobPayload>().notNull(),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    dueIdx: index("website_automation_jobs_due_idx").on(
+      table.status,
+      table.runAt,
+    ),
+    workflowIdx: index("website_automation_jobs_workflow_idx").on(
+      table.workflowId,
+    ),
+  }),
+);
+
+export type WebsiteAutomationJob = typeof websiteAutomationJobs.$inferSelect;

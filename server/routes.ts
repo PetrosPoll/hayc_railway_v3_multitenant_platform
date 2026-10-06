@@ -65,6 +65,9 @@ import {
   platformAnalyticsEvents,
   websiteContactSubmissions,
   websiteFormAutomations,
+  websiteEmailTemplates,
+  websiteAutomationWorkflows,
+  websiteAutomationJobs,
 } from "@shared/schema";
 import {
   applyFormEmailPlaceholders,
@@ -74,6 +77,7 @@ import {
   formatAutomationBodyToHtml,
   parseSiteForms,
 } from "./lib/form-automations";
+import { startWorkflowForFormSubmit } from "./lib/automation-engine";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -23340,22 +23344,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         siteLabel: siteLabel || "",
       };
 
-      let automation: typeof websiteFormAutomations.$inferSelect | undefined;
-      if (formId) {
-        const [row] = await db
-          .select()
-          .from(websiteFormAutomations)
-          .where(
-            and(
-              eq(websiteFormAutomations.websiteProgressId, website.id),
-              eq(websiteFormAutomations.formId, formId),
-              eq(websiteFormAutomations.enabled, true),
-            ),
-          )
-          .limit(1);
-        automation = row;
-      }
-
       // Email 1 — Notification to business owner
       const ownerSubject = `New contact form message from ${name} — ${siteLabel}`;
       const ownerHtml = loadTemplate(
@@ -23371,71 +23359,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      // Email 2 — Visitor confirmation: full custom body when automation is on, else default template
-      let visitorSubject: string;
-      let visitorHtml: string;
-      if (automation) {
-        visitorSubject = applyFormEmailPlaceholders(
-          automation.visitorSubject,
-          placeholderVars,
-        );
-        const bodyHtml = formatAutomationBodyToHtml(
-          applyFormEmailPlaceholders(automation.visitorBody, placeholderVars),
-        ).replace(/\$/g, "&#36;");
+      const ownerSend = EmailService.sendEmail({
+        to: ownerEmail,
+        subject: ownerSubject,
+        message: ownerSubject,
+        fromEmail: fromAddress,
+        fromName: senderName,
+        html: ownerHtml,
+        replyToAddresses: [email],
+      });
 
-        let logoUrl = automation.logoUrl?.trim() || "";
-        if (!logoUrl && website.siteId) {
-          try {
-            const siteConfig = await getConfig(website.siteId);
-            logoUrl = extractLogoFromSiteConfig(siteConfig as Record<string, unknown>) || "";
-          } catch (logoErr) {
-            console.warn("[public/contact] could not load site logo:", logoErr);
-          }
+      // Email 2 — prefer visual workflow, then simple automation, then default template
+      let workflowHandled = false;
+      if (formId) {
+        try {
+          workflowHandled = await startWorkflowForFormSubmit({
+            websiteProgressId: website.id,
+            formId,
+            payload: {
+              visitorEmail: email,
+              visitorName: name,
+              visitorPhone: phone || "",
+              visitorMessage: message,
+              siteLabel: siteLabel || "",
+              siteId,
+              formId,
+              ownerEmail,
+              fromName: senderName,
+              language: emailLang,
+            },
+          });
+        } catch (wfErr) {
+          console.error("[public/contact] workflow failed:", wfErr);
+          workflowHandled = false;
         }
-
-        visitorHtml = loadTemplate(
-          "public-contact-visitor-custom.html",
-          {
-            bodyHtml,
-            logoUrl: logoUrl || "",
-            logoAlt: escapeHtml(siteLabel || "Logo"),
-          },
-          emailLang,
-        );
-      } else {
-        visitorSubject = applyFormEmailPlaceholders(
-          DEFAULT_VISITOR_SUBJECT[emailLang],
-          placeholderVars,
-        );
-        const introText = escapeHtml(
-          applyFormEmailPlaceholders(DEFAULT_VISITOR_INTRO[emailLang], placeholderVars),
-        ).replace(/\n/g, "<br>");
-        visitorHtml = loadTemplate(
-          "public-contact-visitor-confirmation.html",
-          {
-            introText,
-            name: escapeHtml(name),
-            email: escapeHtml(email),
-            phone: escapeHtml(phone || "N/A"),
-            extraFields: extraFieldsHtml.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
-            message: escapeHtml(message),
-            siteLabel: escapeHtml(siteLabel),
-          },
-          emailLang,
-        );
       }
 
-      const [ownerResult, visitorResult] = await Promise.all([
-        EmailService.sendEmail({
-          to: ownerEmail,
-          subject: ownerSubject,
-          message: ownerSubject,
-          fromEmail: fromAddress,
-          fromName: senderName,
-          html: ownerHtml,
-          replyToAddresses: [email],
-        }),
-        EmailService.sendEmail({
+      let visitorResult: { success: boolean; error?: string } = { success: true };
+      if (!workflowHandled) {
+        let automation: typeof websiteFormAutomations.$inferSelect | undefined;
+        if (formId) {
+          const [row] = await db
+            .select()
+            .from(websiteFormAutomations)
+            .where(
+              and(
+                eq(websiteFormAutomations.websiteProgressId, website.id),
+                eq(websiteFormAutomations.formId, formId),
+                eq(websiteFormAutomations.enabled, true),
+              ),
+            )
+            .limit(1);
+          automation = row;
+        }
+
+        let visitorSubject: string;
+        let visitorHtml: string;
+        if (automation) {
+          visitorSubject = applyFormEmailPlaceholders(
+            automation.visitorSubject,
+            placeholderVars,
+          );
+          const bodyHtml = formatAutomationBodyToHtml(
+            applyFormEmailPlaceholders(automation.visitorBody, placeholderVars),
+          ).replace(/\$/g, "&#36;");
+
+          let logoUrl = automation.logoUrl?.trim() || "";
+          if (!logoUrl && website.siteId) {
+            try {
+              const siteConfig = await getConfig(website.siteId);
+              logoUrl = extractLogoFromSiteConfig(siteConfig as Record<string, unknown>) || "";
+            } catch (logoErr) {
+              console.warn("[public/contact] could not load site logo:", logoErr);
+            }
+          }
+
+          visitorHtml = loadTemplate(
+            "public-contact-visitor-custom.html",
+            {
+              bodyHtml,
+              logoUrl: logoUrl || "",
+              logoAlt: escapeHtml(siteLabel || "Logo"),
+            },
+            emailLang,
+          );
+        } else {
+          visitorSubject = applyFormEmailPlaceholders(
+            DEFAULT_VISITOR_SUBJECT[emailLang],
+            placeholderVars,
+          );
+          const introText = escapeHtml(
+            applyFormEmailPlaceholders(DEFAULT_VISITOR_INTRO[emailLang], placeholderVars),
+          ).replace(/\n/g, "<br>");
+          visitorHtml = loadTemplate(
+            "public-contact-visitor-confirmation.html",
+            {
+              introText,
+              name: escapeHtml(name),
+              email: escapeHtml(email),
+              phone: escapeHtml(phone || "N/A"),
+              extraFields: extraFieldsHtml.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
+              message: escapeHtml(message),
+              siteLabel: escapeHtml(siteLabel),
+            },
+            emailLang,
+          );
+        }
+
+        visitorResult = await EmailService.sendEmail({
           to: email,
           subject: visitorSubject,
           message: visitorSubject,
@@ -23443,8 +23474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fromName: senderName,
           html: visitorHtml,
           replyToAddresses: [ownerEmail],
-        }),
-      ]);
+        });
+      }
+
+      const ownerResult = await ownerSend;
 
       if (!ownerResult.success) {
         console.error("[public/contact] owner notification failed:", ownerResult.error);
@@ -24855,6 +24888,317 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     } catch (error) {
       console.error("Error saving form automation:", error);
       return res.status(500).json({ error: "Failed to save form automation" });
+    }
+  });
+
+  // ----- Email templates (reusable for visual automations) -----
+  app.get("/api/websites/:id/email-templates", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const templates = await db
+        .select()
+        .from(websiteEmailTemplates)
+        .where(eq(websiteEmailTemplates.websiteProgressId, websiteId))
+        .orderBy(desc(websiteEmailTemplates.updatedAt));
+      return res.json({ templates });
+    } catch (error) {
+      console.error("Error fetching email templates:", error);
+      return res.status(500).json({ error: "Failed to fetch email templates" });
+    }
+  });
+
+  app.post("/api/websites/:id/email-templates", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const schema = z.object({
+        name: z.string().min(1).max(120),
+        subject: z.string().min(1).max(200),
+        body: z.string().min(1).max(10000),
+        logoUrl: z.union([z.string().url().max(2000), z.literal(""), z.null()]).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid template", details: parsed.error.errors });
+      }
+      const [template] = await db
+        .insert(websiteEmailTemplates)
+        .values({
+          websiteProgressId: websiteId,
+          name: parsed.data.name,
+          subject: parsed.data.subject,
+          body: parsed.data.body,
+          logoUrl: parsed.data.logoUrl?.trim() || null,
+        })
+        .returning();
+      return res.status(201).json({ template });
+    } catch (error) {
+      console.error("Error creating email template:", error);
+      return res.status(500).json({ error: "Failed to create email template" });
+    }
+  });
+
+  app.put("/api/websites/:id/email-templates/:templateId", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const templateId = parseInt(req.params.templateId, 10);
+      if (Number.isNaN(websiteId) || Number.isNaN(templateId)) {
+        return res.status(400).json({ error: "Invalid ids" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const schema = z.object({
+        name: z.string().min(1).max(120),
+        subject: z.string().min(1).max(200),
+        body: z.string().min(1).max(10000),
+        logoUrl: z.union([z.string().url().max(2000), z.literal(""), z.null()]).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid template", details: parsed.error.errors });
+      }
+      const [template] = await db
+        .update(websiteEmailTemplates)
+        .set({
+          name: parsed.data.name,
+          subject: parsed.data.subject,
+          body: parsed.data.body,
+          logoUrl: parsed.data.logoUrl?.trim() || null,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(websiteEmailTemplates.id, templateId),
+            eq(websiteEmailTemplates.websiteProgressId, websiteId),
+          ),
+        )
+        .returning();
+      if (!template) return res.status(404).json({ error: "Template not found" });
+      return res.json({ template });
+    } catch (error) {
+      console.error("Error updating email template:", error);
+      return res.status(500).json({ error: "Failed to update email template" });
+    }
+  });
+
+  app.delete("/api/websites/:id/email-templates/:templateId", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const templateId = parseInt(req.params.templateId, 10);
+      if (Number.isNaN(websiteId) || Number.isNaN(templateId)) {
+        return res.status(400).json({ error: "Invalid ids" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const deleted = await db
+        .delete(websiteEmailTemplates)
+        .where(
+          and(
+            eq(websiteEmailTemplates.id, templateId),
+            eq(websiteEmailTemplates.websiteProgressId, websiteId),
+          ),
+        )
+        .returning();
+      if (!deleted.length) return res.status(404).json({ error: "Template not found" });
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting email template:", error);
+      return res.status(500).json({ error: "Failed to delete email template" });
+    }
+  });
+
+  // ----- Visual automation workflows -----
+  const automationGraphSchema = z.object({
+    nodes: z.array(
+      z.object({
+        id: z.string().min(1),
+        type: z.enum(["trigger", "email", "delay"]),
+        position: z.object({ x: z.number(), y: z.number() }),
+        data: z.record(z.unknown()).default({}),
+      }),
+    ),
+    edges: z.array(
+      z.object({
+        id: z.string().min(1),
+        source: z.string().min(1),
+        target: z.string().min(1),
+        sourceHandle: z.string().nullable().optional(),
+        targetHandle: z.string().nullable().optional(),
+      }),
+    ),
+  });
+
+  app.get("/api/websites/:id/automation-workflows", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const workflows = await db
+        .select()
+        .from(websiteAutomationWorkflows)
+        .where(eq(websiteAutomationWorkflows.websiteProgressId, websiteId))
+        .orderBy(desc(websiteAutomationWorkflows.updatedAt));
+      return res.json({ workflows });
+    } catch (error) {
+      console.error("Error fetching automation workflows:", error);
+      return res.status(500).json({ error: "Failed to fetch workflows" });
+    }
+  });
+
+  app.post("/api/websites/:id/automation-workflows", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const schema = z.object({
+        name: z.string().min(1).max(120),
+        enabled: z.boolean().optional(),
+        triggerFormId: z.string().min(1).max(120),
+        graph: automationGraphSchema.optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid workflow", details: parsed.error.errors });
+      }
+
+      if (parsed.data.enabled !== false) {
+        await db
+          .update(websiteAutomationWorkflows)
+          .set({ enabled: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+              eq(websiteAutomationWorkflows.triggerFormId, parsed.data.triggerFormId),
+              eq(websiteAutomationWorkflows.enabled, true),
+            ),
+          );
+      }
+
+      const [workflow] = await db
+        .insert(websiteAutomationWorkflows)
+        .values({
+          websiteProgressId: websiteId,
+          name: parsed.data.name,
+          enabled: parsed.data.enabled ?? true,
+          triggerFormId: parsed.data.triggerFormId,
+          graph: parsed.data.graph ?? { nodes: [], edges: [] },
+        })
+        .returning();
+      return res.status(201).json({ workflow });
+    } catch (error) {
+      console.error("Error creating automation workflow:", error);
+      return res.status(500).json({ error: "Failed to create workflow" });
+    }
+  });
+
+  app.put("/api/websites/:id/automation-workflows/:workflowId", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const workflowId = parseInt(req.params.workflowId, 10);
+      if (Number.isNaN(websiteId) || Number.isNaN(workflowId)) {
+        return res.status(400).json({ error: "Invalid ids" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const schema = z.object({
+        name: z.string().min(1).max(120),
+        enabled: z.boolean(),
+        triggerFormId: z.string().min(1).max(120),
+        graph: automationGraphSchema,
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid workflow", details: parsed.error.errors });
+      }
+
+      if (parsed.data.enabled) {
+        await db
+          .update(websiteAutomationWorkflows)
+          .set({ enabled: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+              eq(websiteAutomationWorkflows.triggerFormId, parsed.data.triggerFormId),
+              eq(websiteAutomationWorkflows.enabled, true),
+              ne(websiteAutomationWorkflows.id, workflowId),
+            ),
+          );
+      }
+
+      const [workflow] = await db
+        .update(websiteAutomationWorkflows)
+        .set({
+          name: parsed.data.name,
+          enabled: parsed.data.enabled,
+          triggerFormId: parsed.data.triggerFormId,
+          graph: parsed.data.graph,
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(websiteAutomationWorkflows.id, workflowId),
+            eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+          ),
+        )
+        .returning();
+      if (!workflow) return res.status(404).json({ error: "Workflow not found" });
+      return res.json({ workflow });
+    } catch (error) {
+      console.error("Error updating automation workflow:", error);
+      return res.status(500).json({ error: "Failed to update workflow" });
+    }
+  });
+
+  app.delete("/api/websites/:id/automation-workflows/:workflowId", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const workflowId = parseInt(req.params.workflowId, 10);
+      if (Number.isNaN(websiteId) || Number.isNaN(workflowId)) {
+        return res.status(400).json({ error: "Invalid ids" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      // Delete jobs first
+      await db
+        .delete(websiteAutomationJobs)
+        .where(eq(websiteAutomationJobs.workflowId, workflowId));
+      const deleted = await db
+        .delete(websiteAutomationWorkflows)
+        .where(
+          and(
+            eq(websiteAutomationWorkflows.id, workflowId),
+            eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+          ),
+        )
+        .returning();
+      if (!deleted.length) return res.status(404).json({ error: "Workflow not found" });
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting automation workflow:", error);
+      return res.status(500).json({ error: "Failed to delete workflow" });
     }
   });
 

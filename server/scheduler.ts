@@ -36,12 +36,21 @@ export function startCampaignScheduler(storage: IStorage) {
     } catch (error) {
       console.error('[SCHEDULER] Error in scheduler:', error);
     }
+    try {
+      const { processDueAutomationJobs } = await import("./lib/automation-engine");
+      await processDueAutomationJobs();
+    } catch (error) {
+      console.error('[SCHEDULER] Error processing automation jobs:', error);
+    }
   }, 60000); // Check every minute
 
   // Also run immediately on startup
   checkAndSendScheduledCampaigns(storage).catch(error => {
     console.error('[SCHEDULER] Error in initial check:', error);
   });
+  import("./lib/automation-engine")
+    .then(({ processDueAutomationJobs }) => processDueAutomationJobs())
+    .catch((error) => console.error("[SCHEDULER] Error in initial automation check:", error));
 }
 
 export function stopCampaignScheduler() {
