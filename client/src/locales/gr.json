@@ -1330,6 +1330,7 @@
         "newsletter": "Ενημερωτικό Δελτίο",
         "automations": "Αυτοματισμοί",
         "automationsDescription": "Φτιάξε οπτικό journey: φόρμα → αναμονή → email. Σύρε από την παλέτα, σύνδεσε nodes, αποθήκευσε.",
+        "automationsHelp": "Workflow = το journey (ποια φόρμα, αναμονές, ποια emails). Template = επαναχρησιμοποιήσιμο κείμενο email (θέμα/σώμα) που διαλέγεις μέσα σε ένα email step.",
         "automationsEmptyDescription": "Δεν βρέθηκαν φόρμες για αυτό το site ακόμα. Όταν καταχωρηθούν στο config, θα εμφανιστούν εδώ.",
         "automationsForms": "Φόρμες",
         "automationsConfigured": "ρυθμισμένο",

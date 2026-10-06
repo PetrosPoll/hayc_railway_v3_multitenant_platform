@@ -1328,6 +1328,7 @@
         "newsletter": "Newsletter",
         "automations": "Automations",
         "automationsDescription": "Build a visual journey: form → wait → email. Drag from the palette, connect nodes, save.",
+        "automationsHelp": "Workflow = the journey (which form, waits, which emails). Template = reusable email text (subject/body) you pick inside an email step.",
         "automationsEmptyDescription": "No forms found for this site yet. Once forms are registered in site config, they will appear here.",
         "automationsForms": "Forms",
         "automationsConfigured": "configured",

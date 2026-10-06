@@ -71,6 +71,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
   const [workflowName, setWorkflowName] = useState("New automation");
   const [enabled, setEnabled] = useState(true);
   const [triggerFormId, setTriggerFormId] = useState("");
+  const [didInitialLoad, setDidInitialLoad] = useState(false);
 
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -118,6 +119,16 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
   const workflows = workflowsData?.workflows ?? [];
   const templates = templatesData?.templates ?? [];
 
+  const startNewWorkflow = useCallback(() => {
+    setWorkflowId(null);
+    setNodes([]);
+    setEdges([]);
+    setWorkflowName("New automation");
+    setEnabled(true);
+    setTriggerFormId(forms[0]?.id || "");
+    setSelectedNodeId(null);
+  }, [forms]);
+
   const loadWorkflow = useCallback((wf: WebsiteAutomationWorkflow) => {
     setWorkflowId(wf.id);
     setWorkflowName(wf.name);
@@ -144,14 +155,16 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     setSelectedNodeId(null);
   }, []);
 
+  // Load first saved workflow only once on mount — do not re-run when user chooses "New".
   useEffect(() => {
-    if (workflowId != null) return;
+    if (didInitialLoad || workflowsLoading) return;
+    setDidInitialLoad(true);
     if (workflows.length > 0) {
       loadWorkflow(workflows[0]);
-    } else if (forms.length > 0 && !triggerFormId) {
+    } else if (forms.length > 0) {
       setTriggerFormId(forms[0].id);
     }
-  }, [workflows, workflowId, loadWorkflow, forms, triggerFormId]);
+  }, [didInitialLoad, workflowsLoading, workflows, forms, loadWorkflow]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setNodes((nds) => applyNodeChanges(changes, nds));
@@ -333,10 +346,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
-      setWorkflowId(null);
-      setNodes([]);
-      setEdges([]);
-      setWorkflowName("New automation");
+      startNewWorkflow();
       queryClient.invalidateQueries({
         queryKey: ["/api/websites", websiteId, "automation-workflows"],
       });
@@ -399,6 +409,10 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
 
   return (
     <div className="space-y-3" data-testid="automation-builder">
+      <p className="text-sm text-muted-foreground max-w-3xl">
+        {t("dashboard.automationsHelp") ||
+          "A workflow is the journey (form → wait → email). A template is reusable email content you can attach to email steps."}
+      </p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Zap className="h-5 w-5 shrink-0" />
@@ -412,12 +426,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             value={workflowId != null ? String(workflowId) : "new"}
             onValueChange={(v) => {
               if (v === "new") {
-                setWorkflowId(null);
-                setNodes([]);
-                setEdges([]);
-                setWorkflowName("New automation");
-                setEnabled(true);
-                setTriggerFormId(forms[0]?.id || "");
+                startNewWorkflow();
                 return;
               }
               const wf = workflows.find((w) => w.id === Number(v));
