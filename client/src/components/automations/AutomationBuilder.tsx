@@ -46,6 +46,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { automationNodeTypes } from "./nodes";
 
@@ -72,6 +82,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
   const [enabled, setEnabled] = useState(true);
   const [triggerFormId, setTriggerFormId] = useState("");
   const [didInitialLoad, setDidInitialLoad] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -346,6 +357,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
       if (!res.ok) throw new Error("Failed to delete");
     },
     onSuccess: () => {
+      setDeleteConfirmOpen(false);
       startNewWorkflow();
       queryClient.invalidateQueries({
         queryKey: ["/api/websites", websiteId, "automation-workflows"],
@@ -459,8 +471,9 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => deleteMutation.mutate()}
+              onClick={() => setDeleteConfirmOpen(true)}
               disabled={deleteMutation.isPending}
+              data-testid="automation-delete-button"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -797,6 +810,39 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
           </div>
         </div>
       </div>
+
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("dashboard.automationsDeleteTitle") || "Delete workflow?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("dashboard.automationsDeleteConfirm", { name: workflowName }) ||
+                `Delete “${workflowName}”? This cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>
+              {t("dashboard.cancel") || "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                deleteMutation.mutate();
+              }}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                t("dashboard.automationsDeleteConfirmAction") || "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
