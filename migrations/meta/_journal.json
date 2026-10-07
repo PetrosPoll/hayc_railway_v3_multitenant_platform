@@ -183,6 +183,13 @@
       "when": 1791310611771,
       "tag": "0025_sharp_leo",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791412457165,
+      "tag": "0026_secret_prodigy",
+      "breakpoints": true
     }
   ]
 }

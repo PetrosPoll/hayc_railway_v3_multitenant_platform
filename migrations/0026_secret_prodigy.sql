@@ -1,0 +1,1 @@
+ALTER TABLE "app_settings" ADD COLUMN "changes_visible_in_user_dashboard" boolean DEFAULT true NOT NULL;

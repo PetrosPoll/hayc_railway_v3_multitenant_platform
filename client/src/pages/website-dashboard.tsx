@@ -1062,19 +1062,29 @@ export default function WebsiteDashboard() {
     enabled: !!websiteId,
   });
 
-  // App settings (newsletter + tips visibility)
-  const { data: appSettings } = useQuery<{ newsletterEnabled: boolean; tipsVisibleInUserDashboard?: boolean }>(
-    { queryKey: ["/api/settings"] },
-  );
+  // App settings (newsletter + tips/changes visibility)
+  const { data: appSettings } = useQuery<{
+    newsletterEnabled: boolean;
+    tipsVisibleInUserDashboard?: boolean;
+    changesVisibleInUserDashboard?: boolean;
+  }>({ queryKey: ["/api/settings"] });
   const newsletterSettings = appSettings;
   const tipsVisibleInUserDashboard = appSettings?.tipsVisibleInUserDashboard ?? true;
+  const changesVisibleInUserDashboard =
+    appSettings?.changesVisibleInUserDashboard ?? true;
 
-  // When tips are hidden in user dashboard, switch away from tips section if currently on it
+  // When tips/changes are hidden in user dashboard, switch away if currently on them
   useEffect(() => {
     if (!tipsVisibleInUserDashboard && activeSection === "tips") {
       setActiveSection("progress");
     }
   }, [tipsVisibleInUserDashboard, activeSection]);
+
+  useEffect(() => {
+    if (!changesVisibleInUserDashboard && activeSection === "changes") {
+      setActiveSection("progress");
+    }
+  }, [changesVisibleInUserDashboard, activeSection]);
 
   // Newsletter section is now handled locally, no redirect needed
 
@@ -1327,7 +1337,9 @@ export default function WebsiteDashboard() {
       ...(!isProgressComplete ? [{ id: "progress", label: t("dashboard.progress") || "Website", icon: Settings }] : []),
       ...(website?.siteId ? [{ id: "content", label: t("dashboard.content"), icon: FileEdit }] : []),
       ...(isProgressComplete ? [{ id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart }] : []),
-      { id: "changes", label: t("dashboard.changes") || "Changes", icon: FileText },
+      ...(changesVisibleInUserDashboard
+        ? [{ id: "changes", label: t("dashboard.changes") || "Changes", icon: FileText }]
+        : []),
       { id: "media", label: t("dashboard.media") || "Media", icon: ImageIcon },
       { id: "billing", label: t("dashboard.billing") || "Billing", icon: CreditCard },
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
@@ -1361,7 +1373,7 @@ export default function WebsiteDashboard() {
       items.push(paymentsItem);
     }
     return [...items, ...after];
-  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
 
   if (websiteLoading) {
     return (
@@ -4372,7 +4384,7 @@ export default function WebsiteDashboard() {
                 </div>
               )}
 
-              {activeSection === "changes" && (
+              {activeSection === "changes" && changesVisibleInUserDashboard && (
                 <div data-testid="section-changes">{renderChangesSection()}</div>
               )}
 

@@ -1244,7 +1244,10 @@ export default function AdminDashboard() {
   });
 
   // Newsletter settings query and mutation
-  const { data: settingsData } = useQuery<{ newsletterEnabled: boolean }>({
+  const { data: settingsData } = useQuery<{
+    newsletterEnabled: boolean;
+    changesVisibleInUserDashboard?: boolean;
+  }>({
     queryKey: ["/api/settings"],
   });
 
@@ -1273,6 +1276,34 @@ export default function AdminDashboard() {
       toast({
         title: "Error",
         description: "Failed to update newsletter settings",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateChangesVisibleSettings = useMutation({
+    mutationFn: async (visible: boolean) => {
+      const response = await fetch("/api/settings/changes-visible", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visible }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update changes visibility");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/settings"] });
+      toast({
+        title: "Success",
+        description: "Changes tab visibility updated",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update changes tab visibility",
         variant: "destructive",
       });
     },
@@ -2692,6 +2723,35 @@ export default function AdminDashboard() {
             <TabsContent value="system-settings" className="mt-0">
               <section>
                 <h2 className="text-xl font-semibold mb-4">System Settings</h2>
+                <Card className="mb-4">
+                  <CardHeader>
+                    <CardTitle>User dashboard</CardTitle>
+                    <CardDescription>
+                      Control which sections appear in the client website dashboard.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5 pr-4">
+                        <Label htmlFor="changes-visible-toggle" className="text-sm font-medium">
+                          Show Changes tab in user dashboard
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          When off, the Changes menu and section are hidden from clients. Admin tools are unchanged.
+                        </p>
+                      </div>
+                      <Switch
+                        id="changes-visible-toggle"
+                        checked={settingsData?.changesVisibleInUserDashboard ?? true}
+                        onCheckedChange={(checked) =>
+                          updateChangesVisibleSettings.mutate(checked)
+                        }
+                        disabled={updateChangesVisibleSettings.isPending}
+                        data-testid="switch-changes-visible"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
                 <Card>
                   <CardHeader>
                     <CardTitle>Stripe Pricing Management</CardTitle>

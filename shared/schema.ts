@@ -1055,6 +1055,9 @@ export const appSettings = pgTable("app_settings", {
   id: serial("id").primaryKey(),
   newsletterEnabled: boolean("newsletter_enabled").notNull().default(true),
   tipsVisibleInUserDashboard: boolean("tips_visible_in_user_dashboard").notNull().default(true),
+  changesVisibleInUserDashboard: boolean("changes_visible_in_user_dashboard")
+    .notNull()
+    .default(true),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 

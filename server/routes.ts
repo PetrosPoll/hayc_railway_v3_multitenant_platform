@@ -15477,7 +15477,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!settings) {
         const [newSettings] = await db
           .insert(appSettings)
-          .values({ newsletterEnabled: true, tipsVisibleInUserDashboard: true })
+          .values({
+            newsletterEnabled: true,
+            tipsVisibleInUserDashboard: true,
+            changesVisibleInUserDashboard: true,
+          })
           .returning();
         return res.json(newSettings);
       }
@@ -15513,7 +15517,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Create settings if they don't exist
         const [newSettings] = await db
           .insert(appSettings)
-          .values({ newsletterEnabled: enabled, tipsVisibleInUserDashboard: true })
+          .values({
+            newsletterEnabled: enabled,
+            tipsVisibleInUserDashboard: true,
+            changesVisibleInUserDashboard: true,
+          })
           .returning();
         return res.json(newSettings);
       }
@@ -15553,7 +15561,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!settings) {
         const [newSettings] = await db
           .insert(appSettings)
-          .values({ newsletterEnabled: true, tipsVisibleInUserDashboard: visible })
+          .values({
+            newsletterEnabled: true,
+            tipsVisibleInUserDashboard: visible,
+            changesVisibleInUserDashboard: true,
+          })
           .returning();
         return res.json(newSettings);
       }
@@ -15568,6 +15580,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error updating tips visibility setting:", err);
       res.status(500).json({ error: "Failed to update tips visibility setting" });
+    }
+  });
+
+  app.patch("/api/settings/changes-visible", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const user = await storage.getUserById(req.user.id);
+      if (!user || !hasPermission(user.role, "canManageSettings")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const { visible } = req.body;
+      if (typeof visible !== "boolean") {
+        return res.status(400).json({ error: "visible must be a boolean" });
+      }
+
+      let settings = await db.query.appSettings.findFirst();
+      if (!settings) {
+        const [newSettings] = await db
+          .insert(appSettings)
+          .values({
+            newsletterEnabled: true,
+            tipsVisibleInUserDashboard: true,
+            changesVisibleInUserDashboard: visible,
+          })
+          .returning();
+        return res.json(newSettings);
+      }
+
+      const [updatedSettings] = await db
+        .update(appSettings)
+        .set({ changesVisibleInUserDashboard: visible, updatedAt: new Date() })
+        .where(eq(appSettings.id, settings.id))
+        .returning();
+
+      res.json(updatedSettings);
+    } catch (err) {
+      console.error("Error updating changes visibility setting:", err);
+      res.status(500).json({ error: "Failed to update changes visibility setting" });
     }
   });
 
