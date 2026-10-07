@@ -77,6 +77,7 @@ import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
 import { Subscription } from "@shared/schema";
 import { AVAILABLE_ADDONS } from "@/lib/addons";
+import { toGreekSafeUpperCase } from "@/lib/greek-text";
 import { usePricing, getAddonPrice } from "@/hooks/use-pricing";
 
 type PaymentMethodInfo = {
@@ -208,31 +209,31 @@ function SidebarMenuContent({
   return (
     <SidebarMenu>
       {menuItems.map((item, index) => {
-        if (item.id === "separator") {
-          return (
-            <div
-              key={`separator-${index}`}
-              className="py-2"
-              data-testid="menu-separator"
-            >
-              <Separator className="my-2" />
-              <div className="mt-3 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("dashboard.explore") || "Explore"}
-              </div>
-            </div>
-          );
-        }
+        const isGroupHeader =
+          item.id === "separator" ||
+          item.id === "profile-separator" ||
+          item.id.startsWith("group-");
 
-        if (item.id === "profile-separator") {
+        if (isGroupHeader) {
+          const label =
+            item.id === "separator"
+              ? t("dashboard.explore") || "Explore"
+              : item.id === "profile-separator"
+                ? t("dashboard.profile") || "Profile"
+                : item.label;
+          const testId =
+            item.id === "separator"
+              ? "menu-separator"
+              : item.id === "profile-separator"
+                ? "menu-profile-separator"
+                : `menu-${item.id}`;
           return (
-            <div
-              key={`profile-separator-${index}`}
-              className="py-2"
-              data-testid="menu-profile-separator"
-            >
-              <Separator className="my-2" />
-              <div className="mt-3 px-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                {t("dashboard.profile") || "Profile"}
+            <div key={`${item.id}-${index}`} className="py-2" data-testid={testId}>
+              {index > 0 && <Separator className="my-2" />}
+              <div
+                className={`${index > 0 ? "mt-3" : "mt-1"} px-2 text-xs font-medium text-muted-foreground tracking-wide`}
+              >
+                {toGreekSafeUpperCase(label)}
               </div>
             </div>
           );
@@ -1333,46 +1334,93 @@ export default function WebsiteDashboard() {
       return website.currentStage === maxStageNumber && lastStage?.status === "completed";
     })();
 
-    const base = [
-      ...(!isProgressComplete ? [{ id: "progress", label: t("dashboard.progress") || "Website", icon: Settings }] : []),
-      ...(website?.siteId ? [{ id: "content", label: t("dashboard.content"), icon: FileEdit }] : []),
-      ...(isProgressComplete ? [{ id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart }] : []),
+    const websiteItems = [
+      ...(!isProgressComplete
+        ? [{ id: "progress", label: t("dashboard.progress") || "Website", icon: Settings }]
+        : []),
+      ...(website?.siteId
+        ? [{ id: "content", label: t("dashboard.content"), icon: FileEdit }]
+        : []),
+      ...(isProgressComplete
+        ? [{ id: "analytics", label: t("dashboard.analytics") || "Analytics", icon: BarChart }]
+        : []),
       ...(changesVisibleInUserDashboard
         ? [{ id: "changes", label: t("dashboard.changes") || "Changes", icon: FileText }]
         : []),
       { id: "media", label: t("dashboard.media") || "Media", icon: ImageIcon },
-      { id: "billing", label: t("dashboard.billing") || "Billing", icon: CreditCard },
+    ];
+
+    const marketingItems = [
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
       ...(website?.siteId
         ? [{ id: "automations", label: t("dashboard.automations") || "Automations", icon: Zap }]
         : []),
     ];
-    const bookingItem = {
-      id: "booking",
-      label: t("dashboard.booking") || "Booking",
-      icon: CalendarDays,
-    };
-    const paymentsItem = {
-      id: "payments",
-      label: t("dashboard.payments") || "Payments",
-      icon: Wallet,
-    };
-    const after = [
-      ...(website?.digitalProductsEnabled
-        ? [{ id: "digital-products", label: t("dashboard.digitalProducts") || "Digital Products", icon: ShoppingBag }]
+
+    const salesItems = [
+      ...(website?.bookingEnabled
+        ? [{ id: "booking", label: t("dashboard.booking") || "Booking", icon: CalendarDays }]
         : []),
-      { id: "separator", label: "", icon: null },
-      { id: "discover", label: t("dashboard.discover") || "Discover", icon: Sparkles },
-      ...(tipsVisibleInUserDashboard ? [{ id: "tips", label: t("dashboard.tips") || "Tips", icon: Lightbulb }] : []),
+      ...(website?.paymentsEnabled
+        ? [{ id: "payments", label: t("dashboard.payments") || "Payments", icon: Wallet }]
+        : []),
+      ...(website?.digitalProductsEnabled
+        ? [
+            {
+              id: "digital-products",
+              label: t("dashboard.digitalProducts") || "Digital Products",
+              icon: ShoppingBag,
+            },
+          ]
+        : []),
     ];
-    const items: typeof base = [...base];
-    if (website?.bookingEnabled) {
-      items.push(bookingItem);
-    }
-    if (website?.paymentsEnabled) {
-      items.push(paymentsItem);
-    }
-    return [...items, ...after];
+
+    const accountItems = [
+      { id: "billing", label: t("dashboard.billing") || "Billing", icon: CreditCard },
+    ];
+
+    const exploreItems = [
+      { id: "discover", label: t("dashboard.discover") || "Discover", icon: Sparkles },
+      ...(tipsVisibleInUserDashboard
+        ? [{ id: "tips", label: t("dashboard.tips") || "Tips", icon: Lightbulb }]
+        : []),
+    ];
+
+    type MenuEntry = (typeof websiteItems)[number] | { id: string; label: string; icon: null };
+    const items: MenuEntry[] = [
+      {
+        id: "group-website",
+        label: t("dashboard.navGroupWebsite") || "Website",
+        icon: null,
+      },
+      ...websiteItems,
+      {
+        id: "group-marketing",
+        label: t("dashboard.navGroupMarketing") || "Marketing",
+        icon: null,
+      },
+      ...marketingItems,
+      ...(salesItems.length > 0
+        ? [
+            {
+              id: "group-sales",
+              label: t("dashboard.navGroupSales") || "Sales",
+              icon: null,
+            },
+            ...salesItems,
+          ]
+        : []),
+      {
+        id: "group-account",
+        label: t("dashboard.navGroupAccount") || "Account",
+        icon: null,
+      },
+      ...accountItems,
+      { id: "separator", label: "", icon: null },
+      ...exploreItems,
+    ];
+
+    return items;
   }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
 
   if (websiteLoading) {
@@ -1902,8 +1950,10 @@ export default function WebsiteDashboard() {
           </Card>
         ) : (
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-              {t("dashboard.activeSubscriptions") || "Active Subscriptions"}
+            <h3 className="text-sm font-semibold text-muted-foreground tracking-wide mb-3">
+              {toGreekSafeUpperCase(
+                t("dashboard.activeSubscriptions") || "Active Subscriptions",
+              )}
             </h3>
             {subscriptions.map((subscription: any) => (
               <Card
