@@ -421,10 +421,6 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
 
   return (
     <div className="space-y-3" data-testid="automation-builder">
-      <p className="text-sm text-muted-foreground max-w-3xl">
-        {t("dashboard.automationsHelp") ||
-          "A workflow is the journey (form → wait → email). A template is reusable email content you can attach to email steps."}
-      </p>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Zap className="h-5 w-5 shrink-0" />
