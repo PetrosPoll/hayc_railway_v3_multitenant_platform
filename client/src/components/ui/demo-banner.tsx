@@ -2,18 +2,46 @@ import { useAuth } from "@/components/ui/authContext";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 
+function isBlockingDialogOpen() {
+  // Radix Dialog / AlertDialog content while open. These mark the rest of the
+  // document inert, so the banner cannot receive hover — hide it instead.
+  return Boolean(
+    document.querySelector(
+      '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]',
+    ),
+  );
+}
+
 export function DemoBanner() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const bannerRef = useRef<HTMLDivElement>(null);
   const [peekAway, setPeekAway] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   useEffect(() => {
-    if (!peekAway) return;
+    const syncDialogState = () => {
+      setDialogOpen(isBlockingDialogOpen());
+    };
+
+    syncDialogState();
+
+    const observer = new MutationObserver(syncDialogState);
+    observer.observe(document.body, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["data-state", "role"],
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!peekAway || dialogOpen) return;
 
     const onMove = (e: MouseEvent) => {
       const height = bannerRef.current?.offsetHeight ?? 40;
-      // Restore once the cursor leaves the banner's vertical band
       if (e.clientY > height + 8) {
         setPeekAway(false);
       }
@@ -21,15 +49,17 @@ export function DemoBanner() {
 
     window.addEventListener("mousemove", onMove);
     return () => window.removeEventListener("mousemove", onMove);
-  }, [peekAway]);
+  }, [peekAway, dialogOpen]);
 
   if (!user?.isDemo) return null;
+
+  const hidden = peekAway || dialogOpen;
 
   return (
     <div
       ref={bannerRef}
       className={`sticky top-0 z-[60] w-full bg-amber-500 text-amber-950 text-center text-sm font-medium px-3 py-2 transition-opacity duration-300 ease-out ${
-        peekAway ? "opacity-0 pointer-events-none" : "opacity-100"
+        hidden ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
       data-testid="demo-banner"
       onMouseEnter={() => setPeekAway(true)}
