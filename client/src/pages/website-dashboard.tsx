@@ -3589,6 +3589,7 @@ export default function WebsiteDashboard() {
                             variant="outline"
                             size="icon"
                             onClick={() => {
+                              if (blockIfDemo()) return;
                               const blob = new Blob([template.html], {
                                 type: "text/html",
                               });
@@ -3607,6 +3608,7 @@ export default function WebsiteDashboard() {
                                   "Template exported successfully",
                               });
                             }}
+                            disabled={isDemo}
                             data-testid={`button-download-${template.id}`}
                           >
                             <Download className="h-4 w-4" />
