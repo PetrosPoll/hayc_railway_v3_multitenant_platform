@@ -72,6 +72,7 @@ import AdminGetStartedSubmissions from "@/components/ui/admin-get-started-submis
 import AdminWebsiteContactSubmissions from "@/components/ui/admin-website-contact-submissions";
 import AdminAmbassadors from "@/components/ui/admin-ambassadors";
 import { PlatformUsageAnalytics } from "@/components/ui/platform-usage-analytics";
+import { AdminDemoAccounts } from "@/components/ui/admin-demo-accounts";
 import { Switch } from "@/components/ui/switch";
 import { RoleManagement } from "@/components/ui/role-management";
 import {
@@ -811,7 +812,7 @@ export default function AdminDashboard() {
     ) {
       return "billing";
     }
-    if (tab === "platform-usage") return "insights";
+    if (tab === "platform-usage" || tab === "demo-accounts") return "insights";
     if (
       ["website-progress", "website-changes", "contact-submissions"].includes(tab)
     ) {
@@ -1669,6 +1670,7 @@ export default function AdminDashboard() {
                   const showPeople = !!userPermissions?.canViewUsers;
                   const showBilling = !!userPermissions?.canViewSubscriptions;
                   const showInsights = !!userPermissions?.canViewPlatformUsage;
+                  // demo-accounts shares Insights permission
                   const showWebsites = !!userPermissions?.canViewWebsites;
                   const showComms =
                     !!userPermissions?.canViewNewsletter ||
@@ -1730,9 +1732,14 @@ export default function AdminDashboard() {
                       label: "Insights",
                       show: showInsights,
                       items: showInsights ? (
-                        <TabsTrigger value="platform-usage" className={triggerClass}>
-                          Platform Usage
-                        </TabsTrigger>
+                        <>
+                          <TabsTrigger value="platform-usage" className={triggerClass}>
+                            Platform Usage
+                          </TabsTrigger>
+                          <TabsTrigger value="demo-accounts" className={triggerClass}>
+                            Demo accounts
+                          </TabsTrigger>
+                        </>
                       ) : null,
                     },
                     {
@@ -2826,6 +2833,9 @@ export default function AdminDashboard() {
             </TabsContent>
             <TabsContent value="platform-usage" className="mt-0">
               <PlatformUsageAnalytics />
+            </TabsContent>
+            <TabsContent value="demo-accounts" className="mt-0">
+              <AdminDemoAccounts />
             </TabsContent>
             <TabsContent value="website-progress" className="mt-0">
               <section>

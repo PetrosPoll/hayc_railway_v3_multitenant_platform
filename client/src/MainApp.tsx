@@ -10,10 +10,12 @@ import { CookieConsentProvider } from "@/components/ui/cookie-consent";
 import { Toaster } from "@/components/ui/toaster";
 import { NavMenu } from "@/components/ui/nav-menu";
 import { ImpersonationBanner } from "@/components/ui/impersonation-banner";
+import { DemoBanner } from "@/components/ui/demo-banner";
 import { Footer } from "@/components/ui/footer";
 import { queryClient } from "@/lib/queryClient";
 import { impersonationRootStyle } from "@/lib/impersonation-layout";
 import { PlatformAnalyticsTracker } from "@/components/PlatformAnalyticsTracker";
+import DemoEnter from "@/pages/demo-enter";
 
 import GetStarted from "@/pages/get-started";
 import GetStartedSuccess from "@/pages/get-started-success";
@@ -100,6 +102,8 @@ function ConditionalNavMenu() {
     location.pathname === "/get-started/onboarding/website-structure" ||
     location.pathname === "/get-started/onboarding/content-media" ||
     location.pathname.startsWith("/dashboard/website/") ||
+    location.pathname === "/demo" ||
+    location.pathname.startsWith("/demo/") ||
     location.pathname.includes("/email-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
@@ -124,9 +128,12 @@ function MainAppContent() {
       style={impersonationRootStyle(Boolean(impersonation?.active))}
     >
       <ImpersonationBanner />
+      <DemoBanner />
       <ConditionalNavMenu />
       <div className="flex-1">
         <Routes>
+          <Route path="/demo" element={<DemoEnter />} />
+          <Route path="/demo/:slug" element={<DemoEnter />} />
           <Route path="/" element={<PublicOnlyRoute><Home /></PublicOnlyRoute>} />
           <Route path="/auth" element={<PublicOnlyRoute><Auth /></PublicOnlyRoute>} />
           <Route path="/contact" element={<PublicOnlyRoute><Contact /></PublicOnlyRoute>} />

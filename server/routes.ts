@@ -78,6 +78,7 @@ import {
   parseSiteForms,
 } from "./lib/form-automations";
 import { startWorkflowForFormSubmit } from "./lib/automation-engine";
+import { demoReadOnlyMiddleware } from "./lib/demo-mode";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -1586,6 +1587,7 @@ async function forceCorrectUnissuedDraftAmounts(drafts: ReconcilableDraft[]): Pr
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup authentication
   setupAuth(app);
+  app.use(demoReadOnlyMiddleware);
 
   registerPromoCodeRoutes(app, stripe);
   registerContactCardRoutes(app);
@@ -1870,6 +1872,363 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ success: true });
     });
+  });
+
+  const demoEnterLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "Too many demo login attempts. Try again later." },
+  });
+
+  async function resolveDemoWebsite(slug?: string | null) {
+    if (slug && slug.trim()) {
+      const normalized = slug.trim().toLowerCase();
+      const [website] = await db
+        .select()
+        .from(websiteProgress)
+        .where(
+          and(
+            eq(websiteProgress.isDemo, true),
+            eq(websiteProgress.demoEnabled, true),
+            eq(websiteProgress.demoSlug, normalized),
+          ),
+        )
+        .limit(1);
+      return website ?? null;
+    }
+
+    const [website] = await db
+      .select()
+      .from(websiteProgress)
+      .where(and(eq(websiteProgress.isDemo, true), eq(websiteProgress.demoEnabled, true)))
+      .orderBy(desc(websiteProgress.updatedAt))
+      .limit(1);
+    return website ?? null;
+  }
+
+  async function enterDemoSession(req: express.Request, res: express.Response, slug?: string | null) {
+    try {
+      const website = await resolveDemoWebsite(slug);
+      if (!website) {
+        return res.status(404).json({ error: "Demo not found or disabled" });
+      }
+
+      const user = await storage.getUserById(website.userId);
+      if (!user || !user.isDemo) {
+        return res.status(400).json({
+          error: "Demo website owner is not marked as demo user",
+        });
+      }
+      if (user.role !== UserRole.SUBSCRIBER) {
+        return res.status(400).json({ error: "Demo user must be a subscriber account" });
+      }
+
+      if (req.isAuthenticated()) {
+        await new Promise<void>((resolve, reject) => {
+          clearImpersonation(req.sessionID, undefined, req.session);
+          req.logout((err) => (err ? reject(err) : resolve()));
+        });
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        req.login(user, (err) => (err ? reject(err) : resolve()));
+      });
+      await saveSession(req);
+
+      const { password, ...sanitizedUser } = user;
+      const permissions = RolePermissions[user.role] || null;
+      const redirectTo = `/dashboard/website/${website.id}`;
+
+      return res.json({
+        user: sanitizedUser,
+        permissions,
+        websiteId: website.id,
+        demoSlug: website.demoSlug,
+        redirectTo,
+      });
+    } catch (err) {
+      console.error("[demo] enter failed:", err);
+      return res.status(500).json({ error: "Failed to enter demo" });
+    }
+  }
+
+  app.post("/api/demo/enter", demoEnterLimiter, async (req, res) => {
+    const slug =
+      typeof req.body?.slug === "string"
+        ? req.body.slug
+        : typeof req.query?.slug === "string"
+          ? req.query.slug
+          : null;
+    return enterDemoSession(req, res, slug);
+  });
+
+  app.get("/api/demo/enter", demoEnterLimiter, async (req, res) => {
+    const slug = typeof req.query?.slug === "string" ? req.query.slug : null;
+    return enterDemoSession(req, res, slug);
+  });
+
+  app.get("/api/admin/demo-websites", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const admin = await storage.getUserById(req.user!.id);
+      if (!admin || !hasPermission(admin.role, "canViewPlatformUsage")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const rows = await db
+        .select({
+          id: websiteProgress.id,
+          domain: websiteProgress.domain,
+          projectName: websiteProgress.projectName,
+          siteId: websiteProgress.siteId,
+          isDemo: websiteProgress.isDemo,
+          demoSlug: websiteProgress.demoSlug,
+          demoEnabled: websiteProgress.demoEnabled,
+          userId: websiteProgress.userId,
+          userEmail: users.email,
+          userUsername: users.username,
+          userIsDemo: users.isDemo,
+          updatedAt: websiteProgress.updatedAt,
+        })
+        .from(websiteProgress)
+        .innerJoin(users, eq(users.id, websiteProgress.userId))
+        .where(eq(websiteProgress.isDemo, true))
+        .orderBy(desc(websiteProgress.updatedAt));
+
+      return res.json({ demos: rows });
+    } catch (err) {
+      console.error("Error listing demo websites:", err);
+      return res.status(500).json({ error: "Failed to list demo websites" });
+    }
+  });
+
+  app.patch("/api/admin/websites/:websiteId/demo", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const admin = await storage.getUserById(req.user!.id);
+      if (!admin || admin.role !== UserRole.ADMINISTRATOR) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const websiteId = parseInt(req.params.websiteId, 10);
+      if (Number.isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+
+      const schema = z.object({
+        isDemo: z.boolean(),
+        demoEnabled: z.boolean().optional(),
+        demoSlug: z
+          .union([
+            z
+              .string()
+              .trim()
+              .min(1)
+              .max(80)
+              .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must be lowercase letters, numbers, hyphens"),
+            z.literal(""),
+            z.null(),
+          ])
+          .optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload", details: parsed.error.errors });
+      }
+
+      const [website] = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+
+      const demoSlug =
+        parsed.data.demoSlug === undefined
+          ? undefined
+          : parsed.data.demoSlug
+            ? parsed.data.demoSlug.toLowerCase()
+            : null;
+
+      const [updated] = await db
+        .update(websiteProgress)
+        .set({
+          isDemo: parsed.data.isDemo,
+          demoEnabled: parsed.data.demoEnabled ?? (parsed.data.isDemo ? true : website.demoEnabled),
+          ...(demoSlug !== undefined ? { demoSlug } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(websiteProgress.id, websiteId))
+        .returning();
+
+      if (parsed.data.isDemo) {
+        await db
+          .update(users)
+          .set({ isDemo: true })
+          .where(eq(users.id, website.userId));
+      } else {
+        const remaining = await db
+          .select({ id: websiteProgress.id })
+          .from(websiteProgress)
+          .where(
+            and(
+              eq(websiteProgress.userId, website.userId),
+              eq(websiteProgress.isDemo, true),
+              ne(websiteProgress.id, websiteId),
+            ),
+          )
+          .limit(1);
+        if (remaining.length === 0) {
+          await db.update(users).set({ isDemo: false }).where(eq(users.id, website.userId));
+        }
+      }
+
+      return res.json({ website: updated });
+    } catch (err: any) {
+      if (err?.code === "23505") {
+        return res.status(409).json({ error: "Demo slug already in use" });
+      }
+      console.error("Error updating demo website settings:", err);
+      return res.status(500).json({ error: "Failed to update demo settings" });
+    }
+  });
+
+  app.get("/api/admin/demo-analytics", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const admin = await storage.getUserById(req.user!.id);
+      if (!admin || !hasPermission(admin.role, "canViewPlatformUsage")) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const fromRaw = typeof req.query.from === "string" ? req.query.from : null;
+      const toRaw = typeof req.query.to === "string" ? req.query.to : null;
+      const websiteIdRaw =
+        typeof req.query.websiteId === "string" ? parseInt(req.query.websiteId, 10) : NaN;
+
+      const to = toRaw ? new Date(toRaw) : new Date();
+      const from = fromRaw
+        ? new Date(fromRaw)
+        : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+      if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+        return res.status(400).json({ error: "Invalid date range" });
+      }
+
+      const demoUsers = await db
+        .select({ id: users.id, email: users.email, username: users.username })
+        .from(users)
+        .where(eq(users.isDemo, true));
+      const demoUserIds = demoUsers.map((u) => u.id);
+      if (demoUserIds.length === 0) {
+        return res.json({
+          from: from.toISOString(),
+          to: to.toISOString(),
+          sessionCount: 0,
+          loginCount: 0,
+          activeUsers: 0,
+          totalActiveMs: 0,
+          topPaths: [],
+          demos: [],
+        });
+      }
+
+      let filterUserIds = demoUserIds;
+      if (!Number.isNaN(websiteIdRaw)) {
+        const [site] = await db
+          .select({ userId: websiteProgress.userId })
+          .from(websiteProgress)
+          .where(
+            and(eq(websiteProgress.id, websiteIdRaw), eq(websiteProgress.isDemo, true)),
+          )
+          .limit(1);
+        if (!site) {
+          return res.status(404).json({ error: "Demo website not found" });
+        }
+        filterUserIds = [site.userId];
+      }
+
+      const inRange = and(
+        inArray(platformAnalyticsEvents.userId, filterUserIds),
+        gte(platformAnalyticsEvents.createdAt, from),
+        lte(platformAnalyticsEvents.createdAt, to),
+      );
+
+      const [sessionRow] = await db
+        .select({
+          count: sql<number>`count(distinct ${platformAnalyticsEvents.sessionId})::int`,
+        })
+        .from(platformAnalyticsEvents)
+        .where(inRange);
+
+      const [loginRow] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(platformAnalyticsEvents)
+        .where(and(inRange, eq(platformAnalyticsEvents.eventType, "login")));
+
+      const [activeRow] = await db
+        .select({
+          count: sql<number>`count(distinct ${platformAnalyticsEvents.userId})::int`,
+        })
+        .from(platformAnalyticsEvents)
+        .where(inRange);
+
+      const [timeRow] = await db
+        .select({
+          total: sql<number>`coalesce(sum(${platformAnalyticsEvents.durationMs}), 0)::bigint`,
+        })
+        .from(platformAnalyticsEvents)
+        .where(and(inRange, eq(platformAnalyticsEvents.eventType, "heartbeat")));
+
+      const topPaths = await db
+        .select({
+          path: platformAnalyticsEvents.path,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(platformAnalyticsEvents)
+        .where(and(inRange, eq(platformAnalyticsEvents.eventType, "pageview")))
+        .groupBy(platformAnalyticsEvents.path)
+        .orderBy(sql`count(*) desc`)
+        .limit(15);
+
+      const demos = await db
+        .select({
+          id: websiteProgress.id,
+          projectName: websiteProgress.projectName,
+          domain: websiteProgress.domain,
+          demoSlug: websiteProgress.demoSlug,
+          demoEnabled: websiteProgress.demoEnabled,
+          userId: websiteProgress.userId,
+          userEmail: users.email,
+        })
+        .from(websiteProgress)
+        .innerJoin(users, eq(users.id, websiteProgress.userId))
+        .where(eq(websiteProgress.isDemo, true))
+        .orderBy(desc(websiteProgress.updatedAt));
+
+      return res.json({
+        from: from.toISOString(),
+        to: to.toISOString(),
+        sessionCount: sessionRow?.count ?? 0,
+        loginCount: loginRow?.count ?? 0,
+        activeUsers: activeRow?.count ?? 0,
+        totalActiveMs: Number(timeRow?.total ?? 0),
+        topPaths,
+        demos,
+      });
+    } catch (err) {
+      console.error("Error fetching demo analytics:", err);
+      return res.status(500).json({ error: "Failed to fetch demo analytics" });
+    }
   });
 
   app.post("/api/admin/impersonate/:userId", async (req, res) => {

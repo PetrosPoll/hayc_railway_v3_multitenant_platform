@@ -136,6 +136,8 @@ export const users = pgTable("users", {
   tipEmailNotifications: boolean("tip_email_notifications").default(true),
   tipsEmailNotifications: boolean("tips_email_notifications").default(true),
   passwordResetToken: text("password_reset_token"),
+  /** Shared demo portal accounts for prospects (read-only). */
+  isDemo: boolean("is_demo").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -164,6 +166,12 @@ export const websiteProgress = pgTable("website_progress", {
     name?: string;
     createdAt?: string;
   } | null>(),
+  /** Prospect demo portal website (paired with users.is_demo). */
+  isDemo: boolean("is_demo").notNull().default(false),
+  /** Public path segment for /demo/:slug (unique when set). */
+  demoSlug: text("demo_slug").unique(),
+  /** When false, /demo link for this site is disabled. */
+  demoEnabled: boolean("demo_enabled").notNull().default(true),
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status").notNull().default("disconnected"),
   stripeConnectedAt: timestamp("stripe_connected_at"),

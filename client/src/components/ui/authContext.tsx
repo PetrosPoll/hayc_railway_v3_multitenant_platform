@@ -12,6 +12,7 @@ interface User {
   email: string;
   username: string;
   role: string;
+  isDemo?: boolean;
 }
 
 export interface ImpersonationInfo {

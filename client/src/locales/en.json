@@ -4222,5 +4222,10 @@
                 }
             ]
         }
+    },
+    "demo": {
+        "loading": "Opening demo dashboard…",
+        "unavailableHint": "This demo may be disabled. Please contact hayc for a walkthrough.",
+        "banner": "Demo mode — explore freely. Changes are disabled. Ready to build yours? Sign up on hayc."
     }
 }
