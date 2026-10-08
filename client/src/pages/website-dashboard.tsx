@@ -14,6 +14,11 @@ import { WebsiteProgress } from "@/components/ui/website-progress";
 import { WebsiteAnalytics } from "@/components/ui/website-analytics";
 import { Separator } from "@/components/ui/separator";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
@@ -36,6 +41,7 @@ import {
   Settings,
   CreditCard,
   Download,
+  ChevronDown,
   ChevronRight,
   Receipt,
   FileText,
@@ -206,39 +212,56 @@ function SidebarMenuContent({
     callback?.();
   };
 
-  return (
-    <SidebarMenu>
-      {menuItems.map((item, index) => {
-        const isGroupHeader =
-          item.id === "separator" ||
-          item.id === "profile-separator" ||
-          item.id.startsWith("group-");
+  const navGroups = useMemo(() => {
+    const groups: Array<{
+      id: string;
+      label: string;
+      items: SidebarMenuContentProps["menuItems"];
+    }> = [];
+    let current: (typeof groups)[number] | null = null;
 
-        if (isGroupHeader) {
-          const label =
-            item.id === "separator"
-              ? t("dashboard.explore") || "Explore"
-              : item.id === "profile-separator"
-                ? t("dashboard.profile") || "Profile"
-                : item.label;
-          const testId =
-            item.id === "separator"
-              ? "menu-separator"
-              : item.id === "profile-separator"
-                ? "menu-profile-separator"
-                : `menu-${item.id}`;
-          return (
-            <div key={`${item.id}-${index}`} className="py-2" data-testid={testId}>
-              {index > 0 && <Separator className="my-2" />}
-              <div
-                className={`${index > 0 ? "mt-3" : "mt-1"} px-2 text-xs font-medium text-muted-foreground tracking-wide`}
-              >
-                {toGreekSafeUpperCase(label)}
-              </div>
-            </div>
-          );
-        }
+    for (const item of menuItems) {
+      const isGroupHeader =
+        item.id === "separator" ||
+        item.id === "profile-separator" ||
+        item.id.startsWith("group-");
 
+      if (isGroupHeader) {
+        const label =
+          item.id === "separator"
+            ? t("dashboard.explore") || "Explore"
+            : item.id === "profile-separator"
+              ? t("dashboard.profile") || "Profile"
+              : item.label;
+        current = { id: item.id, label, items: [] };
+        groups.push(current);
+        continue;
+      }
+
+      if (!current) {
+        current = { id: "group-default", label: "", items: [] };
+        groups.push(current);
+      }
+      current.items.push(item);
+    }
+
+    return groups;
+  }, [menuItems, t]);
+
+  // undefined = open by default; explicit false = user collapsed
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const group = navGroups.find((g) =>
+      g.items.some((item) => item.id === activeSection),
+    );
+    if (!group) return;
+    setOpenGroups((prev) =>
+      prev[group.id] === false ? { ...prev, [group.id]: true } : prev,
+    );
+  }, [activeSection, navGroups]);
+
+  const renderMenuItem = (item: SidebarMenuContentProps["menuItems"][number]) => {
         if (item.id === "logout") {
           const Icon = item.icon;
           return (
@@ -414,6 +437,51 @@ function SidebarMenuContent({
               <span>{item.label}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
+        );
+  };
+
+  return (
+    <SidebarMenu>
+      {navGroups.map((group, index) => {
+        const isOpen = openGroups[group.id] !== false;
+        return (
+          <Collapsible
+            key={group.id}
+            open={isOpen}
+            onOpenChange={(open) =>
+              setOpenGroups((prev) => ({ ...prev, [group.id]: open }))
+            }
+            className="w-full"
+            data-testid={
+              group.id === "separator"
+                ? "menu-separator"
+                : group.id === "profile-separator"
+                  ? "menu-profile-separator"
+                  : `menu-${group.id}`
+            }
+          >
+            <div className={`${index > 0 ? "pt-2" : "pt-0"}`}>
+              {index > 0 && <Separator className="my-2" />}
+              {group.label ? (
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground tracking-wide hover:bg-muted/60"
+                  >
+                    <span>{toGreekSafeUpperCase(group.label)}</span>
+                    {isOpen ? (
+                      <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                    ) : (
+                      <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                    )}
+                  </button>
+                </CollapsibleTrigger>
+              ) : null}
+            </div>
+            <CollapsibleContent className="flex flex-col gap-0.5 pt-0.5">
+              {group.items.map((item) => renderMenuItem(item))}
+            </CollapsibleContent>
+          </Collapsible>
         );
       })}
     </SidebarMenu>

@@ -21,6 +21,13 @@ import { Button } from "@/components/ui/button";
 import { subscriptions, UserRole, RolePermissions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
+import { toGreekSafeUpperCase } from "@/lib/greek-text";
+import { Separator } from "@/components/ui/separator";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import {
   Table,
   TableBody,
@@ -787,6 +794,45 @@ export default function AdminDashboard() {
       return next;
     });
   };
+
+  const adminNavGroupForTab = (tab: string): string => {
+    if (tab === "users" || tab === "user-details") return "people";
+    if (
+      [
+        "subscriptions",
+        "all-subscriptions",
+        "invoices",
+        "payment-failures",
+        "get-started",
+        "ambassadors",
+        "calendar",
+        "statistics",
+      ].includes(tab)
+    ) {
+      return "billing";
+    }
+    if (tab === "platform-usage") return "insights";
+    if (
+      ["website-progress", "website-changes", "contact-submissions"].includes(tab)
+    ) {
+      return "websites";
+    }
+    if (["newsletter", "tips", "email-testing"].includes(tab)) {
+      return "communications";
+    }
+    if (["roles", "system-settings"].includes(tab)) return "system";
+    return "people";
+  };
+
+  // undefined = open by default; explicit false = user collapsed
+  const [openNavGroups, setOpenNavGroups] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const group = adminNavGroupForTab(activeTab);
+    setOpenNavGroups((prev) =>
+      prev[group] === false ? { ...prev, [group]: true } : prev,
+    );
+  }, [activeTab]);
 
   const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
     number | null
@@ -1615,84 +1661,178 @@ export default function AdminDashboard() {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={handleTabChange} className="flex flex-row gap-6">
-            <nav className="w-52 shrink-0 border-r border-border pr-4" aria-label="Admin sections">
+            <nav className="w-56 shrink-0 border-r border-border pr-4" aria-label="Admin sections">
               <TabsList className="flex flex-col h-auto w-full bg-transparent p-0 gap-0.5">
-                {userPermissions?.canViewUsers && (
-                  <TabsTrigger value="users" className="w-full justify-start rounded-md px-3 py-2.5">
-                    Users
-                  </TabsTrigger>
-                )}
-                {userPermissions?.canViewSubscriptions && (
-                  <>
-                    <TabsTrigger value="subscriptions" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Active Subscriptions
-                    </TabsTrigger>
-                    <TabsTrigger value="all-subscriptions" className="w-full justify-start rounded-md px-3 py-2.5">
-                      All Subscriptions
-                    </TabsTrigger>
-                    <TabsTrigger value="invoices" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Invoices
-                    </TabsTrigger>
-                    <TabsTrigger value="get-started" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Get Started
-                    </TabsTrigger>
-                    <TabsTrigger value="ambassadors" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Ambassadors
-                    </TabsTrigger>
-                    <TabsTrigger value="calendar" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Calendar
-                    </TabsTrigger>
-                    <TabsTrigger value="payment-failures" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Cancelled (Payment Failed)
-                    </TabsTrigger>
-                    <TabsTrigger value="statistics" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Statistics
-                    </TabsTrigger>
-                  </>
-                )}
-                {userPermissions?.canViewPlatformUsage && (
-                  <TabsTrigger value="platform-usage" className="w-full justify-start rounded-md px-3 py-2.5">
-                    Platform Usage
-                  </TabsTrigger>
-                )}
-                {userPermissions?.canManageSettings && (
-                  <TabsTrigger value="email-testing" className="w-full justify-start rounded-md px-3 py-2.5">
-                    Email Testing
-                  </TabsTrigger>
-                )}
-                {userPermissions?.canViewWebsites && (
-                  <>
-                    <TabsTrigger value="website-progress" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Website Progress
-                    </TabsTrigger>
-                    <TabsTrigger value="website-changes" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Website Changes
-                    </TabsTrigger>
-                    <TabsTrigger value="contact-submissions" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Contact forms
-                    </TabsTrigger>
-                  </>
-                )}
-                {userPermissions?.canViewTips && (
-                  <TabsTrigger value="tips" className="w-full justify-start rounded-md px-3 py-2.5">
-                    Tips Management
-                  </TabsTrigger>
-                )}
-                {userData?.user.role === UserRole.ADMINISTRATOR && (
-                  <>
-                    <TabsTrigger value="roles" className="w-full justify-start rounded-md px-3 py-2.5">
-                      Roles
-                    </TabsTrigger>
-                    <TabsTrigger value="system-settings" className="w-full justify-start rounded-md px-3 py-2.5">
-                      System Settings
-                    </TabsTrigger>
-                  </>
-                )}
-                {userPermissions?.canViewNewsletter && (
-                  <TabsTrigger value="newsletter" className="w-full justify-start rounded-md px-3 py-2.5">
-                    Newsletter
-                  </TabsTrigger>
-                )}
+                {(() => {
+                  const triggerClass =
+                    "w-full justify-start rounded-md px-3 py-2.5 data-[state=active]:bg-transparent data-[state=active]:shadow-none";
+                  const showPeople = !!userPermissions?.canViewUsers;
+                  const showBilling = !!userPermissions?.canViewSubscriptions;
+                  const showInsights = !!userPermissions?.canViewPlatformUsage;
+                  const showWebsites = !!userPermissions?.canViewWebsites;
+                  const showComms =
+                    !!userPermissions?.canViewNewsletter ||
+                    !!userPermissions?.canViewTips ||
+                    !!userPermissions?.canManageSettings;
+                  const showSystem = userData?.user.role === UserRole.ADMINISTRATOR;
+
+                  const groups: Array<{
+                    key: string;
+                    label: string;
+                    show: boolean;
+                    items: React.ReactNode;
+                  }> = [
+                    {
+                      key: "people",
+                      label: "People",
+                      show: showPeople,
+                      items: showPeople ? (
+                        <TabsTrigger value="users" className={triggerClass}>
+                          Users
+                        </TabsTrigger>
+                      ) : null,
+                    },
+                    {
+                      key: "billing",
+                      label: "Billing",
+                      show: showBilling,
+                      items: showBilling ? (
+                        <>
+                          <TabsTrigger value="subscriptions" className={triggerClass}>
+                            Active Subscriptions
+                          </TabsTrigger>
+                          <TabsTrigger value="all-subscriptions" className={triggerClass}>
+                            All Subscriptions
+                          </TabsTrigger>
+                          <TabsTrigger value="invoices" className={triggerClass}>
+                            Invoices
+                          </TabsTrigger>
+                          <TabsTrigger value="payment-failures" className={triggerClass}>
+                            Cancelled (Payment Failed)
+                          </TabsTrigger>
+                          <TabsTrigger value="get-started" className={triggerClass}>
+                            Get Started
+                          </TabsTrigger>
+                          <TabsTrigger value="ambassadors" className={triggerClass}>
+                            Ambassadors
+                          </TabsTrigger>
+                          <TabsTrigger value="calendar" className={triggerClass}>
+                            Calendar
+                          </TabsTrigger>
+                          <TabsTrigger value="statistics" className={triggerClass}>
+                            Statistics
+                          </TabsTrigger>
+                        </>
+                      ) : null,
+                    },
+                    {
+                      key: "insights",
+                      label: "Insights",
+                      show: showInsights,
+                      items: showInsights ? (
+                        <TabsTrigger value="platform-usage" className={triggerClass}>
+                          Platform Usage
+                        </TabsTrigger>
+                      ) : null,
+                    },
+                    {
+                      key: "websites",
+                      label: "Websites",
+                      show: showWebsites,
+                      items: showWebsites ? (
+                        <>
+                          <TabsTrigger value="website-progress" className={triggerClass}>
+                            Website Progress
+                          </TabsTrigger>
+                          <TabsTrigger value="website-changes" className={triggerClass}>
+                            Website Changes
+                          </TabsTrigger>
+                          <TabsTrigger value="contact-submissions" className={triggerClass}>
+                            Contact forms
+                          </TabsTrigger>
+                        </>
+                      ) : null,
+                    },
+                    {
+                      key: "communications",
+                      label: "Communications",
+                      show: showComms,
+                      items: (
+                        <>
+                          {userPermissions?.canViewNewsletter && (
+                            <TabsTrigger value="newsletter" className={triggerClass}>
+                              Newsletter
+                            </TabsTrigger>
+                          )}
+                          {userPermissions?.canViewTips && (
+                            <TabsTrigger value="tips" className={triggerClass}>
+                              Tips Management
+                            </TabsTrigger>
+                          )}
+                          {userPermissions?.canManageSettings && (
+                            <TabsTrigger value="email-testing" className={triggerClass}>
+                              Email Testing
+                            </TabsTrigger>
+                          )}
+                        </>
+                      ),
+                    },
+                    {
+                      key: "system",
+                      label: "System",
+                      show: !!showSystem,
+                      items: showSystem ? (
+                        <>
+                          <TabsTrigger value="roles" className={triggerClass}>
+                            Roles
+                          </TabsTrigger>
+                          <TabsTrigger value="system-settings" className={triggerClass}>
+                            System Settings
+                          </TabsTrigger>
+                        </>
+                      ) : null,
+                    },
+                  ];
+
+                  const visibleGroups = groups.filter((g) => g.show);
+                  return visibleGroups.map((group, index) => {
+                    const isOpen = openNavGroups[group.key] !== false;
+                    return (
+                      <Collapsible
+                        key={group.key}
+                        open={isOpen}
+                        onOpenChange={(open) =>
+                          setOpenNavGroups((prev) => ({
+                            ...prev,
+                            [group.key]: open,
+                          }))
+                        }
+                        className="w-full"
+                        data-testid={`admin-nav-group-${group.key}`}
+                      >
+                        <div className={`${index > 0 ? "pt-2" : "pt-0"}`}>
+                          {index > 0 && <Separator className="mb-2" />}
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground tracking-wide hover:bg-muted/60"
+                            >
+                              <span>{toGreekSafeUpperCase(group.label)}</span>
+                              {isOpen ? (
+                                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                              ) : (
+                                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                              )}
+                            </button>
+                          </CollapsibleTrigger>
+                        </div>
+                        <CollapsibleContent className="flex flex-col gap-0.5 pt-0.5">
+                          {group.items}
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  });
+                })()}
               </TabsList>
             </nav>
             <div className="flex-1 min-w-0">
