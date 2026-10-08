@@ -1667,16 +1667,20 @@ export default function AdminDashboard() {
                 {(() => {
                   const triggerClass =
                     "w-full justify-start rounded-md px-3 py-2.5 data-[state=active]:bg-transparent data-[state=active]:shadow-none";
+                  const isAdmin = userData?.user.role === UserRole.ADMINISTRATOR;
                   const showPeople = !!userPermissions?.canViewUsers;
                   const showBilling = !!userPermissions?.canViewSubscriptions;
-                  const showInsights = !!userPermissions?.canViewPlatformUsage;
-                  // demo-accounts shares Insights permission
+                  const showPlatformUsage = !!userPermissions?.canViewPlatformUsage;
+                  // Demo accounts: platform-usage permission OR administrator role
+                  const showDemoAccounts =
+                    showPlatformUsage || !!isAdmin || !!userPermissions?.canManageSettings;
+                  const showInsights = showPlatformUsage || showDemoAccounts;
                   const showWebsites = !!userPermissions?.canViewWebsites;
                   const showComms =
                     !!userPermissions?.canViewNewsletter ||
                     !!userPermissions?.canViewTips ||
                     !!userPermissions?.canManageSettings;
-                  const showSystem = userData?.user.role === UserRole.ADMINISTRATOR;
+                  const showSystem = !!isAdmin;
 
                   const groups: Array<{
                     key: string;
@@ -1731,16 +1735,24 @@ export default function AdminDashboard() {
                       key: "insights",
                       label: "Insights",
                       show: showInsights,
-                      items: showInsights ? (
+                      items: (
                         <>
-                          <TabsTrigger value="platform-usage" className={triggerClass}>
-                            Platform Usage
-                          </TabsTrigger>
-                          <TabsTrigger value="demo-accounts" className={triggerClass}>
-                            Demo accounts
-                          </TabsTrigger>
+                          {showPlatformUsage && (
+                            <TabsTrigger value="platform-usage" className={triggerClass}>
+                              Platform Usage
+                            </TabsTrigger>
+                          )}
+                          {showDemoAccounts && (
+                            <TabsTrigger
+                              value="demo-accounts"
+                              className={triggerClass}
+                              data-testid="admin-tab-demo-accounts"
+                            >
+                              Demo accounts
+                            </TabsTrigger>
+                          )}
                         </>
-                      ) : null,
+                      ),
                     },
                     {
                       key: "websites",
