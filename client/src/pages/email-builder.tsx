@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import { ArrowLeft, Save, Download, Loader2, Eye, X, Mail } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { impersonationHSvh } from "@/lib/impersonation-layout";
@@ -38,6 +39,7 @@ export default function EmailBuilderPage() {
   const { websiteId } = useParams<{ websiteId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isDemo, blockIfDemo } = useDemoMode();
   const emailEditorRef = useRef<EditorRef>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showSaveDialog, setShowSaveDialog] = useState(false);
@@ -493,6 +495,7 @@ export default function EmailBuilderPage() {
   };
 
   const saveDesign = () => {
+    if (blockIfDemo()) return;
     const unlayer = emailEditorRef.current?.editor;
     if (!unlayer) return;
 
@@ -518,6 +521,7 @@ export default function EmailBuilderPage() {
   };
 
   const handleSaveForCampaign = async () => {
+    if (blockIfDemo()) return;
     const unlayer = emailEditorRef.current?.editor;
     if (!unlayer) {
       toast({
@@ -558,6 +562,7 @@ export default function EmailBuilderPage() {
   };
 
   const handleSaveTemplate = async (saveAsDraft = false) => {
+    if (blockIfDemo()) return;
     if (!templateName.trim()) {
       toast({
         title: "Error",
@@ -900,6 +905,7 @@ export default function EmailBuilderPage() {
   };
 
   const sendTestEmail = () => {
+    if (blockIfDemo()) return;
     const unlayer = emailEditorRef.current?.editor;
     if (!unlayer) return;
 
@@ -1091,7 +1097,7 @@ export default function EmailBuilderPage() {
             variant="outline"
             size="sm"
             onClick={sendTestEmail}
-            disabled={sendTestEmailMutation.isPending}
+            disabled={isDemo || sendTestEmailMutation.isPending}
             data-testid="button-send-test"
           >
             {sendTestEmailMutation.isPending ? (
@@ -1106,7 +1112,7 @@ export default function EmailBuilderPage() {
             <Button
               size="sm"
               onClick={handleSaveForCampaign}
-              disabled={saveCampaignHtmlMutation.isPending}
+              disabled={isDemo || saveCampaignHtmlMutation.isPending}
               data-testid="button-save-to-campaign"
             >
               {saveCampaignHtmlMutation.isPending ? (
@@ -1120,7 +1126,7 @@ export default function EmailBuilderPage() {
             <Button
               size="sm"
               onClick={saveDesign}
-              disabled={saveTemplateMutation.isPending}
+              disabled={isDemo || saveTemplateMutation.isPending}
               data-testid="button-save"
             >
               {saveTemplateMutation.isPending ? (

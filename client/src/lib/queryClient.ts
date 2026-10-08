@@ -8,13 +8,21 @@ console.log('Current i18n language in queryClient:', i18n.language);
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     let errorMessage;
+    let code: string | undefined;
     try {
       const errorData = await res.json();
       errorMessage = errorData.error || res.statusText;
+      code = errorData.code;
     } catch {
       errorMessage = res.statusText;
     }
-    throw new Error(`${res.status}: ${errorMessage}`);
+    const error = new Error(
+      code === "DEMO_READONLY"
+        ? errorMessage
+        : `${res.status}: ${errorMessage}`,
+    ) as Error & { code?: string };
+    error.code = code;
+    throw error;
   }
 }
 

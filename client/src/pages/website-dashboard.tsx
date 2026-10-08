@@ -77,6 +77,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import { useAuth } from "@/components/ui/authContext";
 import { impersonationMinHSvh } from "@/lib/impersonation-layout";
 import { useTranslation } from "react-i18next";
@@ -494,6 +495,7 @@ export default function WebsiteDashboard() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { setUser } = useAuth();
+  const { isDemo, blockIfDemo } = useDemoMode();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -856,6 +858,7 @@ export default function WebsiteDashboard() {
   });
 
   const handleUpgradeSubscription = (subscriptionId: number) => {
+    if (blockIfDemo()) return;
     const subscription = subscriptions?.find(sub => sub.id === subscriptionId);
     if (subscription) {
       setSubscriptionToUpgrade(subscription);
@@ -864,10 +867,12 @@ export default function WebsiteDashboard() {
   };
 
   const handleCancelSubscription = (subscriptionId: number) => {
+    if (blockIfDemo()) return;
     setSubscriptionToCancel(subscriptionId);
   };
 
   const handleConfirmCancel = () => {
+    if (blockIfDemo()) return;
     if (subscriptionToCancel) {
       cancelMutation.mutate(subscriptionToCancel);
     }
@@ -1849,6 +1854,7 @@ export default function WebsiteDashboard() {
 
   const handleStripeConnectClick = async () => {
     if (!websiteId) return;
+    if (blockIfDemo()) return;
     setStripeConnectLoading(true);
     try {
       const response = await fetch(`/api/websites/${websiteId}/stripe/connect`, {
@@ -1907,7 +1913,7 @@ export default function WebsiteDashboard() {
             <CardContent>
               <Button
                 onClick={handleStripeConnectClick}
-                disabled={stripeConnectLoading}
+                disabled={isDemo || stripeConnectLoading}
                 data-testid="button-connect-stripe"
               >
                 {stripeConnectLoading ? (
@@ -1934,7 +1940,7 @@ export default function WebsiteDashboard() {
           </div>
           <Button
             onClick={handleStripeConnectClick}
-            disabled={stripeConnectLoading}
+            disabled={isDemo || stripeConnectLoading}
             data-testid="button-continue-onboarding"
           >
             {stripeConnectLoading ? (
@@ -1970,7 +1976,11 @@ export default function WebsiteDashboard() {
           <CardContent>
             <Button
               variant="outline"
-              onClick={() => setStripeDisconnectConfirmOpen(true)}
+              onClick={() => {
+                if (blockIfDemo()) return;
+                setStripeDisconnectConfirmOpen(true);
+              }}
+              disabled={isDemo}
               data-testid="button-disconnect-stripe"
             >
               {t("actions.disconnect")}
@@ -2283,6 +2293,7 @@ export default function WebsiteDashboard() {
                     variant="outline"
                     className="w-full upgrade-subscription"
                     data-testid="button-upgrade-yearly"
+                    disabled={isDemo}
                     onClick={() => handleUpgradeSubscription(selectedSubscription.id)}
                   >
                     <TrendingUp className="h-4 w-4 mr-2" />
@@ -2294,6 +2305,7 @@ export default function WebsiteDashboard() {
                   variant="link"
                   className="text-destructive p-0 h-auto cancel-subscription"
                   data-testid="button-cancel-subscription"
+                  disabled={isDemo}
                   onClick={() => handleCancelSubscription(selectedSubscription.id)}
                 >
                   {t("dashboard.cancelSubscription") || "CANCEL SUBSCRIPTION"}
@@ -2455,8 +2467,11 @@ export default function WebsiteDashboard() {
                 ) : null}
                 <div className="pt-4">
                   <Button
-                    onClick={() => updatePaymentMutation.mutate()}
-                    disabled={updatePaymentMutation.isPending}
+                    onClick={() => {
+                      if (blockIfDemo()) return;
+                      updatePaymentMutation.mutate();
+                    }}
+                    disabled={isDemo || updatePaymentMutation.isPending}
                     data-testid="button-update-payment"
                     className="w-full"
                   >
@@ -2640,6 +2655,7 @@ export default function WebsiteDashboard() {
                     <Button
                       size="sm"
                       onClick={() => {
+                        if (blockIfDemo()) return;
                         updateBillingMutation.mutate({
                           subscriptionId: activeSubscription.id,
                           vatNumber: vatValue,
@@ -2649,7 +2665,7 @@ export default function WebsiteDashboard() {
                           postalCode: postalCodeValue
                         });
                       }}
-                      disabled={updateBillingMutation.isPending}
+                      disabled={isDemo || updateBillingMutation.isPending}
                     >
                       {updateBillingMutation.isPending ? (
                         <>
@@ -2674,7 +2690,9 @@ export default function WebsiteDashboard() {
                     <Button
                       variant="ghost"
                       size="sm"
+                      disabled={isDemo}
                       onClick={() => {
+                        if (blockIfDemo()) return;
                         setVatValue(activeSubscription.vatNumber || "");
                         setCityValue(activeSubscription.city || "");
                         setStreetValue(activeSubscription.street || "");
@@ -3603,8 +3621,11 @@ export default function WebsiteDashboard() {
                           <Button
                             variant="outline"
                             size="icon"
-                            onClick={() => duplicateTemplateMutation.mutate(template.id)}
-                            disabled={duplicateTemplateMutation.isPending}
+                            onClick={() => {
+                              if (blockIfDemo()) return;
+                              duplicateTemplateMutation.mutate(template.id);
+                            }}
+                            disabled={isDemo || duplicateTemplateMutation.isPending}
                             data-testid={`button-duplicate-${template.id}`}
                           >
                             {duplicateTemplateMutation.isPending ? (
@@ -4328,13 +4349,14 @@ export default function WebsiteDashboard() {
                         </div>
                         <Button
                           onClick={() => {
+                            if (blockIfDemo()) return;
                             if (!isPurchased) {
                               setSelectedAddOn(addon);
                               setAddonBillingPeriod(discoverBillingPeriod);
                               setConfirmDialogOpen(true);
                             }
                           }}
-                          disabled={isPurchased}
+                          disabled={isDemo || isPurchased}
                           variant={isPurchased ? "secondary" : "default"}
                           data-testid={`button-purchase-${addon.id}`}
                         >
@@ -4934,11 +4956,12 @@ export default function WebsiteDashboard() {
             </Button>
             <Button
               onClick={() => {
+                if (blockIfDemo()) return;
                 if (selectedAddOn) {
                   purchaseAddOnMutation.mutate(selectedAddOn.id);
                 }
               }}
-              disabled={purchaseAddOnMutation.isPending || paymentMethodLoading || !paymentMethod?.hasPaymentMethod}
+              disabled={isDemo || purchaseAddOnMutation.isPending || paymentMethodLoading || !paymentMethod?.hasPaymentMethod}
               data-testid="button-confirm-addon"
             >
               {purchaseAddOnMutation.isPending ? (

@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Users, Plus, Edit3, Trash2, Tag as TagIcon, Upload, X, Download, Loader2, Search, Filter, Eye } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +44,7 @@ interface ContactsListProps {
 
 export function ContactsList({ websiteProgressId, planSubscription }: ContactsListProps) {
   const { t } = useTranslation();
+  const { isDemo, blockIfDemo } = useDemoMode();
 
   const contactFormSchema = z.object({
     first_name: z.string().optional(),
@@ -241,12 +243,14 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
   });
 
   const handleAddContact = (data: ContactFormData) => {
+    if (blockIfDemo()) return;
     createContactMutation.mutate(data);
   };
 
   const handleEditContact = (contact: any, mode: "view" | "edit" = "view") => {
+    const effectiveMode: "view" | "edit" = isDemo ? "view" : mode;
     setEditingContact(contact);
-    setEditDialogMode(mode);
+    setEditDialogMode(effectiveMode);
     form.reset({
       first_name: contact.firstName || "",
       last_name: contact.lastName || "",
@@ -258,22 +262,26 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
   };
 
   const handleUpdateContact = (data: ContactFormData) => {
+    if (blockIfDemo()) return;
     if (!editingContact || editDialogMode !== "edit") return;
     updateContactMutation.mutate({ ...data, id: editingContact.id });
   };
 
   const handleDeleteContact = (contactId: number) => {
+    if (blockIfDemo()) return;
     setDeletingContactId(contactId);
     setShowDeleteDialog(true);
   };
 
   const confirmDelete = () => {
+    if (blockIfDemo()) return;
     if (deletingContactId) {
       deleteContactMutation.mutate(deletingContactId);
     }
   };
 
   const confirmBulkDelete = () => {
+    if (blockIfDemo()) return;
     if (selectedContacts.length > 0) {
       bulkDeleteContactsMutation.mutate(selectedContacts);
     }
@@ -881,6 +889,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
   });
 
   const handleBulkImport = () => {
+    if (blockIfDemo()) return;
     const contactsToSend = importExistingMode === "update"
       ? parsedContacts
       : parsedContacts.filter((contact) => !contact.exists);
@@ -1026,6 +1035,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
               </Select>
               <Button
                 onClick={() => {
+                  if (blockIfDemo()) return;
                   form.reset({
                     first_name: "",
                     last_name: "",
@@ -1035,6 +1045,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                   });
                   setShowAddDialog(true);
                 }}
+                disabled={isDemo}
                 data-testid="button-add-contact"
               >
                 <Plus className="w-4 h-4 mr-2" />
@@ -1167,10 +1178,11 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                       variant="outline"
                       size="sm"
                       onClick={() => {
+                        if (blockIfDemo()) return;
                         setBulkSelectedStatus("pending");
                         setShowBulkStatusDialog(true);
                       }}
-                      disabled={bulkUpdateStatusMutation.isPending}
+                      disabled={isDemo || bulkUpdateStatusMutation.isPending}
                     >
                       {t("newsletter.changeStatus")}
                     </Button>
@@ -1178,20 +1190,24 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                       size="icon"
                       variant="ghost"
                       onClick={() => {
+                        if (blockIfDemo()) return;
                         setBulkSelectedTagIds([]);
                         setShowBulkTagsDialog(true);
                       }}
                       className="h-8 w-8"
-                      disabled={bulkAssignTagsMutation.isPending}
+                      disabled={isDemo || bulkAssignTagsMutation.isPending}
                     >
                       <TagIcon className="h-4 w-4" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
-                      onClick={() => setShowBulkDeleteDialog(true)}
+                      onClick={() => {
+                        if (blockIfDemo()) return;
+                        setShowBulkDeleteDialog(true);
+                      }}
                       className="h-8 w-8 text-red-600 hover:text-red-800"
-                      disabled={bulkDeleteContactsMutation.isPending}
+                      disabled={isDemo || bulkDeleteContactsMutation.isPending}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -1218,10 +1234,10 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                       <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleEditContact(contact, "view")}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleEditContact(contact, "edit")} data-testid={`button-edit-contact-${contact.id}`}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleEditContact(contact, "edit")} disabled={isDemo} data-testid={`button-edit-contact-${contact.id}`}>
                         <Edit3 className="h-4 w-4" />
                       </Button>
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-800" onClick={() => handleDeleteContact(contact.id)} data-testid={`button-delete-contact-${contact.id}`}>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600 hover:text-red-800" onClick={() => handleDeleteContact(contact.id)} disabled={isDemo} data-testid={`button-delete-contact-${contact.id}`}>
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1303,16 +1319,17 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() => handleEditContact(contact, "edit")}
+                            onClick={() => handleEditContact(contact, isDemo ? "view" : "edit")}
                             className="h-8 w-8"
                             data-testid={`button-edit-contact-${contact.id}`}
                           >
-                            <Edit3 className="h-4 w-4" />
+                            {isDemo ? <Eye className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
                           </Button>
                           <Button
                             size="icon"
                             variant="ghost"
                             onClick={() => handleDeleteContact(contact.id)}
+                            disabled={isDemo}
                             className="h-8 w-8 text-red-600 hover:text-red-800"
                             data-testid={`button-delete-contact-${contact.id}`}
                           >

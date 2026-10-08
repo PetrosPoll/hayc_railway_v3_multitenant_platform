@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Plus, Loader2, TrendingUp, Users, Calendar, BarChart3, Copy, Edit, X, Search, ArrowUpDown, Trash2, RotateCcw } from "lucide-react";
 import { CampaignWizard } from "@/components/CampaignWizard";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
@@ -46,6 +47,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<number>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const { toast } = useToast();
+  const { isDemo, blockIfDemo } = useDemoMode();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const disabled = planSubscription?.status !== "active";
@@ -234,12 +236,14 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   };
 
   const handleBulkDelete = () => {
+    if (blockIfDemo()) return;
     if (selectedCampaigns.size > 0) {
       setShowBulkDeleteDialog(true);
     }
   };
 
   const confirmBulkDelete = () => {
+    if (blockIfDemo()) return;
     bulkDeleteMutation.mutate(Array.from(selectedCampaigns));
   };
 
@@ -248,29 +252,35 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   };
 
   const handleSendCampaign = (campaignId: number) => {
+    if (blockIfDemo()) return;
     setSendingCampaignId(campaignId);
   };
 
   const handleEditCampaign = (campaign: any) => {
+    if (blockIfDemo()) return;
     setEditingCampaign(campaign);
     setShowCampaignWizard(true);
   };
 
   const handleDuplicateCampaign = (campaignId: number) => {
+    if (blockIfDemo()) return;
     duplicateCampaignMutation.mutate(campaignId);
   };
 
   const handleDeleteCampaign = (campaignId: number) => {
+    if (blockIfDemo()) return;
     setDeletingCampaignId(campaignId);
   };
 
   const confirmDeleteCampaign = () => {
+    if (blockIfDemo()) return;
     if (deletingCampaignId) {
       deleteCampaignMutation.mutate(deletingCampaignId);
     }
   };
 
   const handleRetryFailedCampaign = async (campaignId: number) => {
+    if (blockIfDemo()) return;
     try {
       await apiRequest("PUT", `/api/newsletter/campaigns/${campaignId}`, {
         status: "draft",
@@ -293,6 +303,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   };
 
   const handleCancelSchedule = async (campaignId: number) => {
+    if (blockIfDemo()) return;
     if (!window.confirm(t("dashboard.campaigns.cancelSchedule.confirm"))) {
       return;
     }
@@ -328,6 +339,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   };
 
   const confirmSendCampaign = () => {
+    if (blockIfDemo()) return;
     if (sendingCampaignId) {
       sendCampaignMutation.mutate(sendingCampaignId);
     }
@@ -516,7 +528,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleDuplicateCampaign(campaign.id)}
-              disabled={duplicateCampaignMutation.isPending}
+              disabled={isDemo || duplicateCampaignMutation.isPending}
               className="flex-1"
               data-testid={`button-duplicate-sent-${campaign.id}`}
             >
@@ -531,7 +543,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleDeleteCampaign(campaign.id)}
-              disabled={deleteCampaignMutation.isPending}
+              disabled={isDemo || deleteCampaignMutation.isPending}
               data-testid={`button-delete-sent-${campaign.id}`}
             >
               <Trash2 className="h-4 w-4" />
@@ -545,7 +557,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="default"
               size="sm"
               onClick={() => handleSendCampaign(campaign.id)}
-              disabled={sendCampaignMutation.isPending}
+              disabled={isDemo || sendCampaignMutation.isPending}
               className="flex-1"
               data-testid={`button-send-draft-${campaign.id}`}
             >
@@ -560,7 +572,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleDuplicateCampaign(campaign.id)}
-              disabled={duplicateCampaignMutation.isPending}
+              disabled={isDemo || duplicateCampaignMutation.isPending}
               className="flex-1"
               data-testid={`button-duplicate-draft-${campaign.id}`}
             >
@@ -575,6 +587,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleEditCampaign(campaign)}
+              disabled={isDemo}
               className="flex-1"
               data-testid={`button-edit-draft-${campaign.id}`}
             >
@@ -585,7 +598,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleDeleteCampaign(campaign.id)}
-              disabled={deleteCampaignMutation.isPending}
+              disabled={isDemo || deleteCampaignMutation.isPending}
               data-testid={`button-delete-draft-${campaign.id}`}
             >
               <Trash2 className="h-4 w-4" />
@@ -599,6 +612,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleEditCampaign(campaign)}
+              disabled={isDemo}
               className="flex-1"
               data-testid={`button-edit-scheduled-${campaign.id}`}
             >
@@ -609,6 +623,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleCancelSchedule(campaign.id)}
+              disabled={isDemo}
               className="flex-1"
               data-testid={`button-cancel-schedule-${campaign.id}`}
             >
@@ -619,7 +634,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleDeleteCampaign(campaign.id)}
-              disabled={deleteCampaignMutation.isPending}
+              disabled={isDemo || deleteCampaignMutation.isPending}
               data-testid={`button-delete-scheduled-${campaign.id}`}
             >
               <Trash2 className="h-4 w-4" />
@@ -640,6 +655,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="default"
               size="sm"
               onClick={() => handleRetryFailedCampaign(campaign.id)}
+              disabled={isDemo}
               className="flex-1"
               data-testid={`button-retry-failed-${campaign.id}`}
             >
@@ -650,6 +666,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleEditCampaign(campaign)}
+              disabled={isDemo}
               className="flex-1"
               data-testid={`button-edit-failed-${campaign.id}`}
             >
@@ -660,7 +677,7 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
               variant="outline"
               size="sm"
               onClick={() => handleDeleteCampaign(campaign.id)}
-              disabled={deleteCampaignMutation.isPending}
+              disabled={isDemo || deleteCampaignMutation.isPending}
               data-testid={`button-delete-failed-${campaign.id}`}
             >
               <Trash2 className="h-4 w-4" />
@@ -711,7 +728,15 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
             {t("dashboard.campaigns.description")}
           </p>
         </div>
-        <Button onClick={() => setShowCampaignWizard(true)} data-testid="button-create-campaign" className="shrink-0">
+        <Button
+          onClick={() => {
+            if (blockIfDemo()) return;
+            setShowCampaignWizard(true);
+          }}
+          disabled={isDemo}
+          data-testid="button-create-campaign"
+          className="shrink-0"
+        >
           <Plus className="h-4 w-4 mr-2" />
           {t("dashboard.campaigns.createButton")}
         </Button>

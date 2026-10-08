@@ -18,6 +18,7 @@ import { ChevronLeft, ChevronRight, Mail, Users, Eye, Send, Plus, Check, Tag as 
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import { useTranslation } from "react-i18next";
 import { format, isSameDay } from "date-fns";
 
@@ -111,6 +112,7 @@ export function CampaignWizard({
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { isDemo, blockIfDemo } = useDemoMode();
   const { t } = useTranslation();
   
   // Scheduling state
@@ -376,6 +378,8 @@ export function CampaignWizard({
   }, [selectedDate, selectedHour, selectedMinute, scheduleType, form]);
 
   const handleSubmit = async (data: CampaignFormData) => {
+    if (blockIfDemo()) return;
+
     // Extra safeguard: only submit if we're on step 4
     if (currentStep !== 4) {
       return;
@@ -1268,7 +1272,7 @@ export function CampaignWizard({
                     <ChevronRight className="h-4 w-4 ml-2" />
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" disabled={isDemo || isSubmitting}>
                     {isSubmitting ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (

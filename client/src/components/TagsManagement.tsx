@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tag as TagIcon, Plus, Edit3, Trash2, Shield } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useDemoMode } from "@/hooks/use-demo-mode";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -64,6 +65,7 @@ const defaultColors = [
 
 export function TagsManagement({ websiteProgressId, planSubscription }: TagsManagementProps) {
   const { toast } = useToast();
+  const { isDemo, blockIfDemo } = useDemoMode();
   const disabled = planSubscription?.status !== "active";
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -167,10 +169,12 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
   });
 
   const handleAddTag = (data: TagFormData) => {
+    if (blockIfDemo()) return;
     createTagMutation.mutate(data);
   };
 
   const handleEditTag = (tag: any) => {
+    if (blockIfDemo()) return;
     setEditingTag(tag);
     form.reset({
       name: tag.name,
@@ -181,16 +185,19 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
   };
 
   const handleUpdateTag = (data: TagFormData) => {
+    if (blockIfDemo()) return;
     if (!editingTag) return;
     updateTagMutation.mutate({ ...data, id: editingTag.id });
   };
 
   const handleDeleteTag = (tagId: number) => {
+    if (blockIfDemo()) return;
     setDeletingTagId(tagId);
     setShowDeleteDialog(true);
   };
 
   const confirmDelete = () => {
+    if (blockIfDemo()) return;
     if (deletingTagId) {
       deleteTagMutation.mutate(deletingTagId);
     }
@@ -222,7 +229,11 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
               </CardDescription>
             </div>
             <Button
-              onClick={() => setShowAddDialog(true)}
+              onClick={() => {
+                if (blockIfDemo()) return;
+                setShowAddDialog(true);
+              }}
+              disabled={isDemo}
               data-testid="button-add-tag"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -237,7 +248,13 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
               <p className="text-muted-foreground mb-4">
                 No tags yet. Create your first tag to start organizing contacts.
               </p>
-              <Button onClick={() => setShowAddDialog(true)}>
+              <Button
+                onClick={() => {
+                  if (blockIfDemo()) return;
+                  setShowAddDialog(true);
+                }}
+                disabled={isDemo}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Tag
               </Button>
@@ -290,6 +307,7 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => handleEditTag(tag)}
+                                disabled={isDemo}
                                 className="h-6 w-6"
                                 data-testid={`button-edit-tag-${tag.id}`}
                               >
@@ -299,6 +317,7 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => handleDeleteTag(tag.id)}
+                                disabled={isDemo}
                                 className="h-6 w-6"
                                 data-testid={`button-delete-tag-${tag.id}`}
                               >
