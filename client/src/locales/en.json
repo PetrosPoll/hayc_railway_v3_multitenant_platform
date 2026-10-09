@@ -1914,9 +1914,9 @@
         "firstName": "First Name",
         "lastName": "Last Name",
         "optional": "(optional)",
-        "pending": "Pending",
-        "active": "Active",
-        "confirmed": "Confirmed",
+        "pending": "Contact",
+        "active": "Subscribed",
+        "confirmed": "Subscribed",
         "unsubscribed": "Unsubscribed",
         "noTagsAvailable": "No tags available. Create tags first.",
         "adding": "Adding...",
@@ -1988,9 +1988,9 @@
         "filterByStatus": "Status",
         "filterByTag": "Tag",
         "allStatuses": "All Statuses",
-        "statusPending": "Pending",
+        "statusPending": "Contact",
         "statusActive": "Subscribed",
-        "statusConfirmed": "Confirmed",
+        "statusConfirmed": "Subscribed",
         "statusUnsubscribed": "Unsubscribed",
         "allTags": "All Tags",
         "clearFilters": "Clear",
@@ -2105,7 +2105,12 @@
         "pleaseSelectValidRecipient": "Please select a valid recipient or group",
         "noRecipientsFound": "No recipients found. Please check your selection.",
         "formError": "Form Error",
-        "checkAllRequiredFields": "Please check all required fields"
+        "checkAllRequiredFields": "Please check all required fields",
+        "statusHint": {
+            "pending": "Added as a contact only — has never subscribed to the newsletter.",
+            "active": "Subscribed and can receive newsletter campaigns.",
+            "unsubscribed": "Previously subscribed, then opted out (unsubscribe)."
+        }
     },
     "upgradeConfirmation": {
         "title": "Upgrade to Yearly Billing",

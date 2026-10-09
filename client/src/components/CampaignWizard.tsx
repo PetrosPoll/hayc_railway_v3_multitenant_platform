@@ -19,6 +19,7 @@ import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
+import { ContactStatusLabel, type ContactStatusValue } from "@/components/ContactStatusLabel";
 import { useTranslation } from "react-i18next";
 import { format, isSameDay } from "date-fns";
 
@@ -650,8 +651,11 @@ export function CampaignWizard({
                                       data-testid={`checkbox-status-${status.value}`}
                                     />
                                   </FormControl>
-                                  <FormLabel className="text-sm font-normal cursor-pointer">
-                                    {t(`newsletter.${status.value}`)}
+                                  <FormLabel className="text-sm font-normal cursor-pointer inline-flex items-center">
+                                    <ContactStatusLabel
+                                      status={status.value as ContactStatusValue}
+                                      shortLabel
+                                    />
                                   </FormLabel>
                                 </FormItem>
                               )}

@@ -15,6 +15,13 @@ import { Users, Plus, Edit3, Trash2, Tag as TagIcon, Upload, X, Download, Loader
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
+import { ContactStatusLabel } from "@/components/ContactStatusLabel";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -1079,9 +1086,15 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("newsletter.allStatuses") || "All Statuses"}</SelectItem>
-                  <SelectItem value="pending">{t("newsletter.statusPending") || "Pending"}</SelectItem>
-                  <SelectItem value="active">{t("newsletter.statusActive") || "Active"}</SelectItem>
-                  <SelectItem value="unsubscribed">{t("newsletter.statusUnsubscribed") || "Unsubscribed"}</SelectItem>
+                  <SelectItem value="pending">
+                    <ContactStatusLabel status="pending" />
+                  </SelectItem>
+                  <SelectItem value="active">
+                    <ContactStatusLabel status="active" />
+                  </SelectItem>
+                  <SelectItem value="unsubscribed">
+                    <ContactStatusLabel status="unsubscribed" />
+                  </SelectItem>
                 </SelectContent>
               </Select>
               
@@ -1294,21 +1307,35 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={
-                            contact.status === "active" || contact.status === "confirmed" || contact.status === "subscribed"
-                              ? "default"
-                              : contact.status === "unsubscribed"
-                                ? "destructive"
-                                : "secondary"
-                          }
-                        >
-                          {contact.status === "unsubscribed"
-                            ? t("newsletter.statusUnsubscribed")
-                            : contact.status === "pending"
-                              ? t("newsletter.statusPending")
-                              : t("newsletter.statusActive")}
-                        </Badge>
+                        <TooltipProvider delayDuration={200}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant={
+                                  contact.status === "active" || contact.status === "confirmed" || contact.status === "subscribed"
+                                    ? "default"
+                                    : contact.status === "unsubscribed"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                                className="cursor-help"
+                              >
+                                {contact.status === "unsubscribed"
+                                  ? t("newsletter.statusUnsubscribed")
+                                  : contact.status === "pending"
+                                    ? t("newsletter.statusPending")
+                                    : t("newsletter.statusActive")}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-[240px] text-xs leading-snug">
+                              {contact.status === "unsubscribed"
+                                ? t("newsletter.statusHint.unsubscribed")
+                                : contact.status === "pending"
+                                  ? t("newsletter.statusHint.pending")
+                                  : t("newsletter.statusHint.active")}
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {contact.subscribedAt
@@ -1621,9 +1648,15 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="pending">{t("newsletter.pending")}</SelectItem>
-                          <SelectItem value="active">{t("newsletter.active")}</SelectItem>
-                          <SelectItem value="unsubscribed">{t("newsletter.unsubscribed")}</SelectItem>
+                          <SelectItem value="pending">
+                            <ContactStatusLabel status="pending" shortLabel />
+                          </SelectItem>
+                          <SelectItem value="active">
+                            <ContactStatusLabel status="active" shortLabel />
+                          </SelectItem>
+                          <SelectItem value="unsubscribed">
+                            <ContactStatusLabel status="unsubscribed" shortLabel />
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1771,9 +1804,15 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="pending">{t("newsletter.pending")}</SelectItem>
-                        <SelectItem value="active">{t("newsletter.active")}</SelectItem>
-                        <SelectItem value="unsubscribed">{t("newsletter.unsubscribed")}</SelectItem>
+                        <SelectItem value="pending">
+                          <ContactStatusLabel status="pending" shortLabel />
+                        </SelectItem>
+                        <SelectItem value="active">
+                          <ContactStatusLabel status="active" shortLabel />
+                        </SelectItem>
+                        <SelectItem value="unsubscribed">
+                          <ContactStatusLabel status="unsubscribed" shortLabel />
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -1874,9 +1913,15 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 <SelectValue placeholder={t("newsletter.selectStatus")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pending">{t("newsletter.pending")}</SelectItem>
-                <SelectItem value="active">{t("newsletter.active")}</SelectItem>
-                <SelectItem value="unsubscribed">{t("newsletter.unsubscribed")}</SelectItem>
+                <SelectItem value="pending">
+                  <ContactStatusLabel status="pending" shortLabel />
+                </SelectItem>
+                <SelectItem value="active">
+                  <ContactStatusLabel status="active" shortLabel />
+                </SelectItem>
+                <SelectItem value="unsubscribed">
+                  <ContactStatusLabel status="unsubscribed" shortLabel />
+                </SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-2 justify-end">
@@ -1913,9 +1958,15 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 <SelectValue placeholder={t("newsletter.selectStatus")} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pending">{t("newsletter.pending")}</SelectItem>
-                <SelectItem value="active">{t("newsletter.active")}</SelectItem>
-                <SelectItem value="unsubscribed">{t("newsletter.unsubscribed")}</SelectItem>
+                <SelectItem value="pending">
+                  <ContactStatusLabel status="pending" shortLabel />
+                </SelectItem>
+                <SelectItem value="active">
+                  <ContactStatusLabel status="active" shortLabel />
+                </SelectItem>
+                <SelectItem value="unsubscribed">
+                  <ContactStatusLabel status="unsubscribed" shortLabel />
+                </SelectItem>
               </SelectContent>
             </Select>
             <div className="flex gap-2 justify-end">
