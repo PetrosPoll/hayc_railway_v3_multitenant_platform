@@ -10933,7 +10933,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Subscriptions cancelled due to payment failure (all retries exhausted)
+  // All cancelled subscriptions (ops list; path kept for existing UI query key)
   app.get("/api/admin/cancelled-due-to-payment-failure", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -10951,8 +10951,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           tier: subscriptionsTable.tier,
           status: subscriptionsTable.status,
           price: subscriptionsTable.price,
+          productType: subscriptionsTable.productType,
+          billingPeriod: subscriptionsTable.billingPeriod,
           stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
           createdAt: subscriptionsTable.createdAt,
+          cancelledAt: subscriptionsTable.cancelledAt,
           cancellationReason: subscriptionsTable.cancellationReason,
           username: users.username,
           email: users.email,
@@ -10960,12 +10963,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(subscriptionsTable)
         .leftJoin(users, eq(subscriptionsTable.userId, users.id))
         .where(
-          and(
-            eq(subscriptionsTable.status, 'cancelled'),
-            eq(subscriptionsTable.cancellationReason, 'payment_failed')
-          )
+          sql`LOWER(${subscriptionsTable.status}) IN ('cancelled', 'canceled')`,
         )
-        .orderBy(desc(subscriptionsTable.createdAt));
+        .orderBy(
+          sql`${subscriptionsTable.cancelledAt} DESC NULLS LAST`,
+          desc(subscriptionsTable.id),
+        );
 
       // Enrich with failed obligation details (attempt count, last failure reason)
       const obligations = await db
@@ -10991,13 +10994,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           obligationBySub.set(o.subscriptionId, o);
         }
       }
-      const enriched = cancelledSubscriptions.map(sub => ({
-        ...sub,
-        attemptCount: obligationBySub.get(sub.id)?.attemptCount ?? null,
-        lastFailureReason: obligationBySub.get(sub.id)?.lastFailureReason ?? null,
-        lastDueDate: obligationBySub.get(sub.id)?.dueDate ?? null,
-        cancelledAt: obligationBySub.get(sub.id)?.updatedAt ?? null,
-      }));
+      const enriched = cancelledSubscriptions.map(sub => {
+        const obligation = obligationBySub.get(sub.id);
+        return {
+          ...sub,
+          attemptCount: obligation?.attemptCount ?? null,
+          lastFailureReason: obligation?.lastFailureReason ?? null,
+          lastDueDate: obligation?.dueDate ?? null,
+          cancelledAt: sub.cancelledAt ?? obligation?.updatedAt ?? null,
+        };
+      });
 
       res.json({ subscriptions: enriched });
     } catch (err) {

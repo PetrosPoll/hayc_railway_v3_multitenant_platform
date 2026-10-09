@@ -1714,7 +1714,7 @@ export default function AdminDashboard() {
                             Invoices
                           </TabsTrigger>
                           <TabsTrigger value="payment-failures" className={triggerClass}>
-                            Cancelled (Payment Failed)
+                            Cancelled Subscriptions
                           </TabsTrigger>
                           <TabsTrigger value="get-started" className={triggerClass}>
                             Get Started
