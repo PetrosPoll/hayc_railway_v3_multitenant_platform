@@ -13,8 +13,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ExternalLink } from "lucide-react";
+import { Loader2, ExternalLink, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type DemoRow = {
   id: number;
@@ -65,6 +75,7 @@ export function AdminDemoAccounts() {
   const [websiteIdInput, setWebsiteIdInput] = useState("");
   const [slugInput, setSlugInput] = useState("");
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
+  const [resetTarget, setResetTarget] = useState<DemoRow | null>(null);
 
   const { data: demosData, isLoading } = useQuery<{ demos: DemoRow[] }>({
     queryKey: ["/api/admin/demo-websites"],
@@ -152,6 +163,29 @@ export function AdminDemoAccounts() {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/demo-websites"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/demo-analytics"] });
       toast({ title: "Demo updated" });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const resetAnalyticsMutation = useMutation({
+    mutationFn: async (websiteId: number) => {
+      const res = await fetch(`/api/admin/demo-websites/${websiteId}/reset-analytics`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to reset analytics");
+      return data as { deletedCount: number; label: string };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/demo-analytics"] });
+      setResetTarget(null);
+      toast({
+        title: "Analytics reset",
+        description: `Deleted ${data.deletedCount} events for ${data.label}.`,
+      });
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -353,7 +387,16 @@ export function AdminDemoAccounts() {
                           }
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="space-x-2 whitespace-nowrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={resetAnalyticsMutation.isPending}
+                          onClick={() => setResetTarget(demo)}
+                        >
+                          <RotateCcw className="h-3.5 w-3.5 mr-1" />
+                          Reset analytics
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -378,6 +421,45 @@ export function AdminDemoAccounts() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={resetTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !resetAnalyticsMutation.isPending) setResetTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset demo analytics?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This permanently deletes all platform usage events (sessions, logins,
+              pageviews, time in product) for the demo owner of{" "}
+              <strong>
+                #{resetTarget?.id} {resetTarget?.projectName || resetTarget?.domain}
+              </strong>
+              . Use this before sharing the link with a prospect so metrics start clean.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetAnalyticsMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetAnalyticsMutation.isPending || !resetTarget}
+              onClick={(e) => {
+                e.preventDefault();
+                if (resetTarget) resetAnalyticsMutation.mutate(resetTarget.id);
+              }}
+            >
+              {resetAnalyticsMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Reset analytics"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }

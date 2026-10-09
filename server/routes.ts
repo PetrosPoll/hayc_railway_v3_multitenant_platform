@@ -2231,6 +2231,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /** Wipe platform analytics for the owner of a demo website (before handing link to a prospect). */
+  app.post("/api/admin/demo-websites/:websiteId/reset-analytics", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const admin = await storage.getUserById(req.user!.id);
+      if (!admin || admin.role !== UserRole.ADMINISTRATOR) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const websiteId = parseInt(req.params.websiteId, 10);
+      if (Number.isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+
+      const [site] = await db
+        .select({
+          id: websiteProgress.id,
+          userId: websiteProgress.userId,
+          isDemo: websiteProgress.isDemo,
+          projectName: websiteProgress.projectName,
+          domain: websiteProgress.domain,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+
+      if (!site || !site.isDemo) {
+        return res.status(404).json({ error: "Demo website not found" });
+      }
+
+      const owner = await storage.getUserById(site.userId);
+      if (!owner?.isDemo) {
+        return res.status(400).json({
+          error: "Owner is not marked as demo; refusing to delete analytics",
+        });
+      }
+
+      const deleted = await db
+        .delete(platformAnalyticsEvents)
+        .where(eq(platformAnalyticsEvents.userId, site.userId))
+        .returning({ id: platformAnalyticsEvents.id });
+
+      return res.json({
+        websiteId: site.id,
+        userId: site.userId,
+        deletedCount: deleted.length,
+        label: site.projectName || site.domain,
+      });
+    } catch (err) {
+      console.error("Error resetting demo analytics:", err);
+      return res.status(500).json({ error: "Failed to reset demo analytics" });
+    }
+  });
+
   app.post("/api/admin/impersonate/:userId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
