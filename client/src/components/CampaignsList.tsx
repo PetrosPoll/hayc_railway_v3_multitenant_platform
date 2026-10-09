@@ -47,10 +47,10 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
   const [selectedCampaigns, setSelectedCampaigns] = useState<Set<number>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const { toast } = useToast();
-  const { isDemo, blockIfDemo } = useDemoMode();
+  const { isDemo, isStaffSeeding, blockIfDemo } = useDemoMode();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const disabled = planSubscription?.status !== "active";
+  const disabled = planSubscription?.status !== "active" && !isStaffSeeding;
 
   const { data: campaigns, isLoading: campaignsLoading } = useQuery<any[]>({
     queryKey: ["/api/newsletter/campaigns", websiteProgressId],

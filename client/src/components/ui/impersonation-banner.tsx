@@ -17,6 +17,11 @@ export function ImpersonationBanner() {
         <Eye className="h-4 w-4 shrink-0" />
         <span>
           Viewing as <strong>{user.username}</strong> ({user.email})
+          {user.isDemo ? (
+            <span className="ml-1 font-medium text-emerald-800">
+              — Seed mode: uploads &amp; edits are enabled
+            </span>
+          ) : null}
         </span>
       </div>
       <Button

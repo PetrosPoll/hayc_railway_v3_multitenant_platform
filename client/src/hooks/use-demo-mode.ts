@@ -1,16 +1,31 @@
 import { useAuth } from "@/components/ui/authContext";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { readStoredImpersonation } from "@/lib/impersonation-storage";
 
 /**
  * Demo portal users may browse but not mutate.
- * Returns helpers to disable UI and short-circuit click handlers.
+ *
+ * - isDemo (read-only UI): only when the logged-in user has isDemo=true AND
+ *   staff is NOT impersonating them.
+ * - isStaffSeeding (bypass inactive-plan greyscale for seeding): only when
+ *   impersonating a demo user. Live customer impersonation is unchanged.
  */
 export function useDemoMode() {
-  const { user } = useAuth();
+  const { user, impersonation } = useAuth();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const isDemo = Boolean(user?.isDemo);
+
+  const isImpersonating = Boolean(
+    impersonation?.active || readStoredImpersonation()?.active,
+  );
+  const accountIsDemo = Boolean(user?.isDemo);
+
+  // Public demo visitor / demo login without impersonation → read-only UI
+  const isDemo = accountIsDemo && !isImpersonating;
+
+  // Admin seeding a demo via View as customer only (not live accounts)
+  const isStaffSeeding = accountIsDemo && isImpersonating;
 
   const notifyReadOnly = () => {
     toast({
@@ -29,5 +44,5 @@ export function useDemoMode() {
     return true;
   };
 
-  return { isDemo, blockIfDemo, notifyReadOnly };
+  return { isDemo, isStaffSeeding, blockIfDemo, notifyReadOnly };
 }

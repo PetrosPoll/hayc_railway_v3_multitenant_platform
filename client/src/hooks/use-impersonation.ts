@@ -12,7 +12,10 @@ export function useImpersonation() {
   const [isStarting, setIsStarting] = useState(false);
   const [isStopping, setIsStopping] = useState(false);
 
-  const startImpersonation = async (userId: number) => {
+  const startImpersonation = async (
+    userId: number,
+    options?: { redirectTo?: string },
+  ) => {
     setIsStarting(true);
     try {
       const response = await fetch(`/api/admin/impersonate/${userId}`, {
@@ -24,10 +27,14 @@ export function useImpersonation() {
         throw new Error(error.error || "Failed to start impersonation");
       }
       const data = await response.json();
+      // Keep full user (incl. isDemo); UI unlocks via impersonation.active in useDemoMode.
       setUser(data.user);
-      setImpersonation(data.impersonation ?? null);
+      if (!data.impersonation?.active) {
+        throw new Error("Impersonation session was not established");
+      }
+      setImpersonation(data.impersonation);
       queryClient.clear();
-      navigate("/dashboard");
+      navigate(options?.redirectTo || "/dashboard");
     } catch (error: any) {
       toast({
         title: "Error",

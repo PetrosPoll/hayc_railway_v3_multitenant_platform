@@ -495,7 +495,7 @@ export default function WebsiteDashboard() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { setUser } = useAuth();
-  const { isDemo, blockIfDemo } = useDemoMode();
+  const { isDemo, isStaffSeeding, blockIfDemo } = useDemoMode();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -3085,7 +3085,7 @@ export default function WebsiteDashboard() {
 
   const renderNewsletter = () => {
     // Show loading state while fetching settings
-    const disabled = planSubscription?.status !== "active";
+    const disabled = planSubscription?.status !== "active" && !isStaffSeeding;
     if (newsletterSettings === undefined) {
       return (
         <div
@@ -3450,7 +3450,7 @@ export default function WebsiteDashboard() {
   };
 
   const renderTemplatesView = () => {
-    const disabled = planSubscription?.status !== "active";
+    const disabled = planSubscription?.status !== "active" && !isStaffSeeding;
     return (
       <div data-testid="newsletter-templates-view">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -3659,6 +3659,7 @@ export default function WebsiteDashboard() {
     const mediaFolderPath = `Website Media/${userData?.user?.email}/${mediaFolderDomain}`;
 
     const handleUploadClick = async () => {
+      if (blockIfDemo()) return;
       try {
         await loadCloudinaryWidget();
       } catch {
@@ -3800,7 +3801,7 @@ export default function WebsiteDashboard() {
           <Button
             onClick={handleUploadClick}
             data-testid="button-upload-media"
-            disabled={planSubscription?.status !== "active"}
+            disabled={isDemo || (planSubscription?.status !== "active" && !isStaffSeeding)}
           >
             <Upload className="h-4 w-4 mr-2" />
             {t("dashboard.uploadMedia") || "Upload Media"}
@@ -3899,7 +3900,11 @@ export default function WebsiteDashboard() {
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => setDeleteMediaId(file.publicId)}
+                      onClick={() => {
+                        if (blockIfDemo()) return;
+                        setDeleteMediaId(file.publicId);
+                      }}
+                      disabled={isDemo}
                       data-testid={`button-delete-${file.publicId}`}
                       aria-label={t("actions.delete")}
                     >
@@ -3966,7 +3971,8 @@ export default function WebsiteDashboard() {
       ? true // Unlimited changes before launch
       : (isUnlimited || changesUsed < changesAllowed); // Apply limit after launch
 
-    const changesContentDisabled = planSubscription?.status !== "active";
+    const changesContentDisabled =
+      planSubscription?.status !== "active" && !isStaffSeeding;
     const canSubmitChanges =
       !changesContentDisabled && canSubmit;
 

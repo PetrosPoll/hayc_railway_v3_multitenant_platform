@@ -63,6 +63,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const data = await response.json();
           if (!cancelled) {
             setUser(data.user ?? null);
+            // Keep staff seed mode in sync with the server session
             setImpersonation(data.impersonation ?? null);
           }
         } else if (!cancelled) {

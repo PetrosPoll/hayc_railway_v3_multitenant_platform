@@ -13,9 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Copy, RotateCcw } from "lucide-react";
+import { Loader2, Copy, RotateCcw, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
+import { useImpersonation } from "@/hooks/use-impersonation";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,11 +83,13 @@ export function AdminDemoAccounts() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { startImpersonation, isStarting } = useImpersonation();
   const [websiteIdInput, setWebsiteIdInput] = useState("");
   const [slugInput, setSlugInput] = useState("");
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
   const [resetTarget, setResetTarget] = useState<DemoRow | null>(null);
   const [shareTarget, setShareTarget] = useState<DemoRow | null>(null);
+  const [seedingUserId, setSeedingUserId] = useState<number | null>(null);
 
   const sharePath = shareTarget?.demoSlug
     ? `/demo/${shareTarget.demoSlug}`
@@ -240,6 +243,10 @@ export function AdminDemoAccounts() {
         <p className="text-sm text-muted-foreground">
           Public read-only portals for prospects. Link format:{" "}
           <code className="text-xs bg-muted px-1 rounded">/demo/&lt;slug&gt;</code>
+          . To seed data, use <strong>View as customer</strong> — you get a
+          green “Seed mode” banner and can upload/edit (newsletter, media,
+          courses, etc.). Exit customer view when done; the public demo link
+          stays read-only.
         </p>
       </div>
 
@@ -429,6 +436,25 @@ export function AdminDemoAccounts() {
                         />
                       </TableCell>
                       <TableCell className="space-x-2 whitespace-nowrap">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          disabled={isStarting}
+                          onClick={async () => {
+                            setSeedingUserId(demo.userId);
+                            await startImpersonation(demo.userId, {
+                              redirectTo: `/dashboard/website/${demo.id}?tab=media`,
+                            });
+                            setSeedingUserId(null);
+                          }}
+                        >
+                          {isStarting && seedingUserId === demo.userId ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                          ) : (
+                            <Eye className="h-3.5 w-3.5 mr-1" />
+                          )}
+                          View as customer
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

@@ -13,7 +13,7 @@ function isBlockingDialogOpen() {
 }
 
 export function DemoBanner() {
-  const { user } = useAuth();
+  const { user, impersonation } = useAuth();
   const { t } = useTranslation();
   const bannerRef = useRef<HTMLDivElement>(null);
   const [peekAway, setPeekAway] = useState(false);
@@ -51,7 +51,8 @@ export function DemoBanner() {
     return () => window.removeEventListener("mousemove", onMove);
   }, [peekAway, dialogOpen]);
 
-  if (!user?.isDemo) return null;
+  // Hide while admin is seeding via "View as customer" (ImpersonationBanner shows instead).
+  if (!user?.isDemo || impersonation?.active) return null;
 
   const hidden = peekAway || dialogOpen;
 

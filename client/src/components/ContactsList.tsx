@@ -44,7 +44,7 @@ interface ContactsListProps {
 
 export function ContactsList({ websiteProgressId, planSubscription }: ContactsListProps) {
   const { t } = useTranslation();
-  const { isDemo, blockIfDemo } = useDemoMode();
+  const { isDemo, isStaffSeeding, blockIfDemo } = useDemoMode();
 
   const contactFormSchema = z.object({
     first_name: z.string().optional(),
@@ -56,7 +56,8 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
 
   type ContactFormData = z.infer<typeof contactFormSchema>;
   const { toast } = useToast();
-  const disabled = planSubscription?.status !== "active";
+  // Staff seeding a demo via impersonation bypasses inactive-plan UI lock.
+  const disabled = planSubscription?.status !== "active" && !isStaffSeeding;
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editDialogMode, setEditDialogMode] = useState<"view" | "edit">("view");

@@ -65,8 +65,8 @@ const defaultColors = [
 
 export function TagsManagement({ websiteProgressId, planSubscription }: TagsManagementProps) {
   const { toast } = useToast();
-  const { isDemo, blockIfDemo } = useDemoMode();
-  const disabled = planSubscription?.status !== "active";
+  const { isDemo, isStaffSeeding, blockIfDemo } = useDemoMode();
+  const disabled = planSubscription?.status !== "active" && !isStaffSeeding;
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
