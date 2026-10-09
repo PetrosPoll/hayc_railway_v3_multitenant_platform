@@ -1086,15 +1086,9 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">{t("newsletter.allStatuses") || "All Statuses"}</SelectItem>
-                  <SelectItem value="pending">
-                    <ContactStatusLabel status="pending" />
-                  </SelectItem>
-                  <SelectItem value="active">
-                    <ContactStatusLabel status="active" />
-                  </SelectItem>
-                  <SelectItem value="unsubscribed">
-                    <ContactStatusLabel status="unsubscribed" />
-                  </SelectItem>
+                  <SelectItem value="pending">{t("newsletter.statusPending")}</SelectItem>
+                  <SelectItem value="active">{t("newsletter.statusActive")}</SelectItem>
+                  <SelectItem value="unsubscribed">{t("newsletter.statusUnsubscribed")}</SelectItem>
                 </SelectContent>
               </Select>
               
