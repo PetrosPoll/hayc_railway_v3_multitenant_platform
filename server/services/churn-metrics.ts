@@ -465,8 +465,7 @@ export async function getLiveSnapshot(plan: PlanFilter = "all"): Promise<{
   activeFromSubscriptions: number;
 }> {
   const states = await customerStatesAt(new Date());
-  const active = filterActiveByPlan(states, plan);
-  const mrrCents = active.reduce((s, c) => s + c.mrrCents, 0);
+  let active = filterActiveByPlan(states, plan);
 
   const subRows = await db
     .select({
@@ -481,6 +480,8 @@ export async function getLiveSnapshot(plan: PlanFilter = "all"): Promise<{
         sql`COALESCE(${subscriptions.productType}, 'plan') = 'plan'`,
         eq(users.accountKind, AccountKind.CUSTOMER),
         eq(users.isDemo, false),
+        // Exclude synthetic churn fixture accounts
+        sql`${users.email} NOT LIKE '%@hayc.test'`,
       ),
     );
 
@@ -489,6 +490,12 @@ export async function getLiveSnapshot(plan: PlanFilter = "all"): Promise<{
     if (plan !== "all" && r.tier !== plan) continue;
     subCustomers.add(r.userId);
   }
+
+  // Drop event-log "active" ghosts with €0 MRR and no live plan row (Stripe-inactive leftovers).
+  active = active.filter(
+    (c) => c.mrrCents > 0 || subCustomers.has(c.customerId),
+  );
+  const mrrCents = active.reduce((s, c) => s + c.mrrCents, 0);
 
   return {
     activeCustomers: active.length,

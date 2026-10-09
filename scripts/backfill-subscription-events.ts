@@ -232,9 +232,9 @@ async function emitHistoricalForCustomer(
     }
 
     // Terminal snapshot so logo/MRR state at cutover matches live Stripe (ex-VAT).
-    if (snap.activeCoreSubscriptionIds.length > 0) {
-      const effectiveAt = new Date(cutover.getTime() - 1000);
-      if (await backfillMayWriteEvent(effectiveAt)) {
+    const effectiveAt = new Date(cutover.getTime() - 1000);
+    if (await backfillMayWriteEvent(effectiveAt)) {
+      if (snap.activeCoreSubscriptionIds.length > 0) {
         const needsWrite =
           lastStatus !== "active" || lastMrr !== snap.mrrCentsExVat;
         if (needsWrite) {
@@ -261,6 +261,28 @@ async function emitHistoricalForCustomer(
               source: "backfill",
             });
           }
+        }
+      } else if (lastStatus === "active") {
+        // Local history left them active, but Stripe has no active core (e.g. cancel
+        // effective_at was >= cutover so churn was skipped). Close the gap.
+        approximations.push(
+          `customer ${customerId}: Stripe snapshot churn at cutover-1s (0 active cores; was still active in event log)`,
+        );
+        if (!dryRun) {
+          await insertSubscriptionEvent({
+            customerId,
+            stripeSubscriptionId: null,
+            stripeEventId: `backfill:snapshot-churn:${customerId}:${cutover.toISOString()}`,
+            type: "churn",
+            effectiveAt,
+            statusAfter: "churned",
+            mrrAfterCents: 0,
+            mrrDeltaCents: -lastMrr,
+            tierAfter: snap.coreTier,
+            churnKind: "voluntary",
+            reasonCode: "unknown",
+            source: "backfill",
+          });
         }
       }
     }

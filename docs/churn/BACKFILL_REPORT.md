@@ -1,17 +1,17 @@
 # Churn backfill report
 
-Generated: 2026-10-09T23:19:00.312Z
+Generated: 2026-10-09T23:49:56.439Z
 dryRun: false
 events_cutover_at: 2026-10-09T23:12:15.037Z
 
 ## Summary
 - Customers processed: 7
-- Backfill events cleared: 0
+- Backfill events cleared: 49
 - launched_at updates: 4
 - customer_stripe_accounts seeded: 7
 - stripe_price_map seed writes: 17
 - Unmapped Stripe price IDs: 0
-- Approximations logged: 47
+- Approximations logged: 51
 - Active customers (live Stripe, ≥1 core sub): 2
 - Total MRR ex-VAT (cents): 44200
 - ARPA ex-VAT (cents): 22100 (€221.00)
@@ -41,7 +41,7 @@ Cohort = status `active` at month start → not `active` at next month start (fr
 | 2026-07 | 3 | 0 | 0 | ok / mixed |
 | 2026-08 | 3 | 0 | 0 | **approximate** |
 | 2026-09 | 3 | 3 | 100 | **approximate** |
-| 2026-10 | 3 | 0 | 0 | ok / mixed |
+| 2026-10 | 3 | 2 | 66.67 | ok / mixed |
 
 ## Unmapped price IDs
 (none)
@@ -71,6 +71,7 @@ Cohort = status `active` at month start → not `active` at next month start (fr
 - customer 37 sub #31: expansion at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 37 sub #33: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 37 sub #34: expansion at createdAt (subscription-row granularity; MRR movements approximate)
+- customer 37: Stripe snapshot expansion mrr=38300 at cutover-1s (reconcile live state)
 - customer 43 sub #10: new at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 43 sub #10: churn effective_at=2026-06-08T14:22:34.000Z from cancelledAt (historical; MRR churn approximate)
 - customer 43 sub #11: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
@@ -88,12 +89,15 @@ Cohort = status `active` at month start → not `active` at next month start (fr
 - customer 47 sub #35: new at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 47 sub #36: expansion at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 47 sub #37: expansion at createdAt (subscription-row granularity; MRR movements approximate)
+- customer 47: Stripe snapshot expansion mrr=5900 at cutover-1s (reconcile live state)
 - customer 48 sub #39: new at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 48 sub #38: new at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 48 sub #40: expansion at createdAt (subscription-row granularity; MRR movements approximate)
+- customer 48: Stripe snapshot churn at cutover-1s (0 active cores; was still active in event log)
 - customer 49 sub #41: new at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 49 sub #42: expansion at createdAt (subscription-row granularity; MRR movements approximate)
 - customer 49 sub #43: expansion at createdAt (subscription-row granularity; MRR movements approximate)
+- customer 49: Stripe snapshot churn at cutover-1s (0 active cores; was still active in event log)
 
 ## Duplicate candidates
 ### Same email
