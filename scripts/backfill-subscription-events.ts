@@ -127,6 +127,7 @@ async function clearBackfillEvents() {
 async function emitHistoricalForCustomer(
   customerId: number,
   stripeCustomerId: string,
+  cutover: Date,
 ) {
   const localSubs = await db
     .select()
@@ -139,6 +140,7 @@ async function emitHistoricalForCustomer(
 
   let hadChurn = false;
   let lastMrr = 0;
+  let lastStatus: "active" | "churned" | null = null;
 
   for (const sub of sorted) {
     if (!sub.createdAt) continue;
@@ -174,6 +176,7 @@ async function emitHistoricalForCustomer(
         });
       }
       lastMrr = mrrGuess;
+      lastStatus = "active";
     }
 
     const isCancelled =
@@ -210,6 +213,7 @@ async function emitHistoricalForCustomer(
         }
         hadChurn = true;
         lastMrr = 0;
+        lastStatus = "churned";
       }
     }
   }
@@ -226,6 +230,41 @@ async function emitHistoricalForCustomer(
         `customer ${customerId}: used gross/1.24 VAT fallback for some Stripe prices`,
       );
     }
+
+    // Terminal snapshot so logo/MRR state at cutover matches live Stripe (ex-VAT).
+    if (snap.activeCoreSubscriptionIds.length > 0) {
+      const effectiveAt = new Date(cutover.getTime() - 1000);
+      if (await backfillMayWriteEvent(effectiveAt)) {
+        const needsWrite =
+          lastStatus !== "active" || lastMrr !== snap.mrrCentsExVat;
+        if (needsWrite) {
+          const type =
+            lastStatus === "churned" || lastMrr === 0
+              ? ("reactivation" as const)
+              : snap.mrrCentsExVat >= lastMrr
+                ? ("expansion" as const)
+                : ("contraction" as const);
+          approximations.push(
+            `customer ${customerId}: Stripe snapshot ${type} mrr=${snap.mrrCentsExVat} at cutover-1s (reconcile live state)`,
+          );
+          if (!dryRun) {
+            await insertSubscriptionEvent({
+              customerId,
+              stripeSubscriptionId: snap.activeCoreSubscriptionIds[0] ?? null,
+              stripeEventId: `backfill:snapshot:${customerId}:${cutover.toISOString()}`,
+              type,
+              effectiveAt,
+              statusAfter: "active",
+              mrrAfterCents: snap.mrrCentsExVat,
+              mrrDeltaCents: snap.mrrCentsExVat - lastMrr,
+              tierAfter: snap.coreTier,
+              source: "backfill",
+            });
+          }
+        }
+      }
+    }
+
     return snap;
   } catch (err: any) {
     approximations.push(
@@ -234,7 +273,6 @@ async function emitHistoricalForCustomer(
     return null;
   }
 }
-
 async function findDuplicateCandidates() {
   const byEmail = await db.execute(sql`
     SELECT lower(email) AS key, count(*)::int AS n, array_agg(id) AS ids
@@ -373,7 +411,7 @@ async function main() {
 
   for (const c of customers) {
     if (!c.stripeCustomerId) continue;
-    const snap = await emitHistoricalForCustomer(c.id, c.stripeCustomerId);
+    const snap = await emitHistoricalForCustomer(c.id, c.stripeCustomerId, cutover);
     if (snap) {
       recon.push({
         customerId: c.id,

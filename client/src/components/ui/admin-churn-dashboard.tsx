@@ -89,6 +89,12 @@ type SeriesResponse = {
   prevMonth: MonthlyChurnMetrics | null;
   pendingSummary: { count: number; mrrAtRiskCents: number };
   dunningCount: number;
+  live?: {
+    activeCustomers: number;
+    mrrCents: number;
+    arpaCents: number;
+    activeFromSubscriptions: number;
+  };
 };
 
 type PendingRow = {
@@ -607,6 +613,42 @@ export function AdminChurnDashboard() {
         </div>
       </div>
 
+      {seriesQuery.data?.live && (
+        <Card className="border-teal-700/30 bg-teal-50/40">
+          <CardContent className="py-4 flex flex-wrap gap-6 text-sm">
+            <div>
+              <div className="text-xs text-muted-foreground">Ζωντανά τώρα (event log)</div>
+              <div className="text-lg font-semibold tabular-nums">
+                {seriesQuery.data.live.activeCustomers} ενεργοί ·{" "}
+                {formatEuro(seriesQuery.data.live.mrrCents)} MRR · ARPA{" "}
+                {formatEuro(seriesQuery.data.live.arpaCents)}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Ενεργά πλάνα στη DB</div>
+              <div className="text-lg font-semibold tabular-nums">
+                {seriesQuery.data.live.activeFromSubscriptions}
+              </div>
+            </div>
+            {seriesQuery.data.live.activeCustomers === 0 &&
+              seriesQuery.data.live.activeFromSubscriptions > 0 && (
+                <p className="text-xs text-amber-800 max-w-md">
+                  Το event log δεν έχει ακόμα terminal Stripe snapshot. Ξανατρέξε το backfill
+                  για να ευθυγραμμιστεί με το live MRR.
+                </p>
+              )}
+          </CardContent>
+        </Card>
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        KPI κάρτες παρακάτω:{" "}
+        <span className="font-medium text-foreground">
+          {kpi ? formatMonthLabel(kpi.month) : "—"}
+        </span>{" "}
+        (τελευταίος ολοκληρωμένος μήνας στο εύρος) — όχι live κατάσταση.
+      </p>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <KpiCard
           title="Logo churn %"
@@ -634,7 +676,7 @@ export function AdminChurnDashboard() {
           onClick={() => openCohort("customers_start", "Cohort στην αρχή του μήνα")}
         />
         <KpiCard
-          title="Ενεργοί πελάτες"
+          title="Ενεργοί πελάτες (μήνας)"
           value={
             kpi
               ? `${kpi.customersStart} → ${kpi.customersEnd}`
@@ -645,7 +687,7 @@ export function AdminChurnDashboard() {
               ? `${prev.customersStart} → ${prev.customersEnd}`
               : "—"
           }
-          formula="customers_start / customers_end — ενεργοί στην αρχή και στο τέλος του μήνα."
+          formula="customers_start / customers_end — ενεργοί στην αρχή και στο τέλος του μήνα KPI."
           smallSample={kpi?.smallSample}
           onClick={() => openCohort("customers_start", "Ενεργοί στην αρχή")}
         />

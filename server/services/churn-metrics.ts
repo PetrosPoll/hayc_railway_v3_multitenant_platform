@@ -457,6 +457,48 @@ export async function getChurnSeries(
   return series;
 }
 
+/** Live active customers + MRR from event-log state at `now` (and local active plan rows). */
+export async function getLiveSnapshot(plan: PlanFilter = "all"): Promise<{
+  activeCustomers: number;
+  mrrCents: number;
+  arpaCents: number;
+  activeFromSubscriptions: number;
+}> {
+  const states = await customerStatesAt(new Date());
+  const active = filterActiveByPlan(states, plan);
+  const mrrCents = active.reduce((s, c) => s + c.mrrCents, 0);
+
+  const subRows = await db
+    .select({
+      userId: subscriptions.userId,
+      tier: subscriptions.tier,
+    })
+    .from(subscriptions)
+    .innerJoin(users, eq(subscriptions.userId, users.id))
+    .where(
+      and(
+        sql`LOWER(${subscriptions.status}) IN ('active', 'trialing', 'past_due')`,
+        sql`COALESCE(${subscriptions.productType}, 'plan') = 'plan'`,
+        eq(users.accountKind, AccountKind.CUSTOMER),
+        eq(users.isDemo, false),
+      ),
+    );
+
+  const subCustomers = new Set<number>();
+  for (const r of subRows) {
+    if (plan !== "all" && r.tier !== plan) continue;
+    subCustomers.add(r.userId);
+  }
+
+  return {
+    activeCustomers: active.length,
+    mrrCents,
+    arpaCents:
+      active.length > 0 ? Math.round(mrrCents / active.length) : 0,
+    activeFromSubscriptions: subCustomers.size,
+  };
+}
+
 async function latestMrrForCustomers(
   customerIds: number[],
 ): Promise<Map<number, number>> {

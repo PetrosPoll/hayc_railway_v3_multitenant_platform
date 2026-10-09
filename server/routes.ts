@@ -10347,6 +10347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         getPendingCancellations,
         livePendingSummary,
         getInDunning,
+        getLiveSnapshot,
       } = await import("./services/churn-metrics");
       const defaults = defaultSeriesRange();
       const from = typeof req.query.from === "string" ? req.query.from : defaults.from;
@@ -10360,6 +10361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pending = await getPendingCancellations();
       const dunning = await getInDunning();
       const pendingSummary = livePendingSummary(pending);
+      const live = await getLiveSnapshot(plan);
       const kpiMonth =
         series.filter((m) => !m.isPartial).at(-1) ?? series.at(-1) ?? null;
       const prevMonth =
@@ -10374,6 +10376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         prevMonth,
         pendingSummary,
         dunningCount: dunning.length,
+        live,
       });
     } catch (err) {
       console.error("Error fetching churn series:", err);
