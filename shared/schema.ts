@@ -159,6 +159,8 @@ export const websiteProgress = pgTable("website_progress", {
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
   contactEmail: text("contact_email"),
+  /** Optional dashboard card preview image (staff can set while impersonating when no template chosen). */
+  dashboardPreviewImage: text("dashboard_preview_image"),
   /** Demo buyer credentials for Digital Products preview (platform-only, not public site config) */
   hdpDemoBuyer: jsonb("hdp_demo_buyer").$type<{
     email: string;

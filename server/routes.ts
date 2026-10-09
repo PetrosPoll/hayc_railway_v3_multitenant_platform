@@ -16445,6 +16445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
           customDomain: websiteProgress.customDomain,
+          dashboardPreviewImage: websiteProgress.dashboardPreviewImage,
           createdAt: websiteProgress.createdAt,
           updatedAt: websiteProgress.updatedAt,
         })
@@ -18519,6 +18520,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching website invoices:", err);
       res.status(500).json({ error: "Failed to fetch website invoices" });
+    }
+  });
+
+  /**
+   * Set/clear the dashboard card preview image.
+   * Only while admin is viewing as customer (impersonation) — regular customers cannot.
+   */
+  app.patch("/api/websites/:id/dashboard-preview", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    if (!isImpersonating(req)) {
+      return res.status(403).json({
+        error: "Dashboard preview can only be set while viewing as customer",
+        code: "IMPERSONATION_REQUIRED",
+      });
+    }
+
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+
+      const schema = z.object({
+        dashboardPreviewImage: z
+          .union([z.string().url().max(2000), z.literal(""), z.null()])
+          .optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid payload" });
+      }
+
+      const [website] = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+      if (!website) {
+        return res.status(404).json({ error: "Website not found" });
+      }
+      if (website.userId !== req.user!.id) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const nextValue =
+        parsed.data.dashboardPreviewImage === undefined
+          ? undefined
+          : parsed.data.dashboardPreviewImage
+            ? parsed.data.dashboardPreviewImage
+            : null;
+
+      if (nextValue === undefined) {
+        return res.status(400).json({ error: "dashboardPreviewImage is required" });
+      }
+
+      const [updated] = await db
+        .update(websiteProgress)
+        .set({
+          dashboardPreviewImage: nextValue,
+          updatedAt: new Date(),
+        })
+        .where(eq(websiteProgress.id, websiteId))
+        .returning();
+
+      return res.json({ website: updated });
+    } catch (err) {
+      console.error("Error updating dashboard preview:", err);
+      return res.status(500).json({ error: "Failed to update dashboard preview" });
     }
   });
 

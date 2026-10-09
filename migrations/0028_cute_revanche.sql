@@ -1,0 +1,1 @@
+ALTER TABLE "website_progress" ADD COLUMN "dashboard_preview_image" text;

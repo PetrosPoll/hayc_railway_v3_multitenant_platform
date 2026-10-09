@@ -17,10 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Loader2, Plus, ExternalLink, Gift, Star, CreditCard, BarChart3, Mail, AlertCircle, CalendarDays } from "lucide-react";
+import { Loader2, Plus, ExternalLink, Gift, Star, CreditCard, BarChart3, Mail, AlertCircle, CalendarDays, ImagePlus, Trash2 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ENVATO_TEMPLATES } from "@/data/envato-templates";
+import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
+import { useToast } from "@/hooks/use-toast";
 
 const BUSINESS_TYPE_LABELS: Record<string, string> = {
   local_business: "Local Business",
@@ -49,6 +51,7 @@ type Website = {
   onboardingStatus: string | null;
   bookingEnabled?: boolean;
   siteId?: string | null;
+  dashboardPreviewImage?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   stages: Array<{
@@ -88,7 +91,126 @@ export default function WebsitesList() {
   const location = useLocation();
   const { t } = useTranslation();
   const { impersonation } = useAuth();
+  const { toast } = useToast();
   const queryClient = useQueryClient();
+  const canEditDashboardPreview = Boolean(impersonation?.active);
+  const [previewUploadingId, setPreviewUploadingId] = useState<number | null>(null);
+
+  const saveDashboardPreview = async (websiteId: number, url: string | null) => {
+    const res = await fetch(`/api/websites/${websiteId}/dashboard-preview`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dashboardPreviewImage: url }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to update preview");
+    }
+    await queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+  };
+
+  const clearDashboardPreview = async (websiteId: number) => {
+    setPreviewUploadingId(websiteId);
+    try {
+      await saveDashboardPreview(websiteId, null);
+      toast({
+        title: t("dashboard.success") || "Success",
+        description: t("dashboard.previewRemoved") || "Preview photo removed",
+      });
+    } catch (err) {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err instanceof Error ? err.message : "Failed to remove preview",
+        variant: "destructive",
+      });
+    } finally {
+      setPreviewUploadingId(null);
+    }
+  };
+
+  const uploadDashboardPreview = async (website: Website) => {
+    setPreviewUploadingId(website.id);
+    try {
+      await loadCloudinaryWidget();
+      const folder = `Website Media/${userData?.user?.email || "staff"}/${(website.domain || "").replace(/\.pending-onboarding$/i, "")}/dashboard-preview`;
+
+      const configResponse = await fetch("/api/cloudinary/signature", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ paramsToSign: { folder } }),
+      });
+      if (!configResponse.ok) throw new Error("Failed to get upload configuration");
+      const configData = await configResponse.json();
+
+      const widget = window.cloudinary.createUploadWidget(
+        {
+          cloudName: configData.cloudName,
+          apiKey: configData.apiKey,
+          uploadSignature: async (callback: any, paramsToSign: any) => {
+            const response = await fetch("/api/cloudinary/signature", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ paramsToSign }),
+            });
+            if (!response.ok) throw new Error("Failed to get upload signature");
+            const data = await response.json();
+            callback({ signature: data.signature, timestamp: data.timestamp });
+          },
+          folder,
+          sources: ["local", "url"],
+          multiple: false,
+          maxFileSize: 10_485_760,
+          resourceType: "image",
+          clientAllowedFormats: ["jpg", "jpeg", "png", "webp", "gif"],
+        },
+        async (error: any, result: any) => {
+          if (error) {
+            console.error("Preview upload error:", error);
+            toast({
+              title: t("dashboard.error") || "Error",
+              description: t("dashboard.uploadFailed") || "Upload failed",
+              variant: "destructive",
+            });
+            setPreviewUploadingId(null);
+            return;
+          }
+          if (result.event === "success") {
+            try {
+              await saveDashboardPreview(website.id, result.info.secure_url);
+              toast({
+                title: t("dashboard.success") || "Success",
+                description: t("dashboard.previewUpdated") || "Dashboard preview updated",
+              });
+            } catch (err) {
+              toast({
+                title: t("dashboard.error") || "Error",
+                description: err instanceof Error ? err.message : "Failed to save preview",
+                variant: "destructive",
+              });
+            } finally {
+              setPreviewUploadingId(null);
+            }
+          }
+          if (result.event === "close") {
+            setPreviewUploadingId((current) => (current === website.id ? null : current));
+          }
+        },
+      );
+
+      if (!widget) throw new Error("Upload widget failed to initialize");
+      widget.open();
+    } catch (err) {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err instanceof Error ? err.message : "Failed to open uploader",
+        variant: "destructive",
+      });
+      setPreviewUploadingId(null);
+    }
+  };
 
   const [onboardingFilter, setOnboardingFilter] = useState<"completed" | "draft">(
     "completed",
@@ -623,20 +745,23 @@ export default function WebsitesList() {
                                   </div>
                                 </div>
 
-                                {/* Template Preview Image or Placeholder */}
+                                {/* Custom staff preview > template preview > placeholder */}
                                 {(() => {
                                   const template = ENVATO_TEMPLATES.find(t => t.id === website.selectedTemplateId);
-                                  return template ? (
+                                  const previewSrc = website.dashboardPreviewImage || template?.preview;
+                                  return previewSrc ? (
                                     <img
-                                      src={template.preview}
-                                      alt={template.name}
+                                      src={previewSrc}
+                                      alt={template?.name || website.projectName || website.domain}
                                       className="w-full h-full object-cover pt-6"
                                     />
                                   ) : null;
                                 })()}
 
                                 {/* Fallback Placeholder Content */}
-                                {!website.selectedTemplateId || !ENVATO_TEMPLATES.find(t => t.id === website.selectedTemplateId) ? (
+                                {!website.dashboardPreviewImage &&
+                                (!website.selectedTemplateId ||
+                                  !ENVATO_TEMPLATES.find(t => t.id === website.selectedTemplateId)) ? (
                                   <div className="mt-6 p-3 flex flex-col gap-2">
                                     <div className="h-2 bg-slate-300 rounded w-3/4"></div>
                                     <div className="h-2 bg-slate-200 rounded w-1/2"></div>
@@ -653,6 +778,48 @@ export default function WebsitesList() {
                                   <ExternalLink className="h-4 w-4 text-slate-600" />
                                 </div>
                               </div>
+                              {canEditDashboardPreview ? (
+                                <div className="mt-2 flex gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="flex-1 h-8 text-xs"
+                                    disabled={previewUploadingId === website.id}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void uploadDashboardPreview(website);
+                                    }}
+                                  >
+                                    {previewUploadingId === website.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <ImagePlus className="h-3.5 w-3.5 mr-1" />
+                                        {website.dashboardPreviewImage
+                                          ? t("dashboard.changePreview") || "Change photo"
+                                          : t("dashboard.setPreview") || "Set photo"}
+                                      </>
+                                    )}
+                                  </Button>
+                                  {website.dashboardPreviewImage ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      disabled={previewUploadingId === website.id}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        void clearDashboardPreview(website.id);
+                                      }}
+                                      aria-label={t("dashboard.removePreview") || "Remove photo"}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              ) : null}
                             </div>
 
                             {/* Right - Website Info */}

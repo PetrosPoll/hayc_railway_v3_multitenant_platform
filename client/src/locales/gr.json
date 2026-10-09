@@ -1873,7 +1873,12 @@
         "languageOptions": {
             "english": "🇬🇧 English",
             "greek": "🇬🇷 Ελληνικά (Greek)"
-        }
+        },
+        "setPreview": "Ορισμός φωτογραφίας",
+        "changePreview": "Αλλαγή φωτογραφίας",
+        "removePreview": "Αφαίρεση φωτογραφίας",
+        "previewUpdated": "Η προεπισκόπηση ενημερώθηκε",
+        "previewRemoved": "Η φωτογραφία αφαιρέθηκε"
     },
     "websiteProgress": {
         "uploadMedia": "Ανέβασμα Πολυμέσων",

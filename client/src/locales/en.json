@@ -1873,7 +1873,12 @@
         "languageOptions": {
             "english": "🇬🇧 English",
             "greek": "🇬🇷 Ελληνικά (Greek)"
-        }
+        },
+        "setPreview": "Set photo",
+        "changePreview": "Change photo",
+        "removePreview": "Remove photo",
+        "previewUpdated": "Dashboard preview updated",
+        "previewRemoved": "Preview photo removed"
     },
     "newsletter": {
         "analyticsTooltips": {
