@@ -36,6 +36,8 @@ export type PlanFilter = "all" | "basic" | "essential" | "pro";
 export type MonthlyChurnMetrics = {
   month: string;
   isPartial: boolean;
+  /** True when month ends at/before events cutover (subscription-row backfill only). */
+  isApproximate: boolean;
   customersStart: number;
   customersEnd: number;
   churnedCount: number;
@@ -317,10 +319,15 @@ async function churnReasonAndTenure(
   return { byReason, byTenure, voluntary, involuntary };
 }
 
-function emptyMetrics(month: string, isPartial: boolean): MonthlyChurnMetrics {
+function emptyMetrics(
+  month: string,
+  isPartial: boolean,
+  isApproximate = false,
+): MonthlyChurnMetrics {
   return {
     month,
     isPartial,
+    isApproximate,
     customersStart: 0,
     customersEnd: 0,
     churnedCount: 0,
@@ -351,12 +358,15 @@ export async function getMonthlyChurn(
   month: string,
   plan: PlanFilter = "all",
   now = new Date(),
+  cutoverAt: Date | null = null,
 ): Promise<MonthlyChurnMetrics> {
   parseYearMonth(month);
   const { start, end } = monthBoundsAthens(month);
   const current = currentAthensYearMonth(now);
   const isPartial = month === current;
-  if (month > current) return emptyMetrics(month, true);
+  // Month is approximate if it ended at/before cutover (only backfill events).
+  const isApproximate = cutoverAt != null ? end.getTime() <= cutoverAt.getTime() : true;
+  if (month > current) return emptyMetrics(month, true, isApproximate);
 
   const [startStates, endStates, movements] = await Promise.all([
     customerStatesAt(start),
@@ -407,6 +417,7 @@ export async function getMonthlyChurn(
   return {
     month,
     isPartial,
+    isApproximate,
     customersStart: cohort.length,
     customersEnd,
     churnedCount,
@@ -439,10 +450,12 @@ export async function getChurnSeries(
   plan: PlanFilter = "all",
   now = new Date(),
 ): Promise<MonthlyChurnMetrics[]> {
+  const { getEventsCutoverAt } = await import("./subscription-events");
+  const cutoverAt = await getEventsCutoverAt();
   const months = listYearMonths(from, to);
   const series: MonthlyChurnMetrics[] = [];
   for (const month of months) {
-    series.push(await getMonthlyChurn(month, plan, now));
+    series.push(await getMonthlyChurn(month, plan, now, cutoverAt));
   }
 
   for (let i = 0; i < series.length; i++) {

@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bar,
-  BarChart,
   CartesianGrid,
   Cell,
   ComposedChart,
@@ -55,28 +54,12 @@ type PlanFilter = "all" | "basic" | "essential" | "pro";
 type MonthlyChurnMetrics = {
   month: string;
   isPartial: boolean;
+  isApproximate: boolean;
   customersStart: number;
   customersEnd: number;
   churnedCount: number;
   logoChurnPct: number | null;
   logoChurnT3mPct: number | null;
-  mrrStartCents: number;
-  mrrEndCents: number;
-  grossMrrChurnPct: number | null;
-  nrrPct: number | null;
-  churnedVoluntary: number;
-  churnedInvoluntary: number;
-  involuntarySharePct: number | null;
-  newMrrCents: number;
-  reactivationMrrCents: number;
-  expansionMrrCents: number;
-  contractionMrrCents: number;
-  churnedMrrCents: number;
-  netNewMrrCents: number;
-  newCustomers: number;
-  reactivatedCustomers: number;
-  churnByReason: Record<string, number>;
-  churnByTenure: { "0-3": number; "4-12": number; "13+": number };
   smallSample: boolean;
 };
 
@@ -84,6 +67,7 @@ type SeriesResponse = {
   from: string;
   to: string;
   plan: PlanFilter;
+  eventsCutoverAt: string | null;
   series: MonthlyChurnMetrics[];
   kpiMonth: MonthlyChurnMetrics | null;
   prevMonth: MonthlyChurnMetrics | null;
@@ -109,16 +93,6 @@ type PendingRow = {
   subscriptionId: number;
 };
 
-type DunningRow = {
-  customerId: number;
-  email: string;
-  username: string;
-  mrrCents: number;
-  failedSince: string | null;
-  accessUntil: string | null;
-  subscriptionId: number;
-};
-
 type ChurnedRow = {
   eventId: number;
   customerId: number;
@@ -126,24 +100,12 @@ type ChurnedRow = {
   username: string;
   planTier: string | null;
   tenureBucket: string;
-  tenureMonths: number | null;
   mrrLostCents: number;
   churnKind: string | null;
   reasonCode: string | null;
   reasonNote: string | null;
   preLaunch: boolean | null;
   churnDate: string;
-};
-
-type ReactivationRow = {
-  eventId: number;
-  customerId: number;
-  email: string;
-  username: string;
-  churnedOn: string | null;
-  returnedOn: string;
-  gapDays: number | null;
-  mrrCents: number;
 };
 
 type CohortRow = {
@@ -236,69 +198,7 @@ function defaultFromTo(): { from: string; to: string } {
     fm += 12;
     fy -= 1;
   }
-  const from = `${fy}-${String(fm).padStart(2, "0")}`;
-  return { from, to };
-}
-
-type CohortMetric =
-  | "customers_start"
-  | "customers_end"
-  | "logo_churn"
-  | "involuntary"
-  | "voluntary"
-  | "pending_cancellations"
-  | "in_dunning"
-  | "reactivations";
-
-function KpiCard({
-  title,
-  value,
-  delta,
-  t3m,
-  formula,
-  smallSample,
-  onClick,
-}: {
-  title: string;
-  value: string;
-  delta: string;
-  t3m?: string;
-  formula: string;
-  smallSample?: boolean;
-  onClick?: () => void;
-}) {
-  return (
-    <Card
-      className={onClick ? "cursor-pointer transition-colors hover:bg-muted/40" : undefined}
-      onClick={onClick}
-    >
-      <CardHeader className="pb-2 space-y-1">
-        <div className="flex items-start justify-between gap-2">
-          <CardDescription className="text-xs leading-snug">{title}</CardDescription>
-          <TooltipProvider>
-            <UiTooltip>
-              <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
-                <button type="button" className="text-muted-foreground hover:text-foreground">
-                  <Info className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs text-xs">{formula}</TooltipContent>
-            </UiTooltip>
-          </TooltipProvider>
-        </div>
-        <CardTitle className="text-2xl tabular-nums">{value}</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-1 text-xs text-muted-foreground">
-        <div>Δ vs προηγ.: {delta}</div>
-        {t3m != null && <div>T3M: {t3m}</div>}
-        {smallSample && (
-          <Badge variant="secondary" className="text-[10px] font-normal">
-            Μικρό δείγμα: δες τον μέσο όρο 3 μηνών
-          </Badge>
-        )}
-      </CardContent>
-    </Card>
-  );
+  return { from: `${fy}-${String(fm).padStart(2, "0")}`, to };
 }
 
 export function AdminChurnDashboard() {
@@ -309,25 +209,32 @@ export function AdminChurnDashboard() {
   const [to, setTo] = useState(defaults.to);
   const [plan, setPlan] = useState<PlanFilter>("all");
   const [includePartial, setIncludePartial] = useState(false);
+  const [includeApproximate, setIncludeApproximate] = useState(false);
   const [churnedMonth, setChurnedMonth] = useState(defaults.to);
-  const [reasonMode, setReasonMode] = useState<"all" | "voluntary" | "involuntary">("all");
   const [cohortOpen, setCohortOpen] = useState(false);
-  const [cohortMetric, setCohortMetric] = useState<CohortMetric>("logo_churn");
   const [cohortTitle, setCohortTitle] = useState("");
 
   const seriesQuery = useQuery<SeriesResponse>({
-    queryKey: ["/api/admin/churn/series", from, to, plan, includePartial],
+    queryKey: [
+      "/api/admin/churn/series",
+      from,
+      to,
+      plan,
+      includePartial,
+      includeApproximate,
+    ],
     queryFn: async () => {
       const params = new URLSearchParams({
         from,
         to,
         plan,
         includePartial: includePartial ? "1" : "0",
+        includeApproximate: includeApproximate ? "1" : "0",
       });
       const res = await fetch(`/api/admin/churn/series?${params}`, {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Αποτυχία φόρτωσης σειράς");
+      if (!res.ok) throw new Error("Αποτυχία φόρτωσης");
       return res.json();
     },
   });
@@ -337,15 +244,6 @@ export function AdminChurnDashboard() {
     queryFn: async () => {
       const res = await fetch("/api/admin/churn/pending", { credentials: "include" });
       if (!res.ok) throw new Error("Αποτυχία εκκρεμών");
-      return res.json();
-    },
-  });
-
-  const dunningQuery = useQuery<{ rows: DunningRow[] }>({
-    queryKey: ["/api/admin/churn/dunning"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/churn/dunning", { credentials: "include" });
-      if (!res.ok) throw new Error("Αποτυχία dunning");
       return res.json();
     },
   });
@@ -362,25 +260,13 @@ export function AdminChurnDashboard() {
     },
   });
 
-  const reactivationsQuery = useQuery<{ rows: ReactivationRow[] }>({
-    queryKey: ["/api/admin/churn/reactivations", churnedMonth],
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/admin/churn/reactivations?month=${encodeURIComponent(churnedMonth)}`,
-        { credentials: "include" },
-      );
-      if (!res.ok) throw new Error("Αποτυχία επανενεργοποιήσεων");
-      return res.json();
-    },
-  });
-
   const cohortQuery = useQuery<{ rows: CohortRow[] }>({
-    queryKey: ["/api/admin/churn/cohort", churnedMonth, cohortMetric, plan],
+    queryKey: ["/api/admin/churn/cohort", churnedMonth, "logo_churn", plan],
     enabled: cohortOpen,
     queryFn: async () => {
       const params = new URLSearchParams({
         month: churnedMonth,
-        metric: cohortMetric,
+        metric: "logo_churn",
         plan,
       });
       const res = await fetch(`/api/admin/churn/cohort?${params}`, {
@@ -430,78 +316,9 @@ export function AdminChurnDashboard() {
     ym: m.month,
     logo: m.logoChurnPct ?? 0,
     t3m: m.logoChurnT3mPct ?? 0,
+    approximate: m.isApproximate,
     partial: m.isPartial,
   }));
-
-  const mrrChart = series.map((m) => ({
-    month: formatMonthLabel(m.month),
-    new: m.newMrrCents / 100,
-    reactivation: m.reactivationMrrCents / 100,
-    expansion: m.expansionMrrCents / 100,
-    contraction: Math.abs(m.contractionMrrCents) / 100,
-    churn: Math.abs(m.churnedMrrCents) / 100,
-    net: m.netNewMrrCents / 100,
-  }));
-
-  const reasonKeys = useMemo(() => {
-    const keys = new Set<string>();
-    for (const m of series) {
-      Object.keys(m.churnByReason || {}).forEach((k) => keys.add(k));
-    }
-    return Array.from(keys).sort();
-  }, [series]);
-
-  const reasonChart = series.map((m) => {
-    const row: Record<string, string | number> = {
-      month: formatMonthLabel(m.month),
-    };
-    for (const k of reasonKeys) {
-      const count = m.churnByReason?.[k] ?? 0;
-      if (reasonMode === "voluntary" && k === "payment_failed") {
-        row[k] = 0;
-      } else if (reasonMode === "involuntary" && k !== "payment_failed") {
-        row[k] = 0;
-      } else {
-        row[k] = count;
-      }
-    }
-    return row;
-  });
-
-  const tenureTotals = useMemo(() => {
-    const t = { "0-3": 0, "4-12": 0, "13+": 0 };
-    for (const m of series) {
-      t["0-3"] += m.churnByTenure?.["0-3"] ?? 0;
-      t["4-12"] += m.churnByTenure?.["4-12"] ?? 0;
-      t["13+"] += m.churnByTenure?.["13+"] ?? 0;
-    }
-    return [
-      { bucket: "0–3 μήνες", count: t["0-3"] },
-      { bucket: "4–12 μήνες", count: t["4-12"] },
-      { bucket: "13+ μήνες", count: t["13+"] },
-    ];
-  }, [series]);
-
-  const reasonColors = [
-    "#0f766e",
-    "#b45309",
-    "#1d4ed8",
-    "#be123c",
-    "#4338ca",
-    "#15803d",
-    "#a16207",
-    "#7c3aed",
-    "#0e7490",
-    "#854d0e",
-    "#64748b",
-  ];
-
-  function openCohort(metric: CohortMetric, title: string) {
-    if (kpi?.month) setChurnedMonth(kpi.month);
-    setCohortMetric(metric);
-    setCohortTitle(title);
-    setCohortOpen(true);
-  }
 
   function exportChurnedCsv() {
     const rows = churnedQuery.data?.rows ?? [];
@@ -513,7 +330,6 @@ export function AdminChurnDashboard() {
       "mrrLost",
       "kind",
       "reason",
-      "preLaunch",
       "churnDate",
     ];
     const lines = [
@@ -527,7 +343,6 @@ export function AdminChurnDashboard() {
           (r.mrrLostCents / 100).toFixed(2),
           r.churnKind ?? "",
           r.reasonCode ?? "",
-          r.preLaunch ? "1" : "0",
           r.churnDate,
         ].join(","),
       ),
@@ -545,26 +360,25 @@ export function AdminChurnDashboard() {
     return (
       <div className="flex items-center gap-2 text-muted-foreground py-12">
         <Loader2 className="h-5 w-5 animate-spin" />
-        Φόρτωση στατιστικών churn…
+        Φόρτωση churn…
       </div>
     );
   }
 
   if (seriesQuery.isError) {
     return (
-      <div className="text-sm text-destructive py-8">
-        Αποτυχία φόρτωσης. Έλεγξε ότι το backfill έχει τρέξει.
-      </div>
+      <div className="text-sm text-destructive py-8">Αποτυχία φόρτωσης στατιστικών.</div>
     );
   }
 
   return (
-    <section className="space-y-8">
+    <section className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Στατιστικά Churn</h2>
-          <p className="text-sm text-muted-foreground">
-            Logo churn &amp; MRR από το event log (Europe/Athens). Κάθε νούμερο ανοίγει τη λίστα πελατών.
+          <h2 className="text-xl font-semibold">Churn</h2>
+          <p className="text-sm text-muted-foreground max-w-xl">
+            Logo churn: από τους ενεργούς στην αρχή του μήνα, πόσοι έφυγαν μέχρι το τέλος.
+            Η ακύρωση μετράει όταν τελειώνει η πρόσβαση — όχι όταν πατάει cancel.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -589,7 +403,7 @@ export function AdminChurnDashboard() {
           <div className="space-y-1">
             <Label className="text-xs">Πλάνο</Label>
             <Select value={plan} onValueChange={(v) => setPlan(v as PlanFilter)}>
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -606,116 +420,139 @@ export function AdminChurnDashboard() {
               checked={includePartial}
               onCheckedChange={setIncludePartial}
             />
-            <Label htmlFor="partial-month" className="text-xs max-w-[160px] leading-snug">
-              Συμπερίληψη τρέχοντος μήνα (μερικός)
+            <Label htmlFor="partial-month" className="text-xs">
+              Τρέχων μήνας
+            </Label>
+          </div>
+          <div className="flex items-center gap-2 pb-2">
+            <Switch
+              id="approx-history"
+              checked={includeApproximate}
+              onCheckedChange={setIncludeApproximate}
+            />
+            <Label htmlFor="approx-history" className="text-xs max-w-[140px] leading-snug">
+              Παλιό ιστορικό (προσεγγιστικό)
             </Label>
           </div>
         </div>
       </div>
 
       {seriesQuery.data?.live && (
-        <Card className="border-teal-700/30 bg-teal-50/40">
-          <CardContent className="py-4 flex flex-wrap gap-6 text-sm">
+        <Card>
+          <CardContent className="py-4 flex flex-wrap gap-8 text-sm">
             <div>
-              <div className="text-xs text-muted-foreground">Ζωντανά τώρα (event log)</div>
+              <div className="text-xs text-muted-foreground">Ζωντανά τώρα</div>
               <div className="text-lg font-semibold tabular-nums">
                 {seriesQuery.data.live.activeCustomers} ενεργοί ·{" "}
-                {formatEuro(seriesQuery.data.live.mrrCents)} MRR · ARPA{" "}
-                {formatEuro(seriesQuery.data.live.arpaCents)}
+                {formatEuro(seriesQuery.data.live.mrrCents)} MRR
               </div>
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Ενεργά πλάνα στη DB</div>
+              <div className="text-xs text-muted-foreground">Εκκρεμείς ακυρώσεις</div>
               <div className="text-lg font-semibold tabular-nums">
-                {seriesQuery.data.live.activeFromSubscriptions}
+                {seriesQuery.data.pendingSummary.count} ·{" "}
+                {formatEuro(seriesQuery.data.pendingSummary.mrrAtRiskCents)} at risk
               </div>
             </div>
-            {seriesQuery.data.live.activeCustomers === 0 &&
-              seriesQuery.data.live.activeFromSubscriptions > 0 && (
-                <p className="text-xs text-amber-800 max-w-md">
-                  Το event log δεν έχει ακόμα terminal Stripe snapshot. Ξανατρέξε το backfill
-                  για να ευθυγραμμιστεί με το live MRR.
-                </p>
-              )}
+            {seriesQuery.data.dunningCount > 0 && (
+              <div>
+                <div className="text-xs text-muted-foreground">Σε dunning</div>
+                <div className="text-lg font-semibold tabular-nums">
+                  {seriesQuery.data.dunningCount}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      <p className="text-xs text-muted-foreground">
-        KPI κάρτες παρακάτω:{" "}
-        <span className="font-medium text-foreground">
-          {kpi ? formatMonthLabel(kpi.month) : "—"}
-        </span>{" "}
-        (τελευταίος ολοκληρωμένος μήνας στο εύρος) — όχι live κατάσταση.
-      </p>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Card
+          className={kpi ? "cursor-pointer hover:bg-muted/40" : undefined}
+          onClick={() => {
+            if (!kpi) return;
+            setChurnedMonth(kpi.month);
+            setCohortTitle(`Churned — ${formatMonthLabel(kpi.month)}`);
+            setCohortOpen(true);
+          }}
+        >
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-2">
+              <CardDescription>Logo churn %</CardDescription>
+              <TooltipProvider>
+                <UiTooltip>
+                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                    <button type="button" className="text-muted-foreground">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    churned / ενεργοί στην αρχή του μήνα. Μόνο μήνες μετά το cutover
+                    (καθαρά webhook data).
+                  </TooltipContent>
+                </UiTooltip>
+              </TooltipProvider>
+            </div>
+            <CardTitle className="text-3xl tabular-nums">
+              {kpi ? formatPct(kpi.logoChurnPct) : "—"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground space-y-1">
+            {kpi ? (
+              <>
+                <div>
+                  {formatMonthLabel(kpi.month)}: {kpi.churnedCount} / {kpi.customersStart}{" "}
+                  έφυγαν
+                </div>
+                <div>Δ vs προηγ.: {deltaPct(kpi.logoChurnPct, prev?.logoChurnPct)}</div>
+                <div>T3M: {formatPct(kpi.logoChurnT3mPct)}</div>
+                {kpi.smallSample && (
+                  <Badge variant="secondary" className="text-[10px] font-normal">
+                    Μικρό δείγμα
+                  </Badge>
+                )}
+              </>
+            ) : (
+              <p>
+                Δεν υπάρχει ακόμα ολοκληρωμένος μήνας με αξιόπιστα data μετά το cutover
+                {seriesQuery.data?.eventsCutoverAt
+                  ? ` (${formatDate(seriesQuery.data.eventsCutoverAt)})`
+                  : ""}
+                . Μέχρι τότε κοίτα ζωντανά + εκκρεμείς ακυρώσεις.
+              </p>
+            )}
+          </CardContent>
+        </Card>
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <KpiCard
-          title="Logo churn %"
-          value={formatPct(kpi?.logoChurnPct)}
-          delta={deltaPct(kpi?.logoChurnPct, prev?.logoChurnPct)}
-          t3m={formatPct(kpi?.logoChurnT3mPct)}
-          formula="churned_count / customers_start — ενεργοί στην αρχή του μήνα που έγιναν churned στο τέλος."
-          smallSample={kpi?.smallSample}
-          onClick={() => openCohort("logo_churn", "Churned πελάτες (logo)")}
-        />
-        <KpiCard
-          title="Gross MRR churn %"
-          value={formatPct(kpi?.grossMrrChurnPct)}
-          delta={deltaPct(kpi?.grossMrrChurnPct, prev?.grossMrrChurnPct)}
-          formula="sum(max(mrr_start − mrr_end, 0)) / mrr_start στο cohort — churn + contraction."
-          smallSample={kpi?.smallSample}
-          onClick={() => openCohort("logo_churn", "MRR churn cohort")}
-        />
-        <KpiCard
-          title="NRR %"
-          value={formatPct(kpi?.nrrPct)}
-          delta={deltaPct(kpi?.nrrPct, prev?.nrrPct)}
-          formula="sum(mrr_end) / mrr_start στο cohort — περιλαμβάνει expansion."
-          smallSample={kpi?.smallSample}
-          onClick={() => openCohort("customers_start", "Cohort στην αρχή του μήνα")}
-        />
-        <KpiCard
-          title="Ενεργοί πελάτες (μήνας)"
-          value={
-            kpi
-              ? `${kpi.customersStart} → ${kpi.customersEnd}`
-              : "—"
-          }
-          delta={
-            kpi && prev
-              ? `${prev.customersStart} → ${prev.customersEnd}`
-              : "—"
-          }
-          formula="customers_start / customers_end — ενεργοί στην αρχή και στο τέλος του μήνα KPI."
-          smallSample={kpi?.smallSample}
-          onClick={() => openCohort("customers_start", "Ενεργοί στην αρχή")}
-        />
-        <KpiCard
-          title="Εκκρεμείς ακυρώσεις"
-          value={
-            seriesQuery.data
-              ? `${seriesQuery.data.pendingSummary.count} · ${formatEuro(seriesQuery.data.pendingSummary.mrrAtRiskCents)}`
-              : "—"
-          }
-          delta="ζωντανά"
-          formula="Ενεργοί με cancel_at_period_end — count + MRR at risk."
-          onClick={() => openCohort("pending_cancellations", "Εκκρεμείς ακυρώσεις")}
-        />
-        <KpiCard
-          title="Involuntary share %"
-          value={formatPct(kpi?.involuntarySharePct)}
-          delta={deltaPct(kpi?.involuntarySharePct, prev?.involuntarySharePct)}
-          formula="churned_involuntary / churned_count."
-          smallSample={kpi?.smallSample}
-          onClick={() => openCohort("involuntary", "Involuntary churn")}
-        />
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Ενεργοί στον μήνα KPI</CardDescription>
+            <CardTitle className="text-3xl tabular-nums">
+              {kpi ? `${kpi.customersStart} → ${kpi.customersEnd}` : "—"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            Αρχή → τέλος μήνα (μόνο αξιόπιστοι μήνες).
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>At risk τώρα</CardDescription>
+            <CardTitle className="text-3xl tabular-nums">
+              {seriesQuery.data?.pendingSummary.count ?? 0}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            Πάτησαν cancel, η πρόσβαση δεν έχει τελειώσει ακόμα.
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Εκκρεμείς ακυρώσεις</CardTitle>
-          <CardDescription>Ταξινομημένο κατά ημέρες μέχρι τη λήξη.</CardDescription>
+          <CardDescription>Το πιο actionable — πριν γίνει churn.</CardDescription>
         </CardHeader>
         <CardContent>
           {(pendingQuery.data?.rows?.length ?? 0) === 0 ? (
@@ -758,13 +595,23 @@ export function AdminChurnDashboard() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Μηνιαίο logo churn</CardTitle>
-            <CardDescription>Μπάρες ανά μήνα + γραμμή T3M. Μερικός μήνας σε γκρι.</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[280px]">
+      <Card>
+        <CardHeader>
+          <CardTitle>Μηνιαίο logo churn</CardTitle>
+          <CardDescription>
+            {includeApproximate
+              ? "Περιλαμβάνει προσεγγιστικό ιστορικό (γκρι μπάρες) — μη το εμπιστεύεσαι."
+              : "Μόνο μήνες μετά το cutover. Άδειο = δεν έκλεισε ακόμα αξιόπιστος μήνας."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-[280px]">
+          {logoChart.length === 0 ? (
+            <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-6">
+              Δεν υπάρχουν ακόμα ολοκληρωμένοι αξιόπιστοι μήνες για chart.
+              <br />
+              Από τον επόμενο μήνα μετά το cutover θα γεμίζει αυτόματα από webhooks.
+            </div>
+          ) : (
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={logoChart}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -776,7 +623,9 @@ export function AdminChurnDashboard() {
                   {logoChart.map((entry) => (
                     <Cell
                       key={entry.ym}
-                      fill={entry.partial ? "#94a3b8" : "#0f766e"}
+                      fill={
+                        entry.approximate || entry.partial ? "#94a3b8" : "#0f766e"
+                      }
                     />
                   ))}
                 </Bar>
@@ -790,133 +639,6 @@ export function AdminChurnDashboard() {
                 />
               </ComposedChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Κινήσεις MRR</CardTitle>
-            <CardDescription>
-              Νέο / επανενεργοποίηση / expansion (+) · contraction / churn (−) · net line
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={mrrChart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="new" stackId="pos" fill="#15803d" name="Νέο" />
-                <Bar
-                  dataKey="reactivation"
-                  stackId="pos"
-                  fill="#0e7490"
-                  name="Επανενεργοποίηση"
-                />
-                <Bar dataKey="expansion" stackId="pos" fill="#1d4ed8" name="Expansion" />
-                <Bar dataKey="contraction" stackId="neg" fill="#b45309" name="Contraction" />
-                <Bar dataKey="churn" stackId="neg" fill="#be123c" name="Churn" />
-                <Line type="monotone" dataKey="net" name="Net MRR" stroke="#111827" strokeWidth={2} />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <div>
-              <CardTitle>Churn ανά λόγο</CardTitle>
-              <CardDescription>Stacked counts ανά μήνα</CardDescription>
-            </div>
-            <Select
-              value={reasonMode}
-              onValueChange={(v) => setReasonMode(v as typeof reasonMode)}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Όλα</SelectItem>
-                <SelectItem value="voluntary">Εθελοντικό</SelectItem>
-                <SelectItem value="involuntary">Ακούσιο</SelectItem>
-              </SelectContent>
-            </Select>
-          </CardHeader>
-          <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={reasonChart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Legend />
-                {reasonKeys.map((k, i) => (
-                  <Bar
-                    key={k}
-                    dataKey={k}
-                    stackId="r"
-                    fill={reasonColors[i % reasonColors.length]}
-                    name={REASON_LABELS[k] || k}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Churn ανά tenure</CardTitle>
-            <CardDescription>Άθροισμα στο επιλεγμένο εύρος</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={tenureTotals}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="bucket" tick={{ fontSize: 11 }} />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip />
-                <Bar dataKey="count" name="Πελάτες" fill="#4338ca" radius={[2, 2, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Σε dunning</CardTitle>
-          <CardDescription>past_due συνδρομές (ζωντανά)</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {(dunningQuery.data?.rows?.length ?? 0) === 0 ? (
-            <p className="text-sm text-muted-foreground">Κανείς σε dunning.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Πελάτης</TableHead>
-                  <TableHead>MRR</TableHead>
-                  <TableHead>Αποτυχία από</TableHead>
-                  <TableHead>Αναμενόμενη ακύρωση</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dunningQuery.data!.rows.map((r) => (
-                  <TableRow key={r.subscriptionId}>
-                    <TableCell>
-                      <div className="font-medium">{r.email}</div>
-                      <div className="text-xs text-muted-foreground">#{r.customerId}</div>
-                    </TableCell>
-                    <TableCell>{formatEuro(r.mrrCents)}</TableCell>
-                    <TableCell>{formatDate(r.failedSince)}</TableCell>
-                    <TableCell>{formatDate(r.accessUntil)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
           )}
         </CardContent>
       </Card>
@@ -925,7 +647,7 @@ export function AdminChurnDashboard() {
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>Churned στον μήνα</CardTitle>
-            <CardDescription>Επεξεργασία λόγου με audit log</CardDescription>
+            <CardDescription>Ποιοι έφυγαν — επεξεργασία λόγου</CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Input
@@ -961,14 +683,7 @@ export function AdminChurnDashboard() {
                   <TableRow key={r.eventId}>
                     <TableCell>
                       <div className="font-medium">{r.email}</div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        #{r.customerId}
-                        {r.preLaunch && (
-                          <Badge variant="outline" className="text-[10px]">
-                            pre-launch
-                          </Badge>
-                        )}
-                      </div>
+                      <div className="text-xs text-muted-foreground">#{r.customerId}</div>
                     </TableCell>
                     <TableCell>
                       {r.planTier ? TIER_LABEL[r.planTier] || r.planTier : "—"}
@@ -1010,50 +725,12 @@ export function AdminChurnDashboard() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Επανενεργοποιήσεις</CardTitle>
-          <CardDescription>Μήνας: {formatMonthLabel(churnedMonth)}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {(reactivationsQuery.data?.rows?.length ?? 0) === 0 ? (
-            <p className="text-sm text-muted-foreground">Καμία επανενεργοποίηση.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Πελάτης</TableHead>
-                  <TableHead>Churned</TableHead>
-                  <TableHead>Επιστροφή</TableHead>
-                  <TableHead>Κενό (ημέρες)</TableHead>
-                  <TableHead>MRR</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reactivationsQuery.data!.rows.map((r) => (
-                  <TableRow key={r.eventId}>
-                    <TableCell>
-                      <div className="font-medium">{r.email}</div>
-                      <div className="text-xs text-muted-foreground">#{r.customerId}</div>
-                    </TableCell>
-                    <TableCell>{formatDate(r.churnedOn)}</TableCell>
-                    <TableCell>{formatDate(r.returnedOn)}</TableCell>
-                    <TableCell>{r.gapDays ?? "—"}</TableCell>
-                    <TableCell>{formatEuro(r.mrrCents)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
       <Dialog open={cohortOpen} onOpenChange={setCohortOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
           <DialogHeader>
             <DialogTitle>{cohortTitle}</DialogTitle>
             <DialogDescription>
-              {formatMonthLabel(churnedMonth)} · πλάνο{" "}
+              {formatMonthLabel(churnedMonth)} ·{" "}
               {plan === "all" ? "Όλα" : TIER_LABEL[plan] || plan}
             </DialogDescription>
           </DialogHeader>
@@ -1072,7 +749,6 @@ export function AdminChurnDashboard() {
                   <TableHead>Email</TableHead>
                   <TableHead>Πλάνο</TableHead>
                   <TableHead>MRR</TableHead>
-                  <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1086,7 +762,6 @@ export function AdminChurnDashboard() {
                     <TableCell>
                       {r.mrrCents != null ? formatEuro(r.mrrCents) : "—"}
                     </TableCell>
-                    <TableCell>{r.status ?? "—"}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

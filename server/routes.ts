@@ -10349,29 +10349,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
         getInDunning,
         getLiveSnapshot,
       } = await import("./services/churn-metrics");
+      const { getEventsCutoverAt } = await import("./services/subscription-events");
       const defaults = defaultSeriesRange();
       const from = typeof req.query.from === "string" ? req.query.from : defaults.from;
       const to = typeof req.query.to === "string" ? req.query.to : defaults.to;
       const includePartial = req.query.includePartial === "1" || req.query.includePartial === "true";
+      const includeApproximate =
+        req.query.includeApproximate === "1" ||
+        req.query.includeApproximate === "true";
       const plan = parseChurnPlanFilter(req.query.plan);
       let series = await getChurnSeries(from, to, plan);
       if (!includePartial) {
         series = series.filter((m) => !m.isPartial);
       }
+      const reliable = series.filter((m) => !m.isApproximate);
+      const chartSeries = includeApproximate ? series : reliable;
       const pending = await getPendingCancellations();
       const dunning = await getInDunning();
       const pendingSummary = livePendingSummary(pending);
       const live = await getLiveSnapshot(plan);
-      const kpiMonth =
-        series.filter((m) => !m.isPartial).at(-1) ?? series.at(-1) ?? null;
-      const prevMonth =
-        series.filter((m) => !m.isPartial).at(-2) ?? null;
+      const cutoverAt = await getEventsCutoverAt();
+      // KPI = last completed reliable month only (never approximate backfill).
+      const kpiMonth = reliable.filter((m) => !m.isPartial).at(-1) ?? null;
+      const prevMonth = reliable.filter((m) => !m.isPartial).at(-2) ?? null;
       return res.json({
         from,
         to,
         plan,
         includePartial,
-        series,
+        includeApproximate,
+        eventsCutoverAt: cutoverAt?.toISOString() ?? null,
+        series: chartSeries,
+        allSeries: series,
         kpiMonth,
         prevMonth,
         pendingSummary,
