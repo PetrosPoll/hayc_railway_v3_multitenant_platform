@@ -803,12 +803,20 @@ export default function WebsiteDashboard() {
       if (!response.ok) {
         throw new Error("Failed to cancel subscription");
       }
-      return response.json();
+      return response.json() as Promise<{ accessUntil?: string }>;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const end =
+        data.accessUntil != null
+          ? new Date(data.accessUntil).toLocaleDateString()
+          : "";
       toast({
-        title: t("dashboard.subscriptionCancelled") || "Subscription Cancelled",
-        description: t("dashboard.subscriptionCancelledDesc") || "Your subscription has been cancelled successfully.",
+        title: t("dashboard.subscriptionCancelScheduled") || "Cancellation scheduled",
+        description:
+          t("dashboard.subscriptionCancelScheduledDesc", { date: end }) ||
+          (end
+            ? `Your subscription stays active until ${end}.`
+            : "Your subscription stays active until the end of the billing period."),
       });
       setSubscriptionToCancel(null);
       queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
@@ -822,6 +830,37 @@ export default function WebsiteDashboard() {
         variant: "destructive",
       });
       setSubscriptionToCancel(null);
+    },
+  });
+
+  const resumeMutation = useMutation({
+    mutationFn: async (subscriptionId: number) => {
+      const response = await fetch(`/api/subscriptions/${subscriptionId}/resume`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to resume subscription");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: t("dashboard.subscriptionResumed") || "Subscription continued",
+        description:
+          t("dashboard.subscriptionResumedDesc") ||
+          "Your subscription will renew as usual.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "stripe", "status"] });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -2300,7 +2339,36 @@ export default function WebsiteDashboard() {
                     {t("dashboard.upgradeToYearly") || "Upgrade to Yearly"}
                   </Button>
                 )}
-              {selectedSubscription.status === "active" ? (
+              {selectedSubscription.status === "active" &&
+              (selectedSubscription as Subscription & { cancelAtPeriodEnd?: boolean })
+                .cancelAtPeriodEnd ? (
+                <div className="w-full space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    {t("dashboard.subscriptionEndsOn", {
+                      date: selectedSubscription.accessUntil
+                        ? formatDate(selectedSubscription.accessUntil)
+                        : "—",
+                    }) ||
+                      `Η συνδρομή σου λήγει στις ${
+                        selectedSubscription.accessUntil
+                          ? formatDate(selectedSubscription.accessUntil)
+                          : "—"
+                      }`}
+                  </p>
+                  <Button
+                    variant="default"
+                    className="w-full"
+                    data-testid="button-continue-subscription"
+                    disabled={isDemo || resumeMutation.isPending}
+                    onClick={() => resumeMutation.mutate(selectedSubscription.id)}
+                  >
+                    {resumeMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : null}
+                    {t("dashboard.continueSubscription") || "Συνέχισε τη συνδρομή"}
+                  </Button>
+                </div>
+              ) : selectedSubscription.status === "active" ? (
                 <Button
                   variant="link"
                   className="text-destructive p-0 h-auto cancel-subscription"
@@ -2312,9 +2380,6 @@ export default function WebsiteDashboard() {
                 </Button>
               ) : (
                 selectedSubscription.status === "cancelled" && (
-                  // TODO: Implement self-serve resume flow (Option B - Stripe portal or
-                  // Option A - stripe.subscriptions.create with saved payment method).
-                  // Currently disabled — customer must repurchase through normal flow.
                   <div className="w-full space-y-1">
                     <Button
                       variant="default"
@@ -4686,7 +4751,8 @@ export default function WebsiteDashboard() {
               {t("dashboard.areSureCancel") || "Are you sure you want to cancel?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("dashboard.actionCannotBeUndone") || "This action cannot be undone. Your subscription will remain active until the end of the current billing period."}
+              {t("dashboard.cancelAtPeriodEndHint") ||
+                "Your subscription will remain active until the end of the current billing period. You can continue it anytime before then."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

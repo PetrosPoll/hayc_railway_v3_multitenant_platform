@@ -80,6 +80,9 @@ import {
 import { startWorkflowForFormSubmit } from "./lib/automation-engine";
 import { demoReadOnlyMiddleware } from "./lib/demo-mode";
 import { duplicateDemoWebsite } from "./lib/demo-website-clone";
+import { handleChurnStripeEvent } from "./services/churn-event-handlers";
+import { ensureCustomerStripeAccount } from "./services/subscription-events";
+import { upsertPriceMapSeed } from "./services/stripe-price-map";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -5512,6 +5515,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('🔔 Webhook received:', event.type, 'ID:', event.id);
 
+      // Churn / MRR event log (idempotent via stripe_event_id). Safe no-op for unrelated types.
+      try {
+        await handleChurnStripeEvent(stripe, event);
+      } catch (churnErr) {
+        console.error("[churn-events] handler error:", churnErr);
+      }
+
       switch (event.type) {
         case "checkout.session.completed": {
           console.log('✅ Processing checkout.session.completed');
@@ -5678,6 +5688,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   role: UserRole.SUBSCRIBER, // Ensure role is set to subscriber
                 });
               }
+              if (user.stripeCustomerId || session.customer) {
+                await ensureCustomerStripeAccount(
+                  user.id,
+                  (user.stripeCustomerId || session.customer) as string,
+                );
+              }
             } else {
               try {
                 const resolvedUsername = await allocateUniqueUsernameForCheckout(
@@ -5698,6 +5714,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   password: await hashPassword(session.metadata.password || ""),
                   language: session.metadata.language || "en",
                 });
+                if (user?.stripeCustomerId) {
+                  await ensureCustomerStripeAccount(user.id, user.stripeCustomerId);
+                }
               } catch (userCreateError: any) {
                 // If duplicate email (Stripe webhook retry), fall back to existing user
                 const isDuplicateEmail =
@@ -7064,22 +7083,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const accessUntil = accessUntilFromStripePeriodEnd(stripeSubscription)!;
 
+      // Customer path: schedule cancel at period end (R1). Immediate cancel is admin-only.
+      // Do NOT deprovision here — wait for customer.subscription.deleted.
       if (localSubscription.productType === "addon") {
-        // Addon: remove only this item from the Stripe subscription so the plan stays active.
-        // If this is somehow the last item, fall back to cancelling the whole subscription.
         if (!localSubscription.stripeSubscriptionItemId) {
           return res.status(400).json({ error: "No Stripe subscription item ID found for this addon" });
         }
         if (stripeSubscription.items.data.length === 1) {
-          const cancelledStripeSub = await stripe.subscriptions.cancel(stripeSubscription.id);
+          await stripe.subscriptions.update(stripeSubscription.id, {
+            cancel_at_period_end: true,
+          });
           await db
             .update(subscriptionsTable)
-            .set(
-              stripeCancellationUpdate(cancelledStripeSub, {
-                cancellationReason: "User requested cancellation",
-                accessUntil,
-              }),
-            )
+            .set({
+              cancelAtPeriodEnd: true,
+              accessUntil,
+              cancellationReason: "User requested cancellation",
+            })
             .where(
               and(
                 eq(subscriptionsTable.userId, currentUser.id),
@@ -7087,6 +7107,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               ),
             );
         } else {
+          // Removing an add-on item is contraction (R6), not logo churn — immediate item delete OK.
           await stripe.subscriptionItems.del(localSubscription.stripeSubscriptionItemId);
           await db
             .update(subscriptionsTable)
@@ -7094,16 +7115,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .where(eq(subscriptionsTable.id, subscriptionId));
         }
       } else {
-        // Plan: cancel the entire Stripe subscription — this also removes all addons.
-        const cancelledStripeSub = await stripe.subscriptions.cancel(stripeSubscription.id);
+        await stripe.subscriptions.update(stripeSubscription.id, {
+          cancel_at_period_end: true,
+        });
         await db
           .update(subscriptionsTable)
-          .set(
-            stripeCancellationUpdate(cancelledStripeSub, {
-              cancellationReason: "User requested cancellation",
-              accessUntil,
-            }),
-          )
+          .set({
+            cancelAtPeriodEnd: true,
+            accessUntil,
+            cancellationReason: "User requested cancellation",
+          })
           .where(
             and(
               eq(subscriptionsTable.userId, currentUser.id),
@@ -7112,13 +7133,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           );
       }
 
-      // Get fresh subscriptions
       const subscriptions = await storage.getUserSubscriptions(currentUser.id);
+      const periodEnd = new Date(stripeSubscription.current_period_end * 1000);
 
-      // Send cancellation notification email to user
       const user = await storage.getUserById(currentUser.id);
-      if (user) {
-        // Fetch website domain if subscription is linked to a website
+      if (user && localSubscription.productType !== "addon") {
         let websiteDomain = null;
         let websiteProjectName = null;
         if (localSubscription.websiteProgressId) {
@@ -7127,7 +7146,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .from(websiteProgress)
             .where(eq(websiteProgress.id, localSubscription.websiteProgressId))
             .limit(1);
-          
           if (websiteProgressResult.length > 0) {
             websiteDomain = websiteProgressResult[0].domain;
             websiteProjectName = websiteProgressResult[0].projectName;
@@ -7139,13 +7157,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           email: user.email,
           plan: localSubscription.tier,
           cancellationDate: new Date(),
-          accessUntil: new Date(stripeSubscription.current_period_end * 1000),
+          accessUntil: periodEnd,
           language: user.language || "en",
           domain: websiteDomain,
           projectName: websiteProjectName || websiteDomain,
         });
 
-        // Send admin notification email with action items
         const adminEmailHtml = loadTemplate(
           "admin-cancellation-notice.html",
           {
@@ -7153,9 +7170,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: user.email,
             plan: localSubscription.tier,
             cancellationDate: new Date().toLocaleDateString(),
-            accessUntil: new Date(
-              stripeSubscription.current_period_end * 1000,
-            ).toLocaleDateString(),
+            accessUntil: periodEnd.toLocaleDateString(),
           },
           "en",
         );
@@ -7163,15 +7178,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await sendSystemEmail({
           from: process.env.EMAIL_FROM,
           to: "development@hayc.gr",
-          subject: `🚨 Subscription Cancelled - Action Required for ${user.username}`,
+          subject: `⏳ Cancellation scheduled - ${user.username} (access until ${periodEnd.toLocaleDateString()})`,
           html: adminEmailHtml,
         });
       }
 
-      res.json({ success: true, subscriptions });
+      res.json({
+        success: true,
+        subscriptions,
+        cancelAtPeriodEnd: true,
+        accessUntil: periodEnd.toISOString(),
+      });
     } catch (error) {
       console.error("Error cancelling subscription:", error);
       res.status(500).json({ error: "Failed to cancel subscription" });
+    }
+  });
+
+  /** R2: revert cancel_at_period_end before period end. */
+  app.post("/api/subscriptions/:id/resume", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const subscriptionId = parseInt(req.params.id, 10);
+      const currentUser = await storage.getUserById(req.user.id);
+      if (!currentUser?.stripeCustomerId) {
+        return res.status(404).json({ error: "User or Stripe customer not found" });
+      }
+      const userSubscriptions = await storage.getUserSubscriptions(currentUser.id);
+      const localSubscription = userSubscriptions.find((s) => s.id === subscriptionId);
+      if (!localSubscription?.stripeSubscriptionId) {
+        return res.status(404).json({ error: "Subscription not found" });
+      }
+
+      const stripeSubscription = await stripe.subscriptions.retrieve(
+        localSubscription.stripeSubscriptionId,
+      );
+      if (!stripeSubscription.cancel_at_period_end) {
+        return res.status(400).json({ error: "Subscription is not scheduled to cancel" });
+      }
+
+      await stripe.subscriptions.update(stripeSubscription.id, {
+        cancel_at_period_end: false,
+      });
+      await db
+        .update(subscriptionsTable)
+        .set({
+          cancelAtPeriodEnd: false,
+          cancellationReason: null,
+        })
+        .where(
+          and(
+            eq(subscriptionsTable.id, subscriptionId),
+            eq(subscriptionsTable.userId, currentUser.id),
+          ),
+        );
+
+      const subscriptions = await storage.getUserSubscriptions(currentUser.id);
+      return res.json({ success: true, subscriptions, cancelAtPeriodEnd: false });
+    } catch (error) {
+      console.error("Error resuming subscription:", error);
+      return res.status(500).json({ error: "Failed to resume subscription" });
     }
   });
 
@@ -17244,6 +17312,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If "Website Launch" stage is being completed, reset changesUsed to 0
       // This is because pre-launch changes shouldn't count towards the limit
       if (stage.title === "Website Launch" && status === "completed" && website) {
+        // Set launched_at once (never overwrite)
+        await db
+          .update(websiteProgress)
+          .set({
+            launchedAt: sql`COALESCE(${websiteProgress.launchedAt}, NOW())`,
+            updatedAt: new Date(),
+          })
+          .where(eq(websiteProgress.id, websiteId));
+
         const currentMonthYear = getCurrentMonthYear();
         
         // Get the user ID from the website

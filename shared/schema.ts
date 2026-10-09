@@ -3,6 +3,8 @@ import {
   text,
   serial,
   integer,
+  bigint,
+  bigserial,
   timestamp,
   boolean,
   unique,
@@ -161,6 +163,8 @@ export const websiteProgress = pgTable("website_progress", {
   contactEmail: text("contact_email"),
   /** Optional dashboard card preview image (staff can set while impersonating when no template chosen). */
   dashboardPreviewImage: text("dashboard_preview_image"),
+  /** First time the site entered the Launch stage (set once, never overwritten). */
+  launchedAt: timestamp("launched_at", { withTimezone: true }),
   /** Demo buyer credentials for Digital Products preview (platform-only, not public site config) */
   hdpDemoBuyer: jsonb("hdp_demo_buyer").$type<{
     email: string;
@@ -226,6 +230,8 @@ export const subscriptions = pgTable("subscriptions", {
   isLegacy: boolean("is_legacy").default(false).notNull(),
   notes: text("notes"),
   reactivationOf: integer("reactivation_of").references((): AnyPgColumn => subscriptions.id),
+  /** True while Stripe cancel_at_period_end is scheduled (plan still active until period end). */
+  cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1838,3 +1844,110 @@ export const websiteAutomationJobs = pgTable(
 );
 
 export type WebsiteAutomationJob = typeof websiteAutomationJobs.$inferSelect;
+
+/** HAYC customer ↔ Stripe customer mapping (1:N capable; populated 1:1 initially). */
+export const customerStripeAccounts = pgTable(
+  "customer_stripe_accounts",
+  {
+    id: serial("id").primaryKey(),
+    customerId: integer("customer_id")
+      .notNull()
+      .references(() => users.id),
+    stripeCustomerId: text("stripe_customer_id").notNull().unique(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    customerIdx: index("customer_stripe_accounts_customer_idx").on(table.customerId),
+  }),
+);
+
+export type CustomerStripeAccount = typeof customerStripeAccounts.$inferSelect;
+
+/** Classify Stripe prices for churn/MRR (core | addon | setup). */
+export const stripePriceMap = pgTable("stripe_price_map", {
+  stripePriceId: text("stripe_price_id").primaryKey(),
+  kind: text("kind").notNull(), // core | addon | setup
+  tier: text("tier"), // basic | essential | pro | addon slug | null
+});
+
+export type StripePriceMapRow = typeof stripePriceMap.$inferSelect;
+
+/**
+ * Append-only subscription lifecycle events for churn/MRR.
+ * statusAfter / mrrAfterCents null = informational (cancel_scheduled, payment_failed, …).
+ */
+export const subscriptionEvents = pgTable(
+  "subscription_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    customerId: integer("customer_id")
+      .notNull()
+      .references(() => users.id),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    stripeEventId: text("stripe_event_id").unique(),
+    type: text("type").notNull(),
+    // new | reactivation | expansion | contraction | cancel_scheduled | cancel_reverted
+    // | payment_failed | payment_recovered | pause | resume | churn
+    effectiveAt: timestamp("effective_at", { withTimezone: true }).notNull(),
+    statusAfter: text("status_after"), // active | paused | churned | null
+    mrrAfterCents: integer("mrr_after_cents"),
+    mrrDeltaCents: integer("mrr_delta_cents"),
+    /** Customer core plan tier after this event (for plan-at-M_start filters). */
+    tierAfter: text("tier_after"),
+    churnKind: text("churn_kind"), // voluntary | involuntary
+    reasonCode: text("reason_code"),
+    reasonNote: text("reason_note"),
+    preLaunch: boolean("pre_launch"),
+    source: text("source").notNull(), // webhook | backfill | admin
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    byCustomerTime: index("subscription_events_customer_time_idx").on(
+      table.customerId,
+      table.effectiveAt,
+      table.id,
+    ),
+  }),
+);
+
+export type SubscriptionEvent = typeof subscriptionEvents.$inferSelect;
+
+/** Audit log when admins edit reason_code / reason_note on churn / cancel_scheduled events. */
+export const subscriptionEventReasonAudits = pgTable(
+  "subscription_event_reason_audits",
+  {
+    id: serial("id").primaryKey(),
+    eventId: bigint("event_id", { mode: "number" })
+      .notNull()
+      .references(() => subscriptionEvents.id),
+    editedByUserId: integer("edited_by_user_id")
+      .notNull()
+      .references(() => users.id),
+    oldReasonCode: text("old_reason_code"),
+    newReasonCode: text("new_reason_code"),
+    oldReasonNote: text("old_reason_note"),
+    newReasonNote: text("new_reason_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export type SubscriptionEventReasonAudit =
+  typeof subscriptionEventReasonAudits.$inferSelect;
+
+/** Singleton-ish settings for churn event pipeline (cutover, etc.). */
+export const churnSettings = pgTable("churn_settings", {
+  id: integer("id").primaryKey().default(1),
+  /** Webhooks write events with effective_at >= this; backfill writes only < this. NULL = webhooks no-op. */
+  eventsCutoverAt: timestamp("events_cutover_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ChurnSettings = typeof churnSettings.$inferSelect;
+
+/** Idempotency receipts for Stripe events handled by the churn pipeline. */
+export const churnStripeEventReceipts = pgTable("churn_stripe_event_receipts", {
+  stripeEventId: text("stripe_event_id").primaryKey(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ChurnStripeEventReceipt = typeof churnStripeEventReceipts.$inferSelect;

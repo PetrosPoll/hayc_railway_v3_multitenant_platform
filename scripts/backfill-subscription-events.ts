@@ -1,0 +1,522 @@
+/**
+ * Rebuild subscription_events from local subscriptions + Stripe live MRR (source=backfill).
+ *
+ * Usage:
+ *   npx tsx scripts/backfill-subscription-events.ts --dry-run
+ *   npx tsx scripts/backfill-subscription-events.ts
+ *
+ * Requires churn_settings.events_cutover_at to be set. Writes only effective_at < cutover.
+ * See docs/churn/RUNBOOK.md.
+ */
+import "dotenv/config";
+import fs from "fs";
+import path from "path";
+import Stripe from "stripe";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "../server/db";
+import {
+  AccountKind,
+  subscriptionEvents,
+  subscriptions,
+  users,
+  websiteProgress,
+  websiteStages,
+} from "../shared/schema";
+import { upsertPriceMapSeed } from "../server/services/stripe-price-map";
+import {
+  backfillMayWriteEvent,
+  ensureCustomerStripeAccount,
+  getEventsCutoverAt,
+  insertSubscriptionEvent,
+} from "../server/services/subscription-events";
+import { computeCustomerMrrFromStripe } from "../server/services/customer-mrr";
+
+const dryRun = process.argv.includes("--dry-run");
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+  apiVersion: "2023-10-16" as any,
+});
+
+type Approx = string;
+const approximations: Approx[] = [];
+const unmappedPriceIds = new Set<string>();
+/** YYYY-MM months where MRR movements are subscription-row approximate */
+const approximateMonths = new Set<string>();
+
+function monthKeyAthens(d: Date): string {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Athens",
+    year: "numeric",
+    month: "2-digit",
+  });
+  // en-CA → YYYY-MM-DD; take YYYY-MM
+  const parts = fmt.formatToParts(d);
+  const y = parts.find((p) => p.type === "year")?.value;
+  const m = parts.find((p) => p.type === "month")?.value;
+  return `${y}-${m}`;
+}
+
+async function backfillLaunchedAt() {
+  const launchStages = await db
+    .select({
+      websiteProgressId: websiteStages.websiteProgressId,
+      completedAt: websiteStages.completedAt,
+    })
+    .from(websiteStages)
+    .where(
+      and(
+        eq(websiteStages.title, "Website Launch"),
+        eq(websiteStages.status, "completed"),
+      ),
+    );
+
+  let updated = 0;
+  for (const stage of launchStages) {
+    if (!stage.completedAt) continue;
+    if (dryRun) {
+      updated += 1;
+      continue;
+    }
+    const result = await db
+      .update(websiteProgress)
+      .set({
+        launchedAt: sql`COALESCE(${websiteProgress.launchedAt}, ${stage.completedAt})`,
+      })
+      .where(eq(websiteProgress.id, stage.websiteProgressId))
+      .returning({ id: websiteProgress.id });
+    updated += result.length;
+  }
+  return updated;
+}
+
+async function seedCustomerStripeAccounts() {
+  const rows = await db
+    .select({ id: users.id, stripeCustomerId: users.stripeCustomerId })
+    .from(users)
+    .where(
+      and(
+        eq(users.accountKind, AccountKind.CUSTOMER),
+        sql`${users.stripeCustomerId} IS NOT NULL`,
+      ),
+    );
+  let n = 0;
+  for (const row of rows) {
+    if (!row.stripeCustomerId) continue;
+    if (!dryRun) {
+      await ensureCustomerStripeAccount(row.id, row.stripeCustomerId);
+    }
+    n += 1;
+  }
+  return n;
+}
+
+async function clearBackfillEvents() {
+  if (dryRun) {
+    const [count] = await db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(subscriptionEvents)
+      .where(eq(subscriptionEvents.source, "backfill"));
+    return count?.c ?? 0;
+  }
+  const deleted = await db
+    .delete(subscriptionEvents)
+    .where(eq(subscriptionEvents.source, "backfill"))
+    .returning({ id: subscriptionEvents.id });
+  return deleted.length;
+}
+
+async function emitHistoricalForCustomer(
+  customerId: number,
+  stripeCustomerId: string,
+) {
+  const localSubs = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, customerId));
+
+  const sorted = [...localSubs].sort(
+    (a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0),
+  );
+
+  let hadChurn = false;
+  let lastMrr = 0;
+
+  for (const sub of sorted) {
+    if (!sub.createdAt) continue;
+
+    const mrrGuess = Math.round(
+      (sub.price ?? 0) / (sub.billingPeriod === "yearly" ? 12 : 1),
+    );
+
+    const startType =
+      sub.productType === "addon" && lastMrr > 0
+        ? ("expansion" as const)
+        : hadChurn
+          ? ("reactivation" as const)
+          : ("new" as const);
+
+    if (await backfillMayWriteEvent(sub.createdAt)) {
+      approximateMonths.add(monthKeyAthens(sub.createdAt));
+      approximations.push(
+        `customer ${customerId} sub #${sub.id}: ${startType} at createdAt (subscription-row granularity; MRR movements approximate)`,
+      );
+      if (!dryRun) {
+        await insertSubscriptionEvent({
+          customerId,
+          stripeSubscriptionId: sub.stripeSubscriptionId,
+          stripeEventId: null,
+          type: startType,
+          effectiveAt: sub.createdAt,
+          statusAfter: "active",
+          mrrAfterCents: mrrGuess,
+          mrrDeltaCents: mrrGuess - lastMrr,
+          tierAfter: sub.tier,
+          source: "backfill",
+        });
+      }
+      lastMrr = mrrGuess;
+    }
+
+    const isCancelled =
+      (sub.status || "").toLowerCase() === "cancelled" ||
+      (sub.status || "").toLowerCase() === "canceled";
+
+    if (isCancelled) {
+      const effectiveAt = sub.cancelledAt ?? sub.accessUntil ?? sub.createdAt;
+      if (effectiveAt && (await backfillMayWriteEvent(effectiveAt))) {
+        approximateMonths.add(monthKeyAthens(effectiveAt));
+        approximations.push(
+          `customer ${customerId} sub #${sub.id}: churn effective_at=${effectiveAt.toISOString()} from cancelledAt (historical; MRR churn approximate)`,
+        );
+        if (!dryRun) {
+          await insertSubscriptionEvent({
+            customerId,
+            stripeSubscriptionId: sub.stripeSubscriptionId,
+            stripeEventId: null,
+            type: "churn",
+            effectiveAt,
+            statusAfter: "churned",
+            mrrAfterCents: 0,
+            mrrDeltaCents: -lastMrr,
+            tierAfter: sub.tier,
+            churnKind: sub.cancellationReason?.includes("payment_failed")
+              ? "involuntary"
+              : "voluntary",
+            reasonCode: sub.cancellationReason?.includes("payment_failed")
+              ? "payment_failed"
+              : "unknown",
+            preLaunch: null,
+            source: "backfill",
+          });
+        }
+        hadChurn = true;
+        lastMrr = 0;
+      }
+    }
+  }
+
+  try {
+    const snap = await computeCustomerMrrFromStripe(
+      stripe,
+      stripeCustomerId,
+      `backfill customer ${customerId}`,
+    );
+    snap.unknownPriceIds.forEach((id) => unmappedPriceIds.add(id));
+    if (snap.usedVatFallback) {
+      approximations.push(
+        `customer ${customerId}: used gross/1.24 VAT fallback for some Stripe prices`,
+      );
+    }
+    return snap;
+  } catch (err: any) {
+    approximations.push(
+      `customer ${customerId}: Stripe MRR fetch failed: ${err?.message || err}`,
+    );
+    return null;
+  }
+}
+
+async function findDuplicateCandidates() {
+  const byEmail = await db.execute(sql`
+    SELECT lower(email) AS key, count(*)::int AS n, array_agg(id) AS ids
+    FROM users
+    WHERE account_kind = 'customer' AND email IS NOT NULL
+    GROUP BY lower(email)
+    HAVING count(*) > 1
+  `);
+  const byVat = await db.execute(sql`
+    SELECT vat_number AS key, count(*)::int AS n, array_agg(id) AS ids
+    FROM users
+    WHERE account_kind = 'customer' AND vat_number IS NOT NULL AND vat_number <> ''
+    GROUP BY vat_number
+    HAVING count(*) > 1
+  `);
+  const byDomain = await db.execute(sql`
+    SELECT lower(domain) AS key, count(DISTINCT user_id)::int AS n, array_agg(DISTINCT user_id) AS ids
+    FROM website_progress
+    GROUP BY lower(domain)
+    HAVING count(DISTINCT user_id) > 1
+  `);
+  return { byEmail, byVat, byDomain };
+}
+
+type StatusEvent = {
+  customerId: number;
+  effectiveAt: Date;
+  statusAfter: string;
+  mrrAfterCents: number | null;
+};
+
+/** Quick logo-churn sanity from status-bearing events (Athens month labels via monthKeyAthens). */
+function computeLogoChurnLast12Months(events: StatusEvent[], now: Date) {
+  // Build per-customer timeline
+  const byCustomer = new Map<number, StatusEvent[]>();
+  for (const e of events) {
+    const list = byCustomer.get(e.customerId) ?? [];
+    list.push(e);
+    byCustomer.set(e.customerId, list);
+  }
+  for (const list of byCustomer.values()) {
+    list.sort((a, b) => a.effectiveAt.getTime() - b.effectiveAt.getTime());
+  }
+
+  function statusAt(customerId: number, at: Date): string | null {
+    const list = byCustomer.get(customerId) ?? [];
+    let s: string | null = null;
+    for (const e of list) {
+      if (e.effectiveAt.getTime() < at.getTime()) s = e.statusAfter;
+      else break;
+    }
+    return s;
+  }
+
+  const rows: Array<{
+    month: string;
+    customersStart: number;
+    churnedCount: number;
+    logoChurnPct: number | null;
+    mrrMovementsApproximate: boolean;
+  }> = [];
+
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+    const month = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const mStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+    const mEnd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1));
+
+    let customersStart = 0;
+    let churnedCount = 0;
+    for (const customerId of byCustomer.keys()) {
+      const atStart = statusAt(customerId, mStart);
+      if (atStart !== "active") continue;
+      customersStart += 1;
+      const atEnd = statusAt(customerId, mEnd);
+      if (atEnd !== "active") churnedCount += 1;
+    }
+    rows.push({
+      month,
+      customersStart,
+      churnedCount,
+      logoChurnPct:
+        customersStart > 0
+          ? Number(((churnedCount / customersStart) * 100).toFixed(2))
+          : null,
+      mrrMovementsApproximate: approximateMonths.has(month),
+    });
+  }
+  return rows;
+}
+
+async function main() {
+  console.log(`Backfill starting (dryRun=${dryRun})…`);
+
+  const cutover = await getEventsCutoverAt();
+  if (!cutover) {
+    console.error(
+      "ERROR: churn_settings.events_cutover_at is NULL. Set it before backfill (see docs/churn/RUNBOOK.md).",
+    );
+    process.exit(1);
+  }
+  console.log(`Cutover: ${cutover.toISOString()}`);
+
+  const priceMapCount = dryRun ? 0 : await upsertPriceMapSeed();
+  console.log(`stripe_price_map seed rows: ${priceMapCount || "(dry-run skip write)"}`);
+
+  const launched = await backfillLaunchedAt();
+  console.log(`launched_at candidates/updates: ${launched}`);
+
+  const mapped = await seedCustomerStripeAccounts();
+  console.log(`customer_stripe_accounts seeded: ${mapped}`);
+
+  const cleared = await clearBackfillEvents();
+  console.log(`cleared backfill events: ${cleared}`);
+
+  const customers = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      stripeCustomerId: users.stripeCustomerId,
+    })
+    .from(users)
+    .where(
+      and(
+        eq(users.accountKind, AccountKind.CUSTOMER),
+        sql`${users.stripeCustomerId} IS NOT NULL`,
+      ),
+    );
+
+  const recon: Array<{
+    customerId: number;
+    email: string | null;
+    stripeMrr: number;
+    activeCores: number;
+  }> = [];
+
+  for (const c of customers) {
+    if (!c.stripeCustomerId) continue;
+    const snap = await emitHistoricalForCustomer(c.id, c.stripeCustomerId);
+    if (snap) {
+      recon.push({
+        customerId: c.id,
+        email: c.email,
+        stripeMrr: snap.mrrCentsExVat,
+        activeCores: snap.activeCoreSubscriptionIds.length,
+      });
+    }
+  }
+
+  const activeCustomers = recon.filter((r) => r.activeCores > 0);
+  const totalMrr = activeCustomers.reduce((s, r) => s + r.stripeMrr, 0);
+  const arpa =
+    activeCustomers.length > 0
+      ? Math.round(totalMrr / activeCustomers.length)
+      : 0;
+
+  const statusRows = await db
+    .select({
+      customerId: subscriptionEvents.customerId,
+      effectiveAt: subscriptionEvents.effectiveAt,
+      statusAfter: subscriptionEvents.statusAfter,
+      mrrAfterCents: subscriptionEvents.mrrAfterCents,
+    })
+    .from(subscriptionEvents)
+    .where(sql`${subscriptionEvents.statusAfter} IS NOT NULL`);
+
+  const logoChurn = computeLogoChurnLast12Months(
+    statusRows.map((r) => ({
+      customerId: r.customerId,
+      effectiveAt: r.effectiveAt,
+      statusAfter: r.statusAfter!,
+      mrrAfterCents: r.mrrAfterCents,
+    })),
+    new Date(),
+  );
+
+  const duplicates = await findDuplicateCandidates();
+
+  const reportPath = path.join(process.cwd(), "docs/churn/BACKFILL_REPORT.md");
+  const lines: string[] = [];
+  lines.push("# Churn backfill report");
+  lines.push("");
+  lines.push(`Generated: ${new Date().toISOString()}`);
+  lines.push(`dryRun: ${dryRun}`);
+  lines.push(`events_cutover_at: ${cutover.toISOString()}`);
+  lines.push("");
+  lines.push("## Summary");
+  lines.push(`- Customers processed: ${customers.length}`);
+  lines.push(`- Backfill events cleared: ${cleared}`);
+  lines.push(`- launched_at updates: ${launched}`);
+  lines.push(`- customer_stripe_accounts seeded: ${mapped}`);
+  lines.push(`- stripe_price_map seed writes: ${priceMapCount}`);
+  lines.push(`- Unmapped Stripe price IDs: ${unmappedPriceIds.size}`);
+  lines.push(`- Approximations logged: ${approximations.length}`);
+  lines.push(
+    `- Active customers (live Stripe, ≥1 core sub): ${activeCustomers.length}`,
+  );
+  lines.push(`- Total MRR ex-VAT (cents): ${totalMrr}`);
+  lines.push(`- ARPA ex-VAT (cents): ${arpa} (€${(arpa / 100).toFixed(2)})`);
+  lines.push("");
+  lines.push("## ARPA (ex VAT)");
+  lines.push("");
+  lines.push("| metric | value |");
+  lines.push("|---|---|");
+  lines.push(`| active_customers | ${activeCustomers.length} |`);
+  lines.push(`| mrr_cents_ex_vat | ${totalMrr} |`);
+  lines.push(`| arpa_cents_ex_vat | ${arpa} |`);
+  lines.push("");
+  lines.push("## Logo churn (last 12 months) — sanity table");
+  lines.push("");
+  lines.push(
+    "Cohort = status `active` at month start → not `active` at next month start (from event log). Months with subscription-row backfill are flagged **approximate** for gross MRR churn / NRR (do not trust those movement metrics).",
+  );
+  lines.push("");
+  lines.push(
+    "| month | customers_start | churned_count | logo_churn_pct | mrr_movements |",
+  );
+  lines.push("|---|---|---|---|---|");
+  for (const r of logoChurn) {
+    lines.push(
+      `| ${r.month} | ${r.customersStart} | ${r.churnedCount} | ${r.logoChurnPct ?? "n/a"} | ${r.mrrMovementsApproximate ? "**approximate**" : "ok / mixed"} |`,
+    );
+  }
+  lines.push("");
+  lines.push("## Unmapped price IDs");
+  if (unmappedPriceIds.size === 0) lines.push("(none)");
+  else [...unmappedPriceIds].forEach((id) => lines.push(`- \`${id}\``));
+  lines.push("");
+  lines.push("## Approximations");
+  if (approximations.length === 0) lines.push("(none)");
+  else approximations.slice(0, 500).forEach((a) => lines.push(`- ${a}`));
+  if (approximations.length > 500) {
+    lines.push(`- … ${approximations.length - 500} more`);
+  }
+  lines.push("");
+  lines.push("## Duplicate candidates");
+  lines.push("### Same email");
+  lines.push("```");
+  lines.push(JSON.stringify(duplicates.byEmail, null, 2));
+  lines.push("```");
+  lines.push("### Same VAT");
+  lines.push("```");
+  lines.push(JSON.stringify(duplicates.byVat, null, 2));
+  lines.push("```");
+  lines.push("### Same domain, multiple users");
+  lines.push("```");
+  lines.push(JSON.stringify(duplicates.byDomain, null, 2));
+  lines.push("```");
+  lines.push("");
+  lines.push("## Live Stripe MRR snapshot (ex VAT, per customer)");
+  lines.push("| customerId | email | mrr_cents | active_cores |");
+  lines.push("|---|---|---|---|");
+  for (const r of recon) {
+    lines.push(
+      `| ${r.customerId} | ${r.email} | ${r.stripeMrr} | ${r.activeCores} |`,
+    );
+  }
+  lines.push("");
+  lines.push("## Notes");
+  lines.push(
+    "- Historical plan changes approximated at subscription-row granularity (not full invoice history).",
+  );
+  lines.push(
+    "- Historical cancellation reasons default to `unknown` unless local cancellation_reason indicated payment_failed.",
+  );
+  lines.push(
+    "- Historical immediate cancels use cancelledAt as churn effective_at.",
+  );
+  lines.push(
+    "- STOP: metrics service / Churn UI not built until this reconciliation is accepted.",
+  );
+
+  fs.mkdirSync(path.dirname(reportPath), { recursive: true });
+  fs.writeFileSync(reportPath, lines.join("\n"), "utf8");
+  console.log(`Wrote ${reportPath}`);
+  console.log(
+    `ARPA ex-VAT: ${arpa} cents | active: ${activeCustomers.length} | MRR: ${totalMrr}`,
+  );
+  console.log("Done. Review BACKFILL_REPORT.md before Phase 3 (metrics/UI).");
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
