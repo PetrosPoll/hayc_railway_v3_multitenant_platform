@@ -4249,6 +4249,12 @@
         "shareTitle": "Copy demo link",
         "shareDescription": "Copy this link and send it to the prospect. They open it in a normal browser — no login required.",
         "linkCopiedDescription": "Ready to paste into an email.",
-        "staffSessionTip": "Tip for staff: don’t open this link in the same browser while you’re logged into Admin — it shares the session cookie. Use a private window only if you want to preview it yourself."
+        "staffSessionTip": "Tip for staff: don’t open this link in the same browser while you’re logged into Admin — it shares the session cookie. Use a private window only if you want to preview it yourself.",
+        "duplicate": "Duplicate",
+        "duplicateTitle": "Duplicate demo website",
+        "duplicateDescription": "Creates a full copy under the same demo user: media, contacts, tags, campaigns, templates, automations, stages, plan, and sample analytics. Site ID and Stripe are cleared — set those after cloning if needed.",
+        "duplicateConfirm": "Duplicate project",
+        "duplicateSuccess": "Demo duplicated",
+        "duplicateSuccessDescription": "Created #{{id}} with {{contacts}} contacts, {{campaigns}} campaigns, {{templates}} templates."
     }
 }

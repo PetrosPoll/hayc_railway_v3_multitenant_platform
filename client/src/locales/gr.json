@@ -4249,6 +4249,12 @@
         "shareTitle": "Αντιγραφή demo link",
         "shareDescription": "Αντιγράψτε αυτό το link και στείλτε το στον ενδιαφερόμενο. Το ανοίγει σε κανονικό browser — χωρίς login.",
         "linkCopiedDescription": "Έτοιμο για επικόλληση σε email.",
-        "staffSessionTip": "Tip για staff: μην ανοίγετε αυτό το link στον ίδιο browser όσο είστε logged in στο Admin — μοιράζεται το session cookie. Χρησιμοποιήστε ιδιωτικό παράθυρο μόνο αν θέλετε να το δείτε εσείς."
+        "staffSessionTip": "Tip για staff: μην ανοίγετε αυτό το link στον ίδιο browser όσο είστε logged in στο Admin — μοιράζεται το session cookie. Χρησιμοποιήστε ιδιωτικό παράθυρο μόνο αν θέλετε να το δείτε εσείς.",
+        "duplicate": "Αντιγραφή",
+        "duplicateTitle": "Αντιγραφή demo website",
+        "duplicateDescription": "Δημιουργεί πλήρες αντίγραφο στον ίδιο demo user: media, επαφές, tags, campaigns, templates, automations, stages, plan και sample analytics. Site ID και Stripe καθαρίζονται — ορίστε τα μετά αν χρειάζεται.",
+        "duplicateConfirm": "Αντιγραφή project",
+        "duplicateSuccess": "Το demo αντιγράφηκε",
+        "duplicateSuccessDescription": "Δημιουργήθηκε #{{id}} με {{contacts}} επαφές, {{campaigns}} campaigns, {{templates}} templates."
     }
 }

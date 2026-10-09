@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Copy, RotateCcw, Eye } from "lucide-react";
+import { Loader2, Copy, RotateCcw, Eye, Files } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useTranslation } from "react-i18next";
 import { useImpersonation } from "@/hooks/use-impersonation";
@@ -89,6 +89,9 @@ export function AdminDemoAccounts() {
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
   const [resetTarget, setResetTarget] = useState<DemoRow | null>(null);
   const [shareTarget, setShareTarget] = useState<DemoRow | null>(null);
+  const [duplicateTarget, setDuplicateTarget] = useState<DemoRow | null>(null);
+  const [duplicateSlug, setDuplicateSlug] = useState("");
+  const [duplicateProjectName, setDuplicateProjectName] = useState("");
   const [seedingUserId, setSeedingUserId] = useState<number | null>(null);
 
   const sharePath = shareTarget?.demoSlug
@@ -226,6 +229,63 @@ export function AdminDemoAccounts() {
       toast({
         title: "Analytics reset",
         description: `Deleted ${data.deletedCount} events for ${data.label}.`,
+      });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const openDuplicateDialog = (demo: DemoRow) => {
+    const base = (demo.demoSlug || demo.projectName || demo.domain || "demo")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
+    setDuplicateTarget(demo);
+    setDuplicateSlug(base ? `${base}-copy` : "demo-copy");
+    setDuplicateProjectName(`${demo.projectName || demo.domain} (copy)`);
+  };
+
+  const duplicateMutation = useMutation({
+    mutationFn: async () => {
+      if (!duplicateTarget) throw new Error("No website selected");
+      const slug = duplicateSlug.trim().toLowerCase();
+      if (!slug) throw new Error("Enter a demo slug");
+      const res = await fetch(
+        `/api/admin/demo-websites/${duplicateTarget.id}/duplicate`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            demoSlug: slug,
+            projectName: duplicateProjectName.trim() || undefined,
+          }),
+        },
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Failed to duplicate");
+      return data as {
+        website: { id: number; projectName: string | null; demoSlug: string | null };
+        counts: Record<string, number>;
+      };
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/demo-websites"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/demo-analytics"] });
+      setDuplicateTarget(null);
+      const c = data.counts;
+      toast({
+        title: t("demo.duplicateSuccess") || "Demo duplicated",
+        description:
+          t("demo.duplicateSuccessDescription", {
+            id: data.website.id,
+            contacts: c.contacts ?? 0,
+            campaigns: c.campaigns ?? 0,
+            templates: c.emailTemplates ?? 0,
+          }) ||
+          `Created #${data.website.id} with ${c.contacts ?? 0} contacts, ${c.campaigns ?? 0} campaigns, ${c.emailTemplates ?? 0} templates.`,
       });
     },
     onError: (err: Error) => {
@@ -458,6 +518,15 @@ export function AdminDemoAccounts() {
                         <Button
                           variant="outline"
                           size="sm"
+                          disabled={duplicateMutation.isPending}
+                          onClick={() => openDuplicateDialog(demo)}
+                        >
+                          <Files className="h-3.5 w-3.5 mr-1" />
+                          {t("demo.duplicate") || "Duplicate"}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           disabled={resetAnalyticsMutation.isPending}
                           onClick={() => setResetTarget(demo)}
                         >
@@ -517,6 +586,77 @@ export function AdminDemoAccounts() {
             <Button type="button" onClick={() => void copyShareLink()}>
               <Copy className="h-4 w-4 mr-2" />
               {t("demo.copyLink") || "Copy demo link"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={duplicateTarget !== null}
+        onOpenChange={(open) => {
+          if (!open && !duplicateMutation.isPending) setDuplicateTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("demo.duplicateTitle") || "Duplicate demo website"}</DialogTitle>
+            <DialogDescription>
+              {t("demo.duplicateDescription") ||
+                "Creates a full copy under the same demo user: media, contacts, tags, campaigns, templates, automations, stages, plan, and sample analytics. Site ID and Stripe are cleared — set those after cloning if needed."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Source:{" "}
+              <strong>
+                #{duplicateTarget?.id}{" "}
+                {duplicateTarget?.projectName || duplicateTarget?.domain}
+              </strong>
+            </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="duplicate-project-name">Project name</Label>
+              <Input
+                id="duplicate-project-name"
+                value={duplicateProjectName}
+                onChange={(e) => setDuplicateProjectName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="duplicate-slug">Public slug</Label>
+              <Input
+                id="duplicate-slug"
+                value={duplicateSlug}
+                onChange={(e) => setDuplicateSlug(e.target.value)}
+                placeholder="e.g. maria-copy"
+              />
+              <p className="text-xs text-muted-foreground">
+                Link will be{" "}
+                <code className="bg-muted px-1 rounded">
+                  /demo/{duplicateSlug.trim().toLowerCase() || "…"}
+                </code>
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={duplicateMutation.isPending}
+              onClick={() => setDuplicateTarget(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={duplicateMutation.isPending || !duplicateSlug.trim()}
+              onClick={() => duplicateMutation.mutate()}
+            >
+              {duplicateMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Files className="h-4 w-4 mr-2" />
+              )}
+              {t("demo.duplicateConfirm") || "Duplicate project"}
             </Button>
           </DialogFooter>
         </DialogContent>

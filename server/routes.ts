@@ -79,6 +79,7 @@ import {
 } from "./lib/form-automations";
 import { startWorkflowForFormSubmit } from "./lib/automation-engine";
 import { demoReadOnlyMiddleware } from "./lib/demo-mode";
+import { duplicateDemoWebsite } from "./lib/demo-website-clone";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -2304,6 +2305,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error resetting demo analytics:", err);
       return res.status(500).json({ error: "Failed to reset demo analytics" });
+    }
+  });
+
+  /** Deep-clone a demo website project (contacts, tags, campaigns, media, etc.). */
+  app.post("/api/admin/demo-websites/:websiteId/duplicate", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const admin = await storage.getUserById(req.user!.id);
+      if (!admin || admin.role !== UserRole.ADMINISTRATOR) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const websiteId = parseInt(req.params.websiteId, 10);
+      if (Number.isNaN(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+
+      const schema = z.object({
+        demoSlug: z
+          .string()
+          .trim()
+          .min(1)
+          .max(80)
+          .regex(
+            /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+            "Slug must be lowercase letters, numbers, hyphens",
+          ),
+        projectName: z.string().trim().max(200).optional(),
+        domain: z.string().trim().max(200).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res
+          .status(400)
+          .json({ error: "Invalid payload", details: parsed.error.errors });
+      }
+
+      const result = await duplicateDemoWebsite({
+        sourceWebsiteId: websiteId,
+        demoSlug: parsed.data.demoSlug.toLowerCase(),
+        projectName: parsed.data.projectName,
+        domain: parsed.data.domain,
+      });
+
+      return res.status(201).json({
+        website: {
+          id: result.website.id,
+          domain: result.website.domain,
+          projectName: result.website.projectName,
+          demoSlug: result.website.demoSlug,
+          userId: result.website.userId,
+        },
+        counts: result.counts,
+      });
+    } catch (err: any) {
+      const status = typeof err?.status === "number" ? err.status : 500;
+      if (status !== 500) {
+        return res.status(status).json({ error: err.message || "Duplicate failed" });
+      }
+      console.error("Error duplicating demo website:", err);
+      return res.status(500).json({ error: "Failed to duplicate demo website" });
     }
   });
 
