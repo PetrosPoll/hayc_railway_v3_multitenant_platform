@@ -4228,6 +4228,17 @@
         "unavailableHint": "This demo may be disabled. Please contact hayc for a walkthrough.",
         "banner": "Demo mode — browse only. Purchases, billing changes, and edits are disabled.",
         "readOnlyTitle": "Demo is read-only",
-        "readOnlyDescription": "You can explore this dashboard, but purchases, edits, and deletions are disabled."
+        "readOnlyDescription": "You can explore this dashboard, but purchases, edits, and deletions are disabled.",
+        "sessionBlocked": "You're already signed in. Open this demo link in a private/incognito window so it does not replace your current session.",
+        "incognitoHint": "Browsers share one login cookie across tabs. Open a private/incognito window (Chrome: ⌘/Ctrl+Shift+N), paste the link there, and keep Admin in your normal window.",
+        "copyLink": "Copy demo link",
+        "linkCopied": "Link copied",
+        "openInIncognito": "Paste it into a private/incognito window if you are previewing while logged into Admin.",
+        "copyFailed": "Could not copy",
+        "backToAdmin": "Back to admin",
+        "shareTitle": "Copy demo link",
+        "shareDescription": "Copy this link and send it to the prospect. They open it in a normal browser — no login required.",
+        "linkCopiedDescription": "Ready to paste into an email.",
+        "staffSessionTip": "Tip for staff: don’t open this link in the same browser while you’re logged into Admin — it shares the session cookie. Use a private window only if you want to preview it yourself."
     }
 }

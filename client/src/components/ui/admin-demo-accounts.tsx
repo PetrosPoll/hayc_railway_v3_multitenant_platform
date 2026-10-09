@@ -13,8 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, ExternalLink, RotateCcw } from "lucide-react";
+import { Loader2, Copy, RotateCcw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +26,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type DemoRow = {
   id: number;
@@ -71,11 +80,40 @@ function formatDuration(ms: number): string {
 
 export function AdminDemoAccounts() {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [websiteIdInput, setWebsiteIdInput] = useState("");
   const [slugInput, setSlugInput] = useState("");
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
   const [resetTarget, setResetTarget] = useState<DemoRow | null>(null);
+  const [shareTarget, setShareTarget] = useState<DemoRow | null>(null);
+
+  const sharePath = shareTarget?.demoSlug
+    ? `/demo/${shareTarget.demoSlug}`
+    : shareTarget
+      ? "/demo"
+      : "";
+  const shareUrl =
+    typeof window !== "undefined" && sharePath
+      ? `${window.location.origin}${sharePath}`
+      : sharePath;
+
+  const copyShareLink = async () => {
+    if (!shareUrl) return;
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      toast({
+        title: t("demo.linkCopied") || "Link copied",
+        description: t("demo.linkCopiedDescription") || "Ready to paste into an email.",
+      });
+    } catch {
+      toast({
+        title: t("demo.copyFailed") || "Could not copy",
+        description: shareUrl,
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: demosData, isLoading } = useQuery<{ demos: DemoRow[] }>({
     queryKey: ["/api/admin/demo-websites"],
@@ -364,15 +402,18 @@ export function AdminDemoAccounts() {
                         )}
                       </TableCell>
                       <TableCell>
-                        <a
-                          href={path}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-                        >
-                          {path}
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm">{path}</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShareTarget(demo)}
+                          >
+                            <Copy className="h-3.5 w-3.5 mr-1" />
+                            Copy
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Switch
@@ -421,6 +462,39 @@ export function AdminDemoAccounts() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={shareTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setShareTarget(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("demo.shareTitle") || "Copy demo link"}</DialogTitle>
+            <DialogDescription>
+              {t("demo.shareDescription") ||
+                "Copy this link and send it to the prospect. They open it in a normal browser — no login required."}
+            </DialogDescription>
+          </DialogHeader>
+          <code className="text-xs bg-muted px-2 py-1.5 rounded break-all block">
+            {shareUrl}
+          </code>
+          <p className="text-xs text-muted-foreground">
+            {t("demo.staffSessionTip") ||
+              "Tip for staff: don’t open this link in the same browser while you’re logged into Admin — it shares the session cookie. Use a private window only if you want to preview it yourself."}
+          </p>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setShareTarget(null)}>
+              Close
+            </Button>
+            <Button type="button" onClick={() => void copyShareLink()}>
+              <Copy className="h-4 w-4 mr-2" />
+              {t("demo.copyLink") || "Copy demo link"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog
         open={resetTarget !== null}

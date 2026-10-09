@@ -4228,6 +4228,17 @@
         "unavailableHint": "Αυτό το demo μπορεί να είναι απενεργοποιημένο. Επικοινωνήστε με την hayc.",
         "banner": "Demo mode — μόνο προβολή. Αγορές, χρεώσεις και επεξεργασίες είναι απενεργοποιημένες.",
         "readOnlyTitle": "Το demo είναι μόνο για προβολή",
-        "readOnlyDescription": "Μπορείτε να εξερευνήσετε το dashboard, αλλά αγορές, επεξεργασίες και διαγραφές είναι απενεργοποιημένες."
+        "readOnlyDescription": "Μπορείτε να εξερευνήσετε το dashboard, αλλά αγορές, επεξεργασίες και διαγραφές είναι απενεργοποιημένες.",
+        "sessionBlocked": "Είστε ήδη συνδεδεμένοι. Ανοίξτε αυτό το demo link σε ιδιωτικό/incognito παράθυρο ώστε να μην αντικαταστήσει το τρέχον session.",
+        "incognitoHint": "Τα tabs μοιράζονται το ίδιο cookie σύνδεσης. Ανοίξτε ιδιωτικό παράθυρο (Chrome: ⌘/Ctrl+Shift+N), επικολλήστε το link εκεί και κρατήστε το Admin στο κανονικό παράθυρο.",
+        "copyLink": "Αντιγραφή demo link",
+        "linkCopied": "Το link αντιγράφηκε",
+        "openInIncognito": "Επικολλήστε το σε ιδιωτικό/incognito παράθυρο αν κάνετε preview όσο είστε logged in στο Admin.",
+        "copyFailed": "Αποτυχία αντιγραφής",
+        "backToAdmin": "Πίσω στο admin",
+        "shareTitle": "Αντιγραφή demo link",
+        "shareDescription": "Αντιγράψτε αυτό το link και στείλτε το στον ενδιαφερόμενο. Το ανοίγει σε κανονικό browser — χωρίς login.",
+        "linkCopiedDescription": "Έτοιμο για επικόλληση σε email.",
+        "staffSessionTip": "Tip για staff: μην ανοίγετε αυτό το link στον ίδιο browser όσο είστε logged in στο Admin — μοιράζεται το session cookie. Χρησιμοποιήστε ιδιωτικό παράθυρο μόνο αν θέλετε να το δείτε εσείς."
     }
 }

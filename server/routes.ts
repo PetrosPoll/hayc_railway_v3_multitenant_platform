@@ -1925,7 +1925,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Demo user must be a subscriber account" });
       }
 
-      if (req.isAuthenticated()) {
+      const { password, ...sanitizedUser } = user;
+      const permissions = RolePermissions[user.role] || null;
+      const redirectTo = `/dashboard/website/${website.id}`;
+
+      // Same cookie jar as admin Chrome — never replace a real (non-demo) session.
+      // Staff must open /demo/<slug> in a private/incognito window.
+      if (req.isAuthenticated() && req.user) {
+        const current = req.user as { id: number; isDemo?: boolean };
+        if (!current.isDemo) {
+          return res.status(409).json({
+            error:
+              "You're already signed in. Open this demo link in a private/incognito window so it does not replace your current session.",
+            code: "ACTIVE_SESSION_BLOCKS_DEMO",
+            demoPath: website.demoSlug ? `/demo/${website.demoSlug}` : "/demo",
+          });
+        }
+        if (current.id === user.id) {
+          return res.json({
+            user: sanitizedUser,
+            permissions,
+            websiteId: website.id,
+            demoSlug: website.demoSlug,
+            redirectTo,
+          });
+        }
         await new Promise<void>((resolve, reject) => {
           clearImpersonation(req.sessionID, undefined, req.session);
           req.logout((err) => (err ? reject(err) : resolve()));
@@ -1936,10 +1960,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.login(user, (err) => (err ? reject(err) : resolve()));
       });
       await saveSession(req);
-
-      const { password, ...sanitizedUser } = user;
-      const permissions = RolePermissions[user.role] || null;
-      const redirectTo = `/dashboard/website/${website.id}`;
 
       return res.json({
         user: sanitizedUser,
