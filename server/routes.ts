@@ -130,6 +130,7 @@ import {
   cancelledAtFromStripe,
   isStripeSubscriptionCancelled,
   normalizedSubscriptionStatus,
+  resolveStripeCancellationReason,
   stripeCancellationUpdate,
   stripeImportCancellationFields,
 } from "./subscription-lifecycle";
@@ -6210,9 +6211,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         case "customer.subscription.deleted": {
           // Cancellation emails are sent from manual cancel endpoints.
-          // This webhook keeps local lifecycle fields in sync (e.g. Stripe Dashboard cancels).
+          // This webhook keeps local lifecycle fields in sync (e.g. Stripe Dashboard / dunning cancels).
           try {
             const deletedSubscription = event.data.object as Stripe.Subscription;
+            const resolvedReason = await resolveStripeCancellationReason(
+              stripe,
+              deletedSubscription,
+            );
 
             const localSubscriptions = await db
               .select()
@@ -6224,6 +6229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 status?: string;
                 cancelledAt?: Date;
                 accessUntil?: Date | null;
+                cancellationReason?: string;
               } = {};
 
               if (!isStripeSubscriptionCancelled(localSubscription.status)) {
@@ -6234,6 +6240,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
               if (!localSubscription.accessUntil) {
                 patch.accessUntil = accessUntilFromStripePeriodEnd(deletedSubscription);
+              }
+              // Fill reason when missing (e.g. test-clock / dunning cancel with payment_failed).
+              // Do not overwrite an explicit reason already set by app/admin cancel paths.
+              if (!localSubscription.cancellationReason && resolvedReason) {
+                patch.cancellationReason = resolvedReason;
               }
 
               if (Object.keys(patch).length > 0) {
@@ -6257,7 +6268,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 await storage.markObligationStopped(obligation.id);
               }
 
-              console.log(`🛑 Synced cancelled subscription ${deletedSubscription.id} (local #${localSubscription.id}), stopped ${obligations.length} obligations`);
+              console.log(
+                `🛑 Synced cancelled subscription ${deletedSubscription.id} (local #${localSubscription.id}), reason=${patch.cancellationReason ?? localSubscription.cancellationReason ?? "none"}, stopped ${obligations.length} obligations`,
+              );
             }
           } catch (error) {
             console.error('Error handling subscription deleted:', error);
