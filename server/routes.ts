@@ -10268,7 +10268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get churn statistics (overall + monthly) using subscription lifecycle
+  // Legacy churn stats (subscription-lifecycle). Prefer /api/admin/churn/* below.
   app.get("/api/admin/churn-stats", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -10315,6 +10315,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (err) {
       console.error("Error fetching churn stats:", err);
       return res.status(500).json({ error: "Failed to fetch churn stats" });
+    }
+  });
+
+  function parseChurnPlanFilter(raw: unknown): import("./services/churn-metrics").PlanFilter {
+    const v = String(raw ?? "all");
+    if (v === "basic" || v === "essential" || v === "pro" || v === "all") return v;
+    return "all";
+  }
+
+  async function requireChurnAdmin(req: express.Request, res: express.Response) {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Not authenticated" });
+      return null;
+    }
+    const user = await storage.getUserById(req.user.id);
+    if (!user || !hasPermission(user.role, "canViewSubscriptions")) {
+      res.status(403).json({ error: "Not authorized" });
+      return null;
+    }
+    return user;
+  }
+
+  app.get("/api/admin/churn/series", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const {
+        getChurnSeries,
+        defaultSeriesRange,
+        getPendingCancellations,
+        livePendingSummary,
+        getInDunning,
+      } = await import("./services/churn-metrics");
+      const defaults = defaultSeriesRange();
+      const from = typeof req.query.from === "string" ? req.query.from : defaults.from;
+      const to = typeof req.query.to === "string" ? req.query.to : defaults.to;
+      const includePartial = req.query.includePartial === "1" || req.query.includePartial === "true";
+      const plan = parseChurnPlanFilter(req.query.plan);
+      let series = await getChurnSeries(from, to, plan);
+      if (!includePartial) {
+        series = series.filter((m) => !m.isPartial);
+      }
+      const pending = await getPendingCancellations();
+      const dunning = await getInDunning();
+      const pendingSummary = livePendingSummary(pending);
+      const kpiMonth =
+        series.filter((m) => !m.isPartial).at(-1) ?? series.at(-1) ?? null;
+      const prevMonth =
+        series.filter((m) => !m.isPartial).at(-2) ?? null;
+      return res.json({
+        from,
+        to,
+        plan,
+        includePartial,
+        series,
+        kpiMonth,
+        prevMonth,
+        pendingSummary,
+        dunningCount: dunning.length,
+      });
+    } catch (err) {
+      console.error("Error fetching churn series:", err);
+      return res.status(500).json({ error: "Failed to fetch churn series" });
+    }
+  });
+
+  app.get("/api/admin/churn/pending", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const { getPendingCancellations, livePendingSummary } = await import(
+        "./services/churn-metrics"
+      );
+      const rows = await getPendingCancellations();
+      return res.json({ rows, summary: livePendingSummary(rows) });
+    } catch (err) {
+      console.error("Error fetching pending cancellations:", err);
+      return res.status(500).json({ error: "Failed to fetch pending cancellations" });
+    }
+  });
+
+  app.get("/api/admin/churn/dunning", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const { getInDunning } = await import("./services/churn-metrics");
+      return res.json({ rows: await getInDunning() });
+    } catch (err) {
+      console.error("Error fetching dunning:", err);
+      return res.status(500).json({ error: "Failed to fetch dunning" });
+    }
+  });
+
+  app.get("/api/admin/churn/churned", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const { getChurnedCustomers, lastCompletedAthensMonth } = await import(
+        "./services/churn-metrics"
+      );
+      const month =
+        typeof req.query.month === "string"
+          ? req.query.month
+          : lastCompletedAthensMonth();
+      return res.json({ month, rows: await getChurnedCustomers(month) });
+    } catch (err) {
+      console.error("Error fetching churned customers:", err);
+      return res.status(500).json({ error: "Failed to fetch churned customers" });
+    }
+  });
+
+  app.get("/api/admin/churn/reactivations", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const { getReactivations, lastCompletedAthensMonth } = await import(
+        "./services/churn-metrics"
+      );
+      const month =
+        typeof req.query.month === "string"
+          ? req.query.month
+          : lastCompletedAthensMonth();
+      return res.json({ month, rows: await getReactivations(month) });
+    } catch (err) {
+      console.error("Error fetching reactivations:", err);
+      return res.status(500).json({ error: "Failed to fetch reactivations" });
+    }
+  });
+
+  app.get("/api/admin/churn/cohort", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const { getCohortCustomers, lastCompletedAthensMonth } = await import(
+        "./services/churn-metrics"
+      );
+      const month =
+        typeof req.query.month === "string"
+          ? req.query.month
+          : lastCompletedAthensMonth();
+      const metric = String(req.query.metric || "logo_churn") as import(
+        "./services/churn-metrics"
+      ).CohortMetric;
+      const plan = parseChurnPlanFilter(req.query.plan);
+      return res.json({
+        month,
+        metric,
+        plan,
+        rows: await getCohortCustomers(month, metric, plan),
+      });
+    } catch (err) {
+      console.error("Error fetching cohort:", err);
+      return res.status(500).json({ error: "Failed to fetch cohort" });
+    }
+  });
+
+  app.patch("/api/admin/churn/events/:eventId/reason", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const eventId = Number(req.params.eventId);
+      if (!Number.isFinite(eventId)) {
+        return res.status(400).json({ error: "Invalid event id" });
+      }
+      const reasonCode = String(req.body?.reasonCode || "").trim();
+      const reasonNote =
+        req.body?.reasonNote != null ? String(req.body.reasonNote) : null;
+      if (!reasonCode) {
+        return res.status(400).json({ error: "reasonCode required" });
+      }
+      if (reasonCode === "other" && !reasonNote?.trim()) {
+        return res.status(400).json({ error: "reasonNote required for other" });
+      }
+      const { updateEventReason } = await import("./services/churn-metrics");
+      const result = await updateEventReason({
+        eventId,
+        editedByUserId: user.id,
+        reasonCode,
+        reasonNote,
+      });
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error });
+      }
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("Error updating churn reason:", err);
+      return res.status(500).json({ error: "Failed to update reason" });
     }
   });
 

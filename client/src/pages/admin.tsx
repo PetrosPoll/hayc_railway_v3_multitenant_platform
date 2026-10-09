@@ -73,6 +73,7 @@ import AdminWebsiteContactSubmissions from "@/components/ui/admin-website-contac
 import AdminAmbassadors from "@/components/ui/admin-ambassadors";
 import { PlatformUsageAnalytics } from "@/components/ui/platform-usage-analytics";
 import { AdminDemoAccounts } from "@/components/ui/admin-demo-accounts";
+import { AdminChurnDashboard } from "@/components/ui/admin-churn-dashboard";
 import { Switch } from "@/components/ui/switch";
 import { RoleManagement } from "@/components/ui/role-management";
 import {
@@ -143,27 +144,6 @@ interface Subscription {
   transactions?: Transaction[];
 }
 
-interface ProductChurnStats {
-  firstSubscriptionDate: string | null;
-  totalSubscriptionsEver: number;
-  totalChurnedSubscriptions: number;
-  totalChurnRate: number;
-  lifetimeChurnRate: number;
-  thisYearChurnRate: number;
-  averageMonthlyChurn: number;
-  monthly: Array<{
-    month: string;
-    subscriptionsAtStart: number;
-    churnedSubscriptions: number;
-    churnRate: number | null;
-  }>;
-}
-
-interface ChurnStats {
-  plan: ProductChurnStats;
-  addon: ProductChurnStats;
-}
-
 const isCancelledSubscriptionStatus = (status: string | null | undefined) => {
   const normalized = (status || "").toLowerCase();
   return normalized === "cancelled" || normalized === "canceled";
@@ -176,112 +156,6 @@ const isActiveSubscriptionStatus = (status: string | null | undefined) => {
 
 const subscriptionProductCategory = (productType: string | null | undefined) =>
   productType === "addon" ? "addon" : "plan";
-
-function ChurnStatisticsSection({
-  title,
-  description,
-  stats,
-}: {
-  title: string;
-  description: string;
-  stats: ProductChurnStats | undefined;
-}) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>First Subscription</CardDescription>
-            <CardTitle className="text-base">
-              {stats?.firstSubscriptionDate
-                ? new Date(stats.firstSubscriptionDate).toLocaleDateString("en-GB")
-                : "N/A"}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Total Subscriptions Ever</CardDescription>
-            <CardTitle className="text-2xl">{stats?.totalSubscriptionsEver ?? 0}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>True Churned Subscriptions</CardDescription>
-            <CardTitle className="text-2xl">{stats?.totalChurnedSubscriptions ?? 0}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Subscription Churn Rate</CardDescription>
-            <CardTitle className="text-2xl">{(stats?.totalChurnRate ?? 0).toFixed(2)}%</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Lifetime Churn Rate</CardDescription>
-            <CardTitle className="text-2xl">{(stats?.lifetimeChurnRate ?? 0).toFixed(2)}%</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>This Year Churn Rate</CardDescription>
-            <CardTitle className="text-2xl">{(stats?.thisYearChurnRate ?? 0).toFixed(2)}%</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Average Monthly Churn</CardDescription>
-            <CardTitle className="text-2xl">{(stats?.averageMonthlyChurn ?? 0).toFixed(2)}%</CardTitle>
-          </CardHeader>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Monthly Churn</CardTitle>
-          <CardDescription>
-            True churned subscriptions divided by subscriptions active at the start of each month.
-            Reactivated cancellations are excluded.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!stats?.monthly?.length ? (
-            <div className="text-sm text-muted-foreground">No churn data available.</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Month</TableHead>
-                  <TableHead>Subscriptions at Start</TableHead>
-                  <TableHead>Churned Subscriptions</TableHead>
-                  <TableHead>Churn Rate</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {stats.monthly.map((item) => (
-                  <TableRow key={item.month}>
-                    <TableCell>{formatMonth(item.month)}</TableCell>
-                    <TableCell>{item.subscriptionsAtStart}</TableCell>
-                    <TableCell>{item.churnedSubscriptions}</TableCell>
-                    <TableCell>
-                      {item.churnRate === null ? "N/A" : `${item.churnRate.toFixed(2)}%`}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
 
 function SubscriptionReactivationAction({
   subscription,
@@ -430,39 +304,6 @@ function SubscriptionReactivationAction({
     </div>
   );
 }
-
-interface MissingCancelledAtRecord {
-  id: number;
-  userId: number;
-  stripeSubscriptionId: string | null;
-  status: string;
-  createdAt: string | null;
-  accessUntil: string | null;
-  cancellationReason: string | null;
-  cancelledAt: string | null;
-}
-
-interface MissingCancelledAtResponse {
-  total: number;
-  records: MissingCancelledAtRecord[];
-}
-
-interface BackfillCancelledAtResponse {
-  mode: "dry-run" | "live";
-  summary: {
-    matched: number;
-    updated: number;
-    skipped: number;
-    errored: number;
-  };
-  logs: string[];
-}
-
-const formatMonth = (month: string) => {
-  const [year, monthNumber] = month.split("-");
-  const date = new Date(Number(year), Number(monthNumber) - 1, 1);
-  return date.toLocaleDateString("en-GB", { month: "short", year: "numeric" });
-};
 
 // User Details View Component
 function UserDetailsView({ userId }: { userId: number }) {
@@ -860,8 +701,6 @@ export default function AdminDashboard() {
     hasActiveSubscription: boolean;
     couponName?: string;
   } | null>(null);
-  const [backfillLogs, setBackfillLogs] = useState<string[]>([]);
-
   // Verify review mutation
   const verifyReviewMutation = useMutation({
     mutationFn: async (userId: number) => {
@@ -1020,54 +859,6 @@ export default function AdminDashboard() {
   const { data: rolesData } = useQuery<any[]>({
     queryKey: ["/api/admin/roles"],
     enabled: userData?.user.role === UserRole.ADMINISTRATOR,
-  });
-
-  // Fetch churn statistics
-  const { data: churnStatsData, isLoading: churnStatsLoading } = useQuery<ChurnStats>({
-    queryKey: ["/api/admin/churn-stats"],
-    enabled: userPermissions?.canViewSubscriptions || false,
-  });
-
-  // Preview cancelled subscriptions with missing cancelledAt
-  const { data: missingCancelledAtData, isLoading: missingCancelledAtLoading } =
-    useQuery<MissingCancelledAtResponse>({
-      queryKey: ["/api/admin/subscriptions/cancelled-missing-cancelled-at"],
-      enabled: userPermissions?.canViewSubscriptions || false,
-    });
-
-  // Backfill cancelledAt from Stripe canceled_at
-  const backfillCancelledAt = useMutation({
-    mutationFn: async (live: boolean) => {
-      const response = await fetch("/api/admin/subscriptions/backfill-cancelled-at", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ live }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to backfill cancelled_at");
-      }
-      return (await response.json()) as BackfillCancelledAtResponse;
-    },
-    onSuccess: (data) => {
-      setBackfillLogs(data.logs || []);
-      queryClient.invalidateQueries({
-        queryKey: ["/api/admin/subscriptions/cancelled-missing-cancelled-at"],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["/api/admin/churn-stats"],
-      });
-      toast({
-        title: data.mode === "live" ? "Live backfill complete" : "Dry-run complete",
-        description: `Matched: ${data.summary.matched}, Updated: ${data.summary.updated}, Skipped: ${data.summary.skipped}, Errored: ${data.summary.errored}`,
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Backfill failed",
-        variant: "destructive",
-      });
-    },
   });
 
   // Fetch all websites
@@ -1635,8 +1426,7 @@ export default function AdminDashboard() {
     userLoading ||
     usersLoading ||
     subscriptionsLoading ||
-    allSubscriptionsLoading ||
-    churnStatsLoading
+    allSubscriptionsLoading
   ) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -2775,73 +2565,7 @@ export default function AdminDashboard() {
               <CancelledDueToPaymentFailureList />
             </TabsContent>
             <TabsContent value="statistics" className="mt-0">
-              <section className="space-y-10">
-                <h2 className="text-xl font-semibold">Churn Statistics</h2>
-
-                <ChurnStatisticsSection
-                  title="Plan Churn"
-                  description="Hosting plan subscriptions only (product_type = plan)."
-                  stats={churnStatsData?.plan}
-                />
-
-                <ChurnStatisticsSection
-                  title="Add-on Churn"
-                  description="Add-on subscriptions only (product_type = addon)."
-                  stats={churnStatsData?.addon}
-                />
-
-                <Card className="mt-6">
-                  <CardHeader>
-                    <CardTitle>Backfill `cancelled_at` from Stripe</CardTitle>
-                    <CardDescription>
-                      Finds cancelled subscriptions with missing `cancelled_at`, then reads Stripe `canceled_at`.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap items-center gap-3 mb-4">
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          queryClient.invalidateQueries({
-                            queryKey: ["/api/admin/subscriptions/cancelled-missing-cancelled-at"],
-                          })
-                        }
-                        disabled={missingCancelledAtLoading}
-                      >
-                        Refresh Preview
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => backfillCancelledAt.mutate(false)}
-                        disabled={backfillCancelledAt.isPending}
-                      >
-                        {backfillCancelledAt.isPending ? "Running..." : "Run Dry-Run"}
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={() => backfillCancelledAt.mutate(true)}
-                        disabled={backfillCancelledAt.isPending}
-                      >
-                        {backfillCancelledAt.isPending ? "Running..." : "Run Live (--live)"}
-                      </Button>
-                    </div>
-
-                    <div className="text-sm mb-4">
-                      <span className="font-medium">Missing cancelled_at records: </span>
-                      {missingCancelledAtData?.total ?? 0}
-                    </div>
-
-                    {backfillLogs.length > 0 && (
-                      <div className="rounded-md border p-3 bg-muted/40">
-                        <p className="text-sm font-medium mb-2">Run logs</p>
-                        <pre className="text-xs whitespace-pre-wrap break-words max-h-80 overflow-auto">
-                          {backfillLogs.join("\n")}
-                        </pre>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </section>
+              <AdminChurnDashboard />
             </TabsContent>
             <TabsContent value="platform-usage" className="mt-0">
               <PlatformUsageAnalytics />
