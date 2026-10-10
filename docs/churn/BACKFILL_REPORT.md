@@ -1,17 +1,17 @@
 # Churn backfill report
 
-Generated: 2026-10-09T23:49:56.439Z
+Generated: 2026-10-10T00:14:08.469Z
 dryRun: false
 events_cutover_at: 2026-10-09T23:12:15.037Z
 
 ## Summary
 - Customers processed: 7
-- Backfill events cleared: 49
+- Backfill events cleared: 51
 - launched_at updates: 4
 - customer_stripe_accounts seeded: 7
 - stripe_price_map seed writes: 17
 - Unmapped Stripe price IDs: 0
-- Approximations logged: 51
+- Approximations logged: 2
 - Active customers (live Stripe, ≥1 core sub): 2
 - Total MRR ex-VAT (cents): 44200
 - ARPA ex-VAT (cents): 22100 (€221.00)
@@ -26,7 +26,7 @@ events_cutover_at: 2026-10-09T23:12:15.037Z
 
 ## Logo churn (last 12 months) — sanity table
 
-Cohort = status `active` at month start → not `active` at next month start (from event log). Months with subscription-row backfill are flagged **approximate** for gross MRR churn / NRR (do not trust those movement metrics).
+Mode: **stripe-history**. Cohort = ≥1 core Stripe sub covering month start → none at next month start.
 
 | month | customers_start | churned_count | logo_churn_pct | mrr_movements |
 |---|---|---|---|---|
@@ -37,67 +37,18 @@ Cohort = status `active` at month start → not `active` at next month start (fr
 | 2026-03 | 0 | 0 | n/a | ok / mixed |
 | 2026-04 | 0 | 0 | n/a | ok / mixed |
 | 2026-05 | 0 | 0 | n/a | ok / mixed |
-| 2026-06 | 0 | 0 | n/a | **approximate** |
-| 2026-07 | 3 | 0 | 0 | ok / mixed |
-| 2026-08 | 3 | 0 | 0 | **approximate** |
-| 2026-09 | 3 | 3 | 100 | **approximate** |
-| 2026-10 | 3 | 2 | 66.67 | ok / mixed |
+| 2026-06 | 0 | 0 | n/a | ok / mixed |
+| 2026-07 | 0 | 0 | n/a | ok / mixed |
+| 2026-08 | 0 | 0 | n/a | ok / mixed |
+| 2026-09 | 1 | 0 | 0 | ok / mixed |
+| 2026-10 | 4 | 2 | 50 | ok / mixed |
 
 ## Unmapped price IDs
 (none)
 
 ## Approximations
-- customer 37 sub #1: new at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #1: churn effective_at=2026-09-03T13:09:35.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 37 sub #2: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #2: churn effective_at=2026-09-03T13:09:35.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 37 sub #3: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #3: churn effective_at=2026-09-03T13:09:35.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 37 sub #17: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #18: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #19: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #20: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #21: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #23: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #24: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #22: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #25: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #26: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #27: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #28: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #29: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #32: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #30: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #31: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #33: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37 sub #34: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 37: Stripe snapshot expansion mrr=38300 at cutover-1s (reconcile live state)
-- customer 43 sub #10: new at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 43 sub #10: churn effective_at=2026-06-08T14:22:34.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 43 sub #11: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 43 sub #11: churn effective_at=2026-06-08T14:22:34.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 44 sub #12: new at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 44 sub #12: churn effective_at=2026-09-06T14:40:41.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 44 sub #13: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 44 sub #13: churn effective_at=2026-09-06T14:40:41.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 45 sub #15: new at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 45 sub #15: churn effective_at=2026-09-09T16:11:50.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 45 sub #16: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 45 sub #16: churn effective_at=2026-09-09T16:11:50.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 45 sub #14: reactivation at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 45 sub #14: churn effective_at=2026-09-09T16:11:50.000Z from cancelledAt (historical; MRR churn approximate)
-- customer 47 sub #35: new at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 47 sub #36: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 47 sub #37: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 47: Stripe snapshot expansion mrr=5900 at cutover-1s (reconcile live state)
-- customer 48 sub #39: new at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 48 sub #38: new at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 48 sub #40: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 48: Stripe snapshot churn at cutover-1s (0 active cores; was still active in event log)
-- customer 49 sub #41: new at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 49 sub #42: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 49 sub #43: expansion at createdAt (subscription-row granularity; MRR movements approximate)
-- customer 49: Stripe snapshot churn at cutover-1s (0 active cores; was still active in event log)
+- customer 48: cutover reconcile churn (0 live cores)
+- customer 49: cutover reconcile churn (0 live cores)
 
 ## Duplicate candidates
 ### Same email
@@ -266,7 +217,7 @@ Cohort = status `active` at month start → not `active` at next month start (fr
 | 49 | XXXX@gmail.com | 0 | 0 |
 
 ## Notes
-- Historical plan changes approximated at subscription-row granularity (not full invoice history).
-- Historical cancellation reasons default to `unknown` unless local cancellation_reason indicated payment_failed.
-- Historical immediate cancels use cancelledAt as churn effective_at.
-- STOP: metrics service / Churn UI not built until this reconciliation is accepted.
+- Logo timeline rebuilt from Stripe subscriptions (core coverage intervals).
+- MRR from Stripe price items at each sub (ex-VAT); mid-cycle item changes without new sub may be missed.
+- Cancellation reasons default to `unknown` until edited in Admin.
+- Mode: stripe-history

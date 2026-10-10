@@ -27,24 +27,25 @@ This prevents double-counting the same period from backfill + live webhooks.
 
    Until this is set, webhooks stay in receipt-only mode.
 
-4. **Dry-run backfill**
+4. **Dry-run backfill** (Stripe subscription history → logo timeline)
 
    ```bash
-   npx tsx scripts/backfill-subscription-events.ts --dry-run
+   doppler run -- npx tsx scripts/backfill-subscription-events.ts --dry-run
    ```
 
 5. **Apply backfill**
 
    ```bash
-   npx tsx scripts/backfill-subscription-events.ts
+   doppler run -- npx tsx scripts/backfill-subscription-events.ts
    ```
 
-   Clears only `source = 'backfill'` rows, then rebuilds history with `effective_at < cutover`.
+   Clears only `source = 'backfill'` rows, then rebuilds from Stripe subscriptions
+   (`effective_at < cutover`). Optional: `--legacy-local` for the old DB-row approximation.
 
 6. **Read** `docs/churn/BACKFILL_REPORT.md`  
-   Check: live MRR vs Stripe, ARPA, logo churn 12m sanity table, unmapped prices, duplicates, months marked **approximate**.
+   Check: live MRR vs Stripe, ARPA, logo churn 12m sanity table, unmapped prices, duplicates.
 
-7. **Only then** build / enable metrics service + Churn UI (Phase 3).
+7. Admin Statistics has a dropdown: **all history** vs **since cutover only**.
 
 ## Invoice classification (live)
 

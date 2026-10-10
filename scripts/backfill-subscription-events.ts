@@ -1,11 +1,15 @@
 /**
- * Rebuild subscription_events from local subscriptions + Stripe live MRR (source=backfill).
+ * Rebuild subscription_events from Stripe subscription history (source=backfill).
  *
  * Usage:
- *   npx tsx scripts/backfill-subscription-events.ts --dry-run
- *   npx tsx scripts/backfill-subscription-events.ts
+ *   doppler run -- npx tsx scripts/backfill-subscription-events.ts --dry-run
+ *   doppler run -- npx tsx scripts/backfill-subscription-events.ts
+ *   doppler run -- npx tsx scripts/backfill-subscription-events.ts --legacy-local
  *
- * Requires churn_settings.events_cutover_at to be set. Writes only effective_at < cutover.
+ * Default: logo timeline + MRR from Stripe subscriptions (accurate history).
+ * --legacy-local: old local subscription-row approximation (not for production KPIs).
+ *
+ * Requires churn_settings.events_cutover_at. Writes only effective_at < cutover.
  * See docs/churn/RUNBOOK.md.
  */
 import "dotenv/config";
@@ -30,8 +34,11 @@ import {
   insertSubscriptionEvent,
 } from "../server/services/subscription-events";
 import { computeCustomerMrrFromStripe } from "../server/services/customer-mrr";
+import { intervalsFromStripeSubscriptions } from "../server/services/stripe-logo-history";
+import { buildLogoTransitions } from "../server/services/stripe-logo-timeline";
 
 const dryRun = process.argv.includes("--dry-run");
+const legacyLocal = process.argv.includes("--legacy-local");
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
   apiVersion: "2023-10-16" as any,
 });
@@ -39,7 +46,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
 type Approx = string;
 const approximations: Approx[] = [];
 const unmappedPriceIds = new Set<string>();
-/** YYYY-MM months where MRR movements are subscription-row approximate */
+/** YYYY-MM months with known approximation (legacy mode only) */
 const approximateMonths = new Set<string>();
 
 function monthKeyAthens(d: Date): string {
@@ -124,7 +131,124 @@ async function clearBackfillEvents() {
   return deleted.length;
 }
 
-async function emitHistoricalForCustomer(
+async function emitStripeHistoryForCustomer(
+  customerId: number,
+  stripeCustomerId: string,
+  cutover: Date,
+) {
+  let lastMrr = 0;
+  let lastStatus: "active" | "churned" | null = null;
+
+  try {
+    const listed = await stripe.subscriptions.list({
+      customer: stripeCustomerId,
+      status: "all",
+      limit: 100,
+      expand: ["data.items.data.price"],
+    });
+
+    const { intervals, unknownPriceIds, usedVatFallback } =
+      await intervalsFromStripeSubscriptions(listed.data);
+    unknownPriceIds.forEach((id) => unmappedPriceIds.add(id));
+    if (usedVatFallback) {
+      approximations.push(
+        `customer ${customerId}: used gross/1.24 VAT fallback for some Stripe prices`,
+      );
+    }
+
+    const transitions = buildLogoTransitions(intervals);
+    for (const tr of transitions) {
+      if (!(await backfillMayWriteEvent(tr.at))) continue;
+      if (!dryRun) {
+        await insertSubscriptionEvent({
+          customerId,
+          stripeSubscriptionId: tr.stripeSubscriptionId,
+          stripeEventId: `backfill:stripe:${customerId}:${tr.type}:${tr.at.toISOString()}`,
+          type: tr.type,
+          effectiveAt: tr.at,
+          statusAfter: tr.statusAfter,
+          mrrAfterCents: tr.mrrAfterCents,
+          mrrDeltaCents: tr.mrrDeltaCents,
+          tierAfter: tr.tierAfter,
+          churnKind: tr.churnKind ?? null,
+          reasonCode: tr.type === "churn" ? "unknown" : null,
+          source: "backfill",
+        });
+      }
+      lastMrr = tr.mrrAfterCents;
+      lastStatus = tr.statusAfter;
+    }
+
+    const snap = await computeCustomerMrrFromStripe(
+      stripe,
+      stripeCustomerId,
+      `backfill customer ${customerId}`,
+    );
+    snap.unknownPriceIds.forEach((id) => unmappedPriceIds.add(id));
+
+    // Align state at cutover with live Stripe (covers open intervals / MRR drift).
+    const effectiveAt = new Date(cutover.getTime() - 1000);
+    if (await backfillMayWriteEvent(effectiveAt)) {
+      if (snap.activeCoreSubscriptionIds.length > 0) {
+        if (lastStatus !== "active" || lastMrr !== snap.mrrCentsExVat) {
+          const type =
+            lastStatus === "churned" || lastStatus == null
+              ? ("reactivation" as const)
+              : snap.mrrCentsExVat >= lastMrr
+                ? ("expansion" as const)
+                : ("contraction" as const);
+          approximations.push(
+            `customer ${customerId}: cutover reconcile ${type} mrr=${snap.mrrCentsExVat}`,
+          );
+          if (!dryRun) {
+            await insertSubscriptionEvent({
+              customerId,
+              stripeSubscriptionId: snap.activeCoreSubscriptionIds[0] ?? null,
+              stripeEventId: `backfill:snapshot:${customerId}:${cutover.toISOString()}`,
+              type,
+              effectiveAt,
+              statusAfter: "active",
+              mrrAfterCents: snap.mrrCentsExVat,
+              mrrDeltaCents: snap.mrrCentsExVat - lastMrr,
+              tierAfter: snap.coreTier,
+              source: "backfill",
+            });
+          }
+        }
+      } else if (lastStatus === "active") {
+        approximations.push(
+          `customer ${customerId}: cutover reconcile churn (0 live cores)`,
+        );
+        if (!dryRun) {
+          await insertSubscriptionEvent({
+            customerId,
+            stripeSubscriptionId: null,
+            stripeEventId: `backfill:snapshot-churn:${customerId}:${cutover.toISOString()}`,
+            type: "churn",
+            effectiveAt,
+            statusAfter: "churned",
+            mrrAfterCents: 0,
+            mrrDeltaCents: -lastMrr,
+            tierAfter: snap.coreTier,
+            churnKind: "voluntary",
+            reasonCode: "unknown",
+            source: "backfill",
+          });
+        }
+      }
+    }
+
+    return snap;
+  } catch (err: any) {
+    approximations.push(
+      `customer ${customerId}: Stripe history failed: ${err?.message || err}`,
+    );
+    return null;
+  }
+}
+
+/** @deprecated local row approximation — use only with --legacy-local */
+async function emitHistoricalForCustomerLegacy(
   customerId: number,
   stripeCustomerId: string,
   cutover: Date,
@@ -159,7 +283,7 @@ async function emitHistoricalForCustomer(
     if (await backfillMayWriteEvent(sub.createdAt)) {
       approximateMonths.add(monthKeyAthens(sub.createdAt));
       approximations.push(
-        `customer ${customerId} sub #${sub.id}: ${startType} at createdAt (subscription-row granularity; MRR movements approximate)`,
+        `customer ${customerId} sub #${sub.id}: LEGACY ${startType} at createdAt`,
       );
       if (!dryRun) {
         await insertSubscriptionEvent({
@@ -187,9 +311,6 @@ async function emitHistoricalForCustomer(
       const effectiveAt = sub.cancelledAt ?? sub.accessUntil ?? sub.createdAt;
       if (effectiveAt && (await backfillMayWriteEvent(effectiveAt))) {
         approximateMonths.add(monthKeyAthens(effectiveAt));
-        approximations.push(
-          `customer ${customerId} sub #${sub.id}: churn effective_at=${effectiveAt.toISOString()} from cancelledAt (historical; MRR churn approximate)`,
-        );
         if (!dryRun) {
           await insertSubscriptionEvent({
             customerId,
@@ -201,13 +322,8 @@ async function emitHistoricalForCustomer(
             mrrAfterCents: 0,
             mrrDeltaCents: -lastMrr,
             tierAfter: sub.tier,
-            churnKind: sub.cancellationReason?.includes("payment_failed")
-              ? "involuntary"
-              : "voluntary",
-            reasonCode: sub.cancellationReason?.includes("payment_failed")
-              ? "payment_failed"
-              : "unknown",
-            preLaunch: null,
+            churnKind: "voluntary",
+            reasonCode: "unknown",
             source: "backfill",
           });
         }
@@ -218,82 +334,11 @@ async function emitHistoricalForCustomer(
     }
   }
 
-  try {
-    const snap = await computeCustomerMrrFromStripe(
-      stripe,
-      stripeCustomerId,
-      `backfill customer ${customerId}`,
-    );
-    snap.unknownPriceIds.forEach((id) => unmappedPriceIds.add(id));
-    if (snap.usedVatFallback) {
-      approximations.push(
-        `customer ${customerId}: used gross/1.24 VAT fallback for some Stripe prices`,
-      );
-    }
-
-    // Terminal snapshot so logo/MRR state at cutover matches live Stripe (ex-VAT).
-    const effectiveAt = new Date(cutover.getTime() - 1000);
-    if (await backfillMayWriteEvent(effectiveAt)) {
-      if (snap.activeCoreSubscriptionIds.length > 0) {
-        const needsWrite =
-          lastStatus !== "active" || lastMrr !== snap.mrrCentsExVat;
-        if (needsWrite) {
-          const type =
-            lastStatus === "churned" || lastMrr === 0
-              ? ("reactivation" as const)
-              : snap.mrrCentsExVat >= lastMrr
-                ? ("expansion" as const)
-                : ("contraction" as const);
-          approximations.push(
-            `customer ${customerId}: Stripe snapshot ${type} mrr=${snap.mrrCentsExVat} at cutover-1s (reconcile live state)`,
-          );
-          if (!dryRun) {
-            await insertSubscriptionEvent({
-              customerId,
-              stripeSubscriptionId: snap.activeCoreSubscriptionIds[0] ?? null,
-              stripeEventId: `backfill:snapshot:${customerId}:${cutover.toISOString()}`,
-              type,
-              effectiveAt,
-              statusAfter: "active",
-              mrrAfterCents: snap.mrrCentsExVat,
-              mrrDeltaCents: snap.mrrCentsExVat - lastMrr,
-              tierAfter: snap.coreTier,
-              source: "backfill",
-            });
-          }
-        }
-      } else if (lastStatus === "active") {
-        // Local history left them active, but Stripe has no active core (e.g. cancel
-        // effective_at was >= cutover so churn was skipped). Close the gap.
-        approximations.push(
-          `customer ${customerId}: Stripe snapshot churn at cutover-1s (0 active cores; was still active in event log)`,
-        );
-        if (!dryRun) {
-          await insertSubscriptionEvent({
-            customerId,
-            stripeSubscriptionId: null,
-            stripeEventId: `backfill:snapshot-churn:${customerId}:${cutover.toISOString()}`,
-            type: "churn",
-            effectiveAt,
-            statusAfter: "churned",
-            mrrAfterCents: 0,
-            mrrDeltaCents: -lastMrr,
-            tierAfter: snap.coreTier,
-            churnKind: "voluntary",
-            reasonCode: "unknown",
-            source: "backfill",
-          });
-        }
-      }
-    }
-
-    return snap;
-  } catch (err: any) {
-    approximations.push(
-      `customer ${customerId}: Stripe MRR fetch failed: ${err?.message || err}`,
-    );
-    return null;
-  }
+  return computeCustomerMrrFromStripe(
+    stripe,
+    stripeCustomerId,
+    `legacy backfill customer ${customerId}`,
+  ).catch(() => null);
 }
 async function findDuplicateCandidates() {
   const byEmail = await db.execute(sql`
@@ -387,7 +432,9 @@ function computeLogoChurnLast12Months(events: StatusEvent[], now: Date) {
 }
 
 async function main() {
-  console.log(`Backfill starting (dryRun=${dryRun})…`);
+  console.log(
+    `Backfill starting (dryRun=${dryRun}, mode=${legacyLocal ? "legacy-local" : "stripe-history"})…`,
+  );
 
   const cutover = await getEventsCutoverAt();
   if (!cutover) {
@@ -421,6 +468,7 @@ async function main() {
       and(
         eq(users.accountKind, AccountKind.CUSTOMER),
         sql`${users.stripeCustomerId} IS NOT NULL`,
+        eq(users.isDemo, false),
       ),
     );
 
@@ -433,7 +481,9 @@ async function main() {
 
   for (const c of customers) {
     if (!c.stripeCustomerId) continue;
-    const snap = await emitHistoricalForCustomer(c.id, c.stripeCustomerId, cutover);
+    const snap = legacyLocal
+      ? await emitHistoricalForCustomerLegacy(c.id, c.stripeCustomerId, cutover)
+      : await emitStripeHistoryForCustomer(c.id, c.stripeCustomerId, cutover);
     if (snap) {
       recon.push({
         customerId: c.id,
@@ -506,7 +556,9 @@ async function main() {
   lines.push("## Logo churn (last 12 months) — sanity table");
   lines.push("");
   lines.push(
-    "Cohort = status `active` at month start → not `active` at next month start (from event log). Months with subscription-row backfill are flagged **approximate** for gross MRR churn / NRR (do not trust those movement metrics).",
+    legacyLocal
+      ? "Mode: **legacy-local** (approximate). Cohort = active at month start → not active at next month start."
+      : "Mode: **stripe-history**. Cohort = ≥1 core Stripe sub covering month start → none at next month start.",
   );
   lines.push("");
   lines.push(
@@ -554,18 +606,18 @@ async function main() {
   }
   lines.push("");
   lines.push("## Notes");
-  lines.push(
-    "- Historical plan changes approximated at subscription-row granularity (not full invoice history).",
-  );
-  lines.push(
-    "- Historical cancellation reasons default to `unknown` unless local cancellation_reason indicated payment_failed.",
-  );
-  lines.push(
-    "- Historical immediate cancels use cancelledAt as churn effective_at.",
-  );
-  lines.push(
-    "- STOP: metrics service / Churn UI not built until this reconciliation is accepted.",
-  );
+  if (legacyLocal) {
+    lines.push("- LEGACY: local subscription-row approximation (not for official KPIs).");
+  } else {
+    lines.push(
+      "- Logo timeline rebuilt from Stripe subscriptions (core coverage intervals).",
+    );
+    lines.push(
+      "- MRR from Stripe price items at each sub (ex-VAT); mid-cycle item changes without new sub may be missed.",
+    );
+    lines.push("- Cancellation reasons default to `unknown` until edited in Admin.");
+  }
+  lines.push(`- Mode: ${legacyLocal ? "legacy-local" : "stripe-history"}`);
 
   fs.mkdirSync(path.dirname(reportPath), { recursive: true });
   fs.writeFileSync(reportPath, lines.join("\n"), "utf8");

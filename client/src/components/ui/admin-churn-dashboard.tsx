@@ -186,7 +186,9 @@ export function AdminChurnDashboard() {
   const [to, setTo] = useState(defaults.to);
   const [plan, setPlan] = useState<PlanFilter>("all");
   const [includePartial, setIncludePartial] = useState(false);
-  const [includeApproximate, setIncludeApproximate] = useState(true);
+  /** all = full history; since_cutover = only months after events cutover */
+  const [dataScope, setDataScope] = useState<"all" | "since_cutover">("all");
+  const includeApproximate = dataScope === "all";
 
   const seriesQuery = useQuery<SeriesResponse>({
     queryKey: [
@@ -195,7 +197,7 @@ export function AdminChurnDashboard() {
       to,
       plan,
       includePartial,
-      includeApproximate,
+      dataScope,
     ],
     queryFn: async () => {
       const params = new URLSearchParams({
@@ -267,6 +269,15 @@ export function AdminChurnDashboard() {
   const kpi = seriesQuery.data?.kpiMonth ?? null;
   const series = seriesQuery.data?.series ?? [];
   const period = seriesQuery.data?.period;
+  const cutoverMs = seriesQuery.data?.eventsCutoverAt
+    ? new Date(seriesQuery.data.eventsCutoverAt).getTime()
+    : null;
+
+  const churnedRows = useMemo(() => {
+    const rows = churnedQuery.data?.rows ?? [];
+    if (dataScope !== "since_cutover" || cutoverMs == null) return rows;
+    return rows.filter((r) => new Date(r.churnDate).getTime() >= cutoverMs);
+  }, [churnedQuery.data?.rows, dataScope, cutoverMs]);
 
   const logoChart = series.map((m) => ({
     month: formatMonthLabel(m.month),
@@ -278,10 +289,9 @@ export function AdminChurnDashboard() {
   }));
 
   function exportChurnedCsv() {
-    const rows = churnedQuery.data?.rows ?? [];
     const lines = [
       ["customerId", "email", "plan", "mrrLost", "reason", "churnDate"].join(","),
-      ...rows.map((r) =>
+      ...churnedRows.map((r) =>
         [
           r.customerId,
           JSON.stringify(r.email),
@@ -359,6 +369,23 @@ export function AdminChurnDashboard() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1">
+            <Label className="text-xs">Δεδομένα</Label>
+            <Select
+              value={dataScope}
+              onValueChange={(v) => setDataScope(v as "all" | "since_cutover")}
+            >
+              <SelectTrigger className="w-[220px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Όλα (ιστορικό + μετά)</SelectItem>
+                <SelectItem value="since_cutover">
+                  Μόνο από cutover και μετά
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex items-center gap-2 pb-2">
             <Switch
               id="partial-month"
@@ -372,18 +399,29 @@ export function AdminChurnDashboard() {
         </div>
       </div>
 
-      {period?.isApproximate && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          Τα δεδομένα πριν τις{" "}
-          <strong>
+      <div className="rounded-md border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+        {dataScope === "all" ? (
+          <>
+            Βλέπεις <strong className="text-foreground">όλο το ιστορικό</strong> από Stripe
+            subscriptions + live webhooks μετά τις{" "}
+            <strong className="text-foreground">
+              {seriesQuery.data?.eventsCutoverAt
+                ? formatDate(seriesQuery.data.eventsCutoverAt)
+                : "—"}
+            </strong>
+            . Γκρι μπάρες = μήνες πριν το cutover.
+          </>
+        ) : (
+          <>
+            Βλέπεις μόνο μήνες <strong className="text-foreground">από το cutover και μετά</strong>{" "}
+            (
             {seriesQuery.data?.eventsCutoverAt
               ? formatDate(seriesQuery.data.eventsCutoverAt)
-              : "cutover"}
-          </strong>{" "}
-          είναι <strong>προσεγγιστικά</strong> (ανακατασκευή από παλιές συνδρομές). Χρήσιμα για
-          τάση, όχι για ακριβές %. Από το cutover και μετά μετράμε σωστά από Stripe webhooks.
-        </div>
-      )}
+              : "—"}
+            ) — καθαρά webhook data.
+          </>
+        )}
+      </div>
 
       {seriesQuery.data?.live && (
         <Card>
@@ -411,14 +449,16 @@ export function AdminChurnDashboard() {
           <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-2">
               <CardDescription>Έφυγαν στην περίοδο</CardDescription>
-              {period?.isApproximate && (
+              {dataScope === "all" && period?.isApproximate && (
                 <Badge variant="secondary" className="text-[10px]">
-                  προσεγγιστικό
+                 incl. πριν cutover
                 </Badge>
               )}
             </div>
             <CardTitle className="text-3xl tabular-nums">
-              {period?.distinctChurned ?? "—"}
+              {dataScope === "since_cutover"
+                ? churnedRows.length
+                : (period?.distinctChurned ?? "—")}
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground space-y-1">
@@ -427,7 +467,11 @@ export function AdminChurnDashboard() {
             </div>
             <div>
               MRR lost (άθροισμα):{" "}
-              {period ? formatEuro(period.mrrLostCents) : "—"}
+              {dataScope === "since_cutover"
+                ? formatEuro(churnedRows.reduce((s, r) => s + r.mrrLostCents, 0))
+                : period
+                  ? formatEuro(period.mrrLostCents)
+                  : "—"}
             </div>
             <p>Μοναδικοί πελάτες που έχασαν όλα τα πλάνα στην περίοδο.</p>
           </CardContent>
@@ -461,7 +505,7 @@ export function AdminChurnDashboard() {
                   {formatMonthLabel(kpi.month)}: {kpi.churnedCount}/{kpi.customersStart}
                   {kpi.isApproximate && (
                     <Badge variant="secondary" className="text-[10px]">
-                      προσεγγιστικό
+                      πριν cutover
                     </Badge>
                   )}
                 </div>
@@ -472,7 +516,7 @@ export function AdminChurnDashboard() {
                 )}
               </>
             ) : (
-              <p>Δεν υπάρχει μήνας με δεδομένα στο εύρος.</p>
+              <p>Δεν υπάρχει μήνας με δεδομένα στο επιλεγμένο εύρος/scope.</p>
             )}
           </CardContent>
         </Card>
@@ -534,13 +578,15 @@ export function AdminChurnDashboard() {
         <CardHeader>
           <CardTitle>Churn % ανά μήνα</CardTitle>
           <CardDescription>
-            Γκρι μπάρα = προσεγγιστικό ιστορικό. Πράσινη = μετά το cutover (αξιόπιστο).
+            Γκρι μπάρα = πριν το cutover (Stripe history). Πράσινη = μετά το cutover (webhooks).
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[280px]">
           {logoChart.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
-              Δεν υπάρχουν μήνες με δεδομένα στο εύρος.
+            <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-4">
+              {dataScope === "since_cutover"
+                ? "Δεν υπάρχει ακόμα ολοκληρωμένος μήνας μετά το cutover."
+                : "Δεν υπάρχουν μήνες με δεδομένα στο εύρος."}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -593,9 +639,9 @@ export function AdminChurnDashboard() {
               <Loader2 className="h-4 w-4 animate-spin" />
               Φόρτωση…
             </div>
-          ) : (churnedQuery.data?.rows?.length ?? 0) === 0 ? (
+          ) : churnedRows.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Κανένας churn σε αυτή την περίοδο.
+              Κανένας churn σε αυτή την περίοδο / scope.
             </p>
           ) : (
             <Table>
@@ -611,7 +657,7 @@ export function AdminChurnDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {churnedQuery.data!.rows.map((r) => (
+                {churnedRows.map((r) => (
                   <TableRow key={`${r.customerId}-${r.eventId}`}>
                     <TableCell>
                       <div className="font-medium">{r.email}</div>
