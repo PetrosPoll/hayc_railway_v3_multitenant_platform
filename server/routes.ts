@@ -26808,6 +26808,11 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.sendStatus(204);
       }
 
+      // HDP has no sites row yet — treat as empty brand. PUT /brand upserts the site.
+      if (internalRes.status === 404) {
+        return res.sendStatus(204);
+      }
+
       const contentType = internalRes.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
         return res.status(internalRes.status).json(await internalRes.json());
