@@ -96,14 +96,6 @@ export async function computeCustomerMrrFromStripe(
       if (!price?.id) continue;
       if (!price.recurring) continue; // one-time / setup
 
-      const mapped = await lookupPriceMap(price.id);
-      if (!mapped) {
-        unknownPriceIds.push(price.id);
-        warnUnknownPrice(price.id, context);
-        continue;
-      }
-      if (mapped.kind === "setup") continue;
-
       const factor = intervalToMonthlyFactor(
         price.recurring.interval,
         price.recurring.interval_count,
@@ -124,8 +116,24 @@ export async function computeCustomerMrrFromStripe(
         null,
       );
       if (fb) usedVatFallback = true;
+      const monthlyCents = Math.round(cents * factor);
 
-      mrrCentsExVat += Math.round(cents * factor);
+      const mapped = await lookupPriceMap(price.id);
+      if (!mapped) {
+        unknownPriceIds.push(price.id);
+        warnUnknownPrice(price.id, context);
+        // Legacy / retired prices: ≥ €20/mo ≈ core plan; below ≈ add-on.
+        if (monthlyCents >= 2000) {
+          mrrCentsExVat += monthlyCents;
+          subHasCore = true;
+        } else if (monthlyCents > 0) {
+          mrrCentsExVat += monthlyCents;
+        }
+        continue;
+      }
+      if (mapped.kind === "setup") continue;
+
+      mrrCentsExVat += monthlyCents;
 
       if (mapped.kind === "core") {
         subHasCore = true;

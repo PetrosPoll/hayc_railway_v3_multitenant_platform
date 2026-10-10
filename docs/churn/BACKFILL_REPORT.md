@@ -1,17 +1,17 @@
 # Churn backfill report
 
-Generated: 2026-10-10T01:09:52.489Z
+Generated: 2026-10-10T01:43:45.594Z
 dryRun: false
 events_cutover_at: 2026-10-10T00:52:47.539Z
 
 ## Summary
 - Customers processed: 64
-- Backfill events cleared: 0
+- Backfill events cleared: 164
 - launched_at updates: 44
 - customer_stripe_accounts seeded: 64
 - stripe_price_map seed writes: 19
 - Unmapped Stripe price IDs: 22
-- Approximations logged: 81
+- Approximations logged: 21
 - Active customers (live Stripe, ≥1 core sub): 11
 - Total MRR ex-VAT (cents): 68883
 - ARPA ex-VAT (cents): 6262 (€62.62)
@@ -30,18 +30,18 @@ Mode: **stripe-history**. Cohort = ≥1 core Stripe sub covering month start →
 
 | month | customers_start | churned_count | logo_churn_pct | mrr_movements |
 |---|---|---|---|---|
-| 2025-11 | 24 | 0 | 0 | ok / mixed |
-| 2025-12 | 25 | 0 | 0 | ok / mixed |
-| 2026-01 | 28 | 0 | 0 | ok / mixed |
-| 2026-02 | 37 | 0 | 0 | ok / mixed |
-| 2026-03 | 40 | 0 | 0 | ok / mixed |
-| 2026-04 | 42 | 1 | 2.38 | ok / mixed |
-| 2026-05 | 41 | 3 | 7.32 | ok / mixed |
-| 2026-06 | 38 | 3 | 7.89 | ok / mixed |
-| 2026-07 | 39 | 2 | 5.13 | ok / mixed |
-| 2026-08 | 40 | 4 | 10 | ok / mixed |
-| 2026-09 | 38 | 1 | 2.63 | ok / mixed |
-| 2026-10 | 41 | 1 | 2.44 | ok / mixed |
+| 2025-11 | 17 | 0 | 0 | ok / mixed |
+| 2025-12 | 19 | 1 | 5.26 | ok / mixed |
+| 2026-01 | 21 | 0 | 0 | ok / mixed |
+| 2026-02 | 31 | 0 | 0 | ok / mixed |
+| 2026-03 | 34 | 2 | 5.88 | ok / mixed |
+| 2026-04 | 35 | 3 | 8.57 | ok / mixed |
+| 2026-05 | 33 | 3 | 9.09 | ok / mixed |
+| 2026-06 | 30 | 2 | 6.67 | ok / mixed |
+| 2026-07 | 31 | 5 | 16.13 | ok / mixed |
+| 2026-08 | 29 | 3 | 10.34 | ok / mixed |
+| 2026-09 | 28 | 2 | 7.14 | ok / mixed |
+| 2026-10 | 29 | 0 | 0 | ok / mixed |
 
 ## Unmapped price IDs
 - `price_1SP6GbB3lUTVGKGUJPMv2y0K`
@@ -68,84 +68,24 @@ Mode: **stripe-history**. Cohort = ≥1 core Stripe sub covering month start →
 - `price_1U3PhXB3lUTVGKGU4Qkkw13O`
 
 ## Approximations
-- customer 38: no Stripe subs left; used local plan rows for logo history
 - customer 38: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 39: no Stripe subs left; used local plan rows for logo history
-- customer 40: no Stripe subs left; used local plan rows for logo history
-- customer 41: no Stripe subs left; used local plan rows for logo history
-- customer 50: no Stripe subs left; used local plan rows for logo history
 - customer 50: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 51: no Stripe subs left; used local plan rows for logo history
 - customer 51: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 47: no Stripe subs left; used local plan rows for logo history
-- customer 3: no Stripe subs left; used local plan rows for logo history
-- customer 3: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 8: no Stripe subs left; used local plan rows for logo history
-- customer 8: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 5: no Stripe subs left; used local plan rows for logo history
 - customer 5: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 10: no Stripe subs left; used local plan rows for logo history
-- customer 7: no Stripe subs left; used local plan rows for logo history
 - customer 7: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 6: no Stripe subs left; used local plan rows for logo history
 - customer 6: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 12: no Stripe subs left; used local plan rows for logo history
-- customer 4: no Stripe subs left; used local plan rows for logo history
-- customer 4: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 46: no Stripe subs left; used local plan rows for logo history
 - customer 46: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 42: no Stripe subs left; used local plan rows for logo history
 - customer 42: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 48: no Stripe subs left; used local plan rows for logo history
 - customer 48: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 11: no Stripe subs left; used local plan rows for logo history
 - customer 11: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 9: no Stripe subs left; used local plan rows for logo history
 - customer 9: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 13: no Stripe subs left; used local plan rows for logo history
 - customer 13: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 37: no Stripe subs left; used local plan rows for logo history
-- customer 27: no Stripe subs left; used local plan rows for logo history
 - customer 27: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 31: no Stripe subs left; used local plan rows for logo history
-- customer 31: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 29: no Stripe subs left; used local plan rows for logo history
-- customer 29: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 32: no Stripe subs left; used local plan rows for logo history
 - customer 32: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 30: no Stripe subs left; used local plan rows for logo history
-- customer 23: no Stripe subs left; used local plan rows for logo history
-- customer 25: no Stripe subs left; used local plan rows for logo history
-- customer 25: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 20: no Stripe subs left; used local plan rows for logo history
-- customer 20: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 19: no Stripe subs left; used local plan rows for logo history
-- customer 43: no Stripe subs left; used local plan rows for logo history
-- customer 24: no Stripe subs left; used local plan rows for logo history
 - customer 24: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 21: no Stripe subs left; used local plan rows for logo history
 - customer 21: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 14: no Stripe subs left; used local plan rows for logo history
-- customer 14: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 16: no Stripe subs left; used local plan rows for logo history
 - customer 16: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 17: no Stripe subs left; used local plan rows for logo history
-- customer 22: no Stripe subs left; used local plan rows for logo history
-- customer 28: no Stripe subs left; used local plan rows for logo history
 - customer 28: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 15: no Stripe subs left; used local plan rows for logo history
-- customer 15: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 26: no Stripe subs left; used local plan rows for logo history
-- customer 26: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 44: no Stripe subs left; used local plan rows for logo history
-- customer 33: no Stripe subs left; used local plan rows for logo history
-- customer 33: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 53: no Stripe subs left; used local plan rows for logo history
-- customer 45: no Stripe subs left; used local plan rows for logo history
-- customer 18: no Stripe subs left; used local plan rows for logo history
-- customer 55: no Stripe subs left; used local plan rows for logo history
-- customer 52: no Stripe subs left; used local plan rows for logo history
-- customer 56: no Stripe subs left; used local plan rows for logo history
 - customer 56: period-end cancel after cutover — left active until Stripe deleted webhook
 - customer 69: no Stripe subs left; used local plan rows for logo history
 - customer 69: period-end cancel after cutover — left active until Stripe deleted webhook

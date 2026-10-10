@@ -43,8 +43,11 @@ function coverageAt(
   return { mrr, tier, coreCount, anySubId };
 }
 
-/** Extend ended cores through brief gaps (e.g. monthly cancel → yearly next day). */
-export const DEFAULT_CORE_GAP_BRIDGE_MS = 48 * 60 * 60 * 1000;
+/**
+ * If a new core starts within this window after the previous core ended,
+ * treat as plan change (no logo churn). Longer gap = real churn; later return = reactivation.
+ */
+export const DEFAULT_CORE_GAP_BRIDGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function bridgeShortCoreGaps(
   intervals: SubInterval[],
