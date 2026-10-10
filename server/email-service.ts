@@ -1,4 +1,5 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { sanitizeNewsletterHtmlForSend } from "@shared/newsletter";
 
 // Normalize AWS region (handle human-readable names)
 function normalizeAwsRegion(region: string): string {
@@ -58,6 +59,10 @@ export class EmailService {
         ? `"${emailData.fromName}" <${emailData.fromEmail}>`
         : emailData.fromEmail;
 
+      const html = emailData.html
+        ? sanitizeNewsletterHtmlForSend(emailData.html)
+        : undefined;
+
       const command = new SendEmailCommand({
         Source: source,
         ...(emailData.replyToAddresses?.length
@@ -76,9 +81,9 @@ export class EmailService {
               Data: emailData.message,
               Charset: "UTF-8",
             },
-            ...(emailData.html && {
+            ...(html && {
               Html: {
-                Data: emailData.html,
+                Data: html,
                 Charset: "UTF-8",
               },
             }),

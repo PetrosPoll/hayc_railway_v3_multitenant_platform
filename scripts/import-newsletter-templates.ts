@@ -161,18 +161,11 @@ async function inlineTemplateAssets(html: string, templateDir: string): Promise<
     }
   }
 
-  // Use single quotes around data URIs so they stay valid inside style="...".
-  // Double quotes here break the HTML attribute and dump base64 into the email body.
+  // Never inline CSS url(...) backgrounds as data URIs for email HTML.
+  // Pattern/hero backgrounds are often 0.5–1MB+; base64 inside style="..." makes
+  // many clients render the message as raw text (while browser previews still look fine).
   const cssRegex = /url\((['"]?)((?:\.\/)?images\/[^'")]+)\1\)/gi;
-  const cssMatches = [...output.matchAll(cssRegex)];
-  for (const match of cssMatches) {
-    const full = match[0];
-    const rel = match[2];
-    const inlined = await getInlinedAsset(rel);
-    if (inlined) {
-      output = output.replace(full, `url('${inlined}')`);
-    }
-  }
+  output = output.replace(cssRegex, "#f6f9fc");
 
   return output;
 }
