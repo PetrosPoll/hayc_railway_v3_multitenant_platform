@@ -201,13 +201,13 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
           }),
         ]);
 
-        // 204 = no brand saved yet — open with defaults instead of erroring
-        if (!brandRes.ok && brandRes.status !== 204) {
+        // 204 = no brand yet; 404 = HDP site not provisioned yet (PUT upserts it)
+        if (!brandRes.ok && brandRes.status !== 204 && brandRes.status !== 404) {
           throw new Error("Failed to fetch brand config");
         }
 
         let brandJson: any = null;
-        if (brandRes.status !== 204) {
+        if (brandRes.ok && brandRes.status !== 204) {
           const contentType = brandRes.headers.get("content-type") || "";
           if (contentType.includes("application/json")) {
             brandJson = await brandRes.json();
