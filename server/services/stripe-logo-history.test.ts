@@ -69,6 +69,33 @@ describe("buildLogoTransitions", () => {
     expect(t.map((x) => x.type)).toEqual(["new", "churn", "reactivation"]);
   });
 
+  it("bridges a 1-day gap between monthly cancel and yearly start (no logo churn)", () => {
+    const endMonthly = Date.parse("2025-11-04T12:00:00Z");
+    const startYearly = Date.parse("2025-11-05T12:00:00Z");
+    const intervals: SubInterval[] = [
+      {
+        startMs: Date.parse("2025-01-01T00:00:00Z"),
+        endMs: endMonthly,
+        mrrCents: 3599,
+        tier: "essential",
+        hasCore: true,
+        subId: "sub_monthly",
+      },
+      {
+        startMs: startYearly,
+        endMs: null,
+        mrrCents: 2700,
+        tier: "essential",
+        hasCore: true,
+        subId: "sub_yearly",
+      },
+    ];
+    const t = buildLogoTransitions(intervals);
+    expect(t.some((x) => x.type === "churn")).toBe(false);
+    expect(t.some((x) => x.type === "reactivation")).toBe(false);
+    expect(t.map((x) => x.type)).toContain("contraction");
+  });
+
   it("same-ms replace does not create churn", () => {
     const t0 = Date.parse("2026-05-01T00:00:00Z");
     const intervals: SubInterval[] = [

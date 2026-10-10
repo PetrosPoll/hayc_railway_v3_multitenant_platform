@@ -43,8 +43,43 @@ function coverageAt(
   return { mrr, tier, coreCount, anySubId };
 }
 
+/** Extend ended cores through brief gaps (e.g. monthly cancel → yearly next day). */
+export const DEFAULT_CORE_GAP_BRIDGE_MS = 48 * 60 * 60 * 1000;
+
+export function bridgeShortCoreGaps(
+  intervals: SubInterval[],
+  maxGapMs = DEFAULT_CORE_GAP_BRIDGE_MS,
+): SubInterval[] {
+  const cores = intervals
+    .filter((i) => i.hasCore && i.endMs != null)
+    .sort((a, b) => a.endMs! - b.endMs!);
+  if (cores.length === 0) return intervals;
+
+  const extendEnd = new Map<string, number>();
+  for (const ended of cores) {
+    const gapStart = ended.endMs!;
+    const next = intervals
+      .filter(
+        (i) =>
+          i.hasCore && i.startMs >= gapStart && i.startMs - gapStart <= maxGapMs,
+      )
+      .sort((a, b) => a.startMs - b.startMs)[0];
+    if (next && next.startMs > gapStart) {
+      extendEnd.set(ended.subId, next.startMs);
+    }
+  }
+
+  if (extendEnd.size === 0) return intervals;
+  return intervals.map((iv) => {
+    const bridged = extendEnd.get(iv.subId);
+    if (bridged == null || iv.endMs == null) return iv;
+    return { ...iv, endMs: Math.max(iv.endMs, bridged) };
+  });
+}
+
 export function buildLogoTransitions(intervals: SubInterval[]): LogoTransition[] {
-  const core = intervals.filter((i) => i.hasCore);
+  const bridged = bridgeShortCoreGaps(intervals);
+  const core = bridged.filter((i) => i.hasCore);
   if (core.length === 0) return [];
 
   const times = new Set<number>();
@@ -60,7 +95,7 @@ export function buildLogoTransitions(intervals: SubInterval[]): LogoTransition[]
   let hadChurn = false;
 
   for (const t of sorted) {
-    const snap = coverageAt(t, intervals);
+    const snap = coverageAt(t, bridged);
     const coreCount = snap.coreCount;
     const mrr = snap.coreCount > 0 ? snap.mrr : 0;
 

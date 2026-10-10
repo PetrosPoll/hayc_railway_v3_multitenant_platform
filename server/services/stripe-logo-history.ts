@@ -53,13 +53,6 @@ export async function analyzeStripeSubscription(
     const price = typeof item.price === "string" ? null : item.price;
     if (!price?.id || !price.recurring) continue;
 
-    const mapped = await lookupPriceMap(price.id);
-    if (!mapped) {
-      unknownPriceIds.push(price.id);
-      continue;
-    }
-    if (mapped.kind === "setup") continue;
-
     const factor = intervalToMonthlyFactor(
       price.recurring.interval,
       price.recurring.interval_count,
@@ -80,7 +73,23 @@ export async function analyzeStripeSubscription(
       null,
     );
     if (fb) usedVatFallback = true;
-    mrrCents += Math.round(cents * factor);
+    const monthlyCents = Math.round(cents * factor);
+
+    const mapped = await lookupPriceMap(price.id);
+    if (!mapped) {
+      unknownPriceIds.push(price.id);
+      // Legacy / retired price IDs: plan-sized recurring lines still count for logo coverage.
+      if (monthlyCents >= 2000) {
+        mrrCents += monthlyCents;
+        hasCore = true;
+      } else if (monthlyCents > 0) {
+        mrrCents += monthlyCents;
+      }
+      continue;
+    }
+    if (mapped.kind === "setup") continue;
+
+    mrrCents += monthlyCents;
 
     if (mapped.kind === "core") {
       hasCore = true;
