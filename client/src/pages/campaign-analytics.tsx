@@ -1,20 +1,23 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { ArrowLeft, Mail, MousePointerClick, Eye, TrendingUp, Calendar, Send, CheckCircle, XCircle, AlertCircle, Tag as TagIcon, RefreshCw, HelpCircle } from "lucide-react";
+import { ArrowLeft, Mail, MousePointerClick, Eye, TrendingUp, Calendar, Send, CheckCircle, XCircle, AlertCircle, Tag as TagIcon, RefreshCw, HelpCircle, Clock } from "lucide-react";
 import { NEWSLETTER_FROM_EMAIL } from "@shared/newsletter";
 
 export default function CampaignAnalytics() {
   const { websiteId, campaignId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
-  const { data, isLoading, isFetching, refetch } = useQuery({
-    queryKey: [`/api/newsletter/campaigns/${campaignId}/analytics`, websiteId],
+  const analyticsQueryKey = [`/api/newsletter/campaigns/${campaignId}/analytics`, websiteId] as const;
+
+  const { data, isLoading, isFetching, dataUpdatedAt, refetch } = useQuery({
+    queryKey: analyticsQueryKey,
     queryFn: async () => {
       const response = await fetch(
         `/api/newsletter/campaigns/${campaignId}/analytics?websiteProgressId=${websiteId}`,
@@ -25,6 +28,11 @@ export default function CampaignAnalytics() {
     },
     enabled: !!websiteId && !!campaignId,
   });
+
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: analyticsQueryKey });
+    await refetch();
+  };
 
   // Fetch tags to display tag names
   const { data: tags = [] } = useQuery<any[]>({
@@ -87,7 +95,7 @@ export default function CampaignAnalytics() {
             <Button
               variant="outline"
               size="lg"
-              onClick={() => refetch()}
+              onClick={() => void handleRefresh()}
               disabled={isFetching}
               className="flex items-center gap-2"
               data-testid="button-refresh-analytics"
@@ -101,7 +109,7 @@ export default function CampaignAnalytics() {
               {campaign.description}
             </p>
           )}
-          <div className="flex items-center gap-4 mt-4 text-sm text-gray-600">
+          <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-600">
             {campaign.status === 'sent' && campaign.sentAt && (
               <div className="flex items-center gap-1" data-testid="text-sent-date">
                 <Send className="w-4 h-4" />
@@ -117,6 +125,13 @@ export default function CampaignAnalytics() {
             {campaign.status === 'draft' && (
               <div className="text-orange-600" data-testid="text-status-draft">
                 {t("dashboard.campaigns.analytics.draftNotSent")}
+              </div>
+            )}
+            {dataUpdatedAt > 0 && (
+              <div className="flex items-center gap-1" data-testid="text-last-refreshed">
+                <Clock className="w-4 h-4" />
+                {t("dashboard.campaigns.analytics.lastRefreshed")}:{" "}
+                {new Date(dataUpdatedAt).toLocaleString()}
               </div>
             )}
           </div>

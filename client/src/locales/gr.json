@@ -1827,6 +1827,7 @@
                 "notFound": "Η καμπάνια δεν βρέθηκε",
                 "backToCampaigns": "Πίσω στις Καμπάνιες",
                 "refresh": "Ανανέωση",
+                "lastRefreshed": "Τελευταία ανανέωση",
                 "sentAt": "Στάλθηκε",
                 "scheduledFor": "Προγραμματίστηκε",
                 "draftNotSent": "Πρόχειρο - Δεν στάλθηκε",

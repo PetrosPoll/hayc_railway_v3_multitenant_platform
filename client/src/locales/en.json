@@ -1827,6 +1827,7 @@
                 "notFound": "Campaign not found",
                 "backToCampaigns": "Back to Campaigns",
                 "refresh": "Refresh",
+                "lastRefreshed": "Last refreshed",
                 "sentAt": "Sent",
                 "scheduledFor": "Scheduled",
                 "draftNotSent": "Draft - Not sent",
