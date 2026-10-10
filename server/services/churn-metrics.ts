@@ -672,8 +672,16 @@ export async function getInDunning(): Promise<DunningRow[]> {
   }));
 }
 
+/** One row per customer (latest churn in window); MRR lost = sum of churn deltas in window. */
 export async function getChurnedCustomers(month: string): Promise<ChurnedRow[]> {
   const { start, end } = monthBoundsAthens(month);
+  return getChurnedCustomersInRange(start, end);
+}
+
+export async function getChurnedCustomersInRange(
+  start: Date,
+  end: Date,
+): Promise<ChurnedRow[]> {
   const rows = await db
     .select({
       eventId: subscriptionEvents.id,
@@ -701,28 +709,96 @@ export async function getChurnedCustomers(month: string): Promise<ChurnedRow[]> 
     )
     .orderBy(desc(subscriptionEvents.effectiveAt));
 
-  const firstNew = await firstNewAtByCustomer(rows.map((r) => r.customerId));
-  return rows.map((r) => {
-    const first = firstNew.get(r.customerId);
-    const tenureMonths = first
-      ? monthsBetween(first, new Date(r.effectiveAt))
-      : null;
-    return {
-      eventId: r.eventId,
-      customerId: r.customerId,
-      email: r.email,
-      username: r.username,
-      planTier: r.planTier,
-      tenureBucket: tenureBucketMonths(tenureMonths),
-      tenureMonths,
-      mrrLostCents: Math.abs(r.mrrDeltaCents ?? 0),
-      churnKind: r.churnKind,
-      reasonCode: r.reasonCode,
-      reasonNote: r.reasonNote,
-      preLaunch: r.preLaunch,
-      churnDate: new Date(r.effectiveAt).toISOString(),
-    };
-  });
+  // Collapse plan+addon churn noise → one customer row
+  const byCustomer = new Map<
+    number,
+    {
+      latest: (typeof rows)[0];
+      mrrLostCents: number;
+    }
+  >();
+  for (const r of rows) {
+    const prev = byCustomer.get(r.customerId);
+    if (!prev) {
+      byCustomer.set(r.customerId, {
+        latest: r,
+        mrrLostCents: Math.abs(r.mrrDeltaCents ?? 0),
+      });
+    } else {
+      prev.mrrLostCents += Math.abs(r.mrrDeltaCents ?? 0);
+      if (new Date(r.effectiveAt) > new Date(prev.latest.effectiveAt)) {
+        prev.latest = r;
+      } else if (
+        new Date(r.effectiveAt).getTime() ===
+          new Date(prev.latest.effectiveAt).getTime() &&
+        r.planTier &&
+        !prev.latest.planTier
+      ) {
+        prev.latest = r;
+      }
+    }
+  }
+
+  const collapsed = [...byCustomer.values()];
+  const firstNew = await firstNewAtByCustomer(
+    collapsed.map((c) => c.latest.customerId),
+  );
+
+  return collapsed
+    .map(({ latest: r, mrrLostCents }) => {
+      const first = firstNew.get(r.customerId);
+      const tenureMonths = first
+        ? monthsBetween(first, new Date(r.effectiveAt))
+        : null;
+      return {
+        eventId: r.eventId,
+        customerId: r.customerId,
+        email: r.email,
+        username: r.username,
+        planTier: r.planTier,
+        tenureBucket: tenureBucketMonths(tenureMonths),
+        tenureMonths,
+        mrrLostCents,
+        churnKind: r.churnKind,
+        reasonCode: r.reasonCode,
+        reasonNote: r.reasonNote,
+        preLaunch: r.preLaunch,
+        churnDate: new Date(r.effectiveAt).toISOString(),
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.churnDate).getTime() - new Date(a.churnDate).getTime(),
+    );
+}
+
+/** Distinct customers who churned in [fromYm, toYm] (inclusive months). */
+export async function getPeriodChurnSummary(
+  fromYm: string,
+  toYm: string,
+): Promise<{
+  from: string;
+  to: string;
+  distinctChurned: number;
+  mrrLostCents: number;
+  isApproximate: boolean;
+  eventsCutoverAt: string | null;
+}> {
+  const { getEventsCutoverAt } = await import("./subscription-events");
+  const cutoverAt = await getEventsCutoverAt();
+  const { start } = monthBoundsAthens(fromYm);
+  const { end } = monthBoundsAthens(toYm);
+  const rows = await getChurnedCustomersInRange(start, end);
+  const isApproximate =
+    cutoverAt == null || start.getTime() < cutoverAt.getTime();
+  return {
+    from: fromYm,
+    to: toYm,
+    distinctChurned: rows.length,
+    mrrLostCents: rows.reduce((s, r) => s + r.mrrLostCents, 0),
+    isApproximate,
+    eventsCutoverAt: cutoverAt?.toISOString() ?? null,
+  };
 }
 
 export async function getReactivations(month: string): Promise<ReactivationRow[]> {

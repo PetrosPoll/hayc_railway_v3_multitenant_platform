@@ -10348,15 +10348,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         livePendingSummary,
         getInDunning,
         getLiveSnapshot,
+        getPeriodChurnSummary,
       } = await import("./services/churn-metrics");
       const { getEventsCutoverAt } = await import("./services/subscription-events");
       const defaults = defaultSeriesRange();
       const from = typeof req.query.from === "string" ? req.query.from : defaults.from;
       const to = typeof req.query.to === "string" ? req.query.to : defaults.to;
       const includePartial = req.query.includePartial === "1" || req.query.includePartial === "true";
+      // Default ON: users expect the selected range to show history (labeled approximate).
       const includeApproximate =
-        req.query.includeApproximate === "1" ||
-        req.query.includeApproximate === "true";
+        req.query.includeApproximate === undefined
+          ? true
+          : req.query.includeApproximate === "1" ||
+            req.query.includeApproximate === "true";
       const plan = parseChurnPlanFilter(req.query.plan);
       let series = await getChurnSeries(from, to, plan);
       if (!includePartial) {
@@ -10369,9 +10373,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pendingSummary = livePendingSummary(pending);
       const live = await getLiveSnapshot(plan);
       const cutoverAt = await getEventsCutoverAt();
-      // KPI = last completed reliable month only (never approximate backfill).
-      const kpiMonth = reliable.filter((m) => !m.isPartial).at(-1) ?? null;
-      const prevMonth = reliable.filter((m) => !m.isPartial).at(-2) ?? null;
+      const period = await getPeriodChurnSummary(from, to);
+      // Prefer last reliable completed month; else last completed in chart (may be approximate).
+      const kpiMonth =
+        reliable.filter((m) => !m.isPartial).at(-1) ??
+        chartSeries.filter((m) => !m.isPartial).at(-1) ??
+        null;
+      const prevCandidates = kpiMonth?.isApproximate
+        ? chartSeries.filter((m) => !m.isPartial)
+        : reliable.filter((m) => !m.isPartial);
+      const prevMonth = prevCandidates.at(-2) ?? null;
       return res.json({
         from,
         to,
@@ -10383,6 +10394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allSeries: series,
         kpiMonth,
         prevMonth,
+        period,
         pendingSummary,
         dunningCount: dunning.length,
         live,
@@ -10424,9 +10436,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const user = await requireChurnAdmin(req, res);
     if (!user) return;
     try {
-      const { getChurnedCustomers, lastCompletedAthensMonth } = await import(
-        "./services/churn-metrics"
-      );
+      const {
+        getChurnedCustomers,
+        getChurnedCustomersInRange,
+        lastCompletedAthensMonth,
+        monthBoundsAthens,
+      } = await import("./services/churn-metrics");
+      const from = typeof req.query.from === "string" ? req.query.from : null;
+      const to = typeof req.query.to === "string" ? req.query.to : null;
+      if (from && to) {
+        const { start } = monthBoundsAthens(from);
+        const { end } = monthBoundsAthens(to);
+        return res.json({
+          from,
+          to,
+          rows: await getChurnedCustomersInRange(start, end),
+        });
+      }
       const month =
         typeof req.query.month === "string"
           ? req.query.month

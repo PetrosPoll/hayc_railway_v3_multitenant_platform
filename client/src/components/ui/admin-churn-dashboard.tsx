@@ -34,13 +34,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   Tooltip as UiTooltip,
   TooltipContent,
   TooltipProvider,
@@ -71,8 +64,14 @@ type SeriesResponse = {
   series: MonthlyChurnMetrics[];
   kpiMonth: MonthlyChurnMetrics | null;
   prevMonth: MonthlyChurnMetrics | null;
+  period?: {
+    from: string;
+    to: string;
+    distinctChurned: number;
+    mrrLostCents: number;
+    isApproximate: boolean;
+  };
   pendingSummary: { count: number; mrrAtRiskCents: number };
-  dunningCount: number;
   live?: {
     activeCustomers: number;
     mrrCents: number;
@@ -84,7 +83,6 @@ type SeriesResponse = {
 type PendingRow = {
   customerId: number;
   email: string;
-  username: string;
   planTier: string | null;
   mrrCents: number;
   accessUntil: string | null;
@@ -97,24 +95,13 @@ type ChurnedRow = {
   eventId: number;
   customerId: number;
   email: string;
-  username: string;
   planTier: string | null;
   tenureBucket: string;
   mrrLostCents: number;
   churnKind: string | null;
   reasonCode: string | null;
   reasonNote: string | null;
-  preLaunch: boolean | null;
   churnDate: string;
-};
-
-type CohortRow = {
-  customerId: number;
-  email: string;
-  username: string;
-  planTier: string | null;
-  mrrCents: number | null;
-  status: string | null;
 };
 
 const REASON_LABELS: Record<string, string> = {
@@ -171,16 +158,6 @@ function formatMonthLabel(ym: string): string {
   });
 }
 
-function deltaPct(
-  current: number | null | undefined,
-  prev: number | null | undefined,
-): string {
-  if (current == null || prev == null) return "—";
-  const d = current - prev;
-  const sign = d > 0 ? "+" : "";
-  return `${sign}${formatPct(d).replace("%", "")} μ.β.`;
-}
-
 function defaultFromTo(): { from: string; to: string } {
   const now = new Date();
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -209,10 +186,7 @@ export function AdminChurnDashboard() {
   const [to, setTo] = useState(defaults.to);
   const [plan, setPlan] = useState<PlanFilter>("all");
   const [includePartial, setIncludePartial] = useState(false);
-  const [includeApproximate, setIncludeApproximate] = useState(false);
-  const [churnedMonth, setChurnedMonth] = useState(defaults.to);
-  const [cohortOpen, setCohortOpen] = useState(false);
-  const [cohortTitle, setCohortTitle] = useState("");
+  const [includeApproximate, setIncludeApproximate] = useState(true);
 
   const seriesQuery = useQuery<SeriesResponse>({
     queryKey: [
@@ -248,31 +222,14 @@ export function AdminChurnDashboard() {
     },
   });
 
-  const churnedQuery = useQuery<{ rows: ChurnedRow[]; month: string }>({
-    queryKey: ["/api/admin/churn/churned", churnedMonth],
+  const churnedQuery = useQuery<{ rows: ChurnedRow[] }>({
+    queryKey: ["/api/admin/churn/churned", from, to],
     queryFn: async () => {
-      const res = await fetch(
-        `/api/admin/churn/churned?month=${encodeURIComponent(churnedMonth)}`,
-        { credentials: "include" },
-      );
-      if (!res.ok) throw new Error("Αποτυχία churned");
-      return res.json();
-    },
-  });
-
-  const cohortQuery = useQuery<{ rows: CohortRow[] }>({
-    queryKey: ["/api/admin/churn/cohort", churnedMonth, "logo_churn", plan],
-    enabled: cohortOpen,
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        month: churnedMonth,
-        metric: "logo_churn",
-        plan,
-      });
-      const res = await fetch(`/api/admin/churn/cohort?${params}`, {
+      const params = new URLSearchParams({ from, to });
+      const res = await fetch(`/api/admin/churn/churned?${params}`, {
         credentials: "include",
       });
-      if (!res.ok) throw new Error("Αποτυχία cohort");
+      if (!res.ok) throw new Error("Αποτυχία λίστας");
       return res.json();
     },
   });
@@ -308,8 +265,8 @@ export function AdminChurnDashboard() {
   });
 
   const kpi = seriesQuery.data?.kpiMonth ?? null;
-  const prev = seriesQuery.data?.prevMonth ?? null;
   const series = seriesQuery.data?.series ?? [];
+  const period = seriesQuery.data?.period;
 
   const logoChart = series.map((m) => ({
     month: formatMonthLabel(m.month),
@@ -322,26 +279,14 @@ export function AdminChurnDashboard() {
 
   function exportChurnedCsv() {
     const rows = churnedQuery.data?.rows ?? [];
-    const header = [
-      "customerId",
-      "email",
-      "plan",
-      "tenure",
-      "mrrLost",
-      "kind",
-      "reason",
-      "churnDate",
-    ];
     const lines = [
-      header.join(","),
+      ["customerId", "email", "plan", "mrrLost", "reason", "churnDate"].join(","),
       ...rows.map((r) =>
         [
           r.customerId,
           JSON.stringify(r.email),
           r.planTier ?? "",
-          r.tenureBucket,
           (r.mrrLostCents / 100).toFixed(2),
-          r.churnKind ?? "",
           r.reasonCode ?? "",
           r.churnDate,
         ].join(","),
@@ -351,7 +296,7 @@ export function AdminChurnDashboard() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `churned-${churnedMonth}.csv`;
+    a.download = `churned-${from}_${to}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -375,10 +320,10 @@ export function AdminChurnDashboard() {
     <section className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold">Churn</h2>
+          <h2 className="text-xl font-semibold">Churn πελατών</h2>
           <p className="text-sm text-muted-foreground max-w-xl">
-            Logo churn: από τους ενεργούς στην αρχή του μήνα, πόσοι έφυγαν μέχρι το τέλος.
-            Η ακύρωση μετράει όταν τελειώνει η πρόσβαση — όχι όταν πατάει cancel.
+            Πόσοι πελάτες έφυγαν στην περίοδο που διάλεξες. Μετράμε όταν τελειώνει η πρόσβαση,
+            όχι όταν πατάνε cancel.
           </p>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -424,18 +369,21 @@ export function AdminChurnDashboard() {
               Τρέχων μήνας
             </Label>
           </div>
-          <div className="flex items-center gap-2 pb-2">
-            <Switch
-              id="approx-history"
-              checked={includeApproximate}
-              onCheckedChange={setIncludeApproximate}
-            />
-            <Label htmlFor="approx-history" className="text-xs max-w-[140px] leading-snug">
-              Παλιό ιστορικό (προσεγγιστικό)
-            </Label>
-          </div>
         </div>
       </div>
+
+      {period?.isApproximate && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          Τα δεδομένα πριν τις{" "}
+          <strong>
+            {seriesQuery.data?.eventsCutoverAt
+              ? formatDate(seriesQuery.data.eventsCutoverAt)
+              : "cutover"}
+          </strong>{" "}
+          είναι <strong>προσεγγιστικά</strong> (ανακατασκευή από παλιές συνδρομές). Χρήσιμα για
+          τάση, όχι για ακριβές %. Από το cutover και μετά μετράμε σωστά από Stripe webhooks.
+        </div>
+      )}
 
       {seriesQuery.data?.live && (
         <Card>
@@ -454,41 +402,50 @@ export function AdminChurnDashboard() {
                 {formatEuro(seriesQuery.data.pendingSummary.mrrAtRiskCents)} at risk
               </div>
             </div>
-            {seriesQuery.data.dunningCount > 0 && (
-              <div>
-                <div className="text-xs text-muted-foreground">Σε dunning</div>
-                <div className="text-lg font-semibold tabular-nums">
-                  {seriesQuery.data.dunningCount}
-                </div>
-              </div>
-            )}
           </CardContent>
         </Card>
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <Card
-          className={kpi ? "cursor-pointer hover:bg-muted/40" : undefined}
-          onClick={() => {
-            if (!kpi) return;
-            setChurnedMonth(kpi.month);
-            setCohortTitle(`Churned — ${formatMonthLabel(kpi.month)}`);
-            setCohortOpen(true);
-          }}
-        >
+        <Card>
           <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-2">
-              <CardDescription>Logo churn %</CardDescription>
+              <CardDescription>Έφυγαν στην περίοδο</CardDescription>
+              {period?.isApproximate && (
+                <Badge variant="secondary" className="text-[10px]">
+                  προσεγγιστικό
+                </Badge>
+              )}
+            </div>
+            <CardTitle className="text-3xl tabular-nums">
+              {period?.distinctChurned ?? "—"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground space-y-1">
+            <div>
+              {formatMonthLabel(from)} → {formatMonthLabel(to)}
+            </div>
+            <div>
+              MRR lost (άθροισμα):{" "}
+              {period ? formatEuro(period.mrrLostCents) : "—"}
+            </div>
+            <p>Μοναδικοί πελάτες που έχασαν όλα τα πλάνα στην περίοδο.</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-2">
+              <CardDescription>Churn % τελευταίου μήνα</CardDescription>
               <TooltipProvider>
                 <UiTooltip>
-                  <TooltipTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  <TooltipTrigger asChild>
                     <button type="button" className="text-muted-foreground">
                       <Info className="h-3.5 w-3.5" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs text-xs">
-                    churned / ενεργοί στην αρχή του μήνα. Μόνο μήνες μετά το cutover
-                    (καθαρά webhook data).
+                    Από τους ενεργούς στην αρχή του μήνα, πόσοι % έφυγαν μέχρι το τέλος.
                   </TooltipContent>
                 </UiTooltip>
               </TooltipProvider>
@@ -500,39 +457,23 @@ export function AdminChurnDashboard() {
           <CardContent className="text-xs text-muted-foreground space-y-1">
             {kpi ? (
               <>
-                <div>
-                  {formatMonthLabel(kpi.month)}: {kpi.churnedCount} / {kpi.customersStart}{" "}
-                  έφυγαν
+                <div className="flex items-center gap-2">
+                  {formatMonthLabel(kpi.month)}: {kpi.churnedCount}/{kpi.customersStart}
+                  {kpi.isApproximate && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      προσεγγιστικό
+                    </Badge>
+                  )}
                 </div>
-                <div>Δ vs προηγ.: {deltaPct(kpi.logoChurnPct, prev?.logoChurnPct)}</div>
-                <div>T3M: {formatPct(kpi.logoChurnT3mPct)}</div>
                 {kpi.smallSample && (
-                  <Badge variant="secondary" className="text-[10px] font-normal">
+                  <Badge variant="outline" className="text-[10px] font-normal">
                     Μικρό δείγμα
                   </Badge>
                 )}
               </>
             ) : (
-              <p>
-                Δεν υπάρχει ακόμα ολοκληρωμένος μήνας με αξιόπιστα data μετά το cutover
-                {seriesQuery.data?.eventsCutoverAt
-                  ? ` (${formatDate(seriesQuery.data.eventsCutoverAt)})`
-                  : ""}
-                . Μέχρι τότε κοίτα ζωντανά + εκκρεμείς ακυρώσεις.
-              </p>
+              <p>Δεν υπάρχει μήνας με δεδομένα στο εύρος.</p>
             )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Ενεργοί στον μήνα KPI</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {kpi ? `${kpi.customersStart} → ${kpi.customersEnd}` : "—"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Αρχή → τέλος μήνα (μόνο αξιόπιστοι μήνες).
           </CardContent>
         </Card>
 
@@ -544,7 +485,7 @@ export function AdminChurnDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Πάτησαν cancel, η πρόσβαση δεν έχει τελειώσει ακόμα.
+            Πάτησαν cancel· η πρόσβαση δεν έχει τελειώσει ακόμα.
           </CardContent>
         </Card>
       </div>
@@ -552,7 +493,7 @@ export function AdminChurnDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Εκκρεμείς ακυρώσεις</CardTitle>
-          <CardDescription>Το πιο actionable — πριν γίνει churn.</CardDescription>
+          <CardDescription>Θα γίνουν churn όταν λήξει η περίοδος.</CardDescription>
         </CardHeader>
         <CardContent>
           {(pendingQuery.data?.rows?.length ?? 0) === 0 ? (
@@ -566,7 +507,6 @@ export function AdminChurnDashboard() {
                   <TableHead>MRR</TableHead>
                   <TableHead>Λήξη</TableHead>
                   <TableHead>Ημέρες</TableHead>
-                  <TableHead>Λόγος</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -582,11 +522,6 @@ export function AdminChurnDashboard() {
                     <TableCell>{formatEuro(r.mrrCents)}</TableCell>
                     <TableCell>{formatDate(r.accessUntil)}</TableCell>
                     <TableCell>{r.daysLeft ?? "—"}</TableCell>
-                    <TableCell>
-                      {r.reasonCode
-                        ? REASON_LABELS[r.reasonCode] || r.reasonCode
-                        : "—"}
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -597,19 +532,15 @@ export function AdminChurnDashboard() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Μηνιαίο logo churn</CardTitle>
+          <CardTitle>Churn % ανά μήνα</CardTitle>
           <CardDescription>
-            {includeApproximate
-              ? "Περιλαμβάνει προσεγγιστικό ιστορικό (γκρι μπάρες) — μη το εμπιστεύεσαι."
-              : "Μόνο μήνες μετά το cutover. Άδειο = δεν έκλεισε ακόμα αξιόπιστος μήνας."}
+            Γκρι μπάρα = προσεγγιστικό ιστορικό. Πράσινη = μετά το cutover (αξιόπιστο).
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[280px]">
           {logoChart.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-6">
-              Δεν υπάρχουν ακόμα ολοκληρωμένοι αξιόπιστοι μήνες για chart.
-              <br />
-              Από τον επόμενο μήνα μετά το cutover θα γεμίζει αυτόματα από webhooks.
+            <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+              Δεν υπάρχουν μήνες με δεδομένα στο εύρος.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -619,7 +550,7 @@ export function AdminChurnDashboard() {
                 <YAxis tick={{ fontSize: 11 }} unit="%" />
                 <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} />
                 <Legend />
-                <Bar dataKey="logo" name="Logo churn %" radius={[2, 2, 0, 0]}>
+                <Bar dataKey="logo" name="Churn %" radius={[2, 2, 0, 0]}>
                   {logoChart.map((entry) => (
                     <Cell
                       key={entry.ym}
@@ -646,25 +577,26 @@ export function AdminChurnDashboard() {
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle>Churned στον μήνα</CardTitle>
-            <CardDescription>Ποιοι έφυγαν — επεξεργασία λόγου</CardDescription>
+            <CardTitle>Ποιοι έφυγαν στην περίοδο</CardTitle>
+            <CardDescription>
+              {formatMonthLabel(from)} → {formatMonthLabel(to)} · ένας πελάτης = μία γραμμή
+            </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <Input
-              type="month"
-              className="w-[150px]"
-              value={churnedMonth}
-              onChange={(e) => setChurnedMonth(e.target.value)}
-            />
-            <Button variant="outline" size="sm" onClick={exportChurnedCsv}>
-              <Download className="h-4 w-4 mr-1" />
-              CSV
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={exportChurnedCsv}>
+            <Download className="h-4 w-4 mr-1" />
+            CSV
+          </Button>
         </CardHeader>
         <CardContent>
-          {(churnedQuery.data?.rows?.length ?? 0) === 0 ? (
-            <p className="text-sm text-muted-foreground">Κανένα churn αυτόν τον μήνα.</p>
+          {churnedQuery.isLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Φόρτωση…
+            </div>
+          ) : (churnedQuery.data?.rows?.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Κανένας churn σε αυτή την περίοδο.
+            </p>
           ) : (
             <Table>
               <TableHeader>
@@ -680,7 +612,7 @@ export function AdminChurnDashboard() {
               </TableHeader>
               <TableBody>
                 {churnedQuery.data!.rows.map((r) => (
-                  <TableRow key={r.eventId}>
+                  <TableRow key={`${r.customerId}-${r.eventId}`}>
                     <TableCell>
                       <div className="font-medium">{r.email}</div>
                       <div className="text-xs text-muted-foreground">#{r.customerId}</div>
@@ -724,51 +656,6 @@ export function AdminChurnDashboard() {
           )}
         </CardContent>
       </Card>
-
-      <Dialog open={cohortOpen} onOpenChange={setCohortOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-auto">
-          <DialogHeader>
-            <DialogTitle>{cohortTitle}</DialogTitle>
-            <DialogDescription>
-              {formatMonthLabel(churnedMonth)} ·{" "}
-              {plan === "all" ? "Όλα" : TIER_LABEL[plan] || plan}
-            </DialogDescription>
-          </DialogHeader>
-          {cohortQuery.isLoading ? (
-            <div className="flex items-center gap-2 py-6 text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Φόρτωση…
-            </div>
-          ) : (cohortQuery.data?.rows?.length ?? 0) === 0 ? (
-            <p className="text-sm text-muted-foreground">Κανένας πελάτης.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Πλάνο</TableHead>
-                  <TableHead>MRR</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cohortQuery.data!.rows.map((r) => (
-                  <TableRow key={r.customerId}>
-                    <TableCell>{r.customerId}</TableCell>
-                    <TableCell>{r.email}</TableCell>
-                    <TableCell>
-                      {r.planTier ? TIER_LABEL[r.planTier] || r.planTier : "—"}
-                    </TableCell>
-                    <TableCell>
-                      {r.mrrCents != null ? formatEuro(r.mrrCents) : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </DialogContent>
-      </Dialog>
     </section>
   );
 }
