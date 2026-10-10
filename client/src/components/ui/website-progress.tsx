@@ -426,37 +426,127 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
                               });
                               return;
                             }
-                            {
-                              const accountEmail = user?.email || 'unknown-user';
-                              const folderName = `Client Files/${accountEmail}/${website?.domain}/Website Progress`;
 
-                              (window as any).cloudinary.openUploadWidget(
+                            const accountEmail = user?.email || "unknown-user";
+                            const folderName = `Client Files/${accountEmail}/${website?.domain}/Website Progress`;
+
+                            // Signed upload (same as Media tab) — unsigned preset
+                            // hayc_dashboard_uploads_website_process fails for some clients
+                            // ("Upload preset must be whitelisted for unsigned uploads").
+                            let cloudinaryConfig = { apiKey: "", cloudName: "" };
+                            try {
+                              const configResponse = await fetch(
+                                "/api/cloudinary/signature",
                                 {
-                                  cloudName: "dem12vqtl",
-                                  uploadPreset: "hayc_dashboard_uploads_website_process",
-                                  sources: ["local", "url", "camera"],
-                                  multiple: true,
-                                  maxFiles: 10,
-                                  folder: folderName,
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({
+                                    paramsToSign: { folder: folderName },
+                                  }),
+                                  credentials: "include",
                                 },
-                                (error: any, result: any) => {
-                                  if (!error && result.event === "success") {
-                                    toast({
-                                      title: t("websiteProgress.uploadSuccessful") || "Upload Successful",
-                                      description: `${t("websiteProgress.file") || "File"} "${result.info.original_filename}" ${t("websiteProgress.uploadedSuccessfully") || "uploaded successfully"}`,
+                              );
+                              if (!configResponse.ok) {
+                                throw new Error("Failed to get configuration");
+                              }
+                              const configData = await configResponse.json();
+                              cloudinaryConfig.apiKey = configData.apiKey;
+                              cloudinaryConfig.cloudName = configData.cloudName;
+                            } catch (error) {
+                              console.error("Failed to get Cloudinary config:", error);
+                              toast({
+                                title: t("websiteProgress.uploadError") || "Upload Error",
+                                description:
+                                  t("websiteProgress.uploadErrorDescription") ||
+                                  "Failed to upload file. Please try again.",
+                                variant: "destructive",
+                              });
+                              return;
+                            }
+
+                            const widget = (window as any).cloudinary.createUploadWidget(
+                              {
+                                cloudName: cloudinaryConfig.cloudName,
+                                apiKey: cloudinaryConfig.apiKey,
+                                uploadSignature: async (
+                                  callback: any,
+                                  paramsToSign: any,
+                                ) => {
+                                  try {
+                                    const response = await fetch(
+                                      "/api/cloudinary/signature",
+                                      {
+                                        method: "POST",
+                                        headers: {
+                                          "Content-Type": "application/json",
+                                        },
+                                        body: JSON.stringify({ paramsToSign }),
+                                        credentials: "include",
+                                      },
+                                    );
+                                    if (!response.ok) {
+                                      throw new Error("Failed to get upload signature");
+                                    }
+                                    const data = await response.json();
+                                    callback({
+                                      signature: data.signature,
+                                      timestamp: data.timestamp,
                                     });
-                                    console.log("Upload successful:", result.info);
-                                  } else if (error) {
+                                  } catch (error) {
+                                    console.error("Signature generation error:", error);
                                     toast({
-                                      title: t("websiteProgress.uploadError") || "Upload Error",
-                                      description: t("websiteProgress.uploadErrorDescription") || "Failed to upload file. Please try again.",
+                                      title:
+                                        t("websiteProgress.uploadError") || "Upload Error",
+                                      description:
+                                        t("websiteProgress.uploadErrorDescription") ||
+                                        "Failed to upload file. Please try again.",
                                       variant: "destructive",
                                     });
-                                    console.error("Upload error:", error);
                                   }
+                                },
+                                folder: folderName,
+                                sources: ["local", "url", "camera"],
+                                multiple: true,
+                                maxFiles: 10,
+                                maxFileSize: 52428800,
+                                resourceType: "auto",
+                                clientAllowedFormats: [
+                                  "image",
+                                  "video",
+                                  "pdf",
+                                  "doc",
+                                  "docx",
+                                  "xls",
+                                  "xlsx",
+                                  "csv",
+                                  "txt",
+                                  "zip",
+                                  "rar",
+                                  "7z",
+                                ],
+                              },
+                              (error: any, result: any) => {
+                                if (!error && result.event === "success") {
+                                  toast({
+                                    title:
+                                      t("websiteProgress.uploadSuccessful") ||
+                                      "Upload Successful",
+                                    description: `${t("websiteProgress.file") || "File"} "${result.info.original_filename}" ${t("websiteProgress.uploadedSuccessfully") || "uploaded successfully"}`,
+                                  });
+                                } else if (error) {
+                                  toast({
+                                    title:
+                                      t("websiteProgress.uploadError") || "Upload Error",
+                                    description:
+                                      t("websiteProgress.uploadErrorDescription") ||
+                                      "Failed to upload file. Please try again.",
+                                    variant: "destructive",
+                                  });
+                                  console.error("Upload error:", error);
                                 }
-                              );
-                            }
+                              },
+                            );
+                            widget.open();
                           }}
                           className="mt-2 text-white"
                           style={{ backgroundColor: '#182B53' }}
