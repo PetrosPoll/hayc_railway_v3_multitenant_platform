@@ -1,10 +1,32 @@
 import fs from "fs/promises";
 import path from "path";
 import { eq, sql } from "drizzle-orm";
+import { v2 as cloudinary } from "cloudinary";
 import { db, pool } from "../server/db";
 import { adminTemplates } from "../shared/schema";
+import { NEWSLETTER_EMAIL_BG_FALLBACK } from "../shared/newsletter";
 
 const IMPORT_ROOT = path.resolve(process.cwd(), "newsletter-templates-import");
+/** Decorative body patterns — too large / unused by Gmail CSS; use solid color. */
+const DECORATIVE_BG_BASENAMES = new Set([
+  "pattern.jpg",
+  "pattern.jpeg",
+  "pattern.png",
+  "pattern copy.jpg",
+]);
+
+function configureCloudinary(): void {
+  const cloud_name = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const api_key = process.env.CLOUDINARY_API_KEY?.trim();
+  const api_secret = process.env.CLOUDINARY_API_SECRET?.trim();
+  if (!cloud_name || !api_key || !api_secret) {
+    throw new Error(
+      "Cloudinary env required (CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET). " +
+        "Email clients strip data-URI images; templates must use hosted HTTPS URLs.",
+    );
+  }
+  cloudinary.config({ cloud_name, api_key, api_secret, secure: true });
+}
 const LEGACY_SAMPLE_TEMPLATES = [
   {
     name: "Sports Newsletter",
@@ -55,9 +77,18 @@ async function readAsDataUri(filePath: string): Promise<string> {
   return `data:${mime};base64,${bytes.toString("base64")}`;
 }
 
-async function inlineTemplateAssets(html: string, templateDir: string): Promise<string> {
+/**
+ * Host template images on Cloudinary and rewrite HTML to HTTPS URLs.
+ * Gmail (and others) strip data-URI images and often ignore CSS background-image;
+ * HTML background="https://..." on <td>/<table> is the reliable path for section art.
+ */
+async function resolveTemplateAssets(
+  html: string,
+  templateDir: string,
+  folderName: string,
+): Promise<string> {
   let output = html;
-  const cache = new Map<string, string>();
+  const urlCache = new Map<string, string>();
   let templateFilesCache: string[] | null = null;
 
   async function getTemplateFiles(): Promise<string[]> {
@@ -104,29 +135,28 @@ async function inlineTemplateAssets(html: string, templateDir: string): Promise<
     const wantedBase = path.basename(normalized).toLowerCase();
     const wantedStem = wantedBase.replace(/\.[^.]+$/, "");
 
-    // Prefer files with same stem (different extension).
-    const sameStem = imagesOnly.find((f) => path.basename(f).toLowerCase().replace(/\.[^.]+$/, "") === wantedStem);
+    const sameStem = imagesOnly.find(
+      (f) => path.basename(f).toLowerCase().replace(/\.[^.]+$/, "") === wantedStem,
+    );
     if (sameStem) return sameStem;
 
-    // Then pick nearest file name by edit distance.
     let best: { file: string; score: number } | null = null;
     for (const file of imagesOnly) {
       const base = path.basename(file).toLowerCase();
-      // Skip non-image artifacts.
       if (base === "thumbs.db" || base.endsWith(".db_encryptable")) continue;
       const score = levenshtein(base, wantedBase);
       if (!best || score < best.score) best = { file, score };
     }
 
-    // Avoid very weak matches.
     if (!best || best.score > Math.max(6, Math.floor(wantedBase.length * 0.6))) {
       return null;
     }
-
     return best.file;
   }
 
-  async function getInlinedAsset(relativeAssetPath: string): Promise<string | null> {
+  async function resolveLocalAsset(
+    relativeAssetPath: string,
+  ): Promise<{ abs: string; rel: string } | null> {
     const normalized = relativeAssetPath.replace(/^\.?\//, "").replace(/\\/g, "/");
     let resolvedPath = normalized;
     let absoluteAssetPath = path.join(templateDir, resolvedPath);
@@ -138,36 +168,97 @@ async function inlineTemplateAssets(html: string, templateDir: string): Promise<
       resolvedPath = fallback;
       absoluteAssetPath = path.join(templateDir, resolvedPath);
     }
-
-    try {
-      if (!cache.has(absoluteAssetPath)) {
-        cache.set(absoluteAssetPath, await readAsDataUri(absoluteAssetPath));
-      }
-      return cache.get(absoluteAssetPath)!;
-    } catch {
-      return null;
-    }
+    return { abs: absoluteAssetPath, rel: resolvedPath };
   }
 
+  async function getHostedAssetUrl(relativeAssetPath: string): Promise<string | null> {
+    const local = await resolveLocalAsset(relativeAssetPath);
+    if (!local) return null;
+
+    const base = path.basename(local.rel).toLowerCase();
+    if (DECORATIVE_BG_BASENAMES.has(base)) {
+      return null; // caller uses solid fallback
+    }
+
+    if (urlCache.has(local.abs)) return urlCache.get(local.abs)!;
+
+    const publicId = `newsletter-templates/${folderName}/${local.rel.replace(/\.[^.]+$/, "")}`
+      .replace(/\\/g, "/")
+      .replace(/\/+/g, "/");
+
+    const result = await cloudinary.uploader.upload(local.abs, {
+      public_id: publicId,
+      overwrite: true,
+      resource_type: "image",
+      unique_filename: false,
+    });
+    const url = result.secure_url as string;
+    urlCache.set(local.abs, url);
+    console.log(`  [img] ${local.rel} → ${url}`);
+    return url;
+  }
+
+  // src / href / HTML background="images/..."
   const attrRegex = /(src|href|background)=["']((?:\.\/)?images\/[^"']+)["']/gi;
   const attrMatches = [...output.matchAll(attrRegex)];
   for (const match of attrMatches) {
     const full = match[0];
     const attr = match[1];
     const rel = match[2];
-    const inlined = await getInlinedAsset(rel);
-    if (inlined) {
-      output = output.replace(full, `${attr}="${inlined}"`);
+    const base = path.basename(rel).toLowerCase();
+    if (attr === "background" && DECORATIVE_BG_BASENAMES.has(base)) {
+      output = output.replace(full, `background="${NEWSLETTER_EMAIL_BG_FALLBACK}"`);
+      continue;
+    }
+    const hosted = await getHostedAssetUrl(rel);
+    if (hosted) {
+      output = output.replace(full, `${attr}="${hosted}"`);
     }
   }
 
-  // Never inline CSS url(...) backgrounds as data URIs for email HTML.
-  // Pattern/hero backgrounds are often 0.5–1MB+; base64 inside style="..." makes
-  // many clients render the message as raw text (while browser previews still look fine).
+  // CSS url(./images/...) — host content art; solid color for decorative patterns
   const cssRegex = /url\((['"]?)((?:\.\/)?images\/[^'")]+)\1\)/gi;
-  output = output.replace(cssRegex, "#f6f9fc");
+  const cssMatches = [...output.matchAll(cssRegex)];
+  for (const match of cssMatches) {
+    const full = match[0];
+    const rel = match[2];
+    const base = path.basename(rel).toLowerCase();
+    if (DECORATIVE_BG_BASENAMES.has(base)) {
+      output = output.replace(full, NEWSLETTER_EMAIL_BG_FALLBACK);
+      continue;
+    }
+    const hosted = await getHostedAssetUrl(rel);
+    if (hosted) {
+      output = output.replace(full, `url('${hosted}')`);
+    } else {
+      output = output.replace(full, NEWSLETTER_EMAIL_BG_FALLBACK);
+    }
+  }
+
+  // Gmail ignores many CSS background-image rules but honors HTML background on td/table.
+  output = addHtmlBackgroundFromCss(output);
 
   return output;
+}
+
+/** Copy https background urls from style= onto the tag's background attribute. */
+function addHtmlBackgroundFromCss(html: string): string {
+  return html.replace(
+    /<(td|table|th|body)\b([^>]*?)>/gi,
+    (full, tag: string, attrs: string) => {
+      if (/\bbackground\s*=\s*["']https?:\/\//i.test(attrs)) return full;
+
+      const styleMatch = attrs.match(/\bstyle\s*=\s*(["'])([\s\S]*?)\1/i);
+      if (!styleMatch) return full;
+      const style = styleMatch[2];
+      const urlMatch = style.match(
+        /background(?:-image)?\s*:\s*url\(\s*(['"]?)(https:\/\/[^)'"]+)\1\s*\)/i,
+      );
+      if (!urlMatch) return full;
+
+      return `<${tag} background="${urlMatch[2]}"${attrs}>`;
+    },
+  );
 }
 
 async function getThumbnailDataUri(templateDir: string): Promise<string | null> {
@@ -194,6 +285,7 @@ async function getThumbnailDataUri(templateDir: string): Promise<string | null> 
 
 async function run(): Promise<void> {
   const shouldUpdateExisting = process.argv.includes("--update-existing");
+  configureCloudinary();
   const dirents = await fs.readdir(IMPORT_ROOT, { withFileTypes: true });
   const templateDirs = dirents.filter((d) => d.isDirectory()).map((d) => d.name).sort();
 
@@ -222,7 +314,8 @@ async function run(): Promise<void> {
       .limit(1);
 
     const rawHtml = await fs.readFile(htmlPath, "utf-8");
-    const html = await inlineTemplateAssets(rawHtml, templateDir);
+    console.log(`[import] ${name}`);
+    const html = await resolveTemplateAssets(rawHtml, templateDir, folderName);
     const thumbnail = await getThumbnailDataUri(templateDir);
     const design = JSON.stringify({
       importSource: "newsletter-templates-import",

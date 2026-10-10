@@ -17,28 +17,25 @@ export function getNewsletterReplyToAddresses(
 }
 
 /**
- * Email clients (Gmail etc.) often cannot parse megabyte CSS `url(data:image...)`
- * backgrounds and fall back to showing the raw HTML/base64 as plain text.
- * Browser template previews handle data URIs fine — send path must strip them.
+ * Safety net for leftover data-URI CSS backgrounds (break many clients / dump
+ * base64 as text). Content images should already be HTTPS (Cloudinary) after import.
+ * Does not touch https:// backgrounds or <img src="https://...">.
  */
 export function sanitizeNewsletterHtmlForSend(html: string): string {
   if (!html || !html.includes("data:image")) return html;
 
   let out = html;
 
-  // background-image: url(data:...)
   out = out.replace(
     /background-image\s*:\s*url\(\s*(['"]?)data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+\1\s*\)\s*;?/gi,
     "background-image: none;",
   );
 
-  // background: url(data:...)  (common on <body style="...">)
   out = out.replace(
     /background\s*:\s*url\(\s*(['"]?)data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+\1\s*\)\s*;?/gi,
     `background: ${NEWSLETTER_EMAIL_BG_FALLBACK};`,
   );
 
-  // Legacy HTML background="data:..."
   out = out.replace(
     /\sbackground\s*=\s*(['"])data:image\/[a-z0-9.+-]+;base64,[A-Za-z0-9+/=\s]+\1/gi,
     ` background="${NEWSLETTER_EMAIL_BG_FALLBACK}"`,
