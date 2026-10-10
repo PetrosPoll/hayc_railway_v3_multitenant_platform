@@ -551,6 +551,14 @@ async function main() {
     }
   }
 
+  if (!dryRun) {
+    const { reapplyIgnoredChurnFlags } = await import(
+      "../server/services/churn-overrides"
+    );
+    const reapplied = await reapplyIgnoredChurnFlags();
+    console.log(`Re-applied ignored churn flags: ${reapplied} event(s)`);
+  }
+
   const activeCustomers = recon.filter((r) => r.activeCores > 0);
   const totalMrr = activeCustomers.reduce((s, r) => s + r.stripeMrr, 0);
   const arpa =

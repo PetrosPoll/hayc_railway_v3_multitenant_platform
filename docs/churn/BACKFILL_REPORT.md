@@ -1,28 +1,28 @@
 # Churn backfill report
 
-Generated: 2026-10-10T01:43:45.594Z
+Generated: 2026-10-10T02:06:58.623Z
 dryRun: false
 events_cutover_at: 2026-10-10T00:52:47.539Z
 
 ## Summary
 - Customers processed: 64
-- Backfill events cleared: 164
+- Backfill events cleared: 155
 - launched_at updates: 44
 - customer_stripe_accounts seeded: 64
 - stripe_price_map seed writes: 19
 - Unmapped Stripe price IDs: 22
-- Approximations logged: 21
-- Active customers (live Stripe, ≥1 core sub): 11
-- Total MRR ex-VAT (cents): 68883
-- ARPA ex-VAT (cents): 6262 (€62.62)
+- Approximations logged: 8
+- Active customers (live Stripe, ≥1 core sub): 30
+- Total MRR ex-VAT (cents): 147548
+- ARPA ex-VAT (cents): 4918 (€49.18)
 
 ## ARPA (ex VAT)
 
 | metric | value |
 |---|---|
-| active_customers | 11 |
-| mrr_cents_ex_vat | 68883 |
-| arpa_cents_ex_vat | 6262 |
+| active_customers | 30 |
+| mrr_cents_ex_vat | 147548 |
+| arpa_cents_ex_vat | 4918 |
 
 ## Logo churn (last 12 months) — sanity table
 
@@ -68,25 +68,12 @@ Mode: **stripe-history**. Cohort = ≥1 core Stripe sub covering month start →
 - `price_1U3PhXB3lUTVGKGU4Qkkw13O`
 
 ## Approximations
-- customer 38: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 50: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 51: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 5: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 7: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 6: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 46: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 42: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 48: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 11: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 9: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 13: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 27: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 32: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 24: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 21: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 16: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 28: period-end cancel after cutover — left active until Stripe deleted webhook
-- customer 56: period-end cancel after cutover — left active until Stripe deleted webhook
+- customer 51: cutover reconcile expansion mrr=4900
+- customer 6: cutover reconcile expansion mrr=4900
+- customer 46: cutover reconcile expansion mrr=4900
+- customer 42: cutover reconcile expansion mrr=4900
+- customer 9: cutover reconcile expansion mrr=4900
+- customer 32: cutover reconcile contraction mrr=3900
 - customer 69: no Stripe subs left; used local plan rows for logo history
 - customer 69: period-end cancel after cutover — left active until Stripe deleted webhook
 
@@ -248,48 +235,48 @@ Mode: **stripe-history**. Cohort = ≥1 core Stripe sub covering month start →
 ## Live Stripe MRR snapshot (ex VAT, per customer)
 | customerId | email | mrr_cents | active_cores |
 |---|---|---|---|
-| 38 | dmlapartment@gmail.com | 0 | 0 |
+| 38 | dmlapartment@gmail.com | 3900 | 1 |
 | 39 | info@primeluxtransfers.com | 0 | 0 |
 | 40 | info@i-paidi.gr | 0 | 0 |
 | 41 | info@italingua.gr | 0 | 0 |
-| 50 | dionpaxinos@yahoo.gr | 0 | 0 |
-| 51 | ns.holistic.coach@gmail.com | 0 | 0 |
+| 50 | dionpaxinos@yahoo.gr | 2700 | 1 |
+| 51 | ns.holistic.coach@gmail.com | 4900 | 1 |
 | 47 | lvic@digitalsima.gr | 0 | 0 |
 | 3 | agapiapostolopoulou@gmail.com | 0 | 0 |
 | 8 | anastasiamparmpouta31@gmail.com | 0 | 0 |
-| 5 | a.patrikounakos@hotmail.com | 0 | 0 |
+| 5 | a.patrikounakos@hotmail.com | 3900 | 1 |
 | 10 | xrisa.xatzimarinaki@gmail.com | 0 | 0 |
-| 7 | katsarostony@gmail.com | 0 | 0 |
-| 6 | A.kokonapsychologist@hotmail.com | 0 | 0 |
+| 7 | katsarostony@gmail.com | 3400 | 1 |
+| 6 | A.kokonapsychologist@hotmail.com | 4900 | 1 |
 | 12 | dg4747dg@gmail.com | 0 | 0 |
 | 4 | www.aggeloskaravidas@gmail.com | 0 | 0 |
-| 46 | achilleasfekkas@gmail.com | 0 | 0 |
-| 42 | christopouloueleni1@gmail.com | 0 | 0 |
-| 48 | milioutaniafineart@gmail.com | 0 | 0 |
-| 11 | ecowavetech@gmail.com | 0 | 0 |
-| 9 | pinzer.carina@gmail.com | 0 | 0 |
-| 13 | dnasikas@gmail.com | 0 | 0 |
+| 46 | achilleasfekkas@gmail.com | 4900 | 1 |
+| 42 | christopouloueleni1@gmail.com | 4900 | 1 |
+| 48 | milioutaniafineart@gmail.com | 3900 | 1 |
+| 11 | ecowavetech@gmail.com | 7800 | 2 |
+| 9 | pinzer.carina@gmail.com | 4900 | 1 |
+| 13 | dnasikas@gmail.com | 3900 | 1 |
 | 37 | gkelykal5@gmail.com | 0 | 0 |
-| 27 | nikosdellios.nd@gmail.com | 0 | 0 |
+| 27 | nikosdellios.nd@gmail.com | 2700 | 1 |
 | 31 | yourholidays2023@gmail.com | 0 | 0 |
 | 34 | yannisravanopoulos@gmail.com | 0 | 0 |
 | 29 | petsavas@gmail.com | 0 | 0 |
-| 32 | zouvanesa@gmail.com | 0 | 0 |
+| 32 | zouvanesa@gmail.com | 3900 | 1 |
 | 30 | nrai197869@gmail.com | 0 | 0 |
 | 23 | konstantinoskechagias87@gmail.com | 0 | 0 |
 | 25 | michaelkostakis@yahoo.gr | 0 | 0 |
 | 20 | gortynalive@gmail.com | 0 | 0 |
 | 19 | gianni.gerzelis@gmail.com | 0 | 0 |
 | 43 | u2371865430@gmail.com | 0 | 0 |
-| 24 | p.k7xas@gmail.com | 0 | 0 |
-| 21 | s.karefyllakis@gmail.com | 0 | 0 |
+| 24 | p.k7xas@gmail.com | 3900 | 1 |
+| 21 | s.karefyllakis@gmail.com | 3400 | 1 |
 | 14 | dragicaidoski10@gmail.com | 0 | 0 |
-| 16 | georgiosgalanopoulos@yahoo.com | 0 | 0 |
+| 16 | georgiosgalanopoulos@yahoo.com | 3900 | 1 |
 | 49 | fot_karvelis@yahoo.gr | 4900 | 1 |
 | 17 | gvasilarakos@yahoo.com | 0 | 0 |
 | 22 | prifkon@gmail.com | 0 | 0 |
-| 28 | proiospan@gmail.com | 0 | 0 |
-| 15 | mamacoachgreece@gmail.com | 0 | 0 |
+| 28 | proiospan@gmail.com | 2700 | 1 |
+| 15 | mamacoachgreece@gmail.com | 1000 | 0 |
 | 26 | diakonis247@gmail.com | 0 | 0 |
 | 44 | gkselfchallenge@gmail.com | 0 | 0 |
 | 33 | pdeliyianni@gmail.com | 0 | 0 |
@@ -307,7 +294,7 @@ Mode: **stripe-history**. Cohort = ≥1 core Stripe sub covering month start →
 | 62 | kavalarealestate@hotmail.com | 4900 | 1 |
 | 64 | vitabairaktaris@gmail.com | 6400 | 1 |
 | 65 | ioanna.prudon@viaferriesethotels.com | 4900 | 1 |
-| 56 | tsoureka@gmail.com | 0 | 0 |
+| 56 | tsoureka@gmail.com | 4165 | 1 |
 | 67 | info@deselio.gr | 4083 | 1 |
 | 68 | info@eskapex.com | 6400 | 1 |
 | 69 | kalidoni834@gmail.com | 0 | 0 |

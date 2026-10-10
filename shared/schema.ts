@@ -1899,6 +1899,13 @@ export const subscriptionEvents = pgTable(
     reasonNote: text("reason_note"),
     preLaunch: boolean("pre_launch"),
     source: text("source").notNull(), // webhook | backfill | admin
+    /** Admin false-positive: exclude from logo churn / MRR churn metrics. */
+    metricsIgnored: boolean("metrics_ignored").notNull().default(false),
+    metricsIgnoredAt: timestamp("metrics_ignored_at", { withTimezone: true }),
+    metricsIgnoredByUserId: integer("metrics_ignored_by_user_id").references(
+      () => users.id,
+    ),
+    metricsIgnoredNote: text("metrics_ignored_note"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
@@ -1951,3 +1958,46 @@ export const churnStripeEventReceipts = pgTable("churn_stripe_event_receipts", {
 });
 
 export type ChurnStripeEventReceipt = typeof churnStripeEventReceipts.$inferSelect;
+
+/**
+ * Customer marked as still paying outside Stripe (offline).
+ * Timeline events (source=admin) keep logo/MRR in sync; this row drives the admin UI.
+ */
+export const churnOfflineActives = pgTable("churn_offline_actives", {
+  customerId: integer("customer_id")
+    .primaryKey()
+    .references(() => users.id),
+  mrrCents: integer("mrr_cents").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  /** After this instant the customer is treated as churned again. Null = open-ended. */
+  untilAt: timestamp("until_at", { withTimezone: true }),
+  note: text("note"),
+  createdByUserId: integer("created_by_user_id")
+    .notNull()
+    .references(() => users.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ChurnOfflineActive = typeof churnOfflineActives.$inferSelect;
+
+/** Survives backfill rebuilds: ignore logo churn for this customer on this Athens calendar day. */
+export const churnIgnoredChurns = pgTable(
+  "churn_ignored_churns",
+  {
+    customerId: integer("customer_id")
+      .notNull()
+      .references(() => users.id),
+    /** YYYY-MM-DD in Europe/Athens of the ignored churn. */
+    effectiveDay: text("effective_day").notNull(),
+    note: text("note"),
+    createdByUserId: integer("created_by_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.customerId, t.effectiveDay] }),
+  }),
+);
+
+export type ChurnIgnoredChurn = typeof churnIgnoredChurns.$inferSelect;

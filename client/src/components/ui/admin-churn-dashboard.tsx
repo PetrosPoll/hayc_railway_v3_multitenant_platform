@@ -34,6 +34,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Tooltip as UiTooltip,
   TooltipContent,
   TooltipProvider,
@@ -252,6 +260,17 @@ export function AdminChurnDashboard() {
     },
   });
 
+  const [offlineFor, setOfflineFor] = useState<ChurnedRow | null>(null);
+  const [offlineMrr, setOfflineMrr] = useState("");
+  const [offlineUntil, setOfflineUntil] = useState("");
+  const [offlineNote, setOfflineNote] = useState("");
+
+  function invalidateChurnQueries() {
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/churn/churned"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/churn/series"] });
+    queryClient.invalidateQueries({ queryKey: ["/api/admin/churn/offline"] });
+  }
+
   const updateReason = useMutation({
     mutationFn: async (input: {
       eventId: number;
@@ -274,8 +293,70 @@ export function AdminChurnDashboard() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/churn/churned"] });
+      invalidateChurnQueries();
       toast({ title: "Αποθηκεύτηκε ο λόγος" });
+    },
+    onError: (e: Error) => {
+      toast({ variant: "destructive", title: "Σφάλμα", description: e.message });
+    },
+  });
+
+  const ignoreChurn = useMutation({
+    mutationFn: async (input: { eventId: number; note?: string }) => {
+      const res = await fetch(`/api/admin/churn/events/${input.eventId}/ignore`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ignored: true, note: input.note ?? null }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Αποτυχία");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      invalidateChurnQueries();
+      toast({ title: "Αγνοήθηκε το churn (ψευδές)" });
+    },
+    onError: (e: Error) => {
+      toast({ variant: "destructive", title: "Σφάλμα", description: e.message });
+    },
+  });
+
+  const setOffline = useMutation({
+    mutationFn: async () => {
+      if (!offlineFor) throw new Error("Δεν επιλέχθηκε πελάτης");
+      const mrrEuros = Number(offlineMrr.replace(",", "."));
+      if (!Number.isFinite(mrrEuros) || mrrEuros <= 0) {
+        throw new Error("Βάλε θετικό MRR σε €");
+      }
+      const res = await fetch("/api/admin/churn/offline", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: offlineFor.customerId,
+          mrrEuros,
+          untilAt: offlineUntil.trim()
+            ? `${offlineUntil.trim()}T23:59:59.999+03:00`
+            : null,
+          note: offlineNote.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Αποτυχία");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setOfflineFor(null);
+      setOfflineMrr("");
+      setOfflineUntil("");
+      setOfflineNote("");
+      invalidateChurnQueries();
+      toast({ title: "Σημειώθηκε ως ενεργός offline" });
     },
     onError: (e: Error) => {
       toast({ variant: "destructive", title: "Σφάλμα", description: e.message });
@@ -813,6 +894,7 @@ export function AdminChurnDashboard() {
                   <TableHead>Είδος</TableHead>
                   <TableHead>Λόγος</TableHead>
                   <TableHead>Ημ/νία</TableHead>
+                  <TableHead className="text-right">Ενέργειες</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -833,13 +915,22 @@ export function AdminChurnDashboard() {
                     <TableCell className="min-w-[180px]">
                       <Select
                         value={r.reasonCode || "unknown"}
-                        onValueChange={(code) =>
+                        onValueChange={(code) => {
+                          let reasonNote = r.reasonNote;
+                          if (code === "other") {
+                            const note = window.prompt(
+                              "Σημείωση για λόγο «Άλλο» (υποχρεωτικό):",
+                              r.reasonNote || "",
+                            );
+                            if (note == null || !note.trim()) return;
+                            reasonNote = note.trim();
+                          }
                           updateReason.mutate({
                             eventId: r.eventId,
                             reasonCode: code,
-                            reasonNote: r.reasonNote,
-                          })
-                        }
+                            reasonNote,
+                          });
+                        }}
                       >
                         <SelectTrigger className="h-8">
                           <SelectValue />
@@ -854,6 +945,45 @@ export function AdminChurnDashboard() {
                       </Select>
                     </TableCell>
                     <TableCell>{formatDate(r.churnDate)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex flex-col items-end gap-1 sm:flex-row sm:justify-end">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8"
+                          disabled={ignoreChurn.isPending}
+                          onClick={() => {
+                            if (
+                              !window.confirm(
+                                `Να αγνοηθεί το churn για ${r.email}; Δεν θα μετράει στα KPIs (ψευδές churn).`,
+                              )
+                            ) {
+                              return;
+                            }
+                            ignoreChurn.mutate({ eventId: r.eventId });
+                          }}
+                        >
+                          Αγνόηση
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-8"
+                          onClick={() => {
+                            setOfflineFor(r);
+                            setOfflineMrr(
+                              r.mrrLostCents > 0
+                                ? String(Math.round(r.mrrLostCents) / 100)
+                                : "",
+                            );
+                            setOfflineUntil("");
+                            setOfflineNote("");
+                          }}
+                        >
+                          Offline
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -861,6 +991,70 @@ export function AdminChurnDashboard() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!offlineFor}
+        onOpenChange={(open) => {
+          if (!open) setOfflineFor(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ενεργός offline</DialogTitle>
+            <DialogDescription>
+              {offlineFor?.email} — μετράει ως ενεργός με το MRR που θα βάλεις.
+              Αν ορίσεις «έως», μετά την ημερομηνία μετράει ξανά ως churn.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="offline-mrr">MRR (€ / μήνα)</Label>
+              <Input
+                id="offline-mrr"
+                type="number"
+                min={1}
+                step="0.01"
+                value={offlineMrr}
+                onChange={(e) => setOfflineMrr(e.target.value)}
+                placeholder="π.χ. 49"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="offline-until">Έως (προαιρετικό)</Label>
+              <Input
+                id="offline-until"
+                type="date"
+                value={offlineUntil}
+                onChange={(e) => setOfflineUntil(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="offline-note">Σημείωση</Label>
+              <Input
+                id="offline-note"
+                value={offlineNote}
+                onChange={(e) => setOfflineNote(e.target.value)}
+                placeholder="π.χ. πληρωμή με τιμολόγιο"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOfflineFor(null)}>
+              Άκυρο
+            </Button>
+            <Button
+              disabled={setOffline.isPending}
+              onClick={() => setOffline.mutate()}
+            >
+              {setOffline.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Αποθήκευση"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

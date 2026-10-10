@@ -10543,6 +10543,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/admin/churn/events/:eventId/ignore", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const eventId = Number(req.params.eventId);
+      if (!Number.isFinite(eventId)) {
+        return res.status(400).json({ error: "Invalid event id" });
+      }
+      const ignored = req.body?.ignored !== false && req.body?.ignored !== "false";
+      const note =
+        req.body?.note != null ? String(req.body.note) : null;
+      const { setChurnEventIgnored } = await import("./services/churn-overrides");
+      const result = await setChurnEventIgnored({
+        eventId,
+        ignored,
+        editedByUserId: user.id,
+        note,
+      });
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error });
+      }
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("Error ignoring churn event:", err);
+      return res.status(500).json({ error: "Failed to update ignore flag" });
+    }
+  });
+
+  app.get("/api/admin/churn/offline", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const { listOfflineActives } = await import("./services/churn-overrides");
+      return res.json({ rows: await listOfflineActives() });
+    } catch (err) {
+      console.error("Error listing offline actives:", err);
+      return res.status(500).json({ error: "Failed to list offline actives" });
+    }
+  });
+
+  app.post("/api/admin/churn/offline", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const customerId = Number(req.body?.customerId);
+      const mrrEuros = Number(req.body?.mrrEuros ?? req.body?.mrr);
+      const mrrCents =
+        req.body?.mrrCents != null
+          ? Number(req.body.mrrCents)
+          : Math.round(mrrEuros * 100);
+      const untilRaw = req.body?.untilAt;
+      const untilAt =
+        untilRaw != null && String(untilRaw).trim()
+          ? new Date(String(untilRaw))
+          : null;
+      if (untilAt && Number.isNaN(untilAt.getTime())) {
+        return res.status(400).json({ error: "Invalid untilAt" });
+      }
+      const note =
+        req.body?.note != null ? String(req.body.note) : null;
+      const { setOfflineActive } = await import("./services/churn-overrides");
+      const result = await setOfflineActive({
+        customerId,
+        mrrCents,
+        untilAt,
+        note,
+        createdByUserId: user.id,
+      });
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error });
+      }
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("Error setting offline active:", err);
+      return res.status(500).json({ error: "Failed to set offline active" });
+    }
+  });
+
+  app.delete("/api/admin/churn/offline/:customerId", async (req, res) => {
+    const user = await requireChurnAdmin(req, res);
+    if (!user) return;
+    try {
+      const customerId = Number(req.params.customerId);
+      if (!Number.isFinite(customerId)) {
+        return res.status(400).json({ error: "Invalid customer id" });
+      }
+      const churnNow = req.query.churnNow !== "0" && req.body?.churnNow !== false;
+      const { clearOfflineActive } = await import("./services/churn-overrides");
+      const result = await clearOfflineActive({
+        customerId,
+        editedByUserId: user.id,
+        churnNow,
+      });
+      if (!result.ok) {
+        return res.status(400).json({ error: result.error });
+      }
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error("Error clearing offline active:", err);
+      return res.status(500).json({ error: "Failed to clear offline active" });
+    }
+  });
+
   function parsePlatformAnalyticsRange(query: express.Request["query"]): { from: Date; to: Date } | null {
     const to = query.to ? new Date(String(query.to)) : new Date();
     const from = query.from

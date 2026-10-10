@@ -151,6 +151,7 @@ async function customerStatesAt(before: Date): Promise<Map<number, CustomerState
     INNER JOIN users u ON u.id = e.customer_id
     WHERE e.status_after IS NOT NULL
       AND e.effective_at < ${before}
+      AND COALESCE(e.metrics_ignored, false) = false
       AND u.account_kind = ${AccountKind.CUSTOMER}
       AND u.is_demo = false
     ORDER BY e.customer_id, e.effective_at DESC, e.id DESC
@@ -220,6 +221,7 @@ async function mrrMovementsInMonth(
     WHERE e.effective_at >= ${start}
       AND e.effective_at < ${end}
       AND e.type IN ('new', 'reactivation', 'expansion', 'contraction', 'churn')
+      AND COALESCE(e.metrics_ignored, false) = false
       AND u.account_kind = ${AccountKind.CUSTOMER}
       AND u.is_demo = false
     GROUP BY e.type
@@ -286,6 +288,7 @@ async function churnReasonAndTenure(
     .where(
       and(
         eq(subscriptionEvents.type, "churn"),
+        eq(subscriptionEvents.metricsIgnored, false),
         gte(subscriptionEvents.effectiveAt, start),
         lt(subscriptionEvents.effectiveAt, end),
         eq(users.accountKind, AccountKind.CUSTOMER),
@@ -717,6 +720,7 @@ export async function getChurnedCustomersInRange(
     .where(
       and(
         eq(subscriptionEvents.type, "churn"),
+        eq(subscriptionEvents.metricsIgnored, false),
         gte(subscriptionEvents.effectiveAt, start),
         lt(subscriptionEvents.effectiveAt, end),
         eq(users.accountKind, AccountKind.CUSTOMER),
