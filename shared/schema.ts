@@ -1006,6 +1006,7 @@ export const newsletterCampaigns = pgTable("newsletter_campaigns", {
   tagIds: integer("tag_ids").array().default(sql`ARRAY[]::integer[]`),
   excludedTagIds: integer("excluded_tag_ids").array().default(sql`ARRAY[]::integer[]`),
   senderName: text("sender_name"),
+  /** Customer Reply-To address (not the SES From). Null/empty = no-reply. */
   senderEmail: text("sender_email"),
   excludedSubscriberIds: text("excluded_subscriber_ids").array().notNull().default(sql`ARRAY[]::text[]`),
   excludedContactIds: integer("excluded_contact_ids").array().notNull().default(sql`ARRAY[]::integer[]`),
@@ -1046,7 +1047,8 @@ export const insertNewsletterCampaignSchema = createInsertSchema(newsletterCampa
   updatedAt: true,
 }).extend({
   senderName: z.string().optional(),
-  senderEmail: z.string().email().optional(),
+  /** Reply-To only; platform From is always newsletter@hayc.gr */
+  senderEmail: z.union([z.string().email(), z.literal(""), z.null()]).optional(),
   subject: z.string().optional(),
   message: z.string().optional(),
 });

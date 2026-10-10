@@ -1732,6 +1732,10 @@
                     "subject": "Email Subject *",
                     "senderName": "Sender Name",
                     "senderEmail": "Sender Email",
+                    "replyTo": "Reply-To",
+                    "replyToCustom": "Reply to my email",
+                    "replyToNone": "No reply",
+                    "fromAddressNote": "Emails are sent from newsletter@hayc.gr. Replies go to the address you choose below.",
                     "description": "Description (Optional)"
                 },
                 "placeholders": {
@@ -1739,6 +1743,7 @@
                     "subject": "Enter the email subject line",
                     "senderName": "Your Company",
                     "senderEmail": "hello@yourcompany.com",
+                    "replyTo": "hello@yourcompany.com",
                     "description": "Internal notes about this campaign"
                 },
                 "validation": {
@@ -1747,6 +1752,7 @@
                     "senderNameRequired": "Sender name is required",
                     "validEmailRequired": "Valid email is required",
                     "senderEmailRequired": "Sender email is required",
+                    "replyToRequired": "Reply-To email is required, or choose No reply",
                     "templateRequiredTitle": "Template required",
                     "templateRequiredStepDescription": "Please select an email template before continuing",
                     "templateRequiredSubmitDescription": "Please select an email template before sending the campaign",
@@ -1848,6 +1854,9 @@
                     "recipientTags": "Recipient Tags",
                     "senderName": "Sender Name",
                     "senderEmail": "Sender Email",
+                    "replyTo": "Reply-To",
+                    "replyToNone": "No reply",
+                    "fromAddress": "From",
                     "excludedSubscribers": "Excluded Subscribers",
                     "status": "Status",
                     "template": "Template"

@@ -17,6 +17,10 @@ import {
   RolePermissions,
 } from "@shared/schema";
 import { getEmailLimitWithAddOns } from "./email-limits";
+import {
+  NEWSLETTER_FROM_EMAIL,
+  getNewsletterReplyToAddresses,
+} from "@shared/newsletter";
 import { z } from "zod";
 import * as express from "express";
 import { db, pool } from "./db";
@@ -12587,9 +12591,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For non-draft campaigns, require all fields (tags are now optional)
       // Allow either message OR templateId (template provides email content)
       if (campaignStatus !== 'draft') {
-        if (!title || !senderName || !senderEmail || !subject) {
-          console.log('[CREATE CAMPAIGN] Validation failed:', { title: !!title, senderName: !!senderName, senderEmail: !!senderEmail, subject: !!subject });
-          return res.status(400).json({ error: "Title, sender name, sender email, and subject are required for non-draft campaigns" });
+        if (!title || !senderName || !subject) {
+          console.log('[CREATE CAMPAIGN] Validation failed:', { title: !!title, senderName: !!senderName, subject: !!subject });
+          return res.status(400).json({ error: "Title, sender name, and subject are required for non-draft campaigns" });
         }
         // Require either message content OR a template
         if (!message && !templateId) {
@@ -12641,7 +12645,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tagIds: tagIds || [],
         excludedTagIds: excludedTagIdsNormalized,
         senderName: senderName || null,
-        senderEmail: senderEmail || null,
+        // senderEmail column stores Reply-To (empty = no-reply)
+        senderEmail: (typeof senderEmail === "string" && senderEmail.trim()) ? senderEmail.trim() : null,
         excludedSubscriberIds: excludedSubscriberIds || [],
         subject: subject || null,
         message: message || '',
@@ -12697,9 +12702,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const finalSubject = subject !== undefined ? subject : existingCampaign.subject;
 
       if (finalStatus === 'scheduled') {
-        if (!finalTitle || !finalSenderName || !finalSenderEmail || !finalSubject) {
-          console.log('[UPDATE CAMPAIGN] Validation failed:', { title: !!finalTitle, senderName: !!finalSenderName, senderEmail: !!finalSenderEmail, subject: !!finalSubject });
-          return res.status(400).json({ error: "Title, sender name, sender email, and subject are required for scheduled campaigns" });
+        if (!finalTitle || !finalSenderName || !finalSubject) {
+          console.log('[UPDATE CAMPAIGN] Validation failed:', { title: !!finalTitle, senderName: !!finalSenderName, subject: !!finalSubject });
+          return res.status(400).json({ error: "Title, sender name, and subject are required for scheduled campaigns" });
         }
         // Require either message content OR a template
         if (!finalMessage && !finalTemplateId) {
@@ -12749,7 +12754,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         tagIds,
         excludedTagIds: excludedTagIdsNormalized,
         senderName,
-        senderEmail,
+        ...(senderEmail !== undefined
+          ? {
+              senderEmail:
+                typeof senderEmail === "string" && senderEmail.trim()
+                  ? senderEmail.trim()
+                  : null,
+            }
+          : {}),
         subject,
         message,
         status,
@@ -13242,8 +13254,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               to: subscriber.email,
               subject: campaign.subject,
               message: campaign.message,
-              fromEmail: campaign.senderEmail,
-              fromName: campaign.senderName,
+              fromEmail: NEWSLETTER_FROM_EMAIL,
+              fromName: campaign.senderName || undefined,
+              replyToAddresses: getNewsletterReplyToAddresses(campaign.senderEmail),
               html: emailHtml || undefined,
             });
 
@@ -15703,11 +15716,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const campaignStatus = status || 'draft';
 
-      // For non-draft campaigns, require all fields
+      // For non-draft campaigns, require all fields (senderEmail is optional Reply-To)
       if (campaignStatus !== 'draft') {
         const hasRecipients = tagIds && tagIds.length > 0;
-        if (!title || !hasRecipients || !senderName || !senderEmail || !subject || (!message && !templateId && !emailHtml)) {
-          return res.status(400).json({ error: "Title, recipients (tags), sender name, sender email, subject, and message/template are required for non-draft campaigns" });
+        if (!title || !hasRecipients || !senderName || !subject || (!message && !templateId && !emailHtml)) {
+          return res.status(400).json({ error: "Title, recipients (tags), sender name, subject, and message/template are required for non-draft campaigns" });
         }
       }
 
@@ -16240,8 +16253,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             subject: (campaign as any).subject || 'No Subject',
             message: (campaign as any).message || 'No Message',
             html: finalEmailHtml as string,
-            fromEmail: (campaign as any).sender_email || undefined,
+            fromEmail: NEWSLETTER_FROM_EMAIL,
             fromName: (campaign as any).sender_name || undefined,
+            replyToAddresses: getNewsletterReplyToAddresses((campaign as any).sender_email),
           });
 
           if (result.success) {

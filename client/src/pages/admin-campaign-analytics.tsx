@@ -281,8 +281,14 @@ export default function AdminCampaignAnalytics() {
                 <p className="mt-1" data-testid="text-sender-name">{campaign.senderName}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Sender Email</p>
-                <p className="mt-1" data-testid="text-sender-email">{campaign.senderEmail}</p>
+                <p className="text-sm font-medium text-gray-600">From</p>
+                <p className="mt-1" data-testid="text-from-email">newsletter@hayc.gr</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Reply-To</p>
+                <p className="mt-1" data-testid="text-sender-email">
+                  {campaign.senderEmail || "No reply"}
+                </p>
               </div>
               {campaign.excludedContactIds && campaign.excludedContactIds.length > 0 && (
                 <div>

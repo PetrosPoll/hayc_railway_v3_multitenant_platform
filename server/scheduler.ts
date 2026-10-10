@@ -5,6 +5,10 @@ import { EmailService } from "./email-service";
 import type { IStorage } from "./storage";
 import { generateUnsubscribeUrl, generateUnsubscribeFooter, resolveUnsubscribeBaseUrl } from "./unsubscribe-utils";
 import { getEmailLimitWithAddOns } from "./email-limits";
+import {
+  NEWSLETTER_FROM_EMAIL,
+  getNewsletterReplyToAddresses,
+} from "@shared/newsletter";
 
 async function markScheduledCampaignFailed(
   campaignId: number,
@@ -326,8 +330,9 @@ async function sendScheduledCampaign(campaign: any, storage: IStorage) {
             to: subscriber.email,
             subject: campaign.subject,
             message: campaign.message,
-            fromEmail: campaign.senderEmail,
-            fromName: campaign.senderName,
+            fromEmail: NEWSLETTER_FROM_EMAIL,
+            fromName: campaign.senderName || undefined,
+            replyToAddresses: getNewsletterReplyToAddresses(campaign.senderEmail),
             html: emailHtml || undefined,
           });
 

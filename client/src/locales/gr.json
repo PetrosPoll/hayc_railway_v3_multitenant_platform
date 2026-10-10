@@ -1732,6 +1732,10 @@
                     "subject": "Θέμα Email *",
                     "senderName": "Όνομα Αποστολέα",
                     "senderEmail": "Email Αποστολέα",
+                    "replyTo": "Απάντηση σε (Reply-To)",
+                    "replyToCustom": "Απάντηση στο email μου",
+                    "replyToNone": "Χωρίς απάντηση (No reply)",
+                    "fromAddressNote": "Τα email στέλνονται από newsletter@hayc.gr. Οι απαντήσεις πηγαίνουν στη διεύθυνση που επιλέγεις παρακάτω.",
                     "description": "Περιγραφή (Προαιρετικό)"
                 },
                 "placeholders": {
@@ -1739,6 +1743,7 @@
                     "subject": "Γράψε το θέμα του email",
                     "senderName": "Η Εταιρεία σου",
                     "senderEmail": "hello@yourcompany.com",
+                    "replyTo": "hello@yourcompany.com",
                     "description": "Εσωτερικές σημειώσεις για αυτή την καμπάνια"
                 },
                 "validation": {
@@ -1747,6 +1752,7 @@
                     "senderNameRequired": "Το όνομα αποστολέα είναι υποχρεωτικό",
                     "validEmailRequired": "Απαιτείται έγκυρο email",
                     "senderEmailRequired": "Το email αποστολέα είναι υποχρεωτικό",
+                    "replyToRequired": "Απαιτείται email Reply-To, ή επίλεξε Χωρίς απάντηση",
                     "templateRequiredTitle": "Απαιτείται πρότυπο",
                     "templateRequiredStepDescription": "Παρακαλώ επίλεξε ένα πρότυπο email πριν συνεχίσεις",
                     "templateRequiredSubmitDescription": "Παρακαλώ επίλεξε ένα πρότυπο email πριν στείλεις την καμπάνια",
@@ -1848,6 +1854,9 @@
                     "recipientTags": "Ετικέτες Παραληπτών",
                     "senderName": "Όνομα Αποστολέα",
                     "senderEmail": "Email Αποστολέα",
+                    "replyTo": "Απάντηση σε (Reply-To)",
+                    "replyToNone": "Χωρίς απάντηση",
+                    "fromAddress": "Αποστολέας (From)",
                     "excludedSubscribers": "Εξαιρούμενοι Συνδρομητές",
                     "status": "Κατάσταση",
                     "template": "Πρότυπο"

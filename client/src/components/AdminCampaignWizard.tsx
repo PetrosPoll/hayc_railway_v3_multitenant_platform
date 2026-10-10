@@ -11,24 +11,48 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 import { ChevronLeft, ChevronRight, Mail, Users, Eye, Send, Check, Tag as TagIcon } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { NEWSLETTER_FROM_EMAIL } from "@shared/newsletter";
 import { useTranslation } from "react-i18next";
 
-const campaignFormSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
-  purpose: z.string().optional(),
-  tagIds: z.array(z.number()).default([]),
-  excludedTagIds: z.array(z.number()).default([]),
-  subject: z.string().min(1, 'Subject is required'),
-  senderName: z.string().min(1, 'Sender name is required'),
-  senderEmail: z.string().email('Valid email is required').min(1, 'Sender email is required'),
-  message: z.string().optional(),
-  templateId: z.number().optional(),
-  scheduledFor: z.string().optional(),
-});
+const campaignFormSchema = z
+  .object({
+    title: z.string().min(1, "Title is required"),
+    description: z.string().optional(),
+    purpose: z.string().optional(),
+    tagIds: z.array(z.number()).default([]),
+    excludedTagIds: z.array(z.number()).default([]),
+    subject: z.string().min(1, "Subject is required"),
+    senderName: z.string().min(1, "Sender name is required"),
+    replyToMode: z.enum(["custom", "none"]).default("custom"),
+    replyToEmail: z.string().optional(),
+    message: z.string().optional(),
+    templateId: z.number().optional(),
+    scheduledFor: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.replyToMode !== "custom") return;
+    const email = data.replyToEmail?.trim() || "";
+    if (!email) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["replyToEmail"],
+        message: "Reply-To email is required, or choose No reply",
+      });
+      return;
+    }
+    if (!z.string().email().safeParse(email).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["replyToEmail"],
+        message: "Valid email is required",
+      });
+    }
+  });
 
 type CampaignFormData = z.infer<typeof campaignFormSchema>;
 
@@ -67,7 +91,10 @@ export function AdminCampaignWizard({
       excludedTagIds: editingCampaign?.excludedTagIds || editingCampaign?.excluded_tag_ids || [],
       subject: editingCampaign?.subject || '',
       senderName: editingCampaign?.senderName || '',
-      senderEmail: editingCampaign?.senderEmail || '',
+      replyToMode: editingCampaign
+        ? ((editingCampaign.senderEmail || editingCampaign.sender_email) ? "custom" : "none")
+        : "custom",
+      replyToEmail: editingCampaign?.senderEmail || editingCampaign?.sender_email || '',
       message: editingCampaign?.message || '',
       templateId: editingCampaign?.templateId || undefined,
       scheduledFor: editingCampaign?.scheduledFor || '',
@@ -147,7 +174,8 @@ export function AdminCampaignWizard({
         excludedTagIds: Array.isArray(campaignExcludedTagIds) ? campaignExcludedTagIds : [],
         subject: editingCampaign?.subject || '',
         senderName: campaignSenderName,
-        senderEmail: campaignSenderEmail,
+        replyToMode: campaignSenderEmail ? "custom" : "none",
+        replyToEmail: campaignSenderEmail,
         message: editingCampaign?.message || '',
         templateId: campaignTemplateId ? parseInt(campaignTemplateId.toString()) : undefined,
         scheduledFor: campaignScheduledFor ? (typeof campaignScheduledFor === 'string' ? campaignScheduledFor : new Date(campaignScheduledFor).toISOString()) : '',
@@ -253,7 +281,7 @@ export function AdminCampaignWizard({
     let fieldsToValidate: (keyof CampaignFormData)[] = [];
 
     if (currentStep === 1) {
-      fieldsToValidate = ['title', 'subject', 'senderName', 'senderEmail'];
+      fieldsToValidate = ["title", "subject", "senderName", "replyToMode", "replyToEmail"];
     } else if (currentStep === 2) {
       // Step 2: Must have a template selected
       const templateId = form.getValues('templateId');
@@ -333,8 +361,10 @@ export function AdminCampaignWizard({
       // Set status to 'scheduled' if scheduledFor is provided, otherwise 'draft'
       const status = data.scheduledFor ? 'scheduled' : 'draft';
       
+      const { replyToMode, replyToEmail, ...rest } = data;
       const response = await apiRequest(method, url, {
-        ...data,
+        ...rest,
+        senderEmail: replyToMode === "custom" ? (replyToEmail?.trim() || null) : null,
         status,
       });
 
@@ -515,34 +545,88 @@ export function AdminCampaignWizard({
                   )}
                 />
 
-                <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="senderName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t("dashboard.campaigns.wizard.fields.senderName")}</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder={t("dashboard.campaigns.wizard.placeholders.senderName")} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="rounded-md border p-4 space-y-3">
+                  <div>
+                    <p className="text-sm font-medium">
+                      {t("dashboard.campaigns.wizard.fields.replyTo")}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {t("dashboard.campaigns.wizard.fields.fromAddressNote")}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      From: {NEWSLETTER_FROM_EMAIL}
+                    </p>
+                  </div>
+
                   <FormField
                     control={form.control}
-                    name="senderName"
+                    name="replyToMode"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t("dashboard.campaigns.wizard.fields.senderName")}</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder={t("dashboard.campaigns.wizard.placeholders.senderName")} />
+                          <RadioGroup
+                            value={field.value}
+                            onValueChange={(value) => {
+                              field.onChange(value);
+                              if (value === "none") {
+                                form.setValue("replyToEmail", "");
+                                form.clearErrors("replyToEmail");
+                              }
+                            }}
+                            className="gap-3"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="custom" id="admin-reply-to-custom" />
+                              <Label htmlFor="admin-reply-to-custom" className="font-normal cursor-pointer">
+                                {t("dashboard.campaigns.wizard.fields.replyToCustom")}
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="none" id="admin-reply-to-none" />
+                              <Label htmlFor="admin-reply-to-none" className="font-normal cursor-pointer">
+                                {t("dashboard.campaigns.wizard.fields.replyToNone")}
+                              </Label>
+                            </div>
+                          </RadioGroup>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="senderEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t("dashboard.campaigns.wizard.fields.senderEmail")}</FormLabel>
-                        <FormControl>
-                          <Input {...field} type="email" placeholder="hello@yourcompany.com" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {form.watch("replyToMode") === "custom" && (
+                    <FormField
+                      control={form.control}
+                      name="replyToEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t("dashboard.campaigns.wizard.fields.replyTo")}</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="email"
+                              placeholder={t("dashboard.campaigns.wizard.placeholders.replyTo")}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </div>
 
                 <FormField
@@ -895,8 +979,13 @@ export function AdminCampaignWizard({
                         </p>
                         <p className="font-medium">
                           {form.getValues("senderName") || t("dashboard.campaigns.wizard.review.default")}
-                          {form.getValues("senderEmail") &&
-                            ` (${form.getValues("senderEmail")})`}
+                          {` <${NEWSLETTER_FROM_EMAIL}>`}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {t("dashboard.campaigns.wizard.fields.replyTo")}:{" "}
+                          {form.getValues("replyToMode") === "custom" && form.getValues("replyToEmail")
+                            ? form.getValues("replyToEmail")
+                            : t("dashboard.campaigns.wizard.fields.replyToNone")}
                         </p>
                       </div>
                     </div>

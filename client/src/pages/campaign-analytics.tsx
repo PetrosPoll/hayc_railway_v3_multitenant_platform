@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowLeft, Mail, MousePointerClick, Eye, TrendingUp, Calendar, Send, CheckCircle, XCircle, AlertCircle, Tag as TagIcon, RefreshCw, HelpCircle } from "lucide-react";
+import { NEWSLETTER_FROM_EMAIL } from "@shared/newsletter";
 
 export default function CampaignAnalytics() {
   const { websiteId, campaignId } = useParams();
@@ -372,8 +373,12 @@ export default function CampaignAnalytics() {
                 <p className="mt-1" data-testid="text-sender-name">{campaign.senderName}</p>
               </div>
               <div>
-                <p className="text-sm font-medium text-gray-600">{t("dashboard.campaigns.analytics.fields.senderEmail")}</p>
-                <p className="mt-1" data-testid="text-sender-email">{campaign.senderEmail}</p>
+                <p className="text-sm font-medium text-gray-600">{t("dashboard.campaigns.analytics.fields.fromAddress")}</p>
+                <p className="mt-1" data-testid="text-from-email">{NEWSLETTER_FROM_EMAIL}</p>
+                <p className="text-sm font-medium text-gray-600 mt-4">{t("dashboard.campaigns.analytics.fields.replyTo")}</p>
+                <p className="mt-1" data-testid="text-sender-email">
+                  {campaign.senderEmail || t("dashboard.campaigns.analytics.fields.replyToNone")}
+                </p>
               </div>
               {campaign.excludedSubscriberIds && campaign.excludedSubscriberIds.length > 0 && (
                 <div>
