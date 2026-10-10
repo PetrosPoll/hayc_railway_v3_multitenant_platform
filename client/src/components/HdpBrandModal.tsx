@@ -201,11 +201,19 @@ export function HdpBrandModal({ open, onOpenChange, siteId, websiteId, previewUr
           }),
         ]);
 
-        if (!brandRes.ok) {
+        // 204 = no brand saved yet — open with defaults instead of erroring
+        if (!brandRes.ok && brandRes.status !== 204) {
           throw new Error("Failed to fetch brand config");
         }
 
-        const brandJson = await brandRes.json();
+        let brandJson: any = null;
+        if (brandRes.status !== 204) {
+          const contentType = brandRes.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            brandJson = await brandRes.json();
+          }
+        }
+
         const siteConfigJson = siteConfigRes.ok ? await siteConfigRes.json() : null;
 
         const logoFromConfig = siteConfigJson ? getLogoFromSiteConfig(siteConfigJson) : "";
