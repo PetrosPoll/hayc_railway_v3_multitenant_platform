@@ -470,7 +470,11 @@ export async function getChurnSeries(
   return series;
 }
 
-/** Live active customers + MRR from event-log state at `now` (and local active plan rows). */
+/**
+ * Live strip: DB active plans are source of truth (matches Stripe-connected reality).
+ * Period-end cancels with status cancelled stay out of "ενεργοί" (they belong in pending).
+ * MRR from event-log for those active customers when available.
+ */
 export async function getLiveSnapshot(plan: PlanFilter = "all"): Promise<{
   activeCustomers: number;
   mrrCents: number;
@@ -478,12 +482,13 @@ export async function getLiveSnapshot(plan: PlanFilter = "all"): Promise<{
   activeFromSubscriptions: number;
 }> {
   const states = await customerStatesAt(new Date());
-  let active = filterActiveByPlan(states, plan);
 
   const subRows = await db
     .select({
       userId: subscriptions.userId,
       tier: subscriptions.tier,
+      price: subscriptions.price,
+      billingPeriod: subscriptions.billingPeriod,
     })
     .from(subscriptions)
     .innerJoin(users, eq(subscriptions.userId, users.id))
@@ -493,29 +498,40 @@ export async function getLiveSnapshot(plan: PlanFilter = "all"): Promise<{
         sql`COALESCE(${subscriptions.productType}, 'plan') = 'plan'`,
         eq(users.accountKind, AccountKind.CUSTOMER),
         eq(users.isDemo, false),
-        // Exclude synthetic churn fixture accounts
         sql`${users.email} NOT LIKE '%@hayc.test'`,
       ),
     );
 
   const subCustomers = new Set<number>();
+  const priceFallback = new Map<number, number>();
   for (const r of subRows) {
     if (plan !== "all" && r.tier !== plan) continue;
     subCustomers.add(r.userId);
+    const monthly = Math.round(
+      (r.price ?? 0) / (r.billingPeriod === "yearly" ? 12 : 1),
+    );
+    // One fallback per customer (avoid summing duplicate active plan rows)
+    if (!priceFallback.has(r.userId)) priceFallback.set(r.userId, monthly);
   }
 
-  // Drop event-log "active" ghosts with €0 MRR and no live plan row (Stripe-inactive leftovers).
-  active = active.filter(
-    (c) => c.mrrCents > 0 || subCustomers.has(c.customerId),
-  );
-  const mrrCents = active.reduce((s, c) => s + c.mrrCents, 0);
+  let mrrCents = 0;
+  for (const customerId of subCustomers) {
+    const st = states.get(customerId);
+    // Prefer Stripe-reconciled event MRR (includes addons) when present
+    if (st && st.mrrCents > 0) {
+      mrrCents += st.mrrCents;
+    } else {
+      mrrCents += priceFallback.get(customerId) ?? 0;
+    }
+  }
 
+  const activeCustomers = subCustomers.size;
   return {
-    activeCustomers: active.length,
+    activeCustomers,
     mrrCents,
     arpaCents:
-      active.length > 0 ? Math.round(mrrCents / active.length) : 0,
-    activeFromSubscriptions: subCustomers.size,
+      activeCustomers > 0 ? Math.round(mrrCents / activeCustomers) : 0,
+    activeFromSubscriptions: activeCustomers,
   };
 }
 
