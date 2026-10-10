@@ -250,7 +250,11 @@ export async function setOfflineActive(input: {
 export async function clearOfflineActive(input: {
   customerId: number;
   editedByUserId: number;
-  churnNow?: boolean;
+  /** When false, remove offline without writing a churn event. */
+  recordChurn?: boolean;
+  /** Churn effective time (defaults to now). */
+  churnAt?: Date | null;
+  note?: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const [row] = await db
     .select()
@@ -260,24 +264,33 @@ export async function clearOfflineActive(input: {
   if (!row) return { ok: false, error: "No offline active record" };
 
   const mrr = row.mrrCents;
+  const churnAt = input.churnAt ?? new Date();
+  if (Number.isNaN(churnAt.getTime())) {
+    return { ok: false, error: "Invalid churnAt" };
+  }
+  if (churnAt.getTime() < new Date(row.startedAt).getTime()) {
+    return { ok: false, error: "churnAt cannot be before offline start" };
+  }
+
   await clearOfflineAdminEvents(input.customerId);
   await db
     .delete(churnOfflineActives)
     .where(eq(churnOfflineActives.customerId, input.customerId));
 
-  if (input.churnNow !== false) {
+  if (input.recordChurn !== false) {
     await insertSubscriptionEvent({
       customerId: input.customerId,
       stripeSubscriptionId: null,
-      stripeEventId: `admin:offline-cleared:${input.customerId}:${Date.now()}`,
+      stripeEventId: `admin:offline-cleared:${input.customerId}:${churnAt.toISOString()}`,
       type: "churn",
-      effectiveAt: new Date(),
+      effectiveAt: churnAt,
       statusAfter: "churned",
       mrrAfterCents: 0,
       mrrDeltaCents: -mrr,
       churnKind: "voluntary",
       reasonCode: "other",
-      reasonNote: "Offline active cleared by admin",
+      reasonNote:
+        input.note?.trim() || "Offline payment cancelled by admin",
       source: "admin",
     });
   }

@@ -10629,12 +10629,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!Number.isFinite(customerId)) {
         return res.status(400).json({ error: "Invalid customer id" });
       }
-      const churnNow = req.query.churnNow !== "0" && req.body?.churnNow !== false;
+      const recordChurn =
+        req.query.recordChurn !== "0" &&
+        req.body?.recordChurn !== false &&
+        req.body?.churnNow !== false;
+      const churnRaw = req.body?.churnAt ?? req.body?.cancelledAt;
+      const churnAt =
+        churnRaw != null && String(churnRaw).trim()
+          ? new Date(String(churnRaw))
+          : null;
+      if (churnAt && Number.isNaN(churnAt.getTime())) {
+        return res.status(400).json({ error: "Invalid churnAt" });
+      }
+      const note =
+        req.body?.note != null ? String(req.body.note) : null;
       const { clearOfflineActive } = await import("./services/churn-overrides");
       const result = await clearOfflineActive({
         customerId,
         editedByUserId: user.id,
-        churnNow,
+        recordChurn,
+        churnAt,
+        note,
       });
       if (!result.ok) {
         return res.status(400).json({ error: result.error });

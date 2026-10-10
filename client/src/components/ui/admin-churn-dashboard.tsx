@@ -260,16 +260,41 @@ export function AdminChurnDashboard() {
     },
   });
 
+  type OfflineRow = {
+    customerId: number;
+    email: string;
+    mrrCents: number;
+    startedAt: string;
+    untilAt: string | null;
+    note: string | null;
+  };
+
   const [offlineFor, setOfflineFor] = useState<ChurnedRow | null>(null);
   const [offlineMrr, setOfflineMrr] = useState("");
   const [offlineUntil, setOfflineUntil] = useState("");
   const [offlineNote, setOfflineNote] = useState("");
+  const [cancelOfflineFor, setCancelOfflineFor] = useState<OfflineRow | null>(
+    null,
+  );
+  const [cancelOfflineDate, setCancelOfflineDate] = useState("");
+  const [cancelOfflineNote, setCancelOfflineNote] = useState("");
 
   function invalidateChurnQueries() {
     queryClient.invalidateQueries({ queryKey: ["/api/admin/churn/churned"] });
     queryClient.invalidateQueries({ queryKey: ["/api/admin/churn/series"] });
     queryClient.invalidateQueries({ queryKey: ["/api/admin/churn/offline"] });
   }
+
+  const offlineQuery = useQuery<{ rows: OfflineRow[] }>({
+    queryKey: ["/api/admin/churn/offline"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/churn/offline", {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Αποτυχία λίστας offline");
+      return res.json();
+    },
+  });
 
   const updateReason = useMutation({
     mutationFn: async (input: {
@@ -357,6 +382,43 @@ export function AdminChurnDashboard() {
       setOfflineNote("");
       invalidateChurnQueries();
       toast({ title: "Σημειώθηκε ως ενεργός offline" });
+    },
+    onError: (e: Error) => {
+      toast({ variant: "destructive", title: "Σφάλμα", description: e.message });
+    },
+  });
+
+  const cancelOffline = useMutation({
+    mutationFn: async () => {
+      if (!cancelOfflineFor) throw new Error("Δεν επιλέχθηκε πελάτης");
+      if (!cancelOfflineDate.trim()) {
+        throw new Error("Βάλε ημερομηνία ακύρωσης");
+      }
+      const res = await fetch(
+        `/api/admin/churn/offline/${cancelOfflineFor.customerId}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            recordChurn: true,
+            churnAt: `${cancelOfflineDate.trim()}T12:00:00.000+03:00`,
+            note: cancelOfflineNote.trim() || null,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Αποτυχία ακύρωσης");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setCancelOfflineFor(null);
+      setCancelOfflineDate("");
+      setCancelOfflineNote("");
+      invalidateChurnQueries();
+      toast({ title: "Offline ακυρώθηκε — μετράει ως churn" });
     },
     onError: (e: Error) => {
       toast({ variant: "destructive", title: "Σφάλμα", description: e.message });
@@ -861,6 +923,73 @@ export function AdminChurnDashboard() {
       </div>
 
       <Card>
+        <CardHeader>
+          <CardTitle>Ενεργοί offline</CardTitle>
+          <CardDescription>
+            Πληρώνουν εκτός Stripe. Όταν ακυρώσουν, δήλωσε την ημερομηνία για να μετρήσουν ως
+            churn.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {offlineQuery.isLoading ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Φόρτωση…
+            </div>
+          ) : (offlineQuery.data?.rows ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">Κανένας ενεργός offline.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Πελάτης</TableHead>
+                  <TableHead>MRR</TableHead>
+                  <TableHead>Από</TableHead>
+                  <TableHead>Έως</TableHead>
+                  <TableHead>Σημείωση</TableHead>
+                  <TableHead className="text-right">Ενέργεια</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(offlineQuery.data?.rows ?? []).map((r) => (
+                  <TableRow key={r.customerId}>
+                    <TableCell>
+                      <div className="font-medium">{r.email}</div>
+                      <div className="text-xs text-muted-foreground">#{r.customerId}</div>
+                    </TableCell>
+                    <TableCell>{formatEuro(r.mrrCents)}</TableCell>
+                    <TableCell>{formatDate(r.startedAt)}</TableCell>
+                    <TableCell>{r.untilAt ? formatDate(r.untilAt) : "—"}</TableCell>
+                    <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                      {r.note || "—"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-8"
+                        onClick={() => {
+                          setCancelOfflineFor(r);
+                          setCancelOfflineDate(
+                            new Date().toLocaleDateString("en-CA", {
+                              timeZone: "Europe/Athens",
+                            }),
+                          );
+                          setCancelOfflineNote("");
+                        }}
+                      >
+                        Ακύρωση offline
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>Ποιοι έφυγαν στην περίοδο</CardTitle>
@@ -991,6 +1120,58 @@ export function AdminChurnDashboard() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={!!cancelOfflineFor}
+        onOpenChange={(open) => {
+          if (!open) setCancelOfflineFor(null);
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Ακύρωση offline</DialogTitle>
+            <DialogDescription>
+              {cancelOfflineFor?.email} — δηλώνεις πότε σταμάτησε να πληρώνει. Θα
+              μετρήσει ως churn εκείνη την ημέρα.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <Label htmlFor="cancel-offline-date">Ημερομηνία ακύρωσης</Label>
+              <Input
+                id="cancel-offline-date"
+                type="date"
+                value={cancelOfflineDate}
+                onChange={(e) => setCancelOfflineDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cancel-offline-note">Σημείωση (προαιρετικό)</Label>
+              <Input
+                id="cancel-offline-note"
+                value={cancelOfflineNote}
+                onChange={(e) => setCancelOfflineNote(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCancelOfflineFor(null)}>
+              Άκυρο
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={cancelOffline.isPending}
+              onClick={() => cancelOffline.mutate()}
+            >
+              {cancelOffline.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Καταγραφή churn"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!offlineFor}
