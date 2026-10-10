@@ -158,19 +158,22 @@ function formatMonthLabel(ym: string): string {
   });
 }
 
-function defaultFromTo(): { from: string; to: string } {
-  const now = new Date();
+function athensYearMonth(d = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Europe/Athens",
     year: "numeric",
     month: "2-digit",
-  }).formatToParts(now);
-  const y = Number(parts.find((p) => p.type === "year")!.value);
-  const m = Number(parts.find((p) => p.type === "month")!.value);
-  const last = m === 1 ? { y: y - 1, m: 12 } : { y, m: m - 1 };
-  const to = `${last.y}-${String(last.m).padStart(2, "0")}`;
-  let fy = last.y;
-  let fm = last.m - 11;
+  }).formatToParts(d);
+  const y = parts.find((p) => p.type === "year")!.value;
+  const m = parts.find((p) => p.type === "month")!.value;
+  return `${y}-${m}`;
+}
+
+function defaultFromTo(): { from: string; to: string } {
+  const to = athensYearMonth(); // include current month so recent churns appear
+  const [ty, tm] = to.split("-").map(Number);
+  let fy = ty;
+  let fm = tm - 11;
   while (fm <= 0) {
     fm += 12;
     fy -= 1;
@@ -185,7 +188,7 @@ export function AdminChurnDashboard() {
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
   const [plan, setPlan] = useState<PlanFilter>("all");
-  const [includePartial, setIncludePartial] = useState(false);
+  const [includePartial, setIncludePartial] = useState(true);
   /** all = full history; since_cutover = only months after events cutover */
   const [dataScope, setDataScope] = useState<"all" | "since_cutover">("all");
   const includeApproximate = dataScope === "all";

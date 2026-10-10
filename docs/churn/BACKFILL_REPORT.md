@@ -1,17 +1,17 @@
 # Churn backfill report
 
-Generated: 2026-10-10T00:14:08.469Z
+Generated: 2026-10-10T00:20:52.436Z
 dryRun: false
 events_cutover_at: 2026-10-09T23:12:15.037Z
 
 ## Summary
 - Customers processed: 7
-- Backfill events cleared: 51
+- Backfill events cleared: 12
 - launched_at updates: 4
 - customer_stripe_accounts seeded: 7
 - stripe_price_map seed writes: 17
 - Unmapped Stripe price IDs: 0
-- Approximations logged: 2
+- Approximations logged: 5
 - Active customers (live Stripe, ≥1 core sub): 2
 - Total MRR ex-VAT (cents): 44200
 - ARPA ex-VAT (cents): 22100 (€221.00)
@@ -38,17 +38,20 @@ Mode: **stripe-history**. Cohort = ≥1 core Stripe sub covering month start →
 | 2026-04 | 0 | 0 | n/a | ok / mixed |
 | 2026-05 | 0 | 0 | n/a | ok / mixed |
 | 2026-06 | 0 | 0 | n/a | ok / mixed |
-| 2026-07 | 0 | 0 | n/a | ok / mixed |
-| 2026-08 | 0 | 0 | n/a | ok / mixed |
-| 2026-09 | 1 | 0 | 0 | ok / mixed |
-| 2026-10 | 4 | 2 | 50 | ok / mixed |
+| 2026-07 | 3 | 1 | 33.33 | ok / mixed |
+| 2026-08 | 2 | 0 | 0 | ok / mixed |
+| 2026-09 | 3 | 2 | 66.67 | ok / mixed |
+| 2026-10 | 4 | 0 | 0 | ok / mixed |
 
 ## Unmapped price IDs
 (none)
 
 ## Approximations
-- customer 48: cutover reconcile churn (0 live cores)
-- customer 49: cutover reconcile churn (0 live cores)
+- customer 43: no Stripe subs left; used local plan rows for logo history
+- customer 44: no Stripe subs left; used local plan rows for logo history
+- customer 45: no Stripe subs left; used local plan rows for logo history
+- customer 48: period-end cancel after cutover — left active until Stripe deleted webhook
+- customer 49: period-end cancel after cutover — left active until Stripe deleted webhook
 
 ## Duplicate candidates
 ### Same email

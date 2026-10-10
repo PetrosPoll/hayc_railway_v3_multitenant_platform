@@ -131,6 +131,41 @@ async function clearBackfillEvents() {
   return deleted.length;
 }
 
+/** Local plan rows → intervals when Stripe no longer has the subscription objects. */
+async function localPlanIntervalsForCustomer(customerId: number) {
+  const localSubs = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, customerId));
+
+  const intervals: import("../server/services/stripe-logo-timeline").SubInterval[] =
+    [];
+
+  for (const sub of localSubs) {
+    if (!sub.createdAt) continue;
+    const isPlan = (sub.productType || "plan") === "plan";
+    const isCancelled =
+      (sub.status || "").toLowerCase() === "cancelled" ||
+      (sub.status || "").toLowerCase() === "canceled";
+    // Logo end = access end (period end), not cancel click.
+    const endAt = isCancelled
+      ? sub.accessUntil ?? sub.cancelledAt ?? null
+      : null;
+    const mrrGuess = Math.round(
+      (sub.price ?? 0) / (sub.billingPeriod === "yearly" ? 12 : 1),
+    );
+    intervals.push({
+      startMs: sub.createdAt.getTime(),
+      endMs: endAt ? endAt.getTime() : null,
+      mrrCents: mrrGuess,
+      tier: sub.tier,
+      hasCore: isPlan,
+      subId: sub.stripeSubscriptionId || `local:${sub.id}`,
+    });
+  }
+  return intervals;
+}
+
 async function emitStripeHistoryForCustomer(
   customerId: number,
   stripeCustomerId: string,
@@ -147,13 +182,24 @@ async function emitStripeHistoryForCustomer(
       expand: ["data.items.data.price"],
     });
 
-    const { intervals, unknownPriceIds, usedVatFallback } =
+    let { intervals, unknownPriceIds, usedVatFallback } =
       await intervalsFromStripeSubscriptions(listed.data);
     unknownPriceIds.forEach((id) => unmappedPriceIds.add(id));
     if (usedVatFallback) {
       approximations.push(
         `customer ${customerId}: used gross/1.24 VAT fallback for some Stripe prices`,
       );
+    }
+
+    const stripeCoreCount = intervals.filter((i) => i.hasCore).length;
+    if (stripeCoreCount === 0) {
+      // Deleted from Stripe — recover logo timeline from local plan rows.
+      intervals = await localPlanIntervalsForCustomer(customerId);
+      if (intervals.some((i) => i.hasCore)) {
+        approximations.push(
+          `customer ${customerId}: no Stripe subs left; used local plan rows for logo history`,
+        );
+      }
     }
 
     const transitions = buildLogoTransitions(intervals);
@@ -186,8 +232,14 @@ async function emitStripeHistoryForCustomer(
     );
     snap.unknownPriceIds.forEach((id) => unmappedPriceIds.add(id));
 
-    // Align state at cutover with live Stripe (covers open intervals / MRR drift).
     const effectiveAt = new Date(cutover.getTime() - 1000);
+    const hasOpenCoreAfterCutover = intervals.some(
+      (i) =>
+        i.hasCore &&
+        i.startMs < cutover.getTime() &&
+        (i.endMs == null || i.endMs > cutover.getTime()),
+    );
+
     if (await backfillMayWriteEvent(effectiveAt)) {
       if (snap.activeCoreSubscriptionIds.length > 0) {
         if (lastStatus !== "active" || lastMrr !== snap.mrrCentsExVat) {
@@ -215,9 +267,10 @@ async function emitStripeHistoryForCustomer(
             });
           }
         }
-      } else if (lastStatus === "active") {
+      } else if (lastStatus === "active" && !hasOpenCoreAfterCutover) {
+        // Truly gone before/at cutover — not a period-end cancel still running.
         approximations.push(
-          `customer ${customerId}: cutover reconcile churn (0 live cores)`,
+          `customer ${customerId}: cutover reconcile churn (0 live cores, no open interval)`,
         );
         if (!dryRun) {
           await insertSubscriptionEvent({
@@ -235,6 +288,10 @@ async function emitStripeHistoryForCustomer(
             source: "backfill",
           });
         }
+      } else if (lastStatus === "active" && hasOpenCoreAfterCutover) {
+        approximations.push(
+          `customer ${customerId}: period-end cancel after cutover — left active until Stripe deleted webhook`,
+        );
       }
     }
 
