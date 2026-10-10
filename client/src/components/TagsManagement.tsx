@@ -12,6 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tag as TagIcon, Plus, Edit3, Trash2, Shield } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  invalidateNewsletterAudience,
+  tagsQueryKey,
+} from "@/lib/newsletter-query-cache";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import {
@@ -75,7 +79,15 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
 
   // Fetch tags
   const { data: tags = [], isLoading } = useQuery<any[]>({
-    queryKey: [`/api/tags?websiteProgressId=${websiteProgressId}`],
+    queryKey: tagsQueryKey(websiteProgressId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/tags?websiteProgressId=${websiteProgressId}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("Failed to fetch tags");
+      return response.json();
+    },
     enabled: !!websiteProgressId,
   });
 
@@ -98,7 +110,7 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/tags?websiteProgressId=${websiteProgressId}`] });
+      void invalidateNewsletterAudience(queryClient, websiteProgressId);
       toast({
         title: "Tag created",
         description: "Tag has been created successfully",
@@ -124,7 +136,7 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/tags?websiteProgressId=${websiteProgressId}`] });
+      void invalidateNewsletterAudience(queryClient, websiteProgressId);
       toast({
         title: "Tag updated",
         description: "Tag has been updated successfully",
@@ -148,7 +160,7 @@ export function TagsManagement({ websiteProgressId, planSubscription }: TagsMana
       return await apiRequest("DELETE", `/api/tags/${tagId}?websiteProgressId=${websiteProgressId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/tags?websiteProgressId=${websiteProgressId}`] });
+      void invalidateNewsletterAudience(queryClient, websiteProgressId);
       toast({
         title: "Tag deleted",
         description: "Tag has been deleted successfully",

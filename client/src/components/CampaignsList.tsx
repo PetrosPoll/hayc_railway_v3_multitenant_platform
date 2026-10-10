@@ -70,7 +70,15 @@ export function CampaignsList({ websiteProgressId, planSubscription }: Campaigns
 
   // Fetch tags to display tag names
   const { data: tags = [] } = useQuery<any[]>({
-    queryKey: [`/api/tags?websiteProgressId=${websiteProgressId}`],
+    queryKey: ["/api/tags", websiteProgressId],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/tags?websiteProgressId=${websiteProgressId}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("Failed to fetch tags");
+      return response.json();
+    },
     enabled: !!websiteProgressId,
   });
 

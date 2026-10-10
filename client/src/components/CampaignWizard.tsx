@@ -156,7 +156,15 @@ export function CampaignWizard({
 
   // Fetch tags
   const { data: tags = [] } = useQuery<any[]>({
-    queryKey: [`/api/tags?websiteProgressId=${websiteProgressId}`],
+    queryKey: ["/api/tags", websiteProgressId],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/tags?websiteProgressId=${websiteProgressId}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("Failed to fetch tags");
+      return response.json();
+    },
     enabled: open && !!websiteProgressId,
   });
 
@@ -245,7 +253,7 @@ export function CampaignWizard({
 
   // Fetch contacts for the selected tags (or all contacts if no tags selected)
   const { data: contacts = [] } = useQuery<any[]>({
-    queryKey: [`/api/contacts`, { websiteProgressId, tagIds: selectedTagIds }],
+    queryKey: ["/api/contacts", websiteProgressId, { tagIds: selectedTagIds }],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append('websiteProgressId', websiteProgressId.toString());
@@ -253,7 +261,9 @@ export function CampaignWizard({
       if (selectedTagIds.length > 0) {
         selectedTagIds.forEach(id => params.append('tagIds', id.toString()));
       }
-      const response = await fetch(`/api/contacts?${params}`);
+      const response = await fetch(`/api/contacts?${params}`, {
+        credentials: "include",
+      });
       if (!response.ok) throw new Error('Failed to fetch contacts');
       return response.json();
     },

@@ -13,6 +13,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, Plus, Edit3, Trash2, Tag as TagIcon, Upload, X, Download, Loader2, Search, Filter, Eye } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import {
+  contactsQueryKey,
+  invalidateNewsletterAudience,
+  invalidateWebsiteContacts,
+  tagsQueryKey,
+} from "@/lib/newsletter-query-cache";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 import { ContactStatusLabel } from "@/components/ContactStatusLabel";
@@ -96,13 +102,29 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
 
   // Fetch contacts
   const { data: contacts = [], isLoading: contactsLoading, refetch: refetchContacts } = useQuery<any[]>({
-    queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`],
+    queryKey: contactsQueryKey(websiteProgressId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/contacts?websiteProgressId=${websiteProgressId}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("Failed to fetch contacts");
+      return response.json();
+    },
     enabled: !!websiteProgressId,
   });
 
   // Fetch tags
   const { data: tags = [], refetch: refetchTags } = useQuery<any[]>({
-    queryKey: [`/api/tags?websiteProgressId=${websiteProgressId}`],
+    queryKey: tagsQueryKey(websiteProgressId),
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/tags?websiteProgressId=${websiteProgressId}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("Failed to fetch tags");
+      return response.json();
+    },
     enabled: !!websiteProgressId,
   });
 
@@ -128,7 +150,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`] });
+      void invalidateWebsiteContacts(queryClient, websiteProgressId);
       toast({
         title: t("newsletter.contactCreated"),
         description: t("newsletter.contactCreatedDescription"),
@@ -179,7 +201,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
         }
       }
 
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`] });
+      void invalidateWebsiteContacts(queryClient, websiteProgressId);
       toast({
         title: t("newsletter.contactUpdated"),
         description: t("newsletter.contactUpdatedDescription"),
@@ -203,7 +225,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       return await apiRequest("DELETE", `/api/contacts/${contactId}?websiteProgressId=${websiteProgressId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`] });
+      void invalidateWebsiteContacts(queryClient, websiteProgressId);
       toast({
         title: t("newsletter.contactDeleted"),
         description: t("newsletter.contactDeletedDescription"),
@@ -232,7 +254,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       return response.json();
     },
     onSuccess: (deletedIds) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`] });
+      void invalidateWebsiteContacts(queryClient, websiteProgressId);
       toast({
         title: t("newsletter.contactDeleted"),
         description: t("newsletter.contactDeletedDescription"),
@@ -308,7 +330,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       return { contactIds, tagIds };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`] });
+      void invalidateWebsiteContacts(queryClient, websiteProgressId);
       toast({
         title: t("newsletter.tagsAssigned"),
         description: t("newsletter.tagsAssignedDescription"),
@@ -344,7 +366,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       return { contactIds, status };
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`] });
+      void invalidateWebsiteContacts(queryClient, websiteProgressId);
       toast({
         title: t("newsletter.statusUpdated"),
         description: t("newsletter.statusUpdatedDescription"),
@@ -377,7 +399,7 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [`/api/tags?websiteProgressId=${websiteProgressId}`] });
+      void invalidateNewsletterAudience(queryClient, websiteProgressId);
     },
   });
 
@@ -764,7 +786,15 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
 
       // Get all contacts to find the newly imported ones
       const allContacts = await queryClient.fetchQuery<any[]>({
-        queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`],
+        queryKey: contactsQueryKey(websiteProgressId),
+        queryFn: async () => {
+          const response = await fetch(
+            `/api/contacts?websiteProgressId=${websiteProgressId}`,
+            { credentials: "include" },
+          );
+          if (!response.ok) throw new Error("Failed to fetch contacts");
+          return response.json();
+        },
       });
 
       // Find imported contacts (those that match emails from CSV)
@@ -856,8 +886,8 @@ export function ContactsList({ websiteProgressId, planSubscription }: ContactsLi
         }
       }
 
-      // Invalidate queries to refresh UI
-      queryClient.invalidateQueries({ queryKey: [`/api/contacts?websiteProgressId=${websiteProgressId}`] });
+      // Invalidate queries to refresh UI across newsletter tabs
+      void invalidateNewsletterAudience(queryClient, websiteProgressId);
       
       let description = t("newsletter.importSummary", {
         imported: data.imported,

@@ -27,7 +27,15 @@ export default function CampaignAnalytics() {
 
   // Fetch tags to display tag names
   const { data: tags = [] } = useQuery<any[]>({
-    queryKey: [`/api/tags?websiteProgressId=${websiteId}`],
+    queryKey: ["/api/tags", websiteId],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/tags?websiteProgressId=${websiteId}`,
+        { credentials: "include" },
+      );
+      if (!response.ok) throw new Error("Failed to fetch tags");
+      return response.json();
+    },
     enabled: !!websiteId,
   });
 
