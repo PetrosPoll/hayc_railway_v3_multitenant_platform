@@ -53,6 +53,19 @@ type MonthlyChurnMetrics = {
   churnedCount: number;
   logoChurnPct: number | null;
   logoChurnT3mPct: number | null;
+  mrrStartCents: number;
+  mrrEndCents: number;
+  grossMrrChurnPct: number | null;
+  nrrPct: number | null;
+  involuntarySharePct: number | null;
+  newMrrCents: number;
+  reactivationMrrCents: number;
+  expansionMrrCents: number;
+  contractionMrrCents: number;
+  churnedMrrCents: number;
+  netNewMrrCents: number;
+  newCustomers: number;
+  reactivatedCustomers: number;
   smallSample: boolean;
 };
 
@@ -291,6 +304,18 @@ export function AdminChurnDashboard() {
     partial: m.isPartial,
   }));
 
+  const mrrChart = series.map((m) => ({
+    month: formatMonthLabel(m.month),
+    ym: m.month,
+    new: (m.newMrrCents ?? 0) / 100,
+    reactivation: (m.reactivationMrrCents ?? 0) / 100,
+    expansion: (m.expansionMrrCents ?? 0) / 100,
+    contraction: Math.abs(m.contractionMrrCents ?? 0) / 100,
+    churn: Math.abs(m.churnedMrrCents ?? 0) / 100,
+    net: (m.netNewMrrCents ?? 0) / 100,
+    approximate: m.isApproximate,
+  }));
+
   function exportChurnedCsv() {
     const lines = [
       ["customerId", "email", "plan", "mrrLost", "reason", "churnDate"].join(","),
@@ -433,7 +458,8 @@ export function AdminChurnDashboard() {
               <div className="text-xs text-muted-foreground">Ζωντανά τώρα</div>
               <div className="text-lg font-semibold tabular-nums">
                 {seriesQuery.data.live.activeCustomers} ενεργοί ·{" "}
-                {formatEuro(seriesQuery.data.live.mrrCents)} MRR
+                {formatEuro(seriesQuery.data.live.mrrCents)} MRR · ARPA{" "}
+                {formatEuro(seriesQuery.data.live.arpaCents)}
               </div>
             </div>
             <div>
@@ -447,14 +473,14 @@ export function AdminChurnDashboard() {
         </Card>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-2">
               <CardDescription>Έφυγαν στην περίοδο</CardDescription>
               {dataScope === "all" && period?.isApproximate && (
                 <Badge variant="secondary" className="text-[10px]">
-                 incl. πριν cutover
+                  incl. πριν cutover
                 </Badge>
               )}
             </div>
@@ -469,21 +495,21 @@ export function AdminChurnDashboard() {
               {formatMonthLabel(from)} → {formatMonthLabel(to)}
             </div>
             <div>
-              MRR lost (άθροισμα):{" "}
+              MRR lost:{" "}
               {dataScope === "since_cutover"
                 ? formatEuro(churnedRows.reduce((s, r) => s + r.mrrLostCents, 0))
                 : period
                   ? formatEuro(period.mrrLostCents)
                   : "—"}
             </div>
-            <p>Μοναδικοί πελάτες που έχασαν όλα τα πλάνα στην περίοδο.</p>
+            <p>Πελάτες που έχασαν όλα τα πλάνα.</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
             <div className="flex items-start justify-between gap-2">
-              <CardDescription>Churn % τελευταίου μήνα</CardDescription>
+              <CardDescription>Churn πελατών %</CardDescription>
               <TooltipProvider>
                 <UiTooltip>
                   <TooltipTrigger asChild>
@@ -492,7 +518,8 @@ export function AdminChurnDashboard() {
                     </button>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs text-xs">
-                    Από τους ενεργούς στην αρχή του μήνα, πόσοι % έφυγαν μέχρι το τέλος.
+                    Από τους ενεργούς στην αρχή του μήνα, πόσοι % έφυγαν τελείως μέχρι το
+                    τέλος. Ακύρωση 1 από N sites ≠ churn.
                   </TooltipContent>
                 </UiTooltip>
               </TooltipProvider>
@@ -512,6 +539,7 @@ export function AdminChurnDashboard() {
                     </Badge>
                   )}
                 </div>
+                <div>T3M: {formatPct(kpi.logoChurnT3mPct)}</div>
                 {kpi.smallSample && (
                   <Badge variant="outline" className="text-[10px] font-normal">
                     Μικρό δείγμα
@@ -519,8 +547,77 @@ export function AdminChurnDashboard() {
                 )}
               </>
             ) : (
-              <p>Δεν υπάρχει μήνας με δεδομένα στο επιλεγμένο εύρος/scope.</p>
+              <p>Δεν υπάρχει μήνας με δεδομένα στο εύρος/scope.</p>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-2">
+              <CardDescription>Gross MRR churn %</CardDescription>
+              <TooltipProvider>
+                <UiTooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    Πόσο % του MRR του cohort χάθηκε (πλήρες churn + μείωση όταν μένει
+                    πελάτης με λιγότερα plans).
+                  </TooltipContent>
+                </UiTooltip>
+              </TooltipProvider>
+            </div>
+            <CardTitle className="text-3xl tabular-nums">
+              {kpi ? formatPct(kpi.grossMrrChurnPct) : "—"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            {kpi
+              ? `${formatMonthLabel(kpi.month)} · start ${formatEuro(kpi.mrrStartCents)} → end ${formatEuro(kpi.mrrEndCents)}`
+              : "—"}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <div className="flex items-start justify-between gap-2">
+              <CardDescription>NRR %</CardDescription>
+              <TooltipProvider>
+                <UiTooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground">
+                      <Info className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs text-xs">
+                    Net revenue retention: MRR τέλους / MRR αρχής στο ίδιο cohort
+                    (περιλαμβάνει expansion).
+                  </TooltipContent>
+                </UiTooltip>
+              </TooltipProvider>
+            </div>
+            <CardTitle className="text-3xl tabular-nums">
+              {kpi ? formatPct(kpi.nrrPct) : "—"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            {kpi ? formatMonthLabel(kpi.month) : "—"}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Net new MRR</CardDescription>
+            <CardTitle className="text-3xl tabular-nums">
+              {kpi ? formatEuro(kpi.netNewMrrCents) : "—"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            Νέο + επανενεργοποίηση + expansion − contraction − churn
+            {kpi ? ` · ${formatMonthLabel(kpi.month)}` : ""}
           </CardContent>
         </Card>
 
@@ -532,7 +629,8 @@ export function AdminChurnDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Πάτησαν cancel· η πρόσβαση δεν έχει τελειώσει ακόμα.
+            Cancel πριν λήξει η πρόσβαση ·{" "}
+            {formatEuro(seriesQuery.data?.pendingSummary.mrrAtRiskCents ?? 0)}
           </CardContent>
         </Card>
       </div>
@@ -577,51 +675,109 @@ export function AdminChurnDashboard() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Churn % ανά μήνα</CardTitle>
-          <CardDescription>
-            Γκρι μπάρα = πριν το cutover (Stripe history). Πράσινη = μετά το cutover (webhooks).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="h-[280px]">
-          {logoChart.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-4">
-              {dataScope === "since_cutover"
-                ? "Δεν υπάρχει ακόμα ολοκληρωμένος μήνας μετά το cutover."
-                : "Δεν υπάρχουν μήνες με δεδομένα στο εύρος."}
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={logoChart}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} unit="%" />
-                <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} />
-                <Legend />
-                <Bar dataKey="logo" name="Churn %" radius={[2, 2, 0, 0]}>
-                  {logoChart.map((entry) => (
-                    <Cell
-                      key={entry.ym}
-                      fill={
-                        entry.approximate || entry.partial ? "#94a3b8" : "#0f766e"
-                      }
-                    />
-                  ))}
-                </Bar>
-                <Line
-                  type="monotone"
-                  dataKey="t3m"
-                  name="T3M %"
-                  stroke="#b45309"
-                  strokeWidth={2}
-                  dot={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Churn πελατών % ανά μήνα</CardTitle>
+            <CardDescription>
+              Γκρι = πριν cutover. Πράσινη = μετά. Ακύρωση 1 από N sites δεν φαίνεται εδώ.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="h-[280px]">
+            {logoChart.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground text-center px-4">
+                {dataScope === "since_cutover"
+                  ? "Δεν υπάρχει ακόμα ολοκληρωμένος μήνας μετά το cutover."
+                  : "Δεν υπάρχουν μήνες με δεδομένα στο εύρος."}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={logoChart}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} unit="%" />
+                  <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} />
+                  <Legend />
+                  <Bar dataKey="logo" name="Churn %" radius={[2, 2, 0, 0]}>
+                    {logoChart.map((entry) => (
+                      <Cell
+                        key={entry.ym}
+                        fill={
+                          entry.approximate || entry.partial ? "#94a3b8" : "#0f766e"
+                        }
+                      />
+                    ))}
+                  </Bar>
+                  <Line
+                    type="monotone"
+                    dataKey="t3m"
+                    name="T3M %"
+                    stroke="#b45309"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Κινήσεις MRR</CardTitle>
+            <CardDescription>
+              Εδώ φαίνεται η ακύρωση μέρους συνδρομών (contraction) χωρίς logo churn.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="h-[280px]">
+            {mrrChart.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                Δεν υπάρχουν μήνες με δεδομένα.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={mrrChart}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip
+                    formatter={(v: number) =>
+                      new Intl.NumberFormat("el-GR", {
+                        style: "currency",
+                        currency: "EUR",
+                        maximumFractionDigits: 0,
+                      }).format(v)
+                    }
+                  />
+                  <Legend />
+                  <Bar dataKey="new" stackId="pos" fill="#15803d" name="Νέο" />
+                  <Bar
+                    dataKey="reactivation"
+                    stackId="pos"
+                    fill="#0e7490"
+                    name="Επανενεργοποίηση"
+                  />
+                  <Bar dataKey="expansion" stackId="pos" fill="#1d4ed8" name="Expansion" />
+                  <Bar
+                    dataKey="contraction"
+                    stackId="neg"
+                    fill="#b45309"
+                    name="Contraction"
+                  />
+                  <Bar dataKey="churn" stackId="neg" fill="#be123c" name="Churn MRR" />
+                  <Line
+                    type="monotone"
+                    dataKey="net"
+                    name="Net MRR"
+                    stroke="#111827"
+                    strokeWidth={2}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
