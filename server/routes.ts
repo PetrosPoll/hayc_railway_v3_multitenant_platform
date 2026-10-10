@@ -26702,6 +26702,151 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
+  /** Meta / Facebook product catalog RSS XML (published digital products). */
+  app.get("/api/hdp/products/:siteId/facebook-feed.xml", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+
+    try {
+      const { siteId } = req.params;
+      const user = await storage.getUserById(req.user.id);
+      if (!user) {
+        return res.status(403).json({ error: "Not authorized" });
+      }
+
+      const website = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.siteId, siteId))
+        .then((rows) => rows[0]);
+
+      if (!website) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+
+      if (
+        website.userId !== req.user.id &&
+        !hasPermission(user.role, "canManageWebsites")
+      ) {
+        return res.status(403).json({ error: "Not authorized to access this site" });
+      }
+
+      const HDP_INTERNAL_URL =
+        process.env.HDP_INTERNAL_URL ?? process.env.VITE_HDP_INTERNAL_URL;
+      const HDP_INTERNAL_TOKEN =
+        process.env.HDP_INTERNAL_TOKEN ?? process.env.VITE_HDP_INTERNAL_TOKEN;
+      if (!HDP_INTERNAL_URL || !HDP_INTERNAL_TOKEN) {
+        return res
+          .status(503)
+          .json({ error: "HDP internal service not configured" });
+      }
+
+      const [productsRes, brandRes] = await Promise.all([
+        fetch(
+          `${HDP_INTERNAL_URL}/internal/sites/${encodeURIComponent(siteId)}/products`,
+          { headers: { "x-internal-token": HDP_INTERNAL_TOKEN } },
+        ),
+        fetch(
+          `${HDP_INTERNAL_URL}/api/brand/${encodeURIComponent(siteId)}`,
+        ).catch(() => null),
+      ]);
+
+      if (productsRes.status === 204) {
+        const { buildFacebookProductCatalogXml } = await import(
+          "./lib/facebook-product-feed"
+        );
+        const xml = buildFacebookProductCatalogXml({
+          siteId,
+          products: [],
+        });
+        res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="facebook-catalog-${siteId}.xml"`,
+        );
+        return res.status(200).send(xml);
+      }
+
+      if (!productsRes.ok) {
+        const text = await productsRes.text();
+        return res.status(productsRes.status).json({
+          error: "Failed to fetch HDP products",
+          details: text.slice(0, 1000),
+        });
+      }
+
+      const data = await productsRes.json();
+      const list = Array.isArray(data)
+        ? data
+        : Array.isArray((data as { products?: unknown[] })?.products)
+          ? (data as { products: unknown[] }).products
+          : [];
+
+      const hdpPublicUrl = (
+        process.env.HDP_PUBLIC_URL ??
+        process.env.HDP_INTERNAL_URL ??
+        process.env.VITE_HDP_INTERNAL_URL ??
+        ""
+      )
+        .trim()
+        .replace(/\/$/, "");
+
+      const products = list
+        .filter(
+          (item): item is Record<string, unknown> =>
+            !!item && typeof item === "object",
+        )
+        .map((item) =>
+          hdpPublicUrl
+            ? normalizeSyncedHdpProduct(item, siteId, hdpPublicUrl)
+            : item,
+        );
+
+      let brandName: string | null = null;
+      let brandLogoUrl: string | null = null;
+      if (brandRes?.ok) {
+        try {
+          const brand = (await brandRes.json()) as Record<string, unknown>;
+          brandName =
+            typeof brand.brandName === "string"
+              ? brand.brandName
+              : typeof brand.name === "string"
+                ? brand.name
+                : null;
+          brandLogoUrl =
+            typeof brand.logoUrl === "string"
+              ? brand.logoUrl
+              : typeof brand.logo === "string"
+                ? brand.logo
+                : null;
+        } catch {
+          /* ignore */
+        }
+      }
+
+      const { buildFacebookProductCatalogXml } = await import(
+        "./lib/facebook-product-feed"
+      );
+      const xml = buildFacebookProductCatalogXml({
+        siteId,
+        brandName,
+        brandLogoUrl,
+        products,
+      });
+
+      res.setHeader("Content-Type", "application/rss+xml; charset=utf-8");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="facebook-catalog-${siteId}.xml"`,
+      );
+      return res.status(200).send(xml);
+    } catch (error: any) {
+      console.error("Error building Facebook product feed:", error);
+      return res.status(500).json({ error: "Failed to build Facebook feed" });
+    }
+  });
+
   const proxyHdpCoupons = async (
     req: any,
     res: any,

@@ -3032,6 +3032,12 @@
             "syncSuccess": "Products synced to your website",
             "syncFailed": "Could not sync to website. Please try again."
         },
+        "facebookExport": {
+            "button": "Export for Facebook",
+            "exporting": "Exporting...",
+            "success": "Facebook catalog XML downloaded",
+            "failed": "Could not export Facebook catalog. Please try again."
+        },
         "table": {
             "title": "Title",
             "price": "Price",

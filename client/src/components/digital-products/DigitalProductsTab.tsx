@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Download, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -74,6 +74,7 @@ export function DigitalProductsTab({
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [syncedPublishedIds, setSyncedPublishedIds] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isExportingFacebook, setIsExportingFacebook] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -385,6 +386,40 @@ export function DigitalProductsTab({
     return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
   }, [lastSyncedAt]);
 
+  const handleExportFacebook = async () => {
+    setIsExportingFacebook(true);
+    try {
+      const res = await fetch(
+        `/api/hdp/products/${encodeURIComponent(siteId)}/facebook-feed.xml`,
+        { credentials: "include" },
+      );
+      if (!res.ok) {
+        throw new Error("export failed");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `facebook-catalog-${siteId}.xml`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      toast({
+        title: t("digitalProductsManagement.toasts.successTitle"),
+        description: t("digitalProductsManagement.facebookExport.success"),
+      });
+    } catch {
+      toast({
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.facebookExport.failed"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsExportingFacebook(false);
+    }
+  };
+
   const handleSyncToWebsite = async () => {
     setIsSyncing(true);
     try {
@@ -577,6 +612,26 @@ export function DigitalProductsTab({
                 </>
               ) : (
                 t("digitalProductsManagement.sync.syncToWebsite")
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={handleExportFacebook}
+              disabled={isExportingFacebook || products.length === 0}
+              data-testid="button-export-facebook-catalog"
+            >
+              {isExportingFacebook ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("digitalProductsManagement.facebookExport.exporting")}
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  {t("digitalProductsManagement.facebookExport.button")}
+                </>
               )}
             </Button>
             <span
