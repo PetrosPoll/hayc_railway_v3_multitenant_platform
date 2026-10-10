@@ -3033,7 +3033,7 @@
             "syncFailed": "Δεν ήταν δυνατός ο συγχρονισμός. Δοκιμάστε ξανά."
         },
         "facebookExport": {
-            "button": "Export για Facebook",
+            "button": "Export XML",
             "exporting": "Εξαγωγή...",
             "success": "Κατέβηκε το XML καταλόγου Facebook",
             "failed": "Αποτυχία εξαγωγής. Δοκιμάστε ξανά."

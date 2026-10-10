@@ -3033,7 +3033,7 @@
             "syncFailed": "Could not sync to website. Please try again."
         },
         "facebookExport": {
-            "button": "Export for Facebook",
+            "button": "Export XML",
             "exporting": "Exporting...",
             "success": "Facebook catalog XML downloaded",
             "failed": "Could not export Facebook catalog. Please try again."

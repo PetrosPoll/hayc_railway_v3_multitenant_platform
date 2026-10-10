@@ -523,19 +523,41 @@ export function DigitalProductsTab({
               </div>
               <CreateProductButton onSelect={handleCreateSelect} />
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setBrandModalOpen(true)}
-              data-testid="button-configure-look-feel"
-            >
-              {t("digitalProductsManagement.configureLookAndFeel")}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setBrandModalOpen(true)}
+                data-testid="button-configure-look-feel"
+              >
+                {t("digitalProductsManagement.configureLookAndFeel")}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleExportFacebook}
+                disabled={isExportingFacebook || products.length === 0}
+                data-testid="button-export-facebook-catalog"
+              >
+                {isExportingFacebook ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("digitalProductsManagement.facebookExport.exporting")}
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("digitalProductsManagement.facebookExport.button")}
+                  </>
+                )}
+              </Button>
+            </div>
           </>
         ) : (
           /* No filter: both buttons on one row */
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
               variant="outline"
@@ -545,6 +567,28 @@ export function DigitalProductsTab({
             >
               {t("digitalProductsManagement.configureLookAndFeel")}
             </Button>
+            {listMode === "courses" ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleExportFacebook}
+                disabled={isExportingFacebook || products.length === 0}
+                data-testid="button-export-facebook-catalog"
+              >
+                {isExportingFacebook ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t("digitalProductsManagement.facebookExport.exporting")}
+                  </>
+                ) : (
+                  <>
+                    <Download className="mr-2 h-4 w-4" />
+                    {t("digitalProductsManagement.facebookExport.button")}
+                  </>
+                )}
+              </Button>
+            ) : null}
             {listMode === "courses" ? <CreateProductButton onSelect={handleCreateSelect} /> : null}
             {listMode === "buyers" && !demoBuyer && !demoBuyerLoading ? (
               <Button
@@ -576,6 +620,27 @@ export function DigitalProductsTab({
           >
             {t("digitalProductsManagement.configureLookAndFeel")}
           </Button>
+          {listMode === "courses" ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExportFacebook}
+              disabled={isExportingFacebook || products.length === 0}
+              data-testid="button-export-facebook-catalog"
+            >
+              {isExportingFacebook ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t("digitalProductsManagement.facebookExport.exporting")}
+                </>
+              ) : (
+                <>
+                  <Download className="mr-2 h-4 w-4" />
+                  {t("digitalProductsManagement.facebookExport.button")}
+                </>
+              )}
+            </Button>
+          ) : null}
           {listMode === "courses" ? <CreateProductButton onSelect={handleCreateSelect} /> : null}
           {listMode === "buyers" && !demoBuyer && !demoBuyerLoading ? (
             <Button
@@ -612,26 +677,6 @@ export function DigitalProductsTab({
                 </>
               ) : (
                 t("digitalProductsManagement.sync.syncToWebsite")
-              )}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full sm:w-auto"
-              onClick={handleExportFacebook}
-              disabled={isExportingFacebook || products.length === 0}
-              data-testid="button-export-facebook-catalog"
-            >
-              {isExportingFacebook ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("digitalProductsManagement.facebookExport.exporting")}
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  {t("digitalProductsManagement.facebookExport.button")}
-                </>
               )}
             </Button>
             <span
