@@ -1434,6 +1434,7 @@
         "viewManageTemplates": "Δείτε και διαχειριστείτε τα αποθηκευμένα πρότυπα email σας",
         "createNewTemplate": "Δημιουργία Νέου Προτύπου",
         "noTemplatesYet": "Δεν υπάρχουν αποθηκευμένα πρότυπα ακόμα",
+        "noThumbnail": "Χωρίς προεπισκόπηση",
         "createFirstTemplate": "Δημιουργήστε το πρώτο σας πρότυπο email χρησιμοποιώντας τον δημιουργό email",
         "createTemplate": "Δημιουργία Προτύπου",
         "activeSubscriptions": "Ενεργές Συνδρομές",

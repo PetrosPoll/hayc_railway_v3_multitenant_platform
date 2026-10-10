@@ -599,47 +599,45 @@ export function AdminCampaignWizard({
                     </CardContent>
                   </Card>
                 ) : (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {templates.map((template: any) => (
                       <Card
                         key={template.id}
-                        className={`cursor-pointer transition-all ${
+                        className={`cursor-pointer transition-all overflow-hidden ${
                           selectedTemplate?.id === template.id
                             ? "ring-2 ring-primary"
                             : "hover:shadow-md"
                         }`}
                         onClick={() => handleSelectTemplate(template)}
                       >
-                        <CardHeader>
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <CardTitle className="text-base">{template.name}</CardTitle>
-                              {template.description && (
-                                <CardDescription className="text-sm mt-1">
-                                  {template.description}
-                                </CardDescription>
-                              )}
-                            </div>
-                            {selectedTemplate?.id === template.id && (
-                              <Badge className="ml-2">
-                                {t("dashboard.campaigns.wizard.design.selected")}
-                              </Badge>
-                            )}
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="aspect-video bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                            {template.thumbnail ? (
-                              <img
-                                src={template.thumbnail}
-                                alt={template.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
+                        <div className="relative aspect-[3/4] bg-muted overflow-hidden border-b">
+                          {template.thumbnail ? (
+                            <img
+                              src={template.thumbnail}
+                              alt={template.name}
+                              className="absolute inset-0 h-full w-full object-cover object-top"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
                               <Mail className="h-8 w-8 text-muted-foreground" />
-                            )}
-                          </div>
-                        </CardContent>
+                            </div>
+                          )}
+                          {selectedTemplate?.id === template.id && (
+                            <Badge className="absolute top-2 right-2">
+                              {t("dashboard.campaigns.wizard.design.selected")}
+                            </Badge>
+                          )}
+                        </div>
+                        <CardHeader className="p-3 space-y-1">
+                          <CardTitle className="text-sm leading-snug line-clamp-2">
+                            {template.name}
+                          </CardTitle>
+                          {template.description && (
+                            <CardDescription className="text-xs line-clamp-2">
+                              {template.description}
+                            </CardDescription>
+                          )}
+                        </CardHeader>
                       </Card>
                     ))}
                   </div>

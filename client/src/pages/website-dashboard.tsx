@@ -3575,36 +3575,60 @@ export default function WebsiteDashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {emailTemplates.map((template) => (
               <Card
                 key={template.id}
-                className="hover:border-primary transition-colors flex flex-col"
+                className="hover:border-primary transition-colors flex flex-col overflow-hidden"
                 data-testid={`template-card-${template.id}`}
               >
-                <CardHeader className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-base font-semibold mb-1">
-                        {template.name}
-                      </CardTitle>
-                      {template.category && (
-                        <Badge variant="outline" className="mb-2">
-                          {template.category}
-                        </Badge>
-                      )}
-                      <p className="text-xs text-muted-foreground">
-                        Last updated:{" "}
-                        {new Date(
-                          template.updatedAt || template.createdAt,
-                        ).toLocaleDateString()}
-                      </p>
+                <button
+                  type="button"
+                  className={`relative aspect-[3/4] w-full bg-muted overflow-hidden border-b text-left ${
+                    disabled ? "pointer-events-none opacity-50 grayscale" : "cursor-pointer"
+                  }`}
+                  onClick={() => {
+                    sessionStorage.setItem(
+                      "loadTemplateId",
+                      template.id.toString(),
+                    );
+                    navigate(`/websites/${websiteId}/email-builder`);
+                  }}
+                  data-testid={`button-template-thumbnail-${template.id}`}
+                >
+                  {template.thumbnail ? (
+                    <img
+                      src={template.thumbnail}
+                      alt={template.name}
+                      className="absolute inset-0 h-full w-full object-cover object-top"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <Mail className="h-10 w-10" />
+                      <span className="px-3 text-center text-xs">
+                        {t("dashboard.noThumbnail") || "No preview"}
+                      </span>
                     </div>
-                  </div>
+                  )}
+                </button>
+                <CardHeader className="p-3 pb-2 space-y-1.5">
+                  <CardTitle className="text-sm font-semibold leading-snug line-clamp-2">
+                    {template.name}
+                  </CardTitle>
+                  {template.category && (
+                    <Badge variant="outline" className="w-fit text-[10px]">
+                      {template.category}
+                    </Badge>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(
+                      template.updatedAt || template.createdAt,
+                    ).toLocaleDateString()}
+                  </p>
                 </CardHeader>
-                <CardContent className="pt-0">
+                <CardContent className="p-3 pt-0 mt-auto">
                   <TooltipProvider>
-                    <div className="flex gap-2 justify-center">
+                    <div className="flex gap-1.5 justify-center flex-wrap">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button

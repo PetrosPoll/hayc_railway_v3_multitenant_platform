@@ -1432,6 +1432,7 @@
         "viewManageTemplates": "View and manage your saved email templates",
         "createNewTemplate": "Create New Template",
         "noTemplatesYet": "No templates saved yet",
+        "noThumbnail": "No preview",
         "createFirstTemplate": "Create your first email template using the email builder",
         "createTemplate": "Create Template",
         "activeSubscriptions": "Active Subscriptions",

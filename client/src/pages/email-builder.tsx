@@ -1307,14 +1307,14 @@ export default function EmailBuilderPage() {
 
       {/* Load Templates Dialog */}
       <Dialog open={showTemplatesDialog} onOpenChange={setShowTemplatesDialog}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-load-template">
+        <DialogContent className="max-w-3xl" data-testid="dialog-load-template">
           <DialogHeader>
             <DialogTitle>Load Template</DialogTitle>
             <DialogDescription>
               Select a template to load into the editor
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="max-h-[70vh] overflow-y-auto">
             {templatesLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -1324,28 +1324,44 @@ export default function EmailBuilderPage() {
                 No templates saved yet. Create your first template!
               </div>
             ) : (
-              templates.map((template) => (
-                <div
-                  key={template.id}
-                  className="p-4 border rounded-lg hover:border-primary cursor-pointer transition-colors"
-                  onClick={() => loadTemplate(template)}
-                  data-testid={`template-${template.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{template.name}</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {templates.map((template) => (
+                  <button
+                    type="button"
+                    key={template.id}
+                    className="overflow-hidden rounded-lg border text-left transition-colors hover:border-primary"
+                    onClick={() => loadTemplate(template)}
+                    data-testid={`template-${template.id}`}
+                  >
+                    <div className="relative aspect-[3/4] bg-muted overflow-hidden border-b">
+                      {template.thumbnail ? (
+                        <img
+                          src={template.thumbnail}
+                          alt={template.name}
+                          className="absolute inset-0 h-full w-full object-cover object-top"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <Mail className="h-8 w-8" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-3 space-y-1">
+                      <h3 className="font-semibold text-sm leading-snug line-clamp-2">
+                        {template.name}
+                      </h3>
                       {template.category && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {template.category}
                         </p>
                       )}
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Last updated: {new Date(template.updatedAt!).toLocaleDateString()}
+                      <p className="text-[11px] text-muted-foreground">
+                        {new Date(template.updatedAt!).toLocaleDateString()}
                       </p>
                     </div>
-                  </div>
-                </div>
-              ))
+                  </button>
+                ))}
+              </div>
             )}
           </div>
         </DialogContent>
@@ -1353,14 +1369,14 @@ export default function EmailBuilderPage() {
 
       {/* Load Sample Templates Dialog */}
       <Dialog open={showSampleTemplatesDialog} onOpenChange={setShowSampleTemplatesDialog}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-load-sample-template">
+        <DialogContent className="max-w-3xl" data-testid="dialog-load-sample-template">
           <DialogHeader>
             <DialogTitle>Load Sample Template</DialogTitle>
             <DialogDescription>
               Select a sample template to load into the editor as a starting point
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2 max-h-96 overflow-y-auto">
+          <div className="max-h-[70vh] overflow-y-auto">
             {sampleTemplatesLoading ? (
               <div className="flex justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin" />
@@ -1370,50 +1386,64 @@ export default function EmailBuilderPage() {
                 No sample templates available.
               </div>
             ) : (
-              sampleTemplatesToShow.map((template) => (
-                <div
-                  key={template.id}
-                  className="p-4 border rounded-lg hover:border-primary cursor-pointer transition-colors"
-                  onClick={() => loadSampleTemplate(template)}
-                  data-testid={`sample-template-${template.id}`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold">{template.name}</h3>
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                          Sample
-                        </span>
-                      </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {sampleTemplatesToShow.map((template) => (
+                  <div
+                    key={template.id}
+                    className="overflow-hidden rounded-lg border transition-colors hover:border-primary cursor-pointer"
+                    onClick={() => loadSampleTemplate(template)}
+                    data-testid={`sample-template-${template.id}`}
+                  >
+                    <div className="relative aspect-[3/4] bg-muted overflow-hidden border-b">
+                      {template.thumbnail ? (
+                        <img
+                          src={template.thumbnail}
+                          alt={template.name}
+                          className="absolute inset-0 h-full w-full object-cover object-top"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <Mail className="h-8 w-8" />
+                        </div>
+                      )}
+                      <span className="absolute top-2 left-2 text-[10px] bg-primary/90 text-primary-foreground px-2 py-0.5 rounded">
+                        Sample
+                      </span>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="absolute top-2 right-2 h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const previewWindow = window.open("", "_blank");
+                          if (previewWindow) {
+                            previewWindow.document.write(template.html);
+                            previewWindow.document.close();
+                          }
+                        }}
+                        data-testid={`preview-sample-${template.id}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="p-3 space-y-1">
+                      <h3 className="font-semibold text-sm leading-snug line-clamp-2">
+                        {template.name}
+                      </h3>
                       {template.category && (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           {template.category}
                         </p>
                       )}
                       {template.description && (
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-[11px] text-muted-foreground line-clamp-2">
                           {template.description}
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const previewWindow = window.open("", "_blank");
-                        if (previewWindow) {
-                          previewWindow.document.write(template.html);
-                          previewWindow.document.close();
-                        }
-                      }}
-                      data-testid={`preview-sample-${template.id}`}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
                   </div>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </DialogContent>
