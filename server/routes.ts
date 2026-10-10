@@ -3541,25 +3541,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
-      // Keep per-website gallery thumbnails in sync with the admin catalog
-      // (e.g. after regenerating Playwright screenshots and re-importing).
+      // Keep per-website seeded gallery rows in sync with the admin catalog
+      // (thumbnails after screenshot regen; html after import fix for broken
+      // style="...url(\"data:...\")" quoting from CSS inlining).
       const defaultsByName = new Map(
         defaultTemplates.map((t) => [t.name.trim().toLowerCase(), t]),
       );
-      let thumbnailsSynced = 0;
+      let catalogSynced = 0;
       for (const existing of existingTemplates) {
         const adminMatch = defaultsByName.get(existing.name.trim().toLowerCase());
-        if (!adminMatch?.thumbnail) continue;
-        if ((existing.thumbnail || "") === adminMatch.thumbnail) continue;
+        if (!adminMatch) continue;
+
+        const brokenDataUriQuotes = existing.html.includes('url("data:');
+        const bothImported =
+          (adminMatch.design || "").includes("importSource") &&
+          (existing.design || "").includes("importSource");
+        const needsHtml =
+          brokenDataUriQuotes ||
+          (bothImported && existing.html !== adminMatch.html);
+        const needsThumb =
+          !!adminMatch.thumbnail &&
+          (existing.thumbnail || "") !== adminMatch.thumbnail;
+
+        if (!needsHtml && !needsThumb) continue;
+
         await db
           .update(emailTemplates)
-          .set({ thumbnail: adminMatch.thumbnail, updatedAt: new Date() })
+          .set({
+            ...(needsHtml
+              ? {
+                  html: adminMatch.html,
+                  design: adminMatch.design,
+                  category: adminMatch.category,
+                }
+              : {}),
+            ...(needsThumb ? { thumbnail: adminMatch.thumbnail } : {}),
+            updatedAt: new Date(),
+          })
           .where(eq(emailTemplates.id, existing.id));
-        thumbnailsSynced += 1;
+        catalogSynced += 1;
       }
 
       const templates =
-        missingDefaults.length || thumbnailsSynced
+        missingDefaults.length || catalogSynced
           ? await db
               .select()
               .from(emailTemplates)

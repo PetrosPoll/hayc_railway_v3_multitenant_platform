@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { db, pool } from "../server/db";
 import { adminTemplates } from "../shared/schema";
 
@@ -161,6 +161,8 @@ async function inlineTemplateAssets(html: string, templateDir: string): Promise<
     }
   }
 
+  // Use single quotes around data URIs so they stay valid inside style="...".
+  // Double quotes here break the HTML attribute and dump base64 into the email body.
   const cssRegex = /url\((['"]?)((?:\.\/)?images\/[^'")]+)\1\)/gi;
   const cssMatches = [...output.matchAll(cssRegex)];
   for (const match of cssMatches) {
@@ -168,7 +170,7 @@ async function inlineTemplateAssets(html: string, templateDir: string): Promise<
     const rel = match[2];
     const inlined = await getInlinedAsset(rel);
     if (inlined) {
-      output = output.replace(full, `url("${inlined}")`);
+      output = output.replace(full, `url('${inlined}')`);
     }
   }
 
@@ -325,6 +327,25 @@ async function run(): Promise<void> {
       console.warn(`[skip] ${sample.name} (failed to read source HTML)`, err);
       skipped++;
     }
+  }
+
+  // Push fixed HTML into per-website copies of the same seeded template names.
+  if (shouldUpdateExisting && inserted > 0) {
+    const result = await db.execute(sql`
+      UPDATE email_templates AS e
+      SET
+        html = a.html,
+        design = a.design,
+        thumbnail = a.thumbnail,
+        category = a.category,
+        updated_at = NOW()
+      FROM admin_templates AS a
+      WHERE LOWER(TRIM(e.name)) = LOWER(TRIM(a.name))
+        AND a.design LIKE '%importSource%'
+        AND e.design LIKE '%importSource%'
+    `);
+    console.log(`[ok] Synced website email_templates from admin catalog`);
+    void result;
   }
 
   console.log(`Done. Inserted: ${inserted}, skipped: ${skipped}`);
