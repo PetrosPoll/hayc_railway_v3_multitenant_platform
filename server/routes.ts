@@ -3537,13 +3537,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
-      const templates = missingDefaults.length
-        ? await db
-            .select()
-            .from(emailTemplates)
-            .where(eq(emailTemplates.websiteProgressId, websiteId))
-            .orderBy(desc(emailTemplates.updatedAt))
-        : existingTemplates;
+      // Keep per-website gallery thumbnails in sync with the admin catalog
+      // (e.g. after regenerating Playwright screenshots and re-importing).
+      const defaultsByName = new Map(
+        defaultTemplates.map((t) => [t.name.trim().toLowerCase(), t]),
+      );
+      let thumbnailsSynced = 0;
+      for (const existing of existingTemplates) {
+        const adminMatch = defaultsByName.get(existing.name.trim().toLowerCase());
+        if (!adminMatch?.thumbnail) continue;
+        if ((existing.thumbnail || "") === adminMatch.thumbnail) continue;
+        await db
+          .update(emailTemplates)
+          .set({ thumbnail: adminMatch.thumbnail, updatedAt: new Date() })
+          .where(eq(emailTemplates.id, existing.id));
+        thumbnailsSynced += 1;
+      }
+
+      const templates =
+        missingDefaults.length || thumbnailsSynced
+          ? await db
+              .select()
+              .from(emailTemplates)
+              .where(eq(emailTemplates.websiteProgressId, websiteId))
+              .orderBy(desc(emailTemplates.updatedAt))
+          : existingTemplates;
 
       res.json(templates);
     } catch (error) {

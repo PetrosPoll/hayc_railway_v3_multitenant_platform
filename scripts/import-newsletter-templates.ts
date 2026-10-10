@@ -177,6 +177,7 @@ async function inlineTemplateAssets(html: string, templateDir: string): Promise<
 
 async function getThumbnailDataUri(templateDir: string): Promise<string | null> {
   const preferred = [
+    "images/thumbnail.png", // Playwright screenshot of rendered email
     "images/template.png",
     "images/header-image.png",
     "images/header-image.jpg",
@@ -279,6 +280,8 @@ async function run(): Promise<void> {
 
     try {
       const html = await fs.readFile(sample.htmlPath, "utf-8");
+      const templateDir = path.dirname(sample.htmlPath);
+      const thumbnail = await getThumbnailDataUri(templateDir);
       const design = JSON.stringify({
         importSource: "legacy-sample-templates",
         key: sample.sourceKey,
@@ -297,6 +300,7 @@ async function run(): Promise<void> {
           .set({
             html,
             design,
+            thumbnail,
             category: sample.category,
             updatedAt: new Date(),
           })
@@ -308,7 +312,7 @@ async function run(): Promise<void> {
           name: sample.name,
           html,
           design,
-          thumbnail: null,
+          thumbnail,
           category: sample.category,
           createdAt: new Date(),
           updatedAt: new Date(),
