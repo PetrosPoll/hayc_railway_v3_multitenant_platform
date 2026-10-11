@@ -24100,6 +24100,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Newsletter subscription endpoint (public, no auth required)
   // Uses the NEW contacts table with tag support
+  /**
+   * Run the Automations trigger for a newsletter signup, mirroring the
+   * contact-form path in POST /public/contact.
+   *
+   * Three deliberate differences from the contact path:
+   *
+   *  - A signup carries no message and no phone, so those placeholders
+   *    resolve to empty strings.
+   *  - If the client has configured neither a workflow nor a simple
+   *    automation for this form, nothing is sent. Subscribing has never
+   *    emailed the visitor, so enabling Automations must not silently start
+   *    mailing every new subscriber.
+   *  - A failure here never fails the subscription — the contact is already
+   *    stored by the time this runs.
+   */
+  async function runNewsletterFormAutomation(params: {
+    websiteProgressId: number;
+    formId: string;
+    email: string;
+    name: string;
+  }): Promise<void> {
+    const { websiteProgressId, formId, email, name } = params;
+
+    const [website] = await db
+      .select()
+      .from(websiteProgress)
+      .where(eq(websiteProgress.id, websiteProgressId))
+      .limit(1);
+    if (!website) return;
+
+    const [onboarding] = await db
+      .select({
+        accountEmail: onboardingFormResponses.accountEmail,
+        businessName: onboardingFormResponses.businessName,
+      })
+      .from(onboardingFormResponses)
+      .where(eq(onboardingFormResponses.websiteProgressId, website.id))
+      .orderBy(desc(onboardingFormResponses.createdAt))
+      .limit(1);
+
+    // Used as the reply-to and passed to the workflow engine; without it we
+    // cannot send a sensible email, so skip rather than send a broken one.
+    const ownerEmail = (website.contactEmail || onboarding?.accountEmail)?.trim();
+    if (!ownerEmail) return;
+
+    const siteLabel = (website.projectName ?? website.domain ?? "").trim();
+    const senderName = (
+      website.projectName ||
+      onboarding?.businessName ||
+      website.domain ||
+      "Client"
+    ).trim();
+    const emailLang = normalizeEmailLanguage(website.websiteLanguage || "en");
+    const fromAddress = "notifications@hayc.gr";
+
+    // A visual workflow wins, exactly as on the contact path.
+    const workflowHandled = await startWorkflowForFormSubmit({
+      websiteProgressId: website.id,
+      formId,
+      payload: {
+        visitorEmail: email,
+        visitorName: name,
+        visitorPhone: "",
+        visitorMessage: "",
+        siteLabel,
+        siteId: website.siteId || "",
+        formId,
+        ownerEmail,
+        fromName: senderName,
+        language: emailLang,
+      },
+    });
+    if (workflowHandled) return;
+
+    const [automation] = await db
+      .select()
+      .from(websiteFormAutomations)
+      .where(
+        and(
+          eq(websiteFormAutomations.websiteProgressId, website.id),
+          eq(websiteFormAutomations.formId, formId),
+          eq(websiteFormAutomations.enabled, true),
+        ),
+      )
+      .limit(1);
+    if (!automation) return;
+
+    const placeholderVars = {
+      name,
+      email,
+      phone: "",
+      message: "",
+      siteLabel,
+    };
+
+    const visitorSubject = applyFormEmailPlaceholders(
+      automation.visitorSubject,
+      placeholderVars,
+    );
+    const bodyHtml = formatAutomationBodyToHtml(
+      applyFormEmailPlaceholders(automation.visitorBody, placeholderVars),
+    ).replace(/\$/g, "&#36;");
+
+    let logoUrl = automation.logoUrl?.trim() || "";
+    if (!logoUrl && website.siteId) {
+      try {
+        const siteConfig = await getConfig(website.siteId);
+        logoUrl = extractLogoFromSiteConfig(siteConfig as Record<string, unknown>) || "";
+      } catch (logoErr) {
+        console.warn("[newsletter/subscribe] could not load site logo:", logoErr);
+      }
+    }
+
+    const visitorHtml = loadTemplate(
+      "public-contact-visitor-custom.html",
+      {
+        bodyHtml,
+        logoUrl: logoUrl || "",
+        logoAlt: escapeHtml(siteLabel || "Logo"),
+      },
+      emailLang,
+    );
+
+    const result = await EmailService.sendEmail({
+      to: email,
+      subject: visitorSubject,
+      message: visitorSubject,
+      fromEmail: fromAddress,
+      fromName: senderName,
+      html: visitorHtml,
+      replyToAddresses: [ownerEmail],
+    });
+    if (!result.success) {
+      console.error("[newsletter/subscribe] automation email failed:", result.error);
+    }
+  }
+
   app.post("/api/newsletter/subscribe", newsletterSubscribeLimiter, async (req, res) => {
     // Set CORS headers to allow subscriptions from external websites
     res.header("Access-Control-Allow-Origin", "*");
@@ -24111,7 +24248,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(200).json({ success: true });
       }
 
-      const { key, siteId, email, name, firstName, lastName, group, tags: tagNames, subscribed } = req.body;
+      const { key, siteId, email, name, firstName, lastName, group, tags: tagNames, subscribed, formId } = req.body;
+
+      // Identifies which registered form this signup came from, so Automations
+      // can trigger on it. Over-long or non-string values are ignored rather
+      // than rejected — a bad formId must never fail the subscription itself.
+      const trimmedFormId =
+        typeof formId === "string" && formId.trim() && formId.trim().length <= 120
+          ? formId.trim()
+          : null;
       
       // Determine subscription status - defaults to true for backward compatibility
       // If 'subscribed' is explicitly false, contact will be added but not subscribed
@@ -24234,6 +24379,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Assign tags to the new contact
       await assignTagsToContact(newContact.id);
+
+      // Fire Automations for this form. Only for genuinely new subscribers who
+      // opted in: the existing-contact and resubscribe paths return earlier, so
+      // nobody is welcomed twice, and someone who declined the newsletter on a
+      // contact form (subscribed: false) is not emailed at all.
+      if (trimmedFormId && isSubscribed) {
+        try {
+          await runNewsletterFormAutomation({
+            websiteProgressId,
+            formId: trimmedFormId,
+            email,
+            name: [parsedFirstName, parsedLastName].filter(Boolean).join(" ").trim() || (typeof name === "string" ? name.trim() : ""),
+          });
+        } catch (automationErr) {
+          console.error("[newsletter/subscribe] automation failed:", automationErr);
+        }
+      }
 
       const message = isSubscribed 
         ? "Successfully subscribed to newsletter" 

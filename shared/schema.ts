@@ -1665,6 +1665,12 @@ export type SiteFormConfig = {
   id: string;
   name: string;
   page?: string;
+  /**
+   * Which endpoint the form posts to, and so which payload an automation
+   * can expect. Newsletter signups carry no message or phone. Sites
+   * published before this field existed omit it; those are contact forms.
+   */
+  type: "contact" | "newsletter";
 };
 
 export const websiteFormAutomations = pgTable(

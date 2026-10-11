@@ -11,7 +11,8 @@ export function parseSiteForms(config: Record<string, unknown> | null | undefine
     const name = typeof row.name === "string" ? row.name.trim() : "";
     if (!id || !name) continue;
     const page = typeof row.page === "string" && row.page.trim() ? row.page.trim() : undefined;
-    forms.push({ id, name, ...(page ? { page } : {}) });
+    const type = row.type === "newsletter" ? "newsletter" : "contact";
+    forms.push({ id, name, type, ...(page ? { page } : {}) });
   }
   return forms;
 }
