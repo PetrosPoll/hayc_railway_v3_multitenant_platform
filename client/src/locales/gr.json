@@ -1334,6 +1334,7 @@
         "automationsForms": "Φόρμες",
         "automationsConfigured": "ρυθμισμένο",
         "automationsPlaceholdersHint": "Placeholders: {{name}}, {{email}}, {{phone}}, {{message}}, {{siteLabel}}",
+        "automationsPlaceholdersHintNewsletter": "Placeholders: {{name}}, {{email}}, {{siteLabel}}",
         "automationsEnabled": "Ενεργό",
         "automationsEnabledHint": "Αν είναι off, αυτό το workflow δεν θα τρέξει στην υποβολή φόρμας.",
         "automationsSubject": "Θέμα email",

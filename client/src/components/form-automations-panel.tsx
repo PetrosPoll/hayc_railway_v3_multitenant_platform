@@ -27,6 +27,19 @@ const DEFAULT_BODY = {
   gr: "Γεια σου {{name}},\n\nΕυχαριστούμε που επικοινωνήσατε μαζί μας. Λάβαμε το μήνυμά σας και θα επικοινωνήσουμε μαζί σας το συντομότερο δυνατό.\n\n— Η ομάδα {{siteLabel}}",
 } as const;
 
+// A newsletter signup is not a message, so the contact-form wording ("we
+// received your message", "we will get back to you") does not apply. These
+// also avoid {{message}} and {{phone}}, which a signup never carries.
+const DEFAULT_NEWSLETTER_SUBJECT = {
+  en: "Thanks for subscribing — {{siteLabel}}",
+  gr: "Ευχαριστούμε για την εγγραφή — {{siteLabel}}",
+} as const;
+
+const DEFAULT_NEWSLETTER_BODY = {
+  en: "Hi {{name}},\n\nThanks for subscribing. You will hear from us whenever we have something worth sharing.\n\n— The {{siteLabel}} team",
+  gr: "Γεια σου {{name}},\n\nΕυχαριστούμε για την εγγραφή σου. Θα λαμβάνεις νέα μας όποτε έχουμε κάτι που αξίζει να μοιραστούμε.\n\n— Η ομάδα {{siteLabel}}",
+} as const;
+
 function langKey(websiteLanguage?: string | null): "en" | "gr" {
   return websiteLanguage === "gr" || websiteLanguage === "el" ? "gr" : "en";
 }
@@ -105,6 +118,9 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
     }
   }, [forms, selectedFormId]);
 
+  const selectedFormIsNewsletter =
+    forms.find((f) => f.id === selectedFormId)?.type === "newsletter";
+
   useEffect(() => {
     if (!selectedFormId) return;
     const existing = automationsByFormId.get(selectedFormId);
@@ -114,12 +130,18 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
       setVisitorBody(existing.visitorBody);
       setLogoUrl(existing.logoUrl || "");
     } else {
+      const isNewsletter =
+        forms.find((f) => f.id === selectedFormId)?.type === "newsletter";
       setEnabled(true);
-      setVisitorSubject(DEFAULT_SUBJECT[defaultsLang]);
-      setVisitorBody(DEFAULT_BODY[defaultsLang]);
+      setVisitorSubject(
+        (isNewsletter ? DEFAULT_NEWSLETTER_SUBJECT : DEFAULT_SUBJECT)[defaultsLang],
+      );
+      setVisitorBody(
+        (isNewsletter ? DEFAULT_NEWSLETTER_BODY : DEFAULT_BODY)[defaultsLang],
+      );
       setLogoUrl("");
     }
-  }, [selectedFormId, automationsByFormId, defaultsLang]);
+  }, [selectedFormId, automationsByFormId, defaultsLang, forms]);
 
   const effectiveLogo = logoUrl.trim() || siteLogoUrl;
 
@@ -300,13 +322,19 @@ export function FormAutomationsPanel({ websiteId, websiteLanguage }: FormAutomat
             <CardHeader>
               <CardTitle className="text-base">{selectedForm.name}</CardTitle>
               <CardDescription>
-                {t("dashboard.automationsPlaceholdersHint", {
-                  name: "{{name}}",
-                  email: "{{email}}",
-                  phone: "{{phone}}",
-                  message: "{{message}}",
-                  siteLabel: "{{siteLabel}}",
-                })}
+                {selectedFormIsNewsletter
+                  ? t("dashboard.automationsPlaceholdersHintNewsletter", {
+                      name: "{{name}}",
+                      email: "{{email}}",
+                      siteLabel: "{{siteLabel}}",
+                    })
+                  : t("dashboard.automationsPlaceholdersHint", {
+                      name: "{{name}}",
+                      email: "{{email}}",
+                      phone: "{{phone}}",
+                      message: "{{message}}",
+                      siteLabel: "{{siteLabel}}",
+                    })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-5">

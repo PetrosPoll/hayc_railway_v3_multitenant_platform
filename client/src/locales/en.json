@@ -1332,6 +1332,7 @@
         "automationsForms": "Forms",
         "automationsConfigured": "configured",
         "automationsPlaceholdersHint": "Placeholders: {{name}}, {{email}}, {{phone}}, {{message}}, {{siteLabel}}",
+        "automationsPlaceholdersHintNewsletter": "Placeholders: {{name}}, {{email}}, {{siteLabel}}",
         "automationsEnabled": "Enabled",
         "automationsEnabledHint": "When off, this workflow will not run on form submit.",
         "automationsSubject": "Email subject",

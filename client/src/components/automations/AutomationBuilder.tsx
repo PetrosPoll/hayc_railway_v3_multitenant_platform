@@ -192,6 +192,18 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     [nodes, selectedNodeId],
   );
 
+  /**
+   * A newsletter signup carries no message and no phone — the backend passes
+   * both as empty strings — so offering {{message}} and {{phone}} on one of
+   * these workflows would silently render blanks in a live email.
+   */
+  const triggerIsNewsletter = useMemo(() => {
+    const trigger = nodes.find((n) => n.type === "trigger");
+    const formId = (trigger?.data?.formId as string) || triggerFormId;
+    if (!formId) return false;
+    return forms.find((f) => f.id === formId)?.type === "newsletter";
+  }, [nodes, triggerFormId, forms]);
+
   const updateSelectedData = (patch: Record<string, unknown>) => {
     if (!selectedNodeId) return;
     setNodes((nds) =>
@@ -773,13 +785,19 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
                   showPreview
                 />
                 <p className="text-[11px] text-muted-foreground">
-                  {t("dashboard.automationsPlaceholdersHint", {
-                    name: "{{name}}",
-                    email: "{{email}}",
-                    phone: "{{phone}}",
-                    message: "{{message}}",
-                    siteLabel: "{{siteLabel}}",
-                  })}
+                  {triggerIsNewsletter
+                    ? t("dashboard.automationsPlaceholdersHintNewsletter", {
+                        name: "{{name}}",
+                        email: "{{email}}",
+                        siteLabel: "{{siteLabel}}",
+                      })
+                    : t("dashboard.automationsPlaceholdersHint", {
+                        name: "{{name}}",
+                        email: "{{email}}",
+                        phone: "{{phone}}",
+                        message: "{{message}}",
+                        siteLabel: "{{siteLabel}}",
+                      })}
                 </p>
               </div>
             )}
