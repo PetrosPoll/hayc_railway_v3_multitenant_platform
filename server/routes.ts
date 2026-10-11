@@ -24122,13 +24122,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     name: string;
   }): Promise<void> {
     const { websiteProgressId, formId, email, name } = params;
+    console.log(
+      `[newsletter/subscribe] form '${formId}' submitted for websiteProgressId ${websiteProgressId}; checking automations.`,
+    );
 
     const [website] = await db
       .select()
       .from(websiteProgress)
       .where(eq(websiteProgress.id, websiteProgressId))
       .limit(1);
-    if (!website) return;
+    if (!website) {
+      console.warn(
+        `[newsletter/subscribe] no website row for websiteProgressId ${websiteProgressId}; skipping automation for form '${formId}'.`,
+      );
+      return;
+    }
 
     const [onboarding] = await db
       .select({
@@ -24140,10 +24148,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .orderBy(desc(onboardingFormResponses.createdAt))
       .limit(1);
 
-    // Used as the reply-to and passed to the workflow engine; without it we
-    // cannot send a sensible email, so skip rather than send a broken one.
-    const ownerEmail = (website.contactEmail || onboarding?.accountEmail)?.trim();
-    if (!ownerEmail) return;
+    // Only used as the reply-to. The workflow engine already treats it as
+    // optional — it omits replyToAddresses when empty — so a site without one
+    // still gets its automation, just with no reply-to.
+    const ownerEmail = (website.contactEmail || onboarding?.accountEmail)?.trim() || "";
+    if (!ownerEmail) {
+      console.warn(
+        `[newsletter/subscribe] no owner email for website ${website.id}; sending without a reply-to.`,
+      );
+    }
 
     const siteLabel = (website.projectName ?? website.domain ?? "").trim();
     const senderName = (
@@ -24172,7 +24185,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         language: emailLang,
       },
     });
-    if (workflowHandled) return;
+    if (workflowHandled) {
+      console.log(
+        `[newsletter/subscribe] ran workflow for form '${formId}' on website ${website.id}.`,
+      );
+      return;
+    }
 
     const [automation] = await db
       .select()
@@ -24185,7 +24203,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ),
       )
       .limit(1);
-    if (!automation) return;
+    if (!automation) {
+      console.log(
+        `[newsletter/subscribe] no workflow or automation configured for form '${formId}' on website ${website.id}; nothing sent.`,
+      );
+      return;
+    }
 
     const placeholderVars = {
       name,
@@ -24230,10 +24253,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       fromEmail: fromAddress,
       fromName: senderName,
       html: visitorHtml,
-      replyToAddresses: [ownerEmail],
+      replyToAddresses: ownerEmail ? [ownerEmail] : undefined,
     });
     if (!result.success) {
       console.error("[newsletter/subscribe] automation email failed:", result.error);
+    } else {
+      console.log(
+        `[newsletter/subscribe] sent automation email for form '${formId}' on website ${website.id}.`,
+      );
     }
   }
 
