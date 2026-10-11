@@ -23,6 +23,30 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/**
+ * Where the email templates live, which differs between running from source
+ * and running the build.
+ *
+ * From source this module is server/lib/, so the templates are one level up
+ * in server/email-templates. The build bundles every module into a single
+ * dist/index.js and copies the templates to dist/email-templates (see
+ * scripts/build.js), so there __dirname is dist and the templates sit beside
+ * it. Resolving only the source-relative path is why every visual workflow
+ * email failed in production with "Missing email template".
+ */
+const EMAIL_TEMPLATE_DIRS = [
+  path.join(__dirname, "email-templates"),
+  path.join(__dirname, "..", "email-templates"),
+];
+
+function resolveEmailTemplatePath(lang: string, fileName: string): string | null {
+  for (const dir of EMAIL_TEMPLATE_DIRS) {
+    const candidate = path.join(dir, lang, fileName);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
 function normalizeEmailLanguage(language: string | null | undefined): "en" | "gr" {
   const lang = (language || "en").toLowerCase();
   if (lang === "gr" || lang === "el" || lang === "greek") return "gr";
@@ -39,15 +63,18 @@ function loadEmailTemplate(
   language: string,
 ): string {
   const lang = normalizeEmailLanguage(language);
-  const filePath = path.join(__dirname, "..", "email-templates", lang, fileName);
+  const filePath = resolveEmailTemplatePath(lang, fileName);
   let template: string;
   try {
+    if (!filePath) throw new Error("not found");
     template = fs.readFileSync(filePath, "utf8");
   } catch {
     if (lang !== "en") {
       return loadEmailTemplate(fileName, replacements, "en");
     }
-    throw new Error(`Missing email template ${fileName}`);
+    throw new Error(
+      `Missing email template ${fileName} (looked in ${EMAIL_TEMPLATE_DIRS.join(", ")})`,
+    );
   }
 
   const enriched: Record<string, string> = { baseUrl: getBaseUrl(), ...replacements };
