@@ -272,6 +272,8 @@ export const websiteInvoices = pgTable("website_invoices", {
   subscriptionId: integer("subscription_id"),
   paymentIntentId: text("payment_intent_id"),
   errorMessage: text("error_message"),
+  // Admin typed this amount on recreate. Discount sync must not replace it.
+  amountLocked: boolean("amount_locked").notNull().default(false),
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({

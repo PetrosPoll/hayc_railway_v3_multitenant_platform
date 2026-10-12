@@ -215,6 +215,7 @@ async function createDraftInvoice(params: {
   currency: string;
   context?: string; // For logging context (e.g., "add-on purchase via API")
   issueDate?: Date | null;
+  amountLocked?: boolean;
 }): Promise<{ id: number } | null> {
   try {
     if (!params.websiteProgressId) {
@@ -245,6 +246,7 @@ async function createDraftInvoice(params: {
         createdAt: now,
         pdfUrl: '', // Placeholder for draft
         cloudinaryPublicId: '', // Placeholder for draft
+        amountLocked: params.amountLocked ?? false,
       })
       .returning();
 
@@ -905,6 +907,7 @@ type ReconcilableDraft = {
   subscriptionId: number | null;
   paymentIntentId: string | null;
   issueDate: Date | string | null;
+  amountLocked?: boolean | null;
 };
 
 const reconciledDraftIds = new Set<number>();
@@ -1366,7 +1369,7 @@ async function reconcileSetupFeeDraft(draft: ReconcilableDraft): Promise<void> {
 }
 
 async function reconcileUnissuedDraftAmounts(drafts: ReconcilableDraft[]): Promise<void> {
-  const pending = drafts.filter((draft) => isUnissuedDraft(draft));
+  const pending = drafts.filter((draft) => isUnissuedDraft(draft) && !draft.amountLocked);
   const bySubscription = new Map<number, ReconcilableDraft[]>();
   const setupFees: ReconcilableDraft[] = [];
 
@@ -1572,7 +1575,7 @@ async function forceCorrectSubscriptionDrafts(
 }
 
 async function forceCorrectUnissuedDraftAmounts(drafts: ReconcilableDraft[]): Promise<number> {
-  const pending = drafts.filter((draft) => isUnissuedDraft(draft));
+  const pending = drafts.filter((draft) => isUnissuedDraft(draft) && !draft.amountLocked);
   const bySubscription = new Map<number, ReconcilableDraft[]>();
 
   for (const draft of pending) {
@@ -18365,6 +18368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         amount: nextPaymentAmount,
         currency,
         issueDate: draft.issueDate ? new Date(draft.issueDate) : null,
+        amountLocked: amountSource === "manual",
         context: `manual recreate (${amountSource}, old draft ${invoiceId})`,
       });
 

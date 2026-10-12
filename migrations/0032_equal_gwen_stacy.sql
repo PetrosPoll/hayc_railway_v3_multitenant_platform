@@ -1,0 +1,1 @@
+ALTER TABLE "website_invoices" ADD COLUMN "amount_locked" boolean DEFAULT false NOT NULL;
