@@ -41,10 +41,10 @@ Flagged **Αναμενόμενα** rows count in “σε κίνδυνο”.
 ## Totals (server)
 
 - **Εισπράχθηκαν** = Σ (amount_paid − amount_refunded) for collected statuses  
-- **Αναμενόμενα** = Σ amount_due of `upcoming` + `pending` + `will_not_renew`  
+- **Upcoming** = Σ amount_due of `upcoming` + `pending` + `will_not_renew` (να πληρωθούν)  
 - **Εκκρεμούν (Overdue)** = outstanding of grace/action_required/retrying/delinquent/disputed + unpaid part of `partially_paid`  
-- **Ακυρωμένα** = amount_due of `stopped` + `written_off` (not in Σύνολο μήνα)  
-- **Σύνολο μήνα** = Εισπράχθηκαν + Αναμενόμενα + Εκκρεμούν  
+- **Ακυρωμένα** = amount_due of `stopped` + `written_off` (not in Προβολή)  
+- **Προβολή τζίρου** = Εισπράχθηκαν + Upcoming + Εκκρεμούν (αν πληρωθούν όλα)  
 
 ## Stripe writes allowed from calendar
 

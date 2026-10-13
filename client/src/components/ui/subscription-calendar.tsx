@@ -327,15 +327,15 @@ export function SubscriptionCalendar() {
           τραβήξεις παλιές πληρωμές και upcoming.
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
         <div className="p-2 bg-emerald-50 border border-emerald-200 rounded">
           <p className="font-semibold text-emerald-800">Εισπράχθηκαν</p>
           <p className="text-[11px] text-emerald-700/80 capitalize">{monthLabel}</p>
           <p className="text-lg font-bold text-emerald-700">€{euros(totals?.collectedCents || 0)}</p>
         </div>
         <div className="p-2 bg-blue-50 border border-blue-200 rounded">
-          <p className="font-semibold text-blue-800">Αναμενόμενα</p>
-          <p className="text-[11px] text-blue-700/80 capitalize">{monthLabel}</p>
+          <p className="font-semibold text-blue-800">Upcoming</p>
+          <p className="text-[11px] text-blue-700/80">να πληρωθούν · <span className="capitalize">{monthLabel}</span></p>
           <p className="text-lg font-bold text-blue-700">€{euros(totals?.expectedCents || 0)}</p>
           {(totals?.atRiskCount || 0) > 0 && (
             <p className="text-orange-700">σε κίνδυνο: {totals!.atRiskCount} (€{euros(totals!.atRiskCents)})</p>
@@ -353,11 +353,11 @@ export function SubscriptionCalendar() {
             €{euros(totals?.canceledCents ?? totals?.lostCents ?? 0)}
           </p>
         </div>
-        <div className="p-2 bg-gray-50 border border-gray-200 rounded">
-          <p className="font-semibold text-gray-800">Σύνολο μήνα</p>
-          <p className="text-[11px] text-muted-foreground capitalize">{monthLabel}</p>
-          <p className="text-lg font-bold">€{euros(totals?.monthTotalCents || 0)}</p>
-          <p className="text-muted-foreground">συμπ. ΦΠΑ</p>
+        <div className="p-2 bg-indigo-50 border border-indigo-200 rounded">
+          <p className="font-semibold text-indigo-800">Προβολή τζίρου</p>
+          <p className="text-[11px] text-indigo-700/80">αν πληρωθούν όλα · <span className="capitalize">{monthLabel}</span></p>
+          <p className="text-lg font-bold text-indigo-700">€{euros(totals?.monthTotalCents || 0)}</p>
+          <p className="text-indigo-700/70">εισπραχθέντα + upcoming + overdue · συμπ. ΦΠΑ</p>
         </div>
       </div>
 
@@ -526,7 +526,7 @@ export function SubscriptionCalendar() {
           <div className="text-xs space-y-1 px-1">
             <p><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1" />Εκκρεμούν / Overdue</p>
             <p><span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1" />Σε κίνδυνο</p>
-            <p><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />Αναμενόμενα</p>
+            <p><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />Upcoming</p>
             <p><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />Εισπράχθηκαν</p>
           </div>
 
@@ -548,7 +548,7 @@ export function SubscriptionCalendar() {
               <SelectContent>
                 <SelectItem value="all">Όλα status</SelectItem>
                 <SelectItem value="collected">Εισπράχθηκαν</SelectItem>
-                <SelectItem value="expected">Αναμενόμενα</SelectItem>
+                <SelectItem value="expected">Upcoming</SelectItem>
                 <SelectItem value="outstanding">Εκκρεμούν / Overdue</SelectItem>
                 <SelectItem value="canceled">Ακυρωμένα</SelectItem>
               </SelectContent>
