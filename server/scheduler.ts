@@ -29,6 +29,98 @@ async function markScheduledCampaignFailed(
 }
 
 let schedulerInterval: NodeJS.Timeout | null = null;
+let lastBillingNightlyKey: string | null = null;
+let lastBillingDigestKey: string | null = null;
+
+function athensHourMinute(now = new Date()): { dateKey: string; hour: number; minute: number } {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Athens",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(now).map((p) => [p.type, p.value]));
+  return {
+    dateKey: `${parts.year}-${parts.month}-${parts.day}`,
+    hour: Number(parts.hour),
+    minute: Number(parts.minute),
+  };
+}
+
+async function runBillingCalendarNightly(): Promise<void> {
+  console.log("[SCHEDULER] Billing calendar nightly (Athens 03:00) starting…");
+  const Stripe = (await import("stripe")).default;
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
+    apiVersion: "2023-10-16" as any,
+  });
+  const { reconcileStripeCalendar } = await import("./services/billing-calendar-sync");
+  const {
+    materializeAllActiveCustomSeries,
+    ageCustomObligations,
+  } = await import("./services/billing-custom-materialize");
+  const { createAdminNotification } = await import("./services/billing-admin-notify");
+
+  const { synced } = await reconcileStripeCalendar(stripe, { source: "reconcile" });
+  const customCreated = await materializeAllActiveCustomSeries();
+  const aged = await ageCustomObligations();
+
+  // Card expiring flags + email (once per card via billing_email_log)
+  try {
+    const { claimBillingEmailSend } = await import("./services/billing-admin-notify");
+    const date = new Date();
+    date.setMonth(date.getMonth() + 1);
+    const paymentMethods = await stripe.paymentMethods.list({ type: "card", limit: 100 });
+    for (const pm of paymentMethods.data) {
+      if (!pm.card || !pm.customer) continue;
+      if (
+        pm.card.exp_year === date.getFullYear() &&
+        pm.card.exp_month === date.getMonth() + 1
+      ) {
+        const key = `card-expiring:${pm.id}:${pm.card.exp_year}-${pm.card.exp_month}`;
+        const first = await claimBillingEmailSend({
+          template: "card-expiring",
+          attemptKey: key,
+        });
+        if (!first) continue;
+        await createAdminNotification({
+          type: "card_expiring",
+          title: `Card expiring …${pm.card.last4}`,
+          payload: { paymentMethodId: pm.id },
+        });
+      }
+    }
+  } catch (e) {
+    console.error("[SCHEDULER] card expiry scan failed:", e);
+  }
+
+  console.log(
+    `[SCHEDULER] Billing nightly done: stripeSubs=${synced} customCreated=${customCreated} aged=${aged}`,
+  );
+}
+
+async function runBillingAdminDigest(): Promise<void> {
+  const { listUnreadAdminNotifications, createAdminNotification } = await import(
+    "./services/billing-admin-notify"
+  );
+  const unread = await listUnreadAdminNotifications(100);
+  if (!unread.length) return;
+  const byType = new Map<string, number>();
+  for (const n of unread) {
+    byType.set(n.type, (byType.get(n.type) || 0) + 1);
+  }
+  const lines = Array.from(byType.entries())
+    .map(([t, c]) => `${t}: ${c}`)
+    .join("\n");
+  await createAdminNotification({
+    type: "daily_digest",
+    title: `Billing digest: ${unread.length} open items`,
+    body: lines,
+  });
+  console.log("[SCHEDULER] Billing digest prepared");
+}
 
 export function startCampaignScheduler(storage: IStorage) {
   console.log('[SCHEDULER] Starting campaign scheduler...');
@@ -45,6 +137,19 @@ export function startCampaignScheduler(storage: IStorage) {
       await processDueAutomationJobs();
     } catch (error) {
       console.error('[SCHEDULER] Error processing automation jobs:', error);
+    }
+    try {
+      const { dateKey, hour, minute } = athensHourMinute();
+      if (hour === 3 && minute === 0 && lastBillingNightlyKey !== dateKey) {
+        lastBillingNightlyKey = dateKey;
+        await runBillingCalendarNightly();
+      }
+      if (hour === 9 && minute === 0 && lastBillingDigestKey !== dateKey) {
+        lastBillingDigestKey = dateKey;
+        await runBillingAdminDigest();
+      }
+    } catch (error) {
+      console.error("[SCHEDULER] Billing calendar job error:", error);
     }
   }, 60000); // Check every minute
 

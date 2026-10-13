@@ -85,7 +85,15 @@ import { startWorkflowForFormSubmit } from "./lib/automation-engine";
 import { demoReadOnlyMiddleware } from "./lib/demo-mode";
 import { duplicateDemoWebsite } from "./lib/demo-website-clone";
 import { handleChurnStripeEvent } from "./services/churn-event-handlers";
-import { ensureCustomerStripeAccount } from "./services/subscription-events";
+import {
+  ensureCustomerStripeAccount,
+  recordStripeEventReceipt,
+} from "./services/subscription-events";
+import {
+  handleCalendarStripeEvent,
+  isCalendarStripeEvent,
+} from "./services/billing-calendar-webhook";
+import { reconcileStripeCalendar } from "./services/billing-calendar-sync";
 import { upsertPriceMapSeed } from "./services/stripe-price-map";
 import fs from "fs";
 import path from "path";
@@ -5564,11 +5572,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log('🔔 Webhook received:', event.type, 'ID:', event.id);
 
-      // Churn / MRR event log (idempotent via stripe_event_id). Safe no-op for unrelated types.
-      try {
-        await handleChurnStripeEvent(stripe, event);
-      } catch (churnErr) {
-        console.error("[churn-events] handler error:", churnErr);
+      // One receipt gates both churn and calendar for shared event types.
+      const churnTypes = new Set([
+        "invoice.payment_succeeded",
+        "invoice.paid",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+      ]);
+      if (isCalendarStripeEvent(event.type) || churnTypes.has(event.type)) {
+        const { alreadyProcessed } = await recordStripeEventReceipt(event.id);
+        if (alreadyProcessed) {
+          console.log("⏭️ Duplicate Stripe event, skipping churn+calendar:", event.id);
+          return res.json({ received: true, duplicate: true });
+        }
+        try {
+          await handleChurnStripeEvent(stripe, event, { skipReceipt: true });
+        } catch (churnErr) {
+          console.error("[churn-events] handler error:", churnErr);
+        }
+        try {
+          await handleCalendarStripeEvent(stripe, event);
+        } catch (calErr) {
+          console.error("[billing-calendar] webhook handler error:", calErr);
+        }
       }
 
       switch (event.type) {
@@ -6347,59 +6373,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         case "charge.failed": {
-          const charge = event.data.object as Stripe.Charge;
-          const customer = await stripe.customers.retrieve(
-            charge.customer as string,
-          );
-
-          if (!customer || customer.deleted) break;
-
-          // Get the user based on their email
-          const user = await storage.getUserByEmail(customer.email);
-          const userLanguage = user?.language || "en";
-
-          // Try to find the subscription and website domain
-          let websiteDomain = null;
-          let websiteProjectName = null;
-          let planName = "Your Subscription";
-          if (user && charge.metadata?.subscription_id) {
-            const subscription = await db
-              .select()
-              .from(subscriptionsTable)
-              .where(eq(subscriptionsTable.stripeSubscriptionId, charge.metadata.subscription_id))
-              .limit(1);
-            
-            if (subscription.length > 0) {
-              planName = subscription[0].tier || "Your Subscription";
-              
-              if (subscription[0].websiteProgressId) {
-                const websiteProgressResult = await db
-                  .select()
-                  .from(websiteProgress)
-                  .where(eq(websiteProgress.id, subscription[0].websiteProgressId))
-                  .limit(1);
-                
-                if (websiteProgressResult.length > 0) {
-                  websiteDomain = websiteProgressResult[0].domain;
-                  websiteProjectName = websiteProgressResult[0].projectName;
-                }
-              }
-            }
-          }
-
-          await sendSubscriptionEmail("failed", {
-            username: customer.name,
-            email: customer.email,
-            plan: planName,
-            amount: (charge.amount / 100).toFixed(2),
-            currency: charge.currency.toUpperCase(),
-            failureDate: new Date(),
-            failureReason:
-              charge.failure_message || "Payment verification failed",
-            language: userLanguage,
-            domain: websiteDomain,
-            projectName: websiteProjectName || websiteDomain,
-          });
+          // Failed-payment email is sent once from invoice.payment_failed (Calendar v2).
+          // Skip here to avoid duplicate emails for the same attempt.
+          console.log("⏭️ charge.failed: email deferred to invoice.payment_failed path");
           break;
         }
 
@@ -6685,88 +6661,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         case "invoice.payment_failed": {
-          console.log('⚠️ Processing invoice.payment_failed');
+          // Obligation status is updated by handleCalendarStripeEvent (before switch).
+          // Send customer failed email once per attempt (charge.failed no longer emails).
+          console.log('⚠️ Processing invoice.payment_failed (email)');
           const invoice = event.data.object as Stripe.Invoice;
-
           try {
             if (invoice.subscription) {
-              // Find the local subscription
-              const dbSubscription = await db
-                .select()
-                .from(subscriptionsTable)
-                .where(eq(subscriptionsTable.stripeSubscriptionId, invoice.subscription as string))
-                .limit(1);
-
-              if (dbSubscription.length > 0) {
-                const subscription = dbSubscription[0];
-                
-                // Get user info for client name
-                const user = await storage.getUserById(subscription.userId);
-                const clientName = user?.username || user?.email || 'Unknown Client';
-
-                // Determine if Stripe will retry - check next_payment_attempt
-                const hasNextRetry = invoice.next_payment_attempt !== null;
-                const nextRetryDate = hasNextRetry && invoice.next_payment_attempt 
-                  ? new Date(invoice.next_payment_attempt * 1000) 
+              const obligation = await storage.getObligationsByStripeInvoiceId(invoice.id);
+              const attempt = invoice.attempt_count ?? obligation?.attemptCount ?? 1;
+              const { shouldSendFailedEmail } = await import(
+                "./services/billing-calendar-webhook"
+              );
+              if (
+                obligation &&
+                (await shouldSendFailedEmail(obligation.id, attempt))
+              ) {
+                const user = obligation.userId
+                  ? await storage.getUserById(obligation.userId)
                   : null;
-                
-                // Get failure reason from the charge if available
-                let failureReason = invoice.billing_reason || 'unknown reason';
-                if (invoice.charge) {
-                  try {
-                    const charge = await stripe.charges.retrieve(invoice.charge as string);
-                    failureReason = charge.failure_message || charge.outcome?.seller_message || failureReason;
-                  } catch (e) {
-                    // Ignore charge retrieval errors
+                if (user?.email) {
+                  let failureReason = invoice.billing_reason || "payment_failed";
+                  if (invoice.charge) {
+                    try {
+                      const charge = await stripe.charges.retrieve(invoice.charge as string);
+                      failureReason =
+                        charge.failure_message ||
+                        charge.outcome?.seller_message ||
+                        failureReason;
+                    } catch {
+                      /* ignore */
+                    }
                   }
-                }
-
-                // Status: "retrying" if Stripe will retry, "delinquent" if no more retries
-                const status = hasNextRetry ? 'retrying' : 'delinquent';
-
-                // Check if obligation already exists for this invoice
-                const existingObligation = await storage.getObligationsByStripeInvoiceId(invoice.id);
-                
-                if (existingObligation) {
-                  // Update existing obligation with retry info
-                  await storage.updatePaymentObligation(existingObligation.id, {
-                    status,
-                    nextRetryDate,
-                    attemptCount: (existingObligation.attemptCount || 0) + 1,
-                    lastFailureReason: failureReason,
-                    notes: hasNextRetry 
-                      ? `Payment failed, Stripe will retry on ${nextRetryDate?.toLocaleDateString()}`
-                      : `Payment failed - all retries exhausted. Reason: ${failureReason}`,
+                  await sendSubscriptionEmail("failed", {
+                    username: user.username || obligation.clientName,
+                    email: user.email,
+                    plan: "Subscription",
+                    amount: ((invoice.amount_due || obligation.amountDue) / 100).toFixed(2),
+                    currency: (invoice.currency || "eur").toUpperCase(),
+                    failureDate: new Date(),
+                    failureReason,
+                    language: user.language || "en",
                   });
-                  console.log(`⚠️ Updated obligation to ${status} for invoice:`, invoice.id);
-                } else {
-                  // Create a new obligation with retry tracking
-                  await storage.createPaymentObligation({
-                    customPaymentId: null,
-                    subscriptionId: subscription.id,
-                    userId: subscription.userId,
-                    clientName,
-                    amountDue: invoice.amount_due,
-                    currency: invoice.currency,
-                    dueDate: new Date(invoice.created * 1000),
-                    status,
-                    origin: 'stripe',
-                    stripeInvoiceId: invoice.id,
-                    stripePaymentIntentId: invoice.payment_intent as string || null,
-                    graceDays: 7,
-                    nextRetryDate,
-                    attemptCount: 1,
-                    lastFailureReason: failureReason,
-                    notes: hasNextRetry 
-                      ? `Payment failed, Stripe will retry on ${nextRetryDate?.toLocaleDateString()}`
-                      : `Payment failed - all retries exhausted. Reason: ${failureReason}`,
-                  });
-                  console.log(`⚠️ Created ${status} obligation for failed payment:`, invoice.id);
                 }
               }
             }
           } catch (error) {
-            console.error('❌ Error processing invoice.payment_failed:', error);
+            console.error('❌ Error processing invoice.payment_failed email:', error);
           }
           break;
         }
@@ -6788,17 +6728,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (dbSubscription.length > 0) {
                 const subscription = dbSubscription[0];
                 
-                // Update or create obligation as "failed"
-                const existingObligation = await storage.getObligationsByStripeInvoiceId(invoice.id);
-                
-                if (existingObligation) {
-                  await storage.updatePaymentObligation(existingObligation.id, {
-                    status: 'failed',
-                    nextRetryDate: null,
-                    notes: `Payment permanently failed - all retries exhausted. Subscription will be cancelled.`,
-                  });
-                  console.log('❌ Marked obligation as failed for uncollectible invoice:', invoice.id);
-                }
+                // Obligation → written_off already applied by calendar webhook handler.
+                // Keep existing auto-cancel of the Stripe subscription.
+                console.log('❌ Uncollectible invoice — canceling Stripe subscription:', invoice.id);
 
                 // Cancel the subscription in Stripe (this will trigger customer.subscription.deleted)
                 let cancelledStripeSub: Stripe.Subscription | null = null;
@@ -11485,7 +11417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Sync invoices from Stripe to database
+  // Sync invoices from Stripe to database (Calendar v2: shared reconcile path)
   app.post("/api/admin/sync-invoices", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -11494,6 +11426,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.getUserById(req.user.id);
       if (!user || !hasPermission(user.role, 'canViewSubscriptions')) {
         return res.status(403).json({ error: "Not authorized" });
+      }
+
+      // Prefer Calendar v2 reconcile (same functions as webhooks / nightly job)
+      try {
+        const { synced } = await reconcileStripeCalendar(stripe, { source: "sync" });
+        const {
+          materializeAllActiveCustomSeries,
+        } = await import("./services/billing-custom-materialize");
+        const customCreated = await materializeAllActiveCustomSeries();
+        return res.json({
+          success: true,
+          synced,
+          customCreated,
+          message: `Reconciled ${synced} Stripe subscriptions; materialized ${customCreated} custom occurrences`,
+        });
+      } catch (reconcileErr) {
+        console.error("[billing-calendar] sync-invoices reconcile failed, falling back:", reconcileErr);
       }
 
       const { mode } = req.body; // 'all' or 'last_2_months'
@@ -25452,6 +25401,127 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   };
   
   // Migrate existing custom payments: create obligations for future dates (from next month)
+  // ── Calendar v2 API ──────────────────────────────────────────────
+  app.get("/api/admin/billing-calendar", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    if (!hasPermission(req.user.role, "canViewSubscriptions") && !hasPermission(req.user.role, "canViewNewsletter")) {
+      return res.status(403).json({ error: "Not authorized" });
+    }
+    try {
+      const from = String(req.query.from || "");
+      const to = String(req.query.to || "");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
+        return res.status(400).json({ error: "from and to required as YYYY-MM-DD" });
+      }
+      const { getBillingCalendar } = await import("./services/billing-calendar-api");
+      const data = await getBillingCalendar(from, to);
+      res.json(data);
+    } catch (error) {
+      console.error("billing-calendar error:", error);
+      res.status(500).json({ error: "Failed to load billing calendar" });
+    }
+  });
+
+  app.get("/api/admin/billing-calendar/obligations/:id/history", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const { getObligationHistory } = await import("./services/billing-calendar-api");
+      const history = await getObligationHistory(parseInt(req.params.id));
+      res.json({ history });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to load history" });
+    }
+  });
+
+  app.get("/api/admin/notifications", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    const { listUnreadAdminNotifications, countUnreadAdminNotifications } = await import(
+      "./services/billing-admin-notify"
+    );
+    const notifications = await listUnreadAdminNotifications();
+    const unread = await countUnreadAdminNotifications();
+    res.json({ notifications, unread });
+  });
+
+  app.post("/api/admin/notifications/:id/read", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    const { markAdminNotificationRead } = await import("./services/billing-admin-notify");
+    await markAdminNotificationRead(parseInt(req.params.id));
+    res.json({ ok: true });
+  });
+
+  app.post("/api/admin/notifications/read-all", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    const { markAllAdminNotificationsRead } = await import("./services/billing-admin-notify");
+    await markAllAdminNotificationsRead();
+    res.json({ ok: true });
+  });
+
+  app.post("/api/admin/billing-calendar/obligations/:id/pay-invoice", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const obligation = await storage.getPaymentObligationById(parseInt(req.params.id));
+      if (!obligation?.stripeInvoiceId) {
+        return res.status(400).json({ error: "No Stripe invoice on obligation" });
+      }
+      const invoice = await stripe.invoices.pay(obligation.stripeInvoiceId);
+      res.json({ invoice });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Pay failed" });
+    }
+  });
+
+  app.post("/api/admin/billing-calendar/obligations/:id/mark-uncollectible", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const obligation = await storage.getPaymentObligationById(parseInt(req.params.id));
+      if (!obligation?.stripeInvoiceId) {
+        return res.status(400).json({ error: "No Stripe invoice on obligation" });
+      }
+      const invoice = await stripe.invoices.markUncollectible(obligation.stripeInvoiceId);
+      res.json({
+        invoice,
+        warning:
+          "Marking uncollectible triggers auto-cancel of the Stripe subscription (existing behavior).",
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "markUncollectible failed" });
+    }
+  });
+
+  app.post("/api/admin/billing-calendar/obligations/:id/send-payment-link", async (req, res) => {
+    if (!req.isAuthenticated()) return res.status(401).json({ error: "Not authenticated" });
+    try {
+      const obligation = await storage.getPaymentObligationById(parseInt(req.params.id));
+      if (!obligation?.stripeInvoiceId) {
+        return res.status(400).json({ error: "No Stripe invoice" });
+      }
+      const invoice = await stripe.invoices.retrieve(obligation.stripeInvoiceId);
+      const url = invoice.hosted_invoice_url;
+      if (!url) return res.status(400).json({ error: "No hosted invoice URL" });
+      const user = obligation.userId
+        ? await storage.getUserById(obligation.userId)
+        : null;
+      if (user?.email) {
+        await sendSubscriptionEmail("failed", {
+          username: user.username || obligation.clientName,
+          email: user.email,
+          plan: "Subscription",
+          amount: (obligation.amountDue / 100).toFixed(2),
+          currency: (obligation.currency || "eur").toUpperCase(),
+          failureDate: new Date(),
+          failureReason: `Please complete payment: ${url}`,
+          language: user.language || "en",
+        });
+      }
+      res.json({ sent: Boolean(user?.email), url });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Send failed" });
+    }
+  });
+
   app.post("/api/admin/custom-payments/migrate-future-to-outstanding", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -25602,19 +25672,26 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         notes: notes || null,
       });
 
-      // Default to unpaid: create obligation for start date so admin can mark paid when client pays
-      await storage.createPaymentObligation({
-        customPaymentId: payment.id,
-        subscriptionId: subscriptionId || null,
-        userId: userId || null,
-        clientName,
-        amountDue: Math.round(amount * 100),
-        currency: currency || "eur",
-        dueDate: parseDateOnly(startDate),
-        status: "pending",
-        origin: "custom",
-        notes: notes || "Custom payment - unpaid by default",
-      });
+      const { materializeCustomSeries } = await import(
+        "./services/billing-custom-materialize"
+      );
+      await materializeCustomSeries(payment);
+
+      // Optional churn/MRR bridge for newly linked monthly/yearly series
+      if (userId && (frequency === "monthly" || frequency === "yearly" || !frequency)) {
+        try {
+          const { insertSubscriptionEvent } = await import("./services/subscription-events");
+          await insertSubscriptionEvent({
+            customerId: userId,
+            type: "new",
+            effectiveAt: new Date(),
+            mrrAfterCents: frequency === "yearly" ? Math.round((amount * 100) / 12) : Math.round(amount * 100),
+            source: "admin",
+          });
+        } catch (e) {
+          console.warn("[billing-calendar] churn event on custom create skipped:", e);
+        }
+      }
 
       res.json({ payment });
     } catch (error) {
@@ -25647,7 +25724,14 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         updates.startDate = new Date(updates.startDate);
       }
 
+      if (updates.amount !== undefined && updates.amount < 1000 && updates.amount > 0) {
+        // already converted above if provided as euros
+      }
       const payment = await storage.updateCustomPayment(paymentId, updates);
+      const { applyCustomSeriesEditToFuture } = await import(
+        "./services/billing-custom-materialize"
+      );
+      await applyCustomSeriesEditToFuture(paymentId, payment);
       res.json({ payment });
     } catch (error) {
       console.error("Error updating custom payment:", error);
@@ -25880,19 +25964,32 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(404).json({ error: "Obligation not found" });
       }
 
-      // Create a settlement record
+      const { resolveSettlementAmountCents } = await import(
+        "./services/payment-obligation-amounts"
+      );
+      // amountPaid is euros from the admin UI (never pre-multiplied cents)
+      const paidCents = resolveSettlementAmountCents({
+        amountPaidEuros: amountPaid,
+        obligationAmountDueCents: obligation.amountDue,
+      });
       await storage.createPaymentSettlement({
         obligationId,
-        amountPaid: amountPaid ? Math.round(amountPaid * 100) : obligation.amountDue,
+        amountPaid: paidCents,
         currency: obligation.currency,
         paidAt: paidAt ? new Date(paidAt) : new Date(),
         paymentMethod: paymentMethod || null,
         reference: reference || null,
         notes: notes || null,
+        actorUserId: req.user.id,
       });
 
-      // Mark the obligation as settled
-      const settledObligation = await storage.markObligationSettled(obligationId);
+      const { applyStatusChange } = await import("./services/billing-obligation-history");
+      const settledObligation = await applyStatusChange(obligationId, "settled", {
+        source: "admin",
+        actorUserId: req.user.id,
+        note: "Marked paid by admin",
+        patch: { amountPaidCents: paidCents, assumedPaid: false },
+      });
       res.json({ obligation: settledObligation });
     } catch (error) {
       console.error("Error settling payment obligation:", error);
@@ -26014,10 +26111,15 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(404).json({ error: "Obligation not found" });
       }
 
-      // Create a settlement record
+      const { resolveSettlementAmountCents } = await import(
+        "./services/payment-obligation-amounts"
+      );
       const settlement = await storage.createPaymentSettlement({
         obligationId,
-        amountPaid: Math.round(amountPaid * 100),
+        amountPaid: resolveSettlementAmountCents({
+          amountPaidEuros: amountPaid,
+          obligationAmountDueCents: obligation.amountDue,
+        }),
         currency: obligation.currency,
         paidAt: paidAt ? new Date(paidAt) : new Date(),
         paymentMethod: paymentMethod || null,

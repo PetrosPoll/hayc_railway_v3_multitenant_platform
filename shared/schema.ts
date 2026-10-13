@@ -1078,6 +1078,22 @@ export const appSettings = pgTable("app_settings", {
   changesVisibleInUserDashboard: boolean("changes_visible_in_user_dashboard")
     .notNull()
     .default(true),
+  calendarRealtimeEmail: boolean("calendar_realtime_email").notNull().default(true),
+  calendarCustomerEmailActionRequired: boolean("calendar_customer_email_action_required")
+    .notNull()
+    .default(false),
+  calendarCustomerEmailCancelConfirmed: boolean("calendar_customer_email_cancel_confirmed")
+    .notNull()
+    .default(false),
+  calendarCustomerEmailEndingSoon: boolean("calendar_customer_email_ending_soon")
+    .notNull()
+    .default(false),
+  calendarCustomerEmailOfflineReminder: boolean("calendar_customer_email_offline_reminder")
+    .notNull()
+    .default(false),
+  calendarCustomerEmailOfflineOverdue: boolean("calendar_customer_email_offline_overdue")
+    .notNull()
+    .default(false),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
@@ -1431,27 +1447,44 @@ export const insertAdminCampaignMessageSchema = createInsertSchema(adminCampaign
 export type AdminCampaignMessage = typeof adminCampaignMessages.$inferSelect;
 export type InsertAdminCampaignMessage = z.infer<typeof insertAdminCampaignMessageSchema>;
 
-// Payment Obligation Status enum
+// Payment Obligation Status enum (Calendar v2)
 export const PaymentObligationStatus = {
+  UPCOMING: "upcoming",
   PENDING: "pending",
   GRACE: "grace",
+  ACTION_REQUIRED: "action_required",
   RETRYING: "retrying",
   DELINQUENT: "delinquent",
-  FAILED: "failed",
+  DISPUTED: "disputed",
   SETTLED: "settled",
-  STOPPED: "stopped",
+  PARTIALLY_PAID: "partially_paid",
+  REFUNDED: "refunded",
+  PARTIALLY_REFUNDED: "partially_refunded",
   WRITTEN_OFF: "written_off",
+  WILL_NOT_RENEW: "will_not_renew",
+  PAUSED: "paused",
+  STOPPED: "stopped",
+  /** @deprecated mapped to written_off in migration 0033 */
+  FAILED: "failed",
 } as const;
 
-export type PaymentObligationStatusType = typeof PaymentObligationStatus[keyof typeof PaymentObligationStatus];
+export type PaymentObligationStatusType =
+  (typeof PaymentObligationStatus)[keyof typeof PaymentObligationStatus];
 
-// Payment Origin enum
 export const PaymentOrigin = {
   CUSTOM: "custom",
   STRIPE: "stripe",
 } as const;
 
-export type PaymentOriginType = typeof PaymentOrigin[keyof typeof PaymentOrigin];
+export type PaymentOriginType = (typeof PaymentOrigin)[keyof typeof PaymentOrigin];
+
+export const PaymentHistorySource = {
+  WEBHOOK: "webhook",
+  RECONCILE: "reconcile",
+  ADMIN: "admin",
+  SYSTEM: "system",
+  SYNC: "sync",
+} as const;
 
 // Custom Payments table - stores recurring custom payment configurations
 export const customPayments = pgTable("custom_payments", {
@@ -1482,28 +1515,45 @@ export const insertCustomPaymentSchema = createInsertSchema(customPayments).omit
 export type CustomPayment = typeof customPayments.$inferSelect;
 export type InsertCustomPayment = z.infer<typeof insertCustomPaymentSchema>;
 
-// Payment Obligations table - tracks each individual payment due
-export const paymentObligations = pgTable("payment_obligations", {
-  id: serial("id").primaryKey(),
-  customPaymentId: integer("custom_payment_id").references(() => customPayments.id),
-  subscriptionId: integer("subscription_id").references(() => subscriptions.id),
-  userId: integer("user_id").references(() => users.id),
-  clientName: text("client_name").notNull(),
-  amountDue: integer("amount_due").notNull(),
-  currency: text("currency").notNull().default("eur"),
-  dueDate: timestamp("due_date").notNull(),
-  status: text("status").notNull().default(PaymentObligationStatus.PENDING),
-  origin: text("origin").notNull().default(PaymentOrigin.CUSTOM),
-  stripeInvoiceId: text("stripe_invoice_id"),
-  stripePaymentIntentId: text("stripe_payment_intent_id"),
-  graceDays: integer("grace_days").default(7),
-  nextRetryDate: timestamp("next_retry_date"),
-  attemptCount: integer("attempt_count").default(0),
-  lastFailureReason: text("last_failure_reason"),
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// Payment Obligations — one stored entry per expected charge (Calendar v2)
+export const paymentObligations = pgTable(
+  "payment_obligations",
+  {
+    id: serial("id").primaryKey(),
+    customPaymentId: integer("custom_payment_id").references(() => customPayments.id),
+    subscriptionId: integer("subscription_id").references(() => subscriptions.id),
+    userId: integer("user_id").references(() => users.id),
+    clientName: text("client_name").notNull(),
+    /** Integer cents (column renamed from amount_due in 0033). */
+    amountDue: integer("amount_due_cents").notNull(),
+    amountPaidCents: integer("amount_paid_cents").notNull().default(0),
+    amountRefundedCents: integer("amount_refunded_cents").notNull().default(0),
+    currency: text("currency").notNull().default("eur"),
+    dueDate: timestamp("due_date").notNull(),
+    periodStart: timestamp("period_start"),
+    periodEnd: timestamp("period_end"),
+    status: text("status").notNull().default(PaymentObligationStatus.PENDING),
+    origin: text("origin").notNull().default(PaymentOrigin.CUSTOM),
+    riskFlags: text("risk_flags")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    stripeInvoiceId: text("stripe_invoice_id"),
+    stripePaymentIntentId: text("stripe_payment_intent_id"),
+    stripeSubscriptionId: text("stripe_subscription_id"),
+    stripeScheduleId: text("stripe_schedule_id"),
+    vatIncluded: boolean("vat_included").notNull().default(true),
+    assumedPaid: boolean("assumed_paid").notNull().default(false),
+    graceDays: integer("grace_days").default(7),
+    nextRetryDate: timestamp("next_retry_date"),
+    nextAttemptAt: timestamp("next_attempt_at"),
+    attemptCount: integer("attempt_count").default(0),
+    lastFailureReason: text("last_failure_reason"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+);
 
 export const insertPaymentObligationSchema = createInsertSchema(paymentObligations).omit({
   id: true,
@@ -1514,7 +1564,22 @@ export const insertPaymentObligationSchema = createInsertSchema(paymentObligatio
 export type PaymentObligation = typeof paymentObligations.$inferSelect;
 export type InsertPaymentObligation = z.infer<typeof insertPaymentObligationSchema>;
 
-// Payment Settlements table - records payments made against obligations
+export const paymentObligationHistory = pgTable("payment_obligation_history", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  obligationId: integer("obligation_id")
+    .notNull()
+    .references(() => paymentObligations.id),
+  oldStatus: text("old_status"),
+  newStatus: text("new_status").notNull(),
+  source: text("source").notNull(),
+  actorUserId: integer("actor_user_id").references(() => users.id),
+  stripeEventId: text("stripe_event_id"),
+  note: text("note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type PaymentObligationHistory = typeof paymentObligationHistory.$inferSelect;
+
 export const paymentSettlements = pgTable("payment_settlements", {
   id: serial("id").primaryKey(),
   obligationId: integer("obligation_id")
@@ -1526,6 +1591,7 @@ export const paymentSettlements = pgTable("payment_settlements", {
   paymentMethod: text("payment_method"),
   reference: text("reference"),
   notes: text("notes"),
+  actorUserId: integer("actor_user_id").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -1536,6 +1602,29 @@ export const insertPaymentSettlementSchema = createInsertSchema(paymentSettlemen
 
 export type PaymentSettlement = typeof paymentSettlements.$inferSelect;
 export type InsertPaymentSettlement = z.infer<typeof insertPaymentSettlementSchema>;
+
+export const adminNotifications = pgTable("admin_notifications", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  payload: jsonb("payload"),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AdminNotification = typeof adminNotifications.$inferSelect;
+
+export const billingEmailLog = pgTable("billing_email_log", {
+  id: serial("id").primaryKey(),
+  template: text("template").notNull(),
+  obligationId: integer("obligation_id").references(() => paymentObligations.id),
+  userId: integer("user_id").references(() => users.id),
+  attemptKey: text("attempt_key").notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type BillingEmailLog = typeof billingEmailLog.$inferSelect;
 
 // Ambassador promo codes — Stripe Coupon + Promotion Code with local attribution
 export const ambassadors = pgTable("ambassadors", {

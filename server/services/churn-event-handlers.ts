@@ -68,6 +68,7 @@ async function wasPastDueForSubscription(
 export async function handleChurnStripeEvent(
   stripe: Stripe,
   event: Stripe.Event,
+  opts?: { skipReceipt?: boolean },
 ): Promise<void> {
   const relevant = [
     "invoice.payment_succeeded",
@@ -77,8 +78,11 @@ export async function handleChurnStripeEvent(
   ].includes(event.type);
   if (!relevant) return;
 
-  const { alreadyProcessed } = await recordStripeEventReceipt(event.id);
-  if (alreadyProcessed) return;
+  // When the webhook already claimed the receipt for churn+calendar, skip here.
+  if (!opts?.skipReceipt) {
+    const { alreadyProcessed } = await recordStripeEventReceipt(event.id);
+    if (alreadyProcessed) return;
+  }
 
   switch (event.type) {
     case "invoice.payment_succeeded":

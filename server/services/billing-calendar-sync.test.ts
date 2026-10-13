@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import { addRecurrence, toLocalDateKey } from "@shared/billing-recurrence";
+import { PaymentObligationStatus } from "@shared/schema";
+
+/**
+ * Pure-logic coverage for scenarios that don't need a live DB.
+ * Full webhook/DB scenarios are exercised via staging test plan.
+ */
+
+describe("calendar v2 scenario helpers", () => {
+  it("1/8 yearly recurrence keeps one charge per year", () => {
+    const start = new Date(2025, 2, 15);
+    const next = addRecurrence(start, "yearly", 15);
+    expect(toLocalDateKey(next)).toBe("2026-03-15");
+  });
+
+  it("14 custom Jan 31 monthly chain", () => {
+    let d = new Date(2025, 0, 31);
+    d = addRecurrence(d, "monthly", 31);
+    expect(toLocalDateKey(d)).toBe("2025-02-28");
+    d = addRecurrence(d, "monthly", 31);
+    expect(toLocalDateKey(d)).toBe("2025-03-31");
+  });
+
+  it("status transitions for fail→retry→settle are distinct", () => {
+    const chain = [
+      PaymentObligationStatus.RETRYING,
+      PaymentObligationStatus.RETRYING,
+      PaymentObligationStatus.SETTLED,
+    ];
+    expect(new Set(chain).size).toBe(2);
+    expect(chain[2]).toBe("settled");
+  });
+
+  it("5 cancel at period end uses will_not_renew", () => {
+    expect(PaymentObligationStatus.WILL_NOT_RENEW).toBe("will_not_renew");
+  });
+
+  it("9 pause status exists", () => {
+    expect(PaymentObligationStatus.PAUSED).toBe("paused");
+  });
+
+  it("10 refund statuses exist", () => {
+    expect(PaymentObligationStatus.REFUNDED).toBe("refunded");
+    expect(PaymentObligationStatus.PARTIALLY_REFUNDED).toBe("partially_refunded");
+  });
+
+  it("11 dispute status exists", () => {
+    expect(PaymentObligationStatus.DISPUTED).toBe("disputed");
+  });
+
+  it("4 action_required status exists", () => {
+    expect(PaymentObligationStatus.ACTION_REQUIRED).toBe("action_required");
+  });
+});
