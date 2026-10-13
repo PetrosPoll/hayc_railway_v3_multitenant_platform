@@ -30,8 +30,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  ChevronLeft,
-  ChevronRight,
   Plus,
   RefreshCw,
   AlertTriangle,
@@ -315,12 +313,6 @@ export function SubscriptionCalendar() {
     month: "long",
     year: "numeric",
   });
-  const navigateMonth = (dir: "prev" | "next") => {
-    const n = new Date(currentMonth);
-    n.setMonth(n.getMonth() + (dir === "next" ? 1 : -1));
-    setCurrentMonth(n);
-    setSelectedDate(n);
-  };
   const goToToday = () => {
     const today = new Date();
     setCurrentMonth(today);
@@ -376,17 +368,9 @@ export function SubscriptionCalendar() {
 
       <div className="grid grid-cols-[auto,1fr] gap-4">
         <div className="space-y-2">
-          <div className="flex items-center justify-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => navigateMonth("prev")}>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <h3 className="text-lg font-semibold min-w-[160px] text-center">
-              {currentMonth.toLocaleDateString("el-GR", { month: "long", year: "numeric" })}
-            </h3>
-            <Button variant="outline" size="sm" onClick={() => navigateMonth("next")}>
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          </div>
+          <h3 className="text-lg font-semibold text-center capitalize">
+            {currentMonth.toLocaleDateString("el-GR", { month: "long", year: "numeric" })}
+          </h3>
 
           <TooltipProvider>
             <div className="flex gap-1 justify-center">
