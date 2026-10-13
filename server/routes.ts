@@ -11430,16 +11430,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Prefer Calendar v2 reconcile (same functions as webhooks / nightly job)
       try {
-        const { synced } = await reconcileStripeCalendar(stripe, { source: "sync" });
+        const stats = await reconcileStripeCalendar(stripe, { source: "sync" });
         const {
           materializeAllActiveCustomSeries,
         } = await import("./services/billing-custom-materialize");
         const customCreated = await materializeAllActiveCustomSeries();
         return res.json({
           success: true,
-          synced,
+          ...stats,
           customCreated,
-          message: `Reconciled ${synced} Stripe subscriptions; materialized ${customCreated} custom occurrences`,
+          message:
+            `Upcoming: ${stats.upcomingUpserted} written, ${stats.upcomingSkipped} skipped · ` +
+            `Paid invoices: ${stats.invoicesSynced} · ` +
+            `From transactions: ${stats.fromTransactions} · ` +
+            `Custom: ${customCreated} · errors: ${stats.errors}`,
         });
       } catch (reconcileErr) {
         console.error("[billing-calendar] sync-invoices reconcile failed, falling back:", reconcileErr);

@@ -63,9 +63,10 @@ async function runBillingCalendarNightly(): Promise<void> {
   } = await import("./services/billing-custom-materialize");
   const { createAdminNotification } = await import("./services/billing-admin-notify");
 
-  const { synced } = await reconcileStripeCalendar(stripe, { source: "reconcile" });
+  const stats = await reconcileStripeCalendar(stripe, { source: "reconcile" });
   const customCreated = await materializeAllActiveCustomSeries();
   const aged = await ageCustomObligations();
+  const synced = stats.upcomingUpserted + stats.invoicesSynced;
 
   // Card expiring flags + email (once per card via billing_email_log)
   try {

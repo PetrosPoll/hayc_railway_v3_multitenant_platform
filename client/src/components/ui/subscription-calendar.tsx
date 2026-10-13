@@ -146,14 +146,17 @@ export function SubscriptionCalendar() {
   const qc = useQueryClient();
   const range = monthRange(currentMonth);
 
-  const { data, isLoading } = useQuery<CalendarResponse>({
+  const { data, isLoading, isError, error, refetch } = useQuery<CalendarResponse>({
     queryKey: ["/api/admin/billing-calendar", range.from, range.to],
     queryFn: async () => {
       const res = await fetch(
         `/api/admin/billing-calendar?from=${range.from}&to=${range.to}`,
         { credentials: "include" },
       );
-      if (!res.ok) throw new Error("Failed to load calendar");
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(body || `Failed to load calendar (${res.status})`);
+      }
       return res.json();
     },
   });
@@ -168,15 +171,17 @@ export function SubscriptionCalendar() {
     },
   });
 
-  const invalidate = () =>
-    qc.invalidateQueries({ queryKey: ["/api/admin/billing-calendar"] });
+  const invalidate = async () => {
+    await qc.invalidateQueries({ queryKey: ["/api/admin/billing-calendar"] });
+    await refetch();
+  };
 
   const syncMutation = useMutation({
     mutationFn: async () => apiRequest("POST", "/api/admin/sync-invoices", { mode: "last_2_months" }),
     onSuccess: async (res) => {
-      const data = await res.json();
-      toast({ title: "Sync complete", description: data.message });
-      invalidate();
+      const body = await res.json();
+      toast({ title: "Sync complete", description: body.message });
+      await invalidate();
     },
     onError: (e: any) => toast({ title: "Sync failed", description: e.message, variant: "destructive" }),
   });
@@ -294,6 +299,10 @@ export function SubscriptionCalendar() {
   });
 
   const totals = data?.totals;
+  const monthLabel = currentMonth.toLocaleDateString("el-GR", {
+    month: "long",
+    year: "numeric",
+  });
   const navigateMonth = (dir: "prev" | "next") => {
     const n = new Date(currentMonth);
     n.setMonth(n.getMonth() + (dir === "next" ? 1 : -1));
@@ -303,13 +312,26 @@ export function SubscriptionCalendar() {
 
   return (
     <div className="space-y-4">
+      {isError && (
+        <div className="p-3 rounded border border-rose-300 bg-rose-50 text-rose-900 text-sm">
+          Αποτυχία φόρτωσης calendar: {(error as Error)?.message || "unknown error"}
+        </div>
+      )}
+      {!isLoading && !isError && (data?.entries?.length ?? 0) === 0 && (
+        <div className="p-3 rounded border border-amber-300 bg-amber-50 text-amber-900 text-sm">
+          Δεν υπάρχουν εγγραφές για {monthLabel} ({range.from} → {range.to}). Πάτα Sync για να
+          τραβήξεις παλιές πληρωμές και upcoming.
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs">
         <div className="p-2 bg-emerald-50 border border-emerald-200 rounded">
           <p className="font-semibold text-emerald-800">Εισπράχθηκαν</p>
+          <p className="text-[11px] text-emerald-700/80 capitalize">{monthLabel}</p>
           <p className="text-lg font-bold text-emerald-700">€{euros(totals?.collectedCents || 0)}</p>
         </div>
         <div className="p-2 bg-blue-50 border border-blue-200 rounded">
           <p className="font-semibold text-blue-800">Αναμενόμενα</p>
+          <p className="text-[11px] text-blue-700/80 capitalize">{monthLabel}</p>
           <p className="text-lg font-bold text-blue-700">€{euros(totals?.expectedCents || 0)}</p>
           {(totals?.atRiskCount || 0) > 0 && (
             <p className="text-orange-700">σε κίνδυνο: {totals!.atRiskCount} (€{euros(totals!.atRiskCents)})</p>
@@ -317,14 +339,17 @@ export function SubscriptionCalendar() {
         </div>
         <div className="p-2 bg-amber-50 border border-amber-200 rounded">
           <p className="font-semibold text-amber-800">Εκκρεμούν</p>
+          <p className="text-[11px] text-amber-700/80 capitalize">{monthLabel}</p>
           <p className="text-lg font-bold text-amber-700">€{euros(totals?.outstandingCents || 0)}</p>
         </div>
         <div className="p-2 bg-rose-50 border border-rose-200 rounded">
           <p className="font-semibold text-rose-800">Χάθηκαν</p>
+          <p className="text-[11px] text-rose-700/80 capitalize">{monthLabel}</p>
           <p className="text-lg font-bold text-rose-700">€{euros(totals?.lostCents || 0)}</p>
         </div>
         <div className="p-2 bg-gray-50 border border-gray-200 rounded">
           <p className="font-semibold text-gray-800">Σύνολο μήνα</p>
+          <p className="text-[11px] text-muted-foreground capitalize">{monthLabel}</p>
           <p className="text-lg font-bold">€{euros(totals?.monthTotalCents || 0)}</p>
           <p className="text-muted-foreground">συμπ. ΦΠΑ</p>
         </div>

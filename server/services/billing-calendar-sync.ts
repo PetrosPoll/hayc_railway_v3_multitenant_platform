@@ -56,17 +56,31 @@ async function upsertStripeObligation(input: {
   stripeEventId?: string | null;
   patch?: Partial<PaymentObligation>;
 }): Promise<PaymentObligation> {
-  const [existing] = await db
-    .select()
-    .from(paymentObligations)
-    .where(
-      and(
-        eq(paymentObligations.origin, PaymentOrigin.STRIPE),
-        eq(paymentObligations.subscriptionId, input.subscriptionId),
-        eq(paymentObligations.periodStart, input.periodStart),
-      ),
-    )
-    .limit(1);
+  // Prefer invoice id match, then (subscription + period day) — avoids timestamp ms mismatches
+  let existing: PaymentObligation | undefined;
+  if (input.stripeInvoiceId) {
+    const [byInvoice] = await db
+      .select()
+      .from(paymentObligations)
+      .where(eq(paymentObligations.stripeInvoiceId, input.stripeInvoiceId))
+      .limit(1);
+    existing = byInvoice;
+  }
+  if (!existing) {
+    const periodDay = input.periodStart.toISOString().slice(0, 10);
+    const [byPeriod] = await db
+      .select()
+      .from(paymentObligations)
+      .where(
+        and(
+          eq(paymentObligations.origin, PaymentOrigin.STRIPE),
+          eq(paymentObligations.subscriptionId, input.subscriptionId),
+          sql`(${paymentObligations.periodStart})::date = ${periodDay}::date`,
+        ),
+      )
+      .limit(1);
+    existing = byPeriod;
+  }
 
   if (existing) {
     if (existing.status !== input.status || input.patch) {
@@ -260,10 +274,17 @@ export async function syncObligationFromStripeSubscription(
     : dueDate;
   let invoiceId: string | null = null;
 
-  if (user?.stripeCustomerId) {
+  const customerId =
+    user?.stripeCustomerId ||
+    (typeof stripeSub.customer === "string"
+      ? stripeSub.customer
+      : stripeSub.customer?.id) ||
+    null;
+
+  if (customerId) {
     try {
       const upcoming = await stripe.invoices.retrieveUpcoming({
-        customer: user.stripeCustomerId,
+        customer: customerId,
         subscription: localSub.stripeSubscriptionId,
       });
       invoiceId = ((upcoming as unknown as Stripe.Invoice).id as string | undefined) || null;
@@ -280,14 +301,34 @@ export async function syncObligationFromStripeSubscription(
       } else if (upcoming.amount_due > 0) {
         amountCents = upcoming.amount_due;
       }
-    } catch {
-      // no upcoming invoice
+    } catch (e) {
+      console.warn(
+        `[billing-calendar] retrieveUpcoming failed for sub ${localSub.id}:`,
+        (e as Error)?.message || e,
+      );
     }
   }
 
-  if (!dueDate || !periodStart || amountCents <= 0) return null;
+  if (amountCents <= 0) {
+    const unit = stripeSub.items.data[0]?.price?.unit_amount;
+    if (unit && unit > 0) amountCents = unit;
+  }
+
+  if (!dueDate || !periodStart) {
+    console.warn(`[billing-calendar] skip sub ${localSub.id}: missing period dates`);
+    return null;
+  }
+  if (amountCents <= 0) {
+    console.warn(`[billing-calendar] skip sub ${localSub.id}: amount <= 0`);
+    return null;
+  }
   const horizon = addDays(new Date(), HORIZON_DAYS);
-  if (dueDate > horizon) return null;
+  if (dueDate > horizon) {
+    console.warn(
+      `[billing-calendar] skip sub ${localSub.id}: due ${dueDate.toISOString()} beyond ${HORIZON_DAYS}d horizon`,
+    );
+    return null;
+  }
 
   let status: string = PaymentObligationStatus.UPCOMING;
   if (stripeSub.pause_collection) {
@@ -380,18 +421,20 @@ export async function syncObligationFromStripeInvoice(
       ? (await db.select().from(users).where(eq(users.id, sub.userId)).limit(1))[0]
       : null;
     const clientName = user?.username || user?.email || "Unknown";
-    const amount =
+    let amount =
       invoice.lines.data.find((l) => l.amount === sub.price)?.amount ??
       sub.price ??
-      invoice.amount_due ??
-      invoice.amount_paid ??
       0;
+    if (amount <= 0) {
+      amount = invoice.amount_paid || invoice.amount_due || 0;
+    }
 
     if (
       eventType === "invoice.payment_succeeded" ||
       eventType === "invoice.paid" ||
       (invoice.paid && invoice.amount_paid > 0)
     ) {
+      if (amount <= 0) continue;
       const row = await upsertStripeObligation({
         subscriptionId: sub.id,
         userId: sub.userId,
@@ -654,28 +697,175 @@ export async function handleDisputeForCalendar(
   }
 }
 
-/** Reconcile Stripe obligations for active/trialing/past_due local subs. */
+export type ReconcileStats = {
+  attempted: number;
+  upcomingUpserted: number;
+  upcomingSkipped: number;
+  invoicesSynced: number;
+  fromTransactions: number;
+  errors: number;
+};
+
+/**
+ * Materialize settled calendar rows from existing paid `transactions`
+ * (so past months show without relying only on live Stripe list).
+ */
+export async function materializeSettledFromTransactions(
+  opts: { source: SyncSource } = { source: "sync" },
+): Promise<number> {
+  const paidTx = await db
+    .select({
+      id: transactionsTable.id,
+      subscriptionId: transactionsTable.subscriptionId,
+      amount: transactionsTable.amount,
+      currency: transactionsTable.currency,
+      stripeInvoiceId: transactionsTable.stripeInvoiceId,
+      paidAt: transactionsTable.paidAt,
+      createdAt: transactionsTable.createdAt,
+      userId: subscriptionsTable.userId,
+      stripeSubscriptionId: subscriptionsTable.stripeSubscriptionId,
+      username: users.username,
+      email: users.email,
+    })
+    .from(transactionsTable)
+    .innerJoin(
+      subscriptionsTable,
+      eq(transactionsTable.subscriptionId, subscriptionsTable.id),
+    )
+    .leftJoin(users, eq(subscriptionsTable.userId, users.id))
+    .where(eq(transactionsTable.status, "paid"));
+
+  let created = 0;
+  for (const tx of paidTx) {
+    if (tx.amount <= 0) continue;
+    const paidAt = tx.paidAt || tx.createdAt || new Date();
+    const periodStart = paidAt;
+
+    if (tx.stripeInvoiceId) {
+      const [existingInv] = await db
+        .select({ id: paymentObligations.id })
+        .from(paymentObligations)
+        .where(eq(paymentObligations.stripeInvoiceId, tx.stripeInvoiceId))
+        .limit(1);
+      if (existingInv) continue;
+    }
+
+    const periodDay = periodStart.toISOString().slice(0, 10);
+    const [existingPeriod] = await db
+      .select({ id: paymentObligations.id })
+      .from(paymentObligations)
+      .where(
+        and(
+          eq(paymentObligations.origin, PaymentOrigin.STRIPE),
+          eq(paymentObligations.subscriptionId, tx.subscriptionId),
+          sql`(${paymentObligations.periodStart})::date = ${periodDay}::date`,
+        ),
+      )
+      .limit(1);
+    if (existingPeriod) continue;
+
+    await upsertStripeObligation({
+      subscriptionId: tx.subscriptionId,
+      userId: tx.userId,
+      clientName: tx.username || tx.email || "Unknown",
+      amountDueCents: tx.amount,
+      currency: tx.currency || "eur",
+      dueDate: paidAt,
+      periodStart,
+      periodEnd: paidAt,
+      stripeSubscriptionId: tx.stripeSubscriptionId || `local_sub_${tx.subscriptionId}`,
+      stripeInvoiceId: tx.stripeInvoiceId || `txn_${tx.id}`,
+      status: PaymentObligationStatus.SETTLED,
+      source: opts.source,
+      patch: { amountPaidCents: tx.amount },
+    });
+    created++;
+  }
+  return created;
+}
+
+/** Reconcile: upcoming + all paid Stripe invoices (paginated) + local transactions. */
 export async function reconcileStripeCalendar(
   stripe: Stripe,
   opts: { source: SyncSource } = { source: "reconcile" },
-): Promise<{ synced: number }> {
-  const localSubs = await db
+): Promise<ReconcileStats> {
+  const activeSubs = await db
     .select()
     .from(subscriptionsTable)
     .where(
       sql`LOWER(${subscriptionsTable.status}) IN ('active','trialing','past_due')`,
     );
 
-  let synced = 0;
-  for (const sub of localSubs) {
+  // All customers with a Stripe id (incl. cancelled) so past paid invoices appear
+  const customerRows = await db
+    .selectDistinct({ stripeCustomerId: users.stripeCustomerId })
+    .from(subscriptionsTable)
+    .innerJoin(users, eq(subscriptionsTable.userId, users.id))
+    .where(sql`${users.stripeCustomerId} IS NOT NULL`);
+
+  const stats: ReconcileStats = {
+    attempted: 0,
+    upcomingUpserted: 0,
+    upcomingSkipped: 0,
+    invoicesSynced: 0,
+    fromTransactions: 0,
+    errors: 0,
+  };
+
+  for (const sub of activeSubs) {
+    stats.attempted++;
     try {
-      await syncObligationFromStripeSubscription(stripe, sub, opts);
-      synced++;
+      const row = await syncObligationFromStripeSubscription(stripe, sub, opts);
+      if (row) stats.upcomingUpserted++;
+      else stats.upcomingSkipped++;
     } catch (e) {
+      stats.errors++;
       console.error("[billing-calendar] reconcile sub failed", sub.id, e);
     }
   }
-  return { synced };
+
+  for (const { stripeCustomerId } of customerRows) {
+    if (!stripeCustomerId) continue;
+    try {
+      let startingAfter: string | undefined;
+      for (let page = 0; page < 20; page++) {
+        const invoices = await stripe.invoices.list({
+          customer: stripeCustomerId,
+          status: "paid",
+          limit: 100,
+          starting_after: startingAfter,
+        });
+        for (const invoice of invoices.data) {
+          if (!invoice.subscription || !(invoice.amount_paid > 0)) continue;
+          try {
+            await syncObligationFromStripeInvoice(stripe, invoice, {
+              source: opts.source,
+              eventType: "invoice.payment_succeeded",
+            });
+            stats.invoicesSynced++;
+          } catch (e) {
+            stats.errors++;
+            console.error("[billing-calendar] reconcile invoice failed", invoice.id, e);
+          }
+        }
+        if (!invoices.has_more || invoices.data.length === 0) break;
+        startingAfter = invoices.data[invoices.data.length - 1].id;
+      }
+    } catch (e) {
+      stats.errors++;
+      console.error("[billing-calendar] list invoices failed", stripeCustomerId, e);
+    }
+  }
+
+  try {
+    stats.fromTransactions = await materializeSettledFromTransactions(opts);
+  } catch (e) {
+    stats.errors++;
+    console.error("[billing-calendar] materialize from transactions failed", e);
+  }
+
+  console.log("[billing-calendar] reconcile stats", stats);
+  return stats;
 }
 
 export async function shouldSendFailedEmail(
