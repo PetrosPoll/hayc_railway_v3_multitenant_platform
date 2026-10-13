@@ -257,16 +257,6 @@ export function SubscriptionCalendar() {
     },
   });
 
-  const stripePayMutation = useMutation({
-    mutationFn: async (id: number) =>
-      apiRequest("POST", `/api/admin/billing-calendar/obligations/${id}/pay-invoice`, {}),
-    onSuccess: () => {
-      toast({ title: "Stripe pay requested" });
-      invalidate();
-    },
-    onError: (e: any) => toast({ title: "Pay failed", description: e.message, variant: "destructive" }),
-  });
-
   const uncollectibleMutation = useMutation({
     mutationFn: async (id: number) =>
       apiRequest("POST", `/api/admin/billing-calendar/obligations/${id}/mark-uncollectible`, {}),
@@ -707,39 +697,23 @@ export function SubscriptionCalendar() {
                             <X className="w-3 h-3 mr-1" /> Write off
                           </Button>
                         )}
-                      {e.origin === "stripe" &&
-                        ["retrying", "delinquent", "action_required"].includes(e.status) && (
-                          <>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                if (confirm("Charge Stripe invoice now?")) {
-                                  stripePayMutation.mutate(e.id);
-                                }
-                              }}
-                            >
-                              Επανάληψη χρέωσης
-                            </Button>
-                            {e.status === "delinquent" && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                onClick={() => {
-                                  if (
-                                    confirm(
-                                      "Mark uncollectible? This auto-cancels the Stripe subscription.",
-                                    )
-                                  ) {
-                                    uncollectibleMutation.mutate(e.id);
-                                  }
-                                }}
-                              >
-                                Mark uncollectible
-                              </Button>
-                            )}
-                          </>
-                        )}
+                      {e.origin === "stripe" && e.status === "delinquent" && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => {
+                            if (
+                              confirm(
+                                "Mark uncollectible? This auto-cancels the Stripe subscription.",
+                              )
+                            ) {
+                              uncollectibleMutation.mutate(e.id);
+                            }
+                          }}
+                        >
+                          Mark uncollectible
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
