@@ -608,11 +608,14 @@ export async function syncObligationFromStripeInvoice(
       const nextAttempt = hasRetry
         ? new Date(invoice.next_payment_attempt! * 1000)
         : null;
+      // Per-line amount when plan+addon share one invoice (avoid doubling full amount_due)
+      const failAmount = amount > 0 ? amount : invoice.amount_due || 0;
+      if (failAmount <= 0) continue;
       const row = await upsertStripeObligation({
         subscriptionId: sub.id,
         userId: sub.userId,
         clientName,
-        amountDueCents: invoice.amount_due || amount,
+        amountDueCents: failAmount,
         currency: invoice.currency,
         dueDate: new Date(invoice.created * 1000),
         periodStart,
@@ -627,6 +630,7 @@ export async function syncObligationFromStripeInvoice(
           nextAttemptAt: nextAttempt,
           nextRetryDate: nextAttempt,
           lastFailureReason: invoice.billing_reason || "payment_failed",
+          notes: line?.description || null,
         },
       });
       await createAdminNotification({
@@ -1005,34 +1009,58 @@ export async function reconcileStripeCalendar(
 
   for (const { stripeCustomerId } of customerRows) {
     if (!stripeCustomerId) continue;
-    try {
-      let startingAfter: string | undefined;
-      for (let page = 0; page < 20; page++) {
-        const invoices = await stripe.invoices.list({
-          customer: stripeCustomerId,
-          status: "paid",
-          limit: 100,
-          starting_after: startingAfter,
-        });
-        for (const invoice of invoices.data) {
-          if (!invoice.subscription || !(invoice.amount_paid > 0)) continue;
-          try {
-            await syncObligationFromStripeInvoice(stripe, invoice, {
-              source: opts.source,
-              eventType: "invoice.payment_succeeded",
-            });
-            stats.invoicesSynced++;
-          } catch (e) {
-            stats.errors++;
-            console.error("[billing-calendar] reconcile invoice failed", invoice.id, e);
+    // paid → settled; open → overdue/retrying (covers missed payment_failed webhooks / test clocks)
+    const statusPasses: Array<{
+      status: "paid" | "open";
+      eventType: string;
+      keep: (inv: Stripe.Invoice) => boolean;
+    }> = [
+      {
+        status: "paid",
+        eventType: "invoice.payment_succeeded",
+        keep: (inv) => !!inv.subscription && inv.amount_paid > 0,
+      },
+      {
+        status: "open",
+        eventType: "invoice.payment_failed",
+        keep: (inv) => !!inv.subscription && inv.amount_due > 0,
+      },
+    ];
+
+    for (const pass of statusPasses) {
+      try {
+        let startingAfter: string | undefined;
+        for (let page = 0; page < 20; page++) {
+          const invoices = await stripe.invoices.list({
+            customer: stripeCustomerId,
+            status: pass.status,
+            limit: 100,
+            starting_after: startingAfter,
+          });
+          for (const invoice of invoices.data) {
+            if (!pass.keep(invoice)) continue;
+            try {
+              await syncObligationFromStripeInvoice(stripe, invoice, {
+                source: opts.source,
+                eventType: pass.eventType,
+              });
+              stats.invoicesSynced++;
+            } catch (e) {
+              stats.errors++;
+              console.error("[billing-calendar] reconcile invoice failed", invoice.id, e);
+            }
           }
+          if (!invoices.has_more || invoices.data.length === 0) break;
+          startingAfter = invoices.data[invoices.data.length - 1].id;
         }
-        if (!invoices.has_more || invoices.data.length === 0) break;
-        startingAfter = invoices.data[invoices.data.length - 1].id;
+      } catch (e) {
+        stats.errors++;
+        console.error(
+          `[billing-calendar] list ${pass.status} invoices failed`,
+          stripeCustomerId,
+          e,
+        );
       }
-    } catch (e) {
-      stats.errors++;
-      console.error("[billing-calendar] list invoices failed", stripeCustomerId, e);
     }
   }
 
