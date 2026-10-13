@@ -12,7 +12,7 @@ Team reference: what each status means, UI treatment, automatic vs admin actions
 | `pending` | custom | Due today / awaiting confirmation | Αναμενόμενα | Nightly aging from `upcoming` | Πληρώθηκε / Μερική / Write off |
 | `grace` | custom | Past due within `graceDays` (default 7) | Εκκρεμούν / Overdue (amber) | Nightly aging | Πληρώθηκε / Write off / Αναβολή |
 | `action_required` | stripe | SCA / 3DS required | Εκκρεμούν / Overdue | Webhook `invoice.payment_action_required` | Send payment link; Επανάληψη χρέωσης |
-| `retrying` | stripe | Failed; Stripe will retry | Εκκρεμούν / Overdue | Webhook `invoice.payment_failed` + `next_payment_attempt` | Send link; Επανάληψη χρέωσης |
+| `retrying` | stripe | Failed attempt; Stripe will retry | Εκκρεμούν / Overdue | Webhook `charge.failed` and/or `invoice.payment_failed` + `next_payment_attempt` | Send link; Επανάληψη χρέωσης |
 | `delinquent` | both | Stripe: no more retries. Custom: past grace | Εκκρεμούν / Overdue | Webhook / nightly aging | Stripe: pay / mark uncollectible. Custom: settle / write off |
 | `disputed` | stripe | Chargeback open | Εκκρεμούν / Overdue | `charge.dispute.created` | Monitor; Stripe Dashboard |
 | `settled` | both | Paid in full | Εισπράχθηκαν (green) | Stripe: `invoice.payment_succeeded`. Custom: admin settle | Unsettle (custom) |

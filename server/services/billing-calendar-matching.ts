@@ -1,4 +1,23 @@
+import type Stripe from "stripe";
 import { PaymentObligationStatus } from "@shared/schema";
+
+/** Human-readable decline reason from a Stripe Charge (charge.failed). */
+export function failureReasonFromCharge(charge: Stripe.Charge): string {
+  const parts = [
+    charge.failure_message,
+    charge.outcome?.seller_message,
+    charge.failure_code,
+    charge.outcome?.reason,
+  ].filter((x): x is string => !!x && String(x).trim().length > 0);
+  const seen = new Set<string>();
+  const unique = parts.filter((p) => {
+    const k = p.toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  return unique.slice(0, 2).join(" — ") || "payment_failed";
+}
 
 /** Open (non-terminal) statuses that should become stopped when a sub ends. */
 export const OPEN_OBLIGATION_STATUSES = [

@@ -6371,9 +6371,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         case "charge.failed": {
-          // Failed-payment email is sent once from invoice.payment_failed (Calendar v2).
-          // Skip here to avoid duplicate emails for the same attempt.
-          console.log("⏭️ charge.failed: email deferred to invoice.payment_failed path");
+          // Calendar overdue/retrying is applied by handleCalendarStripeEvent (charge.failed).
+          // Customer email still only from invoice.payment_failed (deduped per attempt).
+          console.log(
+            "⚠️ charge.failed: calendar via billing handler; email stays on invoice.payment_failed",
+          );
           break;
         }
 

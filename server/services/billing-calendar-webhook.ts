@@ -7,6 +7,7 @@ import {
   syncObligationFromStripeSubscription,
   shouldSendFailedEmail,
 } from "./billing-calendar-sync";
+import { failureReasonFromCharge } from "./billing-calendar-matching";
 import { db } from "../db";
 import { eq } from "drizzle-orm";
 import { subscriptions as subscriptionsTable } from "@shared/schema";
@@ -20,6 +21,8 @@ const HANDLED = new Set([
   "invoice.payment_action_required",
   "invoice.marked_uncollectible",
   "invoice.voided",
+  /** Failed payment attempt — calendar overdue/retrying (not auto-cancel). */
+  "charge.failed",
   "customer.subscription.created",
   "customer.subscription.updated",
   "customer.subscription.deleted",
@@ -61,6 +64,31 @@ export async function handleCalendarStripeEvent(
         source,
         stripeEventId,
         eventType: event.type === "invoice.paid" ? "invoice.payment_succeeded" : event.type,
+      });
+      break;
+    }
+    case "charge.failed": {
+      // Payment attempt failed → overdue/retrying on calendar for that invoice/day.
+      // (invoice.marked_uncollectible / subscription.deleted = give up / cancel — separate.)
+      const charge = event.data.object as Stripe.Charge;
+      const invoiceId =
+        typeof charge.invoice === "string" ? charge.invoice : charge.invoice?.id;
+      if (!invoiceId) {
+        console.warn(
+          "[billing-calendar] charge.failed without invoice, skip calendar:",
+          charge.id,
+        );
+        break;
+      }
+      const failureReason = failureReasonFromCharge(charge);
+      const invoice = await stripe.invoices.retrieve(invoiceId, {
+        expand: ["lines.data"],
+      });
+      await syncObligationFromStripeInvoice(stripe, invoice, {
+        source,
+        stripeEventId,
+        eventType: "invoice.payment_failed",
+        failureReason,
       });
       break;
     }

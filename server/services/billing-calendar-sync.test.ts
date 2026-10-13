@@ -4,6 +4,7 @@ import { PaymentObligationStatus } from "@shared/schema";
 import {
   isLocalSubCancelled,
   isOpenObligationStatus,
+  failureReasonFromCharge,
 } from "./billing-calendar-matching";
 
 /**
@@ -54,6 +55,19 @@ describe("calendar v2 scenario helpers", () => {
     expect(isOpenObligationStatus("will_not_renew")).toBe(true);
     expect(isOpenObligationStatus("settled")).toBe(false);
     expect(isOpenObligationStatus("stopped")).toBe(false);
+  });
+
+  it("failureReasonFromCharge prefers failure_message then seller_message", () => {
+    const reason = failureReasonFromCharge({
+      failure_message: "Your card was declined.",
+      failure_code: "card_declined",
+      outcome: {
+        seller_message: "The bank did not return any further details with this decline.",
+        reason: "generic_decline",
+      },
+    } as any);
+    expect(reason).toContain("Your card was declined.");
+    expect(reason).toContain("The bank did not return any further details");
   });
 
   it("9 pause status exists", () => {

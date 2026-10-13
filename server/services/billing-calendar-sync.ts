@@ -20,10 +20,15 @@ import { chargedCentsForInvoiceLine } from "../lib/stripe-invoice-amount";
 import {
   OPEN_OBLIGATION_STATUSES,
   isLocalSubCancelled,
+  failureReasonFromCharge,
 } from "./billing-calendar-matching";
 
 export type SyncSource = "webhook" | "reconcile" | "sync" | "system";
-export { isLocalSubCancelled, isOpenObligationStatus } from "./billing-calendar-matching";
+export {
+  isLocalSubCancelled,
+  isOpenObligationStatus,
+  failureReasonFromCharge,
+} from "./billing-calendar-matching";
 
 const HORIZON_DAYS = 90;
 
@@ -483,7 +488,13 @@ export async function syncObligationFromStripeSubscription(
 export async function syncObligationFromStripeInvoice(
   stripe: Stripe,
   invoice: Stripe.Invoice,
-  opts: { source: SyncSource; stripeEventId?: string | null; eventType?: string },
+  opts: {
+    source: SyncSource;
+    stripeEventId?: string | null;
+    eventType?: string;
+    /** From charge.failed: failure_message / outcome.seller_message */
+    failureReason?: string | null;
+  },
 ): Promise<void> {
   if (!invoice.subscription) return;
   const stripeSubId =
@@ -629,15 +640,24 @@ export async function syncObligationFromStripeInvoice(
           attemptCount: invoice.attempt_count ?? 1,
           nextAttemptAt: nextAttempt,
           nextRetryDate: nextAttempt,
-          lastFailureReason: invoice.billing_reason || "payment_failed",
+          lastFailureReason:
+            opts.failureReason ||
+            invoice.billing_reason ||
+            "payment_failed",
           notes: line?.description || null,
         },
       });
       await createAdminNotification({
         type: "payment_failed",
         title: `Payment failed: ${clientName}`,
-        body: `Invoice ${invoice.id} → ${status}`,
-        payload: { obligationId: row.id, invoiceId: invoice.id },
+        body: opts.failureReason
+          ? `${opts.failureReason} · Invoice ${invoice.id} → ${status}`
+          : `Invoice ${invoice.id} → ${status}`,
+        payload: {
+          obligationId: row.id,
+          invoiceId: invoice.id,
+          failureReason: opts.failureReason || null,
+        },
       });
       // Email is sent from routes (sendSubscriptionEmail) after claim via shouldSendFailedEmail
       (row as any)._failedEmailAttempt = invoice.attempt_count ?? 1;

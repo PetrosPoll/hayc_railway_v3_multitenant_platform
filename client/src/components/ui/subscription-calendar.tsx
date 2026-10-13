@@ -71,6 +71,7 @@ type CalendarEntry = {
   stripeInvoiceId: string | null;
   stripeSubscriptionId: string | null;
   notes: string | null;
+  lastFailureReason?: string | null;
 };
 
 type CalendarTotals = {
@@ -656,6 +657,11 @@ export function SubscriptionCalendar() {
                         {e.nextAttemptAt
                           ? ` · next ${new Date(e.nextAttemptAt).toLocaleDateString()}`
                           : ""}
+                      </p>
+                    ) : null}
+                    {e.lastFailureReason ? (
+                      <p className="text-xs mt-1 text-rose-700 max-w-sm">
+                        Λόγος: {e.lastFailureReason}
                       </p>
                     ) : null}
                   </div>
