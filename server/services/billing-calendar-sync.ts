@@ -134,7 +134,8 @@ async function findLocalSubsByStripeId(stripeSubscriptionId: string) {
 }
 
 async function upsertStripeObligation(input: {
-  subscriptionId: number;
+  /** Null for one-time invoice items (e.g. setup fee) without a local subscription row. */
+  subscriptionId: number | null;
   userId: number | null;
   clientName: string;
   amountDueCents: number;
@@ -150,17 +151,35 @@ async function upsertStripeObligation(input: {
   stripeEventId?: string | null;
   patch?: Partial<PaymentObligation>;
 }): Promise<PaymentObligation> {
-  // Prefer invoice id match, then (subscription + period day) — avoids timestamp ms mismatches
+  // Match invoice+subscription (plan/addon share one Stripe invoice). Fallback: period day.
   let existing: PaymentObligation | undefined;
-  if (input.stripeInvoiceId) {
-    const [byInvoice] = await db
+  if (input.stripeInvoiceId && input.subscriptionId != null) {
+    const [byInvoiceSub] = await db
       .select()
       .from(paymentObligations)
-      .where(eq(paymentObligations.stripeInvoiceId, input.stripeInvoiceId))
+      .where(
+        and(
+          eq(paymentObligations.stripeInvoiceId, input.stripeInvoiceId),
+          eq(paymentObligations.subscriptionId, input.subscriptionId),
+        ),
+      )
       .limit(1);
-    existing = byInvoice;
+    existing = byInvoiceSub;
+  } else if (input.stripeInvoiceId && input.subscriptionId == null) {
+    const [byInvoiceOnly] = await db
+      .select()
+      .from(paymentObligations)
+      .where(
+        and(
+          eq(paymentObligations.stripeInvoiceId, input.stripeInvoiceId),
+          sql`${paymentObligations.subscriptionId} IS NULL`,
+          eq(paymentObligations.amountDue, input.amountDueCents),
+        ),
+      )
+      .limit(1);
+    existing = byInvoiceOnly;
   }
-  if (!existing) {
+  if (!existing && input.subscriptionId != null) {
     const periodDay = input.periodStart.toISOString().slice(0, 10);
     const [byPeriod] = await db
       .select()
@@ -187,6 +206,7 @@ async function upsertStripeObligation(input: {
           currency: input.currency,
           dueDate: input.dueDate,
           periodEnd: input.periodEnd,
+          subscriptionId: input.subscriptionId,
           stripeInvoiceId: input.stripeInvoiceId ?? existing.stripeInvoiceId,
           stripeSubscriptionId: input.stripeSubscriptionId,
           stripeScheduleId: input.stripeScheduleId ?? existing.stripeScheduleId,
@@ -201,6 +221,7 @@ async function upsertStripeObligation(input: {
         amountDue: input.amountDueCents,
         dueDate: input.dueDate,
         periodEnd: input.periodEnd,
+        subscriptionId: input.subscriptionId,
         stripeInvoiceId: input.stripeInvoiceId ?? existing.stripeInvoiceId,
         stripeSubscriptionId: input.stripeSubscriptionId,
         updatedAt: new Date(),
@@ -514,17 +535,33 @@ export async function syncObligationFromStripeInvoice(
     : paidAt;
   const periodEnd = invoice.period_end ? new Date(invoice.period_end * 1000) : paidAt;
 
+  const primaryUserId = localSubs.find((s) => s.userId)?.userId ?? null;
+  const primaryUser = primaryUserId
+    ? (await db.select().from(users).where(eq(users.id, primaryUserId)).limit(1))[0]
+    : null;
+  const clientName = primaryUser?.username || primaryUser?.email || "Unknown";
+
+  const matchedLineIds = new Set<string>();
+
   for (const sub of localSubs) {
-    const user = sub.userId
-      ? (await db.select().from(users).where(eq(users.id, sub.userId)).limit(1))[0]
-      : null;
-    const clientName = user?.username || user?.email || "Unknown";
-    let amount =
-      invoice.lines.data.find((l) => l.amount === sub.price)?.amount ??
-      sub.price ??
-      0;
+    const line =
+      invoice.lines.data.find((l) => {
+        const itemId =
+          typeof (l as any).subscription_item === "string"
+            ? (l as any).subscription_item
+            : (l as any).subscription_item?.id;
+        return (
+          !!sub.stripeSubscriptionItemId &&
+          itemId === sub.stripeSubscriptionItemId
+        );
+      }) ||
+      invoice.lines.data.find((l) => l.amount === sub.price && l.type === "subscription") ||
+      null;
+
+    let amount = line?.amount ?? sub.price ?? 0;
+    if (line?.id) matchedLineIds.add(line.id);
     if (amount <= 0) {
-      amount = invoice.amount_paid || invoice.amount_due || 0;
+      amount = sub.price ?? 0;
     }
 
     if (
@@ -533,7 +570,7 @@ export async function syncObligationFromStripeInvoice(
       (invoice.paid && invoice.amount_paid > 0)
     ) {
       if (amount <= 0) continue;
-      const row = await upsertStripeObligation({
+      await upsertStripeObligation({
         subscriptionId: sub.id,
         userId: sub.userId,
         clientName,
@@ -550,6 +587,7 @@ export async function syncObligationFromStripeInvoice(
         patch: {
           amountPaidCents: amount,
           attemptCount: invoice.attempt_count ?? 0,
+          notes: line?.description || null,
         },
       });
       await ensureTransactionForSettledObligation({
@@ -559,7 +597,6 @@ export async function syncObligationFromStripeInvoice(
         stripeInvoiceId: invoice.id,
         paidAt,
       });
-      void row;
       continue;
     }
 
@@ -629,12 +666,11 @@ export async function syncObligationFromStripeInvoice(
     }
 
     if (eventType === "invoice.marked_uncollectible") {
-      const [existing] = await db
+      const existingRows = await db
         .select()
         .from(paymentObligations)
-        .where(eq(paymentObligations.stripeInvoiceId, invoice.id))
-        .limit(1);
-      if (existing) {
+        .where(eq(paymentObligations.stripeInvoiceId, invoice.id));
+      for (const existing of existingRows) {
         await applyStatusChange(existing.id, PaymentObligationStatus.WRITTEN_OFF, {
           source: opts.source,
           stripeEventId: opts.stripeEventId,
@@ -645,12 +681,11 @@ export async function syncObligationFromStripeInvoice(
     }
 
     if (eventType === "invoice.voided") {
-      const [existing] = await db
+      const existingRows = await db
         .select()
         .from(paymentObligations)
-        .where(eq(paymentObligations.stripeInvoiceId, invoice.id))
-        .limit(1);
-      if (existing) {
+        .where(eq(paymentObligations.stripeInvoiceId, invoice.id));
+      for (const existing of existingRows) {
         await applyStatusChange(existing.id, PaymentObligationStatus.STOPPED, {
           source: opts.source,
           stripeEventId: opts.stripeEventId,
@@ -675,6 +710,38 @@ export async function syncObligationFromStripeInvoice(
         status: PaymentObligationStatus.UPCOMING,
         source: opts.source,
         stripeEventId: opts.stripeEventId,
+      });
+    }
+  }
+
+  // One-time invoice items (setup fee, etc.) — not tied to a local subscription row
+  const isPaidEvent =
+    eventType === "invoice.payment_succeeded" ||
+    eventType === "invoice.paid" ||
+    (invoice.paid && invoice.amount_paid > 0);
+  if (isPaidEvent) {
+    for (const line of invoice.lines.data) {
+      if (matchedLineIds.has(line.id)) continue;
+      if (line.type === "subscription") continue;
+      if (!(line.amount > 0)) continue;
+      await upsertStripeObligation({
+        subscriptionId: null,
+        userId: primaryUserId,
+        clientName,
+        amountDueCents: line.amount,
+        currency: invoice.currency,
+        dueDate: paidAt,
+        periodStart,
+        periodEnd: paidAt,
+        stripeSubscriptionId: stripeSubId,
+        stripeInvoiceId: invoice.id,
+        status: PaymentObligationStatus.SETTLED,
+        source: opts.source,
+        stripeEventId: opts.stripeEventId,
+        patch: {
+          amountPaidCents: line.amount,
+          notes: line.description || "One-time invoice item",
+        },
       });
     }
   }
@@ -844,7 +911,12 @@ export async function materializeSettledFromTransactions(
       const [existingInv] = await db
         .select({ id: paymentObligations.id })
         .from(paymentObligations)
-        .where(eq(paymentObligations.stripeInvoiceId, tx.stripeInvoiceId))
+        .where(
+          and(
+            eq(paymentObligations.stripeInvoiceId, tx.stripeInvoiceId),
+            eq(paymentObligations.subscriptionId, tx.subscriptionId),
+          ),
+        )
         .limit(1);
       if (existingInv) continue;
     }
