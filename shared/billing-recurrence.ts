@@ -21,6 +21,30 @@ export function toLocalDateKey(input: string | Date): string {
 }
 
 /**
+ * UTC calendar day as YYYY-MM-DD.
+ * Use for Stripe obligation due dates so the calendar day matches Stripe Dashboard
+ * (e.g. 2026-10-30T23:21:54Z → 30 Oct, not 31 Oct in Europe/Athens).
+ */
+export function toUtcDateKey(input: string | Date): string {
+  if (typeof input === "string") {
+    // Prefer explicit date prefix only when the string is date-only (no time).
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+  }
+  const d = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(d.getTime())) return toLocalDateKey(input);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+}
+
+/** Calendar day key for an obligation: Stripe → UTC (match Dashboard); custom → local/Athens. */
+export function toObligationDateKey(
+  input: string | Date,
+  origin?: string | null,
+): string {
+  if (origin === "stripe") return toUtcDateKey(input);
+  return toLocalDateKey(input);
+}
+
+/**
  * Advance one period from `from`, keeping `anchorDay` (1–31) for monthly/yearly.
  * Weekly ignores anchor and adds 7 days.
  */

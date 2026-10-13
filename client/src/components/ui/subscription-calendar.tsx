@@ -44,7 +44,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { toLocalDateKey } from "@shared/billing-recurrence";
+import { toLocalDateKey, toObligationDateKey } from "@shared/billing-recurrence";
 
 type CalendarEntry = {
   id: number;
@@ -104,6 +104,13 @@ function euros(cents: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+/** Display obligation due day matching calendar bucketing (Stripe = UTC day). */
+function formatObligationDay(dueDate: string | Date, origin?: string | null) {
+  const key = toObligationDateKey(dueDate, origin);
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("el-GR");
 }
 
 function statusChipClass(status: string, risk: boolean) {
@@ -277,7 +284,7 @@ export function SubscriptionCalendar() {
 
   const selectedKey = selectedDate ? toLocalDateKey(selectedDate) : null;
   const dayEntries = entries.filter(
-    (e) => e.dueDate && toLocalDateKey(new Date(e.dueDate)) === selectedKey,
+    (e) => e.dueDate && toObligationDateKey(e.dueDate, e.origin) === selectedKey,
   );
 
   /** Day color priority: any entry marks the day (incl. canceled / paused). */
@@ -285,7 +292,8 @@ export function SubscriptionCalendar() {
     const map = new Map<string, number>();
     for (const e of entries) {
       if (!e.dueDate) continue;
-      const key = toLocalDateKey(new Date(e.dueDate));
+      // Stripe days use UTC so they match Stripe Dashboard (not Athens shift).
+      const key = toObligationDateKey(e.dueDate, e.origin);
       let p = e.urgency || 0;
       if (p <= 0) {
         if (e.statusGroup === "canceled") p = 5;
@@ -751,7 +759,7 @@ export function SubscriptionCalendar() {
                   {e.riskFlags.length ? ` · ${e.riskFlags.join(",")}` : ""}
                 </span>
                 <span className="font-medium">
-                  {e.dueDate ? new Date(e.dueDate).toLocaleDateString("el-GR") : ""} · €
+                  {e.dueDate ? formatObligationDay(e.dueDate, e.origin) : ""} · €
                   {euros(e.amountDueCents)}
                 </span>
               </div>

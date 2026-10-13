@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { addRecurrence, iterateRecurrenceDates, toLocalDateKey } from "./billing-recurrence";
+import {
+  addRecurrence,
+  iterateRecurrenceDates,
+  toLocalDateKey,
+  toObligationDateKey,
+  toUtcDateKey,
+} from "./billing-recurrence";
 
 describe("addRecurrence monthly clamp", () => {
   it("Jan 31 → Feb 28 (non-leap) → Mar 31", () => {
@@ -41,5 +47,19 @@ describe("iterateRecurrenceDates", () => {
       "2025-03-31",
       "2025-04-30",
     ]);
+  });
+});
+
+describe("toUtcDateKey / toObligationDateKey", () => {
+  it("keeps late-UTC Oct 30 on the 30th (not Athens 31st)", () => {
+    const d = new Date("2026-10-30T23:21:54.000Z");
+    expect(toUtcDateKey(d)).toBe("2026-10-30");
+    expect(toObligationDateKey(d, "stripe")).toBe("2026-10-30");
+  });
+
+  it("keeps early-UTC Oct 31 on the 31st", () => {
+    const d = new Date("2026-10-31T00:19:04.000Z");
+    expect(toUtcDateKey(d)).toBe("2026-10-31");
+    expect(toObligationDateKey(d, "stripe")).toBe("2026-10-31");
   });
 });
