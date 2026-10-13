@@ -120,6 +120,17 @@ describe("calendar totals formulas", () => {
     ).toBe(3000);
   });
 
+  it("settled with amountPaidCents 0 falls back to amountDue", () => {
+    expect(
+      collectedNetCents({
+        status: "settled",
+        amountDue: 3900,
+        amountPaidCents: 0,
+        amountRefundedCents: 0,
+      }),
+    ).toBe(3900);
+  });
+
   it("canceledCents includes written_off and stopped", () => {
     expect(canceledCents({ status: "written_off", amountDue: 3000 })).toBe(3000);
     expect(canceledCents({ status: "stopped", amountDue: 1500 })).toBe(1500);

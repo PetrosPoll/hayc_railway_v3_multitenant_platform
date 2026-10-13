@@ -219,8 +219,8 @@ async function upsertStripeObligation(input: {
       userId: input.userId,
       clientName: input.clientName,
       amountDue: input.amountDueCents,
-      amountPaidCents: 0,
-      amountRefundedCents: 0,
+      amountPaidCents: input.patch?.amountPaidCents ?? 0,
+      amountRefundedCents: input.patch?.amountRefundedCents ?? 0,
       currency: input.currency,
       dueDate: input.dueDate,
       periodStart: input.periodStart,
@@ -232,6 +232,9 @@ async function upsertStripeObligation(input: {
       stripeScheduleId: input.stripeScheduleId ?? null,
       vatIncluded: true,
       assumedPaid: false,
+      riskFlags: input.patch?.riskFlags ?? undefined,
+      attemptCount: input.patch?.attemptCount ?? undefined,
+      notes: input.patch?.notes ?? undefined,
     })
     .returning();
 
@@ -239,6 +242,7 @@ async function upsertStripeObligation(input: {
     source: input.source,
     stripeEventId: input.stripeEventId,
     note: "Created from Stripe sync",
+    patch: input.patch,
   });
 
   return created;

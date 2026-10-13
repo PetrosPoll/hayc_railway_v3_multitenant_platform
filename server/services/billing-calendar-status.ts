@@ -68,6 +68,7 @@ export function outstandingCents(row: {
 
 export function collectedNetCents(row: {
   status: string;
+  amountDue?: number;
   amountPaidCents: number;
   amountRefundedCents: number;
 }): number {
@@ -76,10 +77,18 @@ export function collectedNetCents(row: {
     row.status === PaymentObligationStatus.REFUNDED ||
     row.status === PaymentObligationStatus.PARTIALLY_REFUNDED
   ) {
-    return Math.max(0, row.amountPaidCents - row.amountRefundedCents);
+    const paid = row.amountPaidCents || row.amountDue || 0;
+    return Math.max(0, paid - row.amountRefundedCents);
   }
   if (g === STATUS_GROUP.collected) {
-    return Math.max(0, row.amountPaidCents - row.amountRefundedCents);
+    // Settled rows created before amountPaidCents was set still have due amount
+    const paid =
+      row.amountPaidCents > 0
+        ? row.amountPaidCents
+        : row.status === PaymentObligationStatus.SETTLED
+          ? row.amountDue || 0
+          : row.amountPaidCents;
+    return Math.max(0, paid - row.amountRefundedCents);
   }
   return 0;
 }
@@ -136,7 +145,12 @@ export function computeCalendarTotals(
 
   for (const row of rows) {
     const g = statusGroup(row.status);
-    collected += collectedNetCents(row);
+    collected += collectedNetCents({
+      status: row.status,
+      amountDue: row.amountDue,
+      amountPaidCents: row.amountPaidCents,
+      amountRefundedCents: row.amountRefundedCents,
+    });
     if (g === STATUS_GROUP.expected) {
       expected += row.amountDue;
       if (row.riskFlags?.length) {
