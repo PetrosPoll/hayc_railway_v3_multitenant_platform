@@ -20,6 +20,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -38,6 +45,8 @@ import {
   X,
   Undo2,
   CalendarDays,
+  Ban,
+  Trash2,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -92,6 +101,20 @@ type CalendarResponse = {
   needsAction: CalendarEntry[];
 };
 
+type CustomPaymentRow = {
+  id: number;
+  clientName: string;
+  email: string | null;
+  amount: number;
+  currency: string;
+  frequency: string;
+  startDate: string;
+  paymentType: string;
+  description: string | null;
+  isActive: boolean;
+  notes: string | null;
+};
+
 function monthRange(d: Date): { from: string; to: string } {
   const from = new Date(d.getFullYear(), d.getMonth(), 1);
   const to = new Date(d.getFullYear(), d.getMonth() + 1, 0);
@@ -133,6 +156,7 @@ export function SubscriptionCalendar() {
   const [originFilter, setOriginFilter] = useState<"all" | "stripe" | "custom">("all");
   const [groupFilter, setGroupFilter] = useState<"all" | "collected" | "expected" | "outstanding" | "canceled">("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [customListOpen, setCustomListOpen] = useState(false);
   const [settleEntry, setSettleEntry] = useState<CalendarEntry | null>(null);
   const [settleForm, setSettleForm] = useState({
     amount: "",
@@ -179,8 +203,21 @@ export function SubscriptionCalendar() {
     },
   });
 
+  const { data: customPaymentsData, isLoading: customPaymentsLoading } = useQuery<{
+    payments: CustomPaymentRow[];
+  }>({
+    queryKey: ["/api/admin/custom-payments"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/custom-payments", { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to load custom payments");
+      return res.json();
+    },
+    enabled: customListOpen,
+  });
+
   const invalidate = async () => {
     await qc.invalidateQueries({ queryKey: ["/api/admin/billing-calendar"] });
+    await qc.invalidateQueries({ queryKey: ["/api/admin/custom-payments"] });
     await refetch();
   };
 
@@ -210,6 +247,26 @@ export function SubscriptionCalendar() {
       toast({ title: "Custom payment added" });
       setIsDialogOpen(false);
       invalidate();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const stopCustomMutation = useMutation({
+    mutationFn: async (id: number) =>
+      apiRequest("POST", `/api/admin/custom-payments/${id}/stop`, {}),
+    onSuccess: async () => {
+      toast({ title: "Custom payment stopped" });
+      await invalidate();
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteCustomMutation = useMutation({
+    mutationFn: async (id: number) =>
+      apiRequest("DELETE", `/api/admin/custom-payments/${id}`),
+    onSuccess: async () => {
+      toast({ title: "Custom payment deleted" });
+      await invalidate();
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -478,6 +535,20 @@ export function SubscriptionCalendar() {
                   </div>
                 </DialogContent>
               </Dialog>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => setCustomListOpen(true)}
+                  >
+                    <ListOrdered className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Λίστα custom payments</TooltipContent>
+              </Tooltip>
 
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -810,6 +881,104 @@ export function SubscriptionCalendar() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Sheet open={customListOpen} onOpenChange={setCustomListOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Custom payments</SheetTitle>
+            <SheetDescription>
+              Όλες οι offline / recurring σειρές (ενεργές και σταματημένες).
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-4 space-y-3">
+            {customPaymentsLoading && (
+              <p className="text-sm text-muted-foreground">Φόρτωση…</p>
+            )}
+            {!customPaymentsLoading && (customPaymentsData?.payments || []).length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Δεν υπάρχουν custom payments ακόμα.
+              </p>
+            )}
+            {(customPaymentsData?.payments || []).map((p) => (
+              <div
+                key={p.id}
+                className={`rounded-lg border p-3 space-y-2 ${
+                  p.isActive ? "bg-background" : "bg-muted/40 opacity-80"
+                }`}
+              >
+                <div className="flex justify-between gap-2">
+                  <div>
+                    <p className="font-medium">{p.clientName}</p>
+                    {p.email ? (
+                      <p className="text-xs text-muted-foreground">{p.email}</p>
+                    ) : null}
+                    {p.description ? (
+                      <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
+                    ) : null}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="font-semibold">€{euros(p.amount)}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{p.frequency}</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1 text-xs">
+                  <span className="px-2 py-0.5 rounded bg-slate-200">
+                    {p.paymentType}
+                  </span>
+                  <span
+                    className={`px-2 py-0.5 rounded ${
+                      p.isActive
+                        ? "bg-emerald-100 text-emerald-900"
+                        : "bg-rose-100 text-rose-900"
+                    }`}
+                  >
+                    {p.isActive ? "Ενεργό" : "Σταματημένο"}
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                    από{" "}
+                    {p.startDate
+                      ? new Date(p.startDate).toLocaleDateString("el-GR")
+                      : "—"}
+                  </span>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  {p.isActive && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={stopCustomMutation.isPending}
+                      onClick={() => {
+                        if (confirm(`Stop «${p.clientName}»; Future open rows will stop.`)) {
+                          stopCustomMutation.mutate(p.id);
+                        }
+                      }}
+                    >
+                      <Ban className="w-3 h-3 mr-1" /> Stop
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="text-rose-700"
+                    disabled={deleteCustomMutation.isPending}
+                    onClick={() => {
+                      if (
+                        confirm(
+                          `Delete «${p.clientName}» permanently? This removes the series config.`,
+                        )
+                      ) {
+                        deleteCustomMutation.mutate(p.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" /> Delete
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
