@@ -1579,12 +1579,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async revertObligationToUnpaid(id: number): Promise<PaymentObligation> {
-    // Delete settlement records (reverting the "paid" status)
+    // Delete settlement records; caller applies the correct unpaid status via history.
     await db.delete(paymentSettlements).where(eq(paymentSettlements.obligationId, id));
-    // Set obligation back to pending
     const [revertedObligation] = await db
       .update(paymentObligations)
-      .set({ status: 'pending', updatedAt: new Date() })
+      .set({ amountPaidCents: 0, assumedPaid: false, updatedAt: new Date() })
       .where(eq(paymentObligations.id, id))
       .returning();
     return revertedObligation;

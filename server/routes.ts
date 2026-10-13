@@ -25769,11 +25769,20 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       stopMonthStart.setHours(0, 0, 0, 0);
 
       const obligations = await storage.getObligationsByCustomPaymentId(paymentId);
-      const outstandingStatuses = ["pending", "grace", "retrying", "delinquent", "failed"];
+      // Open / unpaid statuses — keep settled history; stop current+future open rows.
+      const stoppableStatuses = [
+        "upcoming",
+        "pending",
+        "grace",
+        "retrying",
+        "delinquent",
+        "failed",
+        "partially_paid",
+      ];
       let stoppedCount = 0;
 
       for (const obligation of obligations) {
-        if (!outstandingStatuses.includes(obligation.status)) continue;
+        if (!stoppableStatuses.includes(obligation.status)) continue;
         const dueDate = new Date(obligation.dueDate);
         dueDate.setHours(0, 0, 0, 0);
         if (dueDate >= stopMonthStart) {
@@ -26008,7 +26017,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
-  // Revert obligation to unpaid (undo "mark as paid")
+  // Revert obligation to unpaid (undo "mark as paid") — keeps the same day entry
   app.post("/api/admin/payment-obligations/:id/unsettle", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -26024,11 +26033,31 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       if (!obligation) {
         return res.status(404).json({ error: "Obligation not found" });
       }
-      if (obligation.status !== "settled") {
-        return res.status(400).json({ error: "Only settled obligations can be reverted to unpaid" });
+      if (obligation.origin !== "custom") {
+        return res.status(400).json({ error: "Only custom obligations can be unmarked as paid" });
+      }
+      if (obligation.status !== "settled" && obligation.status !== "partially_paid") {
+        return res.status(400).json({ error: "Only settled / partially paid obligations can be reverted" });
       }
 
-      const revertedObligation = await storage.revertObligationToUnpaid(obligationId);
+      // Clear settlement rows first
+      await storage.revertObligationToUnpaid(obligationId);
+
+      const { unpaidStatusForCustomDue } = await import(
+        "./services/billing-custom-materialize"
+      );
+      const unpaidStatus = unpaidStatusForCustomDue(
+        new Date(obligation.dueDate),
+        obligation.graceDays ?? 7,
+      );
+
+      const { applyStatusChange } = await import("./services/billing-obligation-history");
+      const revertedObligation = await applyStatusChange(obligationId, unpaidStatus, {
+        source: "admin",
+        actorUserId: req.user.id,
+        note: "Reverted to unpaid by admin",
+        patch: { amountPaidCents: 0, assumedPaid: false },
+      });
       res.json({ obligation: revertedObligation });
     } catch (error) {
       console.error("Error reverting payment obligation:", error);

@@ -18,6 +18,9 @@ import {
 import { applyStatusChange } from "./billing-obligation-history";
 import { athensLocalToUtc, currentAthensYearMonth } from "./churn-metrics-dates";
 import { createAdminNotification } from "./billing-admin-notify";
+import { unpaidStatusForCustomDue } from "./billing-custom-status";
+
+export { unpaidStatusForCustomDue } from "./billing-custom-status";
 
 const HORIZON_DAYS = 90;
 
@@ -128,21 +131,11 @@ export async function ageCustomObligations(): Promise<number> {
 
   let changed = 0;
   for (const row of rows) {
-    const due = startOfLocalDay(new Date(row.dueDate));
-    const graceDays = row.graceDays ?? 7;
-    const graceEnd = new Date(due);
-    graceEnd.setDate(graceEnd.getDate() + graceDays);
-
-    let next = row.status;
-    if (due.getTime() > today.getTime()) {
-      next = PaymentObligationStatus.UPCOMING;
-    } else if (due.getTime() === today.getTime()) {
-      next = PaymentObligationStatus.PENDING;
-    } else if (today.getTime() <= graceEnd.getTime()) {
-      next = PaymentObligationStatus.GRACE;
-    } else {
-      next = PaymentObligationStatus.DELINQUENT;
-    }
+    const next = unpaidStatusForCustomDue(
+      new Date(row.dueDate),
+      row.graceDays ?? 7,
+      today,
+    );
 
     if (next !== row.status) {
       await applyStatusChange(row.id, next, {

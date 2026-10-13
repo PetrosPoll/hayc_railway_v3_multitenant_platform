@@ -46,7 +46,6 @@ import {
   Undo2,
   CalendarDays,
   Ban,
-  Trash2,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -261,16 +260,6 @@ export function SubscriptionCalendar() {
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
-  const deleteCustomMutation = useMutation({
-    mutationFn: async (id: number) =>
-      apiRequest("DELETE", `/api/admin/custom-payments/${id}`),
-    onSuccess: async () => {
-      toast({ title: "Custom payment deleted" });
-      await invalidate();
-    },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
-  });
-
   const settleMutation = useMutation({
     mutationFn: async () => {
       if (!settleEntry) return;
@@ -293,9 +282,11 @@ export function SubscriptionCalendar() {
     mutationFn: async (id: number) =>
       apiRequest("POST", `/api/admin/payment-obligations/${id}/unsettle`, {}),
     onSuccess: () => {
-      toast({ title: "Επαναφορά σε απλήρωτο" });
+      toast({ title: "Σημειώθηκε ως εκκρεμές" });
       invalidate();
     },
+    onError: (e: any) =>
+      toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const writeOffMutation = useMutation({
@@ -729,7 +720,9 @@ export function SubscriptionCalendar() {
                     </p>
                     <div className="flex flex-col gap-1 mt-2 items-end">
                       {e.origin === "custom" &&
-                        ["pending", "grace", "delinquent", "upcoming"].includes(e.status) && (
+                        ["pending", "grace", "delinquent", "upcoming", "partially_paid"].includes(
+                          e.status,
+                        ) && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -748,15 +741,16 @@ export function SubscriptionCalendar() {
                             <Check className="w-3 h-3 mr-1" /> Πληρώθηκε
                           </Button>
                         )}
-                      {e.origin === "custom" && e.status === "settled" && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => unsettleMutation.mutate(e.id)}
-                        >
-                          <Undo2 className="w-3 h-3 mr-1" /> Δεν πληρώθηκε
-                        </Button>
-                      )}
+                      {e.origin === "custom" &&
+                        ["settled", "partially_paid"].includes(e.status) && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => unsettleMutation.mutate(e.id)}
+                          >
+                            <Undo2 className="w-3 h-3 mr-1" /> Εκκρεμεί
+                          </Button>
+                        )}
                       {e.origin === "custom" &&
                         ["grace", "delinquent"].includes(e.status) && (
                           <Button
@@ -948,7 +942,11 @@ export function SubscriptionCalendar() {
                       variant="outline"
                       disabled={stopCustomMutation.isPending}
                       onClick={() => {
-                        if (confirm(`Stop «${p.clientName}»; Future open rows will stop.`)) {
+                        if (
+                          confirm(
+                            `Stop «${p.clientName}»; ανοιχτές μελλοντικές εγγραφές θα γίνουν Ακυρωμένα. Το ιστορικό πληρωμών μένει.`,
+                          )
+                        ) {
                           stopCustomMutation.mutate(p.id);
                         }
                       }}
@@ -956,23 +954,6 @@ export function SubscriptionCalendar() {
                       <Ban className="w-3 h-3 mr-1" /> Stop
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="text-rose-700"
-                    disabled={deleteCustomMutation.isPending}
-                    onClick={() => {
-                      if (
-                        confirm(
-                          `Delete «${p.clientName}» permanently? This removes the series config.`,
-                        )
-                      ) {
-                        deleteCustomMutation.mutate(p.id);
-                      }
-                    }}
-                  >
-                    <Trash2 className="w-3 h-3 mr-1" /> Delete
-                  </Button>
                 </div>
               </div>
             ))}
