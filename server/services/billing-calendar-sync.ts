@@ -844,15 +844,25 @@ export async function applyInvoiceRefundToObligations(
     .orderBy(asc(paymentObligations.id));
   if (!rows.length || refundedTotalCents <= 0) return 0;
 
-  const paidAmounts = rows.map((r) => r.amountPaidCents || r.amountDue || 0);
+  // Smallest paid line first so a €20 refund fully clears a €10 addon then hits the plan.
+  const ordered = [...rows].sort((a, b) => {
+    const pa = a.amountPaidCents || a.amountDue || 0;
+    const pb = b.amountPaidCents || b.amountDue || 0;
+    if (pa !== pb) return pa - pb;
+    return a.id - b.id;
+  });
+
+  const paidAmounts = ordered.map((r) => r.amountPaidCents || r.amountDue || 0);
   const shares = allocateRefundCents(paidAmounts, refundedTotalCents);
   let updated = 0;
 
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
+  for (let i = 0; i < ordered.length; i++) {
+    const row = ordered[i];
     const share = shares[i] ?? 0;
     const paid = paidAmounts[i];
-    if (share <= 0 && !REFUND_STATUSES.has(row.status)) continue;
+    if (share <= 0 && !REFUND_STATUSES.has(row.status) && !(row.amountRefundedCents > 0)) {
+      continue;
+    }
 
     const nextStatus =
       share <= 0

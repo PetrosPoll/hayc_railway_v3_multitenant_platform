@@ -46,7 +46,7 @@ Flagged **Αναμενόμενα** rows count in “σε κίνδυνο”.
 - **Εκκρεμούν (Overdue)** = outstanding of grace/action_required/retrying/delinquent/disputed + unpaid part of `partially_paid`  
 - **Ακυρωμένα** = amount_due of `stopped` + `written_off` + refunded cents (`refunded` / slice of `partially_refunded`)  
 - **Προβολή τζίρου** = Εισπράχθηκαν + Upcoming + Εκκρεμούν (αν πληρωθούν όλα)  
-- Refunds never delete rows; full refund uses the same struck rose treatment as cancel. Plan+addon on one invoice share `amount_refunded` proportionally.  
+- Refunds never delete rows; full refund uses the same struck rose treatment as cancel. Plan+addon+setup on one invoice share `amount_refunded` greedily (smallest line first) — Stripe refunds the charge total, not a specific product.  
 
 ## Stripe writes allowed from calendar
 

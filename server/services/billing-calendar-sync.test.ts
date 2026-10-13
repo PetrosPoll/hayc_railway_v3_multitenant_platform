@@ -80,11 +80,10 @@ describe("calendar v2 scenario helpers", () => {
     expect(PaymentObligationStatus.PARTIALLY_REFUNDED).toBe("partially_refunded");
   });
 
-  it("refund allocation splits across plan+addon lines", () => {
-    expect(allocateRefundCents([3900, 1000], 4900)).toEqual([3900, 1000]);
-    expect(allocateRefundCents([3900, 1000], 2000).reduce((a, b) => a + b, 0)).toBe(2000);
-    expect(allocateRefundCents([3900, 1000], 2000)[0]).toBeLessThanOrEqual(3900);
-    expect(allocateRefundCents([3900, 1000], 2000)[1]).toBeLessThanOrEqual(1000);
+  it("refund allocation greedily fills lines in order (smallest-first caller)", () => {
+    // Caller sorts [addon, plan, setup]; €20 → full addon + €10 of plan
+    expect(allocateRefundCents([1000, 3900, 9900], 2000)).toEqual([1000, 1000, 0]);
+    expect(allocateRefundCents([1000, 3900], 4900)).toEqual([1000, 3900]);
     expect(allocateRefundCents([1000], 2000)).toEqual([1000]);
   });
 

@@ -45,8 +45,9 @@ export function isOpenObligationStatus(status: string): boolean {
 }
 
 /**
- * Split a charge/invoice refund across paid obligation lines (plan+addon share one invoice).
- * Proportional by paid cents; remainder on the last line. Never exceeds each line's paid.
+ * Split a charge/invoice refund across paid obligation lines (plan+addon+setup share one invoice).
+ * Greedy fill in the given order (caller should sort smallest-first): exhaust each line up to
+ * its paid amount before the next. Stripe refunds the charge total, not a specific product.
  */
 export function allocateRefundCents(
   paidAmounts: number[],
@@ -57,27 +58,12 @@ export function allocateRefundCents(
   const totalPaid = paidAmounts.reduce((a, b) => a + Math.max(0, b), 0);
   if (totalPaid <= 0 || refundedTotal <= 0) return paidAmounts.map(() => 0);
 
-  const capped = Math.min(refundedTotal, totalPaid);
+  let remaining = Math.min(refundedTotal, totalPaid);
   const shares: number[] = [];
-  let allocated = 0;
   for (let i = 0; i < n; i++) {
-    const paid = Math.max(0, paidAmounts[i]);
-    let share: number;
-    if (i === n - 1) {
-      share = Math.min(paid, capped - allocated);
-    } else {
-      share = Math.min(paid, Math.round((capped * paid) / totalPaid));
-      share = Math.min(share, capped - allocated);
-    }
-    shares.push(share);
-    allocated += share;
-  }
-  let shortfall = capped - allocated;
-  for (let i = 0; i < n && shortfall > 0; i++) {
-    const room = Math.max(0, paidAmounts[i]) - shares[i];
-    const add = Math.min(room, shortfall);
-    shares[i] += add;
-    shortfall -= add;
+    const take = Math.min(Math.max(0, paidAmounts[i]), remaining);
+    shares.push(take);
+    remaining -= take;
   }
   return shares;
 }
