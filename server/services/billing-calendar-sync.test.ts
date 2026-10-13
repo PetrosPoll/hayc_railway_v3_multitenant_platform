@@ -5,6 +5,7 @@ import {
   isLocalSubCancelled,
   isOpenObligationStatus,
   failureReasonFromCharge,
+  allocateRefundCents,
 } from "./billing-calendar-matching";
 
 /**
@@ -77,6 +78,14 @@ describe("calendar v2 scenario helpers", () => {
   it("10 refund statuses exist", () => {
     expect(PaymentObligationStatus.REFUNDED).toBe("refunded");
     expect(PaymentObligationStatus.PARTIALLY_REFUNDED).toBe("partially_refunded");
+  });
+
+  it("refund allocation splits across plan+addon lines", () => {
+    expect(allocateRefundCents([3900, 1000], 4900)).toEqual([3900, 1000]);
+    expect(allocateRefundCents([3900, 1000], 2000).reduce((a, b) => a + b, 0)).toBe(2000);
+    expect(allocateRefundCents([3900, 1000], 2000)[0]).toBeLessThanOrEqual(3900);
+    expect(allocateRefundCents([3900, 1000], 2000)[1]).toBeLessThanOrEqual(1000);
+    expect(allocateRefundCents([1000], 2000)).toEqual([1000]);
   });
 
   it("11 dispute status exists", () => {

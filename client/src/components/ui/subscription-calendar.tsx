@@ -119,10 +119,7 @@ function statusChipClass(status: string, risk: boolean) {
     return "bg-amber-100 text-amber-900";
   }
   if (["settled", "partially_paid"].includes(status)) return "bg-emerald-100 text-emerald-900";
-  if (["refunded", "partially_refunded"].includes(status)) {
-    return "bg-rose-100 text-rose-900";
-  }
-  if (["written_off", "stopped"].includes(status)) {
+  if (["refunded", "partially_refunded", "written_off", "stopped", "failed"].includes(status)) {
     return "bg-rose-100 text-rose-900 line-through";
   }
   if (["will_not_renew", "paused"].includes(status)) {
@@ -604,16 +601,20 @@ export function SubscriptionCalendar() {
             {dayEntries.length === 0 && (
               <p className="text-muted-foreground text-center py-8">Καμία εγγραφή αυτή την ημέρα.</p>
             )}
-            {dayEntries.map((e) => (
+            {dayEntries.map((e) => {
+              const isRefund =
+                e.status === "refunded" || e.status === "partially_refunded";
+              const canceledLook = e.statusGroup === "canceled" || isRefund;
+              return (
               <div
                 key={e.id}
                 className={`p-3 rounded-lg border-l-4 ${
                   e.statusGroup === "outstanding"
                     ? "border-amber-500 bg-amber-50"
-                    : e.statusGroup === "collected"
-                      ? "border-emerald-500 bg-emerald-50"
-                      : e.statusGroup === "canceled"
-                        ? "border-rose-500 bg-rose-50 opacity-80"
+                    : canceledLook
+                      ? "border-rose-500 bg-rose-50 opacity-80"
+                      : e.statusGroup === "collected"
+                        ? "border-emerald-500 bg-emerald-50"
                         : e.status === "will_not_renew"
                           ? "border-slate-400 bg-slate-50"
                           : "border-blue-500 bg-blue-50"
@@ -621,7 +622,9 @@ export function SubscriptionCalendar() {
               >
                 <div className="flex justify-between gap-2">
                   <div>
-                    <p className="font-medium">{e.clientName}</p>
+                    <p className={`font-medium ${canceledLook ? "line-through" : ""}`}>
+                      {e.clientName}
+                    </p>
                     <p className="text-sm text-muted-foreground">{e.customerEmail}</p>
                     <div className="flex flex-wrap gap-1 mt-1">
                       <span className="text-xs px-2 py-0.5 rounded bg-slate-200">
@@ -654,9 +657,21 @@ export function SubscriptionCalendar() {
                         Λόγος: {e.lastFailureReason}
                       </p>
                     ) : null}
+                    {e.amountRefundedCents > 0 ? (
+                      <p className="text-xs mt-1 text-rose-700">
+                        Επιστροφή €{euros(e.amountRefundedCents)}
+                        {e.status === "partially_refunded"
+                          ? ` · καθαρό €${euros(
+                              Math.max(0, (e.amountPaidCents || e.amountDueCents) - e.amountRefundedCents),
+                            )}`
+                          : ""}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">€{euros(e.amountDueCents)}</p>
+                    <p className={`font-bold ${canceledLook ? "line-through" : ""}`}>
+                      €{euros(e.amountDueCents)}
+                    </p>
                     <div className="flex flex-col gap-1 mt-2 items-end">
                       {e.origin === "custom" &&
                         ["pending", "grace", "delinquent", "upcoming"].includes(e.status) && (
@@ -718,7 +733,8 @@ export function SubscriptionCalendar() {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </CardContent>
         </Card>
       </div>

@@ -17,7 +17,6 @@ export function statusGroup(status: string): StatusGroup {
   switch (status) {
     case PaymentObligationStatus.SETTLED:
     case PaymentObligationStatus.PARTIALLY_PAID:
-    case PaymentObligationStatus.REFUNDED:
     case PaymentObligationStatus.PARTIALLY_REFUNDED:
       return STATUS_GROUP.collected;
     case PaymentObligationStatus.UPCOMING:
@@ -33,6 +32,8 @@ export function statusGroup(status: string): StatusGroup {
     case PaymentObligationStatus.STOPPED:
     case PaymentObligationStatus.WRITTEN_OFF:
     case PaymentObligationStatus.FAILED:
+    case PaymentObligationStatus.REFUNDED:
+      // Full refund: same card/day treatment as cancel (struck, rose), stays visible
       return STATUS_GROUP.canceled;
     case PaymentObligationStatus.PAUSED:
     default:
@@ -93,11 +94,20 @@ export function collectedNetCents(row: {
   return 0;
 }
 
-/** Amount that was canceled / written off (not month revenue). */
+/** Amount that was canceled / written off / refunded (not kept as revenue). */
 export function canceledCents(row: {
   status: string;
   amountDue: number;
+  amountPaidCents?: number;
+  amountRefundedCents?: number;
 }): number {
+  if (
+    row.status === PaymentObligationStatus.REFUNDED ||
+    row.status === PaymentObligationStatus.PARTIALLY_REFUNDED
+  ) {
+    const paid = row.amountPaidCents || row.amountDue;
+    return Math.min(Math.max(0, row.amountRefundedCents || 0), paid);
+  }
   if (statusGroup(row.status) === STATUS_GROUP.canceled) {
     return row.amountDue;
   }
@@ -159,7 +169,12 @@ export function computeCalendarTotals(
       }
     }
     outstanding += outstandingCents(row);
-    canceled += canceledCents(row);
+    canceled += canceledCents({
+      status: row.status,
+      amountDue: row.amountDue,
+      amountPaidCents: row.amountPaidCents,
+      amountRefundedCents: row.amountRefundedCents,
+    });
   }
 
   return {

@@ -65,9 +65,9 @@ describe("calendar totals formulas", () => {
     expect(t.expectedCents).toBe(12300);
     // outstanding: 4900 + 6000 = 10900
     expect(t.outstandingCents).toBe(10900);
-    // canceled: written_off 3000 + stopped 2200 = 5200 (refunds not here)
-    expect(t.canceledCents).toBe(5200);
-    expect(t.lostCents).toBe(5200);
+    // canceled: written_off 3000 + stopped 2200 + partial refund 2000 = 7200
+    expect(t.canceledCents).toBe(7200);
+    expect(t.lostCents).toBe(7200);
     expect(t.monthTotalCents).toBe(11900 + 12300 + 10900);
     expect(t.atRiskCount).toBe(1);
     expect(t.atRiskCents).toBe(1000);
@@ -135,6 +135,38 @@ describe("calendar totals formulas", () => {
     expect(canceledCents({ status: "written_off", amountDue: 3000 })).toBe(3000);
     expect(canceledCents({ status: "stopped", amountDue: 1500 })).toBe(1500);
     expect(canceledCents({ status: "upcoming", amountDue: 1500 })).toBe(0);
+  });
+
+  it("full refund is canceled group, net collected 0, canceled = refunded", () => {
+    expect(statusGroup("refunded")).toBe("canceled");
+    expect(
+      collectedNetCents({
+        status: "refunded",
+        amountDue: 4900,
+        amountPaidCents: 4900,
+        amountRefundedCents: 4900,
+      }),
+    ).toBe(0);
+    expect(
+      canceledCents({
+        status: "refunded",
+        amountDue: 4900,
+        amountPaidCents: 4900,
+        amountRefundedCents: 4900,
+      }),
+    ).toBe(4900);
+  });
+
+  it("partial refund stays collected with net; canceled gets refunded slice", () => {
+    expect(statusGroup("partially_refunded")).toBe("collected");
+    expect(
+      canceledCents({
+        status: "partially_refunded",
+        amountDue: 5000,
+        amountPaidCents: 5000,
+        amountRefundedCents: 2000,
+      }),
+    ).toBe(2000);
   });
 });
 

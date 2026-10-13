@@ -17,7 +17,8 @@ Team reference: what each status means, UI treatment, automatic vs admin actions
 | `disputed` | stripe | Chargeback open | Εκκρεμούν / Overdue | `charge.dispute.created` | Monitor; Stripe Dashboard |
 | `settled` | both | Paid in full | Εισπράχθηκαν (green) | Stripe: `invoice.payment_succeeded`. Custom: admin settle | Unsettle (custom) |
 | `partially_paid` | custom | Partial settlement | Εισπράχθηκαν (paid) + Εκκρεμούν (rest) | — | Add partial / settle remainder |
-| `refunded` / `partially_refunded` | stripe | Refund issued | Net in Εισπράχθηκαν only | `charge.refunded` / dispute lost | — |
+| `refunded` | stripe | Full refund | Ακυρωμένα (struck, rose) — stays on original due day | `charge.refunded` / dispute lost; Sync re-applies `invoice.amount_refunded` | — |
+| `partially_refunded` | stripe | Partial refund | Εισπράχθηκαν (net) + refund slice in Ακυρωμένα; rose/struck | same | — |
 | `written_off` | both | Uncollectible / admin write-off | Ακυρωμένα (rose) | Stripe: `invoice.marked_uncollectible` **also auto-cancels the Stripe subscription** | Custom write-off |
 | `will_not_renew` | stripe | `cancel_at_period_end`; **this** charge still due | Αναμενόμενα (grey label) | `customer.subscription.updated` | Informational |
 | `paused` | stripe | `pause_collection` | Not counted | pause/resume webhooks | — |
@@ -40,11 +41,12 @@ Flagged **Αναμενόμενα** rows count in “σε κίνδυνο”.
 
 ## Totals (server)
 
-- **Εισπράχθηκαν** = Σ (amount_paid − amount_refunded) for collected statuses  
+- **Εισπράχθηκαν** = Σ (amount_paid − amount_refunded) for collected / partial-refund statuses  
 - **Upcoming** = Σ amount_due of `upcoming` + `pending` + `will_not_renew` (να πληρωθούν)  
 - **Εκκρεμούν (Overdue)** = outstanding of grace/action_required/retrying/delinquent/disputed + unpaid part of `partially_paid`  
-- **Ακυρωμένα** = amount_due of `stopped` + `written_off` (not in Προβολή)  
+- **Ακυρωμένα** = amount_due of `stopped` + `written_off` + refunded cents (`refunded` / slice of `partially_refunded`)  
 - **Προβολή τζίρου** = Εισπράχθηκαν + Upcoming + Εκκρεμούν (αν πληρωθούν όλα)  
+- Refunds never delete rows; full refund uses the same struck rose treatment as cancel. Plan+addon on one invoice share `amount_refunded` proportionally.  
 
 ## Stripe writes allowed from calendar
 

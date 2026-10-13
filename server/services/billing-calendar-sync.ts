@@ -3,7 +3,7 @@
  * One code path for amounts and status transitions.
  */
 import type Stripe from "stripe";
-import { and, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   PaymentObligationStatus,
@@ -21,6 +21,7 @@ import {
   OPEN_OBLIGATION_STATUSES,
   isLocalSubCancelled,
   failureReasonFromCharge,
+  allocateRefundCents,
 } from "./billing-calendar-matching";
 
 export type SyncSource = "webhook" | "reconcile" | "sync" | "system";
@@ -28,9 +29,15 @@ export {
   isLocalSubCancelled,
   isOpenObligationStatus,
   failureReasonFromCharge,
+  allocateRefundCents,
 } from "./billing-calendar-matching";
 
 const HORIZON_DAYS = 90;
+
+const REFUND_STATUSES = new Set<string>([
+  PaymentObligationStatus.REFUNDED,
+  PaymentObligationStatus.PARTIALLY_REFUNDED,
+]);
 
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
@@ -201,23 +208,40 @@ async function upsertStripeObligation(input: {
   }
 
   if (existing) {
-    if (existing.status !== input.status || input.patch) {
-      return applyStatusChange(existing.id, input.status, {
+    // Never wipe a refund back to settled on Sync / payment_succeeded replay.
+    const keepRefund =
+      REFUND_STATUSES.has(existing.status) &&
+      input.status === PaymentObligationStatus.SETTLED;
+    const nextStatus = keepRefund ? existing.status : input.status;
+    const patch = {
+      amountDue: input.amountDueCents,
+      currency: input.currency,
+      dueDate: input.dueDate,
+      periodEnd: input.periodEnd,
+      subscriptionId: input.subscriptionId,
+      stripeInvoiceId: input.stripeInvoiceId ?? existing.stripeInvoiceId,
+      stripeSubscriptionId: input.stripeSubscriptionId,
+      stripeScheduleId: input.stripeScheduleId ?? existing.stripeScheduleId,
+      clientName: input.clientName,
+      ...(input.patch || {}),
+      ...(keepRefund
+        ? {
+            amountRefundedCents: existing.amountRefundedCents,
+            amountPaidCents:
+              existing.amountPaidCents ||
+              input.patch?.amountPaidCents ||
+              input.amountDueCents,
+          }
+        : {}),
+    };
+    if (existing.status !== nextStatus || input.patch || keepRefund) {
+      return applyStatusChange(existing.id, nextStatus, {
         source: input.source,
         stripeEventId: input.stripeEventId,
-        note: `Stripe sync (${input.source})`,
-        patch: {
-          amountDue: input.amountDueCents,
-          currency: input.currency,
-          dueDate: input.dueDate,
-          periodEnd: input.periodEnd,
-          subscriptionId: input.subscriptionId,
-          stripeInvoiceId: input.stripeInvoiceId ?? existing.stripeInvoiceId,
-          stripeSubscriptionId: input.stripeSubscriptionId,
-          stripeScheduleId: input.stripeScheduleId ?? existing.stripeScheduleId,
-          clientName: input.clientName,
-          ...(input.patch || {}),
-        },
+        note: keepRefund
+          ? `Stripe sync (${input.source}) — kept refund status`
+          : `Stripe sync (${input.source})`,
+        patch,
       });
     }
     const [updated] = await db
@@ -768,6 +792,15 @@ export async function syncObligationFromStripeInvoice(
         },
       });
     }
+    // Re-apply refunds after settle so Sync keeps struck refund rows visible.
+    const amountRefunded = invoice.amount_refunded ?? 0;
+    if (amountRefunded > 0) {
+      await applyInvoiceRefundToObligations(invoice.id, amountRefunded, {
+        source: opts.source,
+        stripeEventId: opts.stripeEventId,
+        notePrefix: "Invoice refund",
+      });
+    }
   }
 }
 
@@ -798,6 +831,54 @@ export async function handleSubscriptionUpdatedForCalendar(
   }
 }
 
+/** Apply invoice-level refund to all obligations sharing that invoice (idempotent). */
+export async function applyInvoiceRefundToObligations(
+  invoiceId: string,
+  refundedTotalCents: number,
+  opts: { source: SyncSource; stripeEventId?: string | null; notePrefix?: string },
+): Promise<number> {
+  const rows = await db
+    .select()
+    .from(paymentObligations)
+    .where(eq(paymentObligations.stripeInvoiceId, invoiceId))
+    .orderBy(asc(paymentObligations.id));
+  if (!rows.length || refundedTotalCents <= 0) return 0;
+
+  const paidAmounts = rows.map((r) => r.amountPaidCents || r.amountDue || 0);
+  const shares = allocateRefundCents(paidAmounts, refundedTotalCents);
+  let updated = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const share = shares[i] ?? 0;
+    const paid = paidAmounts[i];
+    if (share <= 0 && !REFUND_STATUSES.has(row.status)) continue;
+
+    const nextStatus =
+      share <= 0
+        ? PaymentObligationStatus.SETTLED
+        : share >= paid
+          ? PaymentObligationStatus.REFUNDED
+          : PaymentObligationStatus.PARTIALLY_REFUNDED;
+
+    if (
+      row.status === nextStatus &&
+      (row.amountRefundedCents || 0) === share
+    ) {
+      continue;
+    }
+
+    await applyStatusChange(row.id, nextStatus, {
+      source: opts.source,
+      stripeEventId: opts.stripeEventId,
+      note: `${opts.notePrefix || "Refund"} ${share} cents (invoice total ${refundedTotalCents})`,
+      patch: { amountRefundedCents: share },
+    });
+    updated++;
+  }
+  return updated;
+}
+
 export async function handleChargeRefundedForCalendar(
   charge: Stripe.Charge,
   opts: { source: SyncSource; stripeEventId?: string | null },
@@ -805,29 +886,23 @@ export async function handleChargeRefundedForCalendar(
   const invoiceId =
     typeof charge.invoice === "string" ? charge.invoice : charge.invoice?.id;
   if (!invoiceId) return;
+  const refunded = charge.amount_refunded || 0;
+  const n = await applyInvoiceRefundToObligations(invoiceId, refunded, {
+    source: opts.source,
+    stripeEventId: opts.stripeEventId,
+    notePrefix: "Refund",
+  });
+  if (n === 0) return;
   const [row] = await db
     .select()
     .from(paymentObligations)
     .where(eq(paymentObligations.stripeInvoiceId, invoiceId))
     .limit(1);
-  if (!row) return;
-  const refunded = charge.amount_refunded || 0;
-  const full = refunded >= (row.amountPaidCents || row.amountDue);
-  await applyStatusChange(
-    row.id,
-    full ? PaymentObligationStatus.REFUNDED : PaymentObligationStatus.PARTIALLY_REFUNDED,
-    {
-      source: opts.source,
-      stripeEventId: opts.stripeEventId,
-      note: `Refund ${refunded} cents`,
-      patch: { amountRefundedCents: refunded },
-    },
-  );
   await createAdminNotification({
     type: "refund",
-    title: `Refund: ${row.clientName}`,
-    body: `${refunded / 100} ${row.currency}`,
-    payload: { obligationId: row.id },
+    title: `Refund: ${row?.clientName || invoiceId}`,
+    body: `${refunded / 100} ${row?.currency || charge.currency}`,
+    payload: { invoiceId, obligationId: row?.id },
   });
 }
 
