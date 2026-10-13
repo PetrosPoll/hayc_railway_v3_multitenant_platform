@@ -39,6 +39,7 @@ import {
   Check,
   X,
   Undo2,
+  CalendarDays,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
@@ -279,12 +280,21 @@ export function SubscriptionCalendar() {
     (e) => e.dueDate && toLocalDateKey(new Date(e.dueDate)) === selectedKey,
   );
 
+  /** Day color priority: any entry marks the day (incl. canceled / paused). */
   const dayUrgency = useMemo(() => {
     const map = new Map<string, number>();
     for (const e of entries) {
       if (!e.dueDate) continue;
       const key = toLocalDateKey(new Date(e.dueDate));
-      map.set(key, Math.max(map.get(key) || 0, e.urgency));
+      let p = e.urgency || 0;
+      if (p <= 0) {
+        if (e.statusGroup === "canceled") p = 5;
+        else if (e.statusGroup === "collected") p = 10;
+        else if (e.statusGroup === "expected") p = 20;
+        else if (e.statusGroup === "outstanding") p = 40;
+        else p = 3; // paused / other — still show a mark
+      }
+      map.set(key, Math.max(map.get(key) || 0, p));
     }
     return map;
   }, [entries]);
@@ -293,6 +303,7 @@ export function SubscriptionCalendar() {
   const riskDates: Date[] = [];
   const expectedDates: Date[] = [];
   const collectedDates: Date[] = [];
+  const canceledDates: Date[] = [];
   Array.from(dayUrgency.entries()).forEach(([key, urg]) => {
     const [y, m, d] = key.split("-").map(Number);
     const dt = new Date(y, m - 1, d);
@@ -300,6 +311,7 @@ export function SubscriptionCalendar() {
     else if (urg >= 30) riskDates.push(dt);
     else if (urg >= 20) expectedDates.push(dt);
     else if (urg >= 10) collectedDates.push(dt);
+    else if (urg >= 3) canceledDates.push(dt);
   });
 
   const totals = data?.totals;
@@ -312,6 +324,11 @@ export function SubscriptionCalendar() {
     n.setMonth(n.getMonth() + (dir === "next" ? 1 : -1));
     setCurrentMonth(n);
     setSelectedDate(n);
+  };
+  const goToToday = () => {
+    const today = new Date();
+    setCurrentMonth(today);
+    setSelectedDate(today);
   };
 
   return (
@@ -496,6 +513,21 @@ export function SubscriptionCalendar() {
                 </TooltipTrigger>
                 <TooltipContent>Sync / reconcile Stripe</TooltipContent>
               </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2 gap-1"
+                    onClick={goToToday}
+                  >
+                    <CalendarDays className="w-4 h-4" />
+                    <span className="text-xs">Σήμερα</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Τρέχων μήνας / σημερινή ημερομηνία</TooltipContent>
+              </Tooltip>
             </div>
           </TooltipProvider>
 
@@ -510,6 +542,7 @@ export function SubscriptionCalendar() {
               risk: riskDates,
               expected: expectedDates,
               collected: collectedDates,
+              canceled: canceledDates,
             }}
             modifiersClassNames={{
               outstanding:
@@ -520,6 +553,8 @@ export function SubscriptionCalendar() {
                 "rounded-full font-bold [&:not([aria-selected='true'])]:bg-blue-500 [&:not([aria-selected='true'])]:text-white",
               collected:
                 "rounded-full font-bold [&:not([aria-selected='true'])]:bg-emerald-500 [&:not([aria-selected='true'])]:text-white",
+              canceled:
+                "rounded-full font-bold [&:not([aria-selected='true'])]:bg-rose-400 [&:not([aria-selected='true'])]:text-white",
             }}
             className="rounded-md border shadow"
           />
@@ -528,6 +563,7 @@ export function SubscriptionCalendar() {
             <p><span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1" />Σε κίνδυνο</p>
             <p><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />Upcoming</p>
             <p><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />Εισπράχθηκαν</p>
+            <p><span className="inline-block w-2 h-2 rounded-full bg-rose-400 mr-1" />Ακυρωμένα</p>
           </div>
 
           <div className="flex gap-2">
