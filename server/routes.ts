@@ -25880,10 +25880,16 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(404).json({ error: "Obligation not found" });
       }
 
-      // Create a settlement record
+      const { resolveSettlementAmountCents } = await import(
+        "./services/payment-obligation-amounts"
+      );
+      // amountPaid is euros from the admin UI (never pre-multiplied cents)
       await storage.createPaymentSettlement({
         obligationId,
-        amountPaid: amountPaid ? Math.round(amountPaid * 100) : obligation.amountDue,
+        amountPaid: resolveSettlementAmountCents({
+          amountPaidEuros: amountPaid,
+          obligationAmountDueCents: obligation.amountDue,
+        }),
         currency: obligation.currency,
         paidAt: paidAt ? new Date(paidAt) : new Date(),
         paymentMethod: paymentMethod || null,
@@ -26014,10 +26020,15 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(404).json({ error: "Obligation not found" });
       }
 
-      // Create a settlement record
+      const { resolveSettlementAmountCents } = await import(
+        "./services/payment-obligation-amounts"
+      );
       const settlement = await storage.createPaymentSettlement({
         obligationId,
-        amountPaid: Math.round(amountPaid * 100),
+        amountPaid: resolveSettlementAmountCents({
+          amountPaidEuros: amountPaid,
+          obligationAmountDueCents: obligation.amountDue,
+        }),
         currency: obligation.currency,
         paidAt: paidAt ? new Date(paidAt) : new Date(),
         paymentMethod: paymentMethod || null,

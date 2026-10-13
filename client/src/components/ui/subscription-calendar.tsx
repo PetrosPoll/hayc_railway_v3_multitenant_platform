@@ -20,20 +20,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Trash2, Plus, ChevronLeft, ChevronRight, RefreshCw, AlertTriangle, DollarSign, Check, X, CalendarDays, CalendarX, List, StopCircle, ListOrdered, Undo2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Subscription, CustomPayment, PaymentObligation, PaymentSettlement } from "@shared/schema";
+import { CustomPayment, PaymentObligation } from "@shared/schema";
+import {
+  addRecurrence,
+  toLocalDateKey,
+  type BillingFrequency,
+} from "@shared/billing-recurrence";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 
 /** Local calendar day key (YYYY-MM-DD). Avoids UTC day-shift from toISOString(). */
 function toDateKey(input: string | Date | null | undefined): string | null {
   if (!input) return null;
-  if (typeof input === "string") {
-    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(input);
-    if (m) return `${m[1]}-${m[2]}-${m[3]}`;
-  }
-  const d = input instanceof Date ? input : new Date(input);
-  if (Number.isNaN(d.getTime())) return null;
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return toLocalDateKey(input instanceof Date || typeof input === "string" ? input : new Date(input));
 }
 
 interface StripePayment {
@@ -50,67 +49,34 @@ interface StripePayment {
   invoiceUrl?: string;
 }
 
-const getNextBillingDate = (subscription: any) => {
-  // Use the next billing date from Stripe's upcoming invoice if available
-  if (subscription.nextBillingDate) {
-    return new Date(subscription.nextBillingDate);
-  }
-
-  // Fallback: if Stripe data unavailable, estimate from creation date
-  const date = new Date(subscription.createdAt);
-  const billingPeriod = subscription.billingPeriod || 'monthly';
-
-  if (billingPeriod === 'yearly') {
-    date.setFullYear(date.getFullYear() + 1);
-  } else {
-    date.setDate(date.getDate() + 30);
-  }
-
-  return date;
-};
-
 const getAllCustomPaymentDates = (payment: CustomPayment, startYear: number, startMonth: number, endYear: number, endMonth: number) => {
   const dates = [];
   const startDate = new Date(payment.startDate);
   const rangeStart = new Date(startYear, startMonth, 1);
   const rangeEnd = new Date(endYear, endMonth + 1, 0, 23, 59, 59);
-  
-  // Get excluded dates as a Set for O(1) lookup
-  // Backend stores dates in YYYY-MM-DD format, so we just use them directly
   const excludedDatesSet = new Set((payment.excludedDates || []).map((d: string) => {
-    // Handle both YYYY-MM-DD and ISO date strings
-    if (d.includes('T')) {
-      return d.split('T')[0]; // Extract just the date part from ISO string
-    }
-    return d; // Already in YYYY-MM-DD format
+    if (d.includes('T')) return d.split('T')[0];
+    return d;
   }));
-  
-  let currentDate = new Date(startDate);
-  
-  // Generate all payment dates from start date to range end
+
+  const frequency = payment.frequency as BillingFrequency;
+  const anchorDay = startDate.getDate();
+  let currentDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+  const now = new Date();
+
   while (currentDate <= rangeEnd) {
-    // Only include if within our query range
-    if (currentDate >= rangeStart && currentDate <= rangeEnd) {
-      // Check if this date is excluded - use local date for consistency
-      const dateKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`;
+    if (currentDate >= rangeStart) {
+      const dateKey = toLocalDateKey(currentDate);
       if (!excludedDatesSet.has(dateKey)) {
         dates.push({
           date: new Date(currentDate),
-          isPast: currentDate < new Date()
+          isPast: currentDate < now,
         });
       }
     }
-    
-    // Move to next payment date
-    if (payment.frequency === 'monthly') {
-      currentDate.setMonth(currentDate.getMonth() + 1);
-    } else if (payment.frequency === 'yearly') {
-      currentDate.setFullYear(currentDate.getFullYear() + 1);
-    } else if (payment.frequency === 'weekly') {
-      currentDate.setDate(currentDate.getDate() + 7);
-    }
+    currentDate = addRecurrence(currentDate, frequency, anchorDay);
   }
-  
+
   return dates;
 };
 
@@ -184,12 +150,8 @@ export function SubscriptionCalendar() {
     },
   });
 
-  const { data: subscriptionsData } = useQuery<{ subscriptions: Subscription[] }>({
-    queryKey: ["/api/admin/subscriptions"],
-  });
-
   const { data: paymentHistoryData } = useQuery<{ payments: StripePayment[] }>({
-    queryKey: ["/api/admin/payment-history", currentMonth.getFullYear(), currentMonth.getMonth() + 1],
+    queryKey: ["/api/admin/payment-history"],
   });
 
   // Fetch custom payments from database
@@ -1578,7 +1540,8 @@ export function SubscriptionCalendar() {
                 if (settleDialog.obligation) {
                   settleObligationMutation.mutate({
                     id: settleDialog.obligation.id,
-                    amountPaid: settleDialog.obligation.amountDue,
+                    // euros — server converts to cents (do not send cents)
+                    amountPaid: settleDialog.obligation.amountDue / 100,
                     paymentMethod: 'manual'
                   });
                   setSettleDialog({ open: false, obligation: null });
