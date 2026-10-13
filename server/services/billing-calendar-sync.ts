@@ -3,7 +3,7 @@
  * One code path for amounts and status transitions.
  */
 import type Stripe from "stripe";
-import { and, eq, gte, lte, or, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "../db";
 import {
   PaymentObligationStatus,
@@ -17,8 +17,13 @@ import {
 import { applyStatusChange } from "./billing-obligation-history";
 import { createAdminNotification, claimBillingEmailSend } from "./billing-admin-notify";
 import { chargedCentsForInvoiceLine } from "../lib/stripe-invoice-amount";
+import {
+  OPEN_OBLIGATION_STATUSES,
+  isLocalSubCancelled,
+} from "./billing-calendar-matching";
 
 export type SyncSource = "webhook" | "reconcile" | "sync" | "system";
+export { isLocalSubCancelled, isOpenObligationStatus } from "./billing-calendar-matching";
 
 const HORIZON_DAYS = 90;
 
@@ -30,6 +35,95 @@ function addDays(d: Date, n: number): Date {
   const x = startOfDay(d);
   x.setDate(x.getDate() + n);
   return x;
+}
+
+/**
+ * Stop all open Stripe-origin (and linked) obligations for a local subscription.
+ * Used on cancel / orphan sweep so upcoming never outlives an inactive sub.
+ */
+export async function stopOpenObligationsForSubscription(
+  subscriptionId: number,
+  opts: {
+    source: SyncSource;
+    stripeEventId?: string | null;
+    note?: string;
+  },
+): Promise<number> {
+  const rows = await db
+    .select()
+    .from(paymentObligations)
+    .where(
+      and(
+        eq(paymentObligations.subscriptionId, subscriptionId),
+        inArray(paymentObligations.status, [...OPEN_OBLIGATION_STATUSES]),
+      ),
+    );
+
+  let stopped = 0;
+  for (const row of rows) {
+    await applyStatusChange(row.id, PaymentObligationStatus.STOPPED, {
+      source: opts.source,
+      stripeEventId: opts.stripeEventId,
+      note: opts.note || "Subscription canceled/ended",
+    });
+    stopped++;
+  }
+  return stopped;
+}
+
+/**
+ * Stop open Stripe obligations whose local subscription is no longer active.
+ * Idempotent; safe to run on every reconcile.
+ */
+export async function sweepOrphanStripeObligations(
+  opts: { source: SyncSource } = { source: "reconcile" },
+): Promise<number> {
+  const openRows = await db
+    .select({
+      id: paymentObligations.id,
+      subscriptionId: paymentObligations.subscriptionId,
+      subStatus: subscriptionsTable.status,
+    })
+    .from(paymentObligations)
+    .leftJoin(
+      subscriptionsTable,
+      eq(paymentObligations.subscriptionId, subscriptionsTable.id),
+    )
+    .where(
+      and(
+        eq(paymentObligations.origin, PaymentOrigin.STRIPE),
+        inArray(paymentObligations.status, [...OPEN_OBLIGATION_STATUSES]),
+      ),
+    );
+
+  let stopped = 0;
+  const handledSubs = new Set<number>();
+
+  for (const row of openRows) {
+    const cancelled =
+      !row.subscriptionId ||
+      row.subStatus == null ||
+      isLocalSubCancelled(row.subStatus);
+
+    if (!cancelled) continue;
+
+    if (row.subscriptionId) {
+      if (handledSubs.has(row.subscriptionId)) continue;
+      handledSubs.add(row.subscriptionId);
+      stopped += await stopOpenObligationsForSubscription(row.subscriptionId, {
+        source: opts.source,
+        note: "Orphan sweep: local subscription not active",
+      });
+    } else {
+      await applyStatusChange(row.id, PaymentObligationStatus.STOPPED, {
+        source: opts.source,
+        note: "Orphan sweep: missing subscription link",
+      });
+      stopped++;
+    }
+  }
+
+  return stopped;
 }
 
 async function findLocalSubsByStripeId(stripeSubscriptionId: string) {
@@ -235,33 +329,33 @@ export async function syncObligationFromStripeSubscription(
     });
   }
 
+  if (isLocalSubCancelled(localSub.status)) {
+    await stopOpenObligationsForSubscription(localSub.id, {
+      source: opts.source,
+      stripeEventId: opts.stripeEventId,
+      note: "Local subscription canceled",
+    });
+    return null;
+  }
+
   let stripeSub: Stripe.Subscription;
   try {
     stripeSub = await stripe.subscriptions.retrieve(localSub.stripeSubscriptionId);
   } catch {
+    await stopOpenObligationsForSubscription(localSub.id, {
+      source: opts.source,
+      stripeEventId: opts.stripeEventId,
+      note: "Stripe subscription retrieve failed — stopping open obligations",
+    });
     return null;
   }
 
   if (["canceled", "incomplete_expired"].includes(stripeSub.status)) {
-    // Stop future unpaid rows
-    const rows = await db
-      .select()
-      .from(paymentObligations)
-      .where(
-        and(
-          eq(paymentObligations.subscriptionId, localSub.id),
-          eq(paymentObligations.origin, PaymentOrigin.STRIPE),
-          sql`${paymentObligations.status} NOT IN ('settled','refunded','partially_refunded','written_off','stopped')`,
-          gte(paymentObligations.dueDate, startOfDay(new Date())),
-        ),
-      );
-    for (const row of rows) {
-      await applyStatusChange(row.id, PaymentObligationStatus.STOPPED, {
-        source: opts.source,
-        stripeEventId: opts.stripeEventId,
-        note: "Subscription canceled/ended",
-      });
-    }
+    await stopOpenObligationsForSubscription(localSub.id, {
+      source: opts.source,
+      stripeEventId: opts.stripeEventId,
+      note: "Subscription canceled/ended",
+    });
     return null;
   }
 
@@ -703,6 +797,7 @@ export type ReconcileStats = {
   upcomingSkipped: number;
   invoicesSynced: number;
   fromTransactions: number;
+  orphansStopped: number;
   errors: number;
 };
 
@@ -809,6 +904,7 @@ export async function reconcileStripeCalendar(
     upcomingSkipped: 0,
     invoicesSynced: 0,
     fromTransactions: 0,
+    orphansStopped: 0,
     errors: 0,
   };
 
@@ -822,6 +918,13 @@ export async function reconcileStripeCalendar(
       stats.errors++;
       console.error("[billing-calendar] reconcile sub failed", sub.id, e);
     }
+  }
+
+  try {
+    stats.orphansStopped = await sweepOrphanStripeObligations(opts);
+  } catch (e) {
+    stats.errors++;
+    console.error("[billing-calendar] orphan sweep failed", e);
   }
 
   for (const { stripeCustomerId } of customerRows) {

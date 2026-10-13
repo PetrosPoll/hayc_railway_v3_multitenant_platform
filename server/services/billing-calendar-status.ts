@@ -6,9 +6,9 @@ export type CalendarStatus =
 export const STATUS_GROUP = {
   collected: "collected", // Εισπράχθηκαν
   expected: "expected", // Αναμενόμενα
-  outstanding: "outstanding", // Εκκρεμούν
-  lost: "lost", // Χάθηκαν
-  excluded: "excluded", // not counted
+  outstanding: "outstanding", // Εκκρεμούν / Overdue
+  canceled: "canceled", // Ακυρωμένα
+  excluded: "excluded", // not counted (e.g. paused)
 } as const;
 
 export type StatusGroup = (typeof STATUS_GROUP)[keyof typeof STATUS_GROUP];
@@ -22,6 +22,7 @@ export function statusGroup(status: string): StatusGroup {
       return STATUS_GROUP.collected;
     case PaymentObligationStatus.UPCOMING:
     case PaymentObligationStatus.PENDING:
+    case PaymentObligationStatus.WILL_NOT_RENEW:
       return STATUS_GROUP.expected;
     case PaymentObligationStatus.GRACE:
     case PaymentObligationStatus.ACTION_REQUIRED:
@@ -29,12 +30,11 @@ export function statusGroup(status: string): StatusGroup {
     case PaymentObligationStatus.DELINQUENT:
     case PaymentObligationStatus.DISPUTED:
       return STATUS_GROUP.outstanding;
+    case PaymentObligationStatus.STOPPED:
     case PaymentObligationStatus.WRITTEN_OFF:
     case PaymentObligationStatus.FAILED:
-      return STATUS_GROUP.lost;
-    case PaymentObligationStatus.WILL_NOT_RENEW:
+      return STATUS_GROUP.canceled;
     case PaymentObligationStatus.PAUSED:
-    case PaymentObligationStatus.STOPPED:
     default:
       return STATUS_GROUP.excluded;
   }
@@ -47,6 +47,7 @@ export function statusUrgency(status: string, riskFlags: string[] = []): number 
   if (riskFlags.length > 0 && g === STATUS_GROUP.expected) return 30;
   if (g === STATUS_GROUP.expected) return 20;
   if (g === STATUS_GROUP.collected) return 10;
+  if (g === STATUS_GROUP.canceled) return 5;
   return 0;
 }
 
@@ -71,13 +72,11 @@ export function collectedNetCents(row: {
   amountRefundedCents: number;
 }): number {
   const g = statusGroup(row.status);
-  if (g !== STATUS_GROUP.collected && row.status !== PaymentObligationStatus.WRITTEN_OFF) {
-    if (
-      row.status === PaymentObligationStatus.REFUNDED ||
-      row.status === PaymentObligationStatus.PARTIALLY_REFUNDED
-    ) {
-      return Math.max(0, row.amountPaidCents - row.amountRefundedCents);
-    }
+  if (
+    row.status === PaymentObligationStatus.REFUNDED ||
+    row.status === PaymentObligationStatus.PARTIALLY_REFUNDED
+  ) {
+    return Math.max(0, row.amountPaidCents - row.amountRefundedCents);
   }
   if (g === STATUS_GROUP.collected) {
     return Math.max(0, row.amountPaidCents - row.amountRefundedCents);
@@ -85,24 +84,32 @@ export function collectedNetCents(row: {
   return 0;
 }
 
+/** Amount that was canceled / written off (not month revenue). */
+export function canceledCents(row: {
+  status: string;
+  amountDue: number;
+}): number {
+  if (statusGroup(row.status) === STATUS_GROUP.canceled) {
+    return row.amountDue;
+  }
+  return 0;
+}
+
+/** @deprecated use canceledCents */
 export function lostCents(row: {
   status: string;
   amountDue: number;
   amountRefundedCents: number;
 }): number {
-  if (
-    row.status === PaymentObligationStatus.WRITTEN_OFF ||
-    row.status === PaymentObligationStatus.FAILED
-  ) {
-    return row.amountDue;
-  }
-  return row.amountRefundedCents || 0;
+  return canceledCents(row);
 }
 
 export type CalendarTotals = {
   collectedCents: number;
   expectedCents: number;
   outstandingCents: number;
+  canceledCents: number;
+  /** @deprecated alias of canceledCents for older clients */
   lostCents: number;
   monthTotalCents: number;
   atRiskCount: number;
@@ -123,7 +130,7 @@ export function computeCalendarTotals(
   let collected = 0;
   let expected = 0;
   let outstanding = 0;
-  let lost = 0;
+  let canceled = 0;
   let atRiskCount = 0;
   let atRiskCents = 0;
 
@@ -138,14 +145,15 @@ export function computeCalendarTotals(
       }
     }
     outstanding += outstandingCents(row);
-    lost += lostCents(row);
+    canceled += canceledCents(row);
   }
 
   return {
     collectedCents: collected,
     expectedCents: expected,
     outstandingCents: outstanding,
-    lostCents: lost,
+    canceledCents: canceled,
+    lostCents: canceled,
     monthTotalCents: collected + expected + outstanding,
     atRiskCount,
     atRiskCents,
@@ -168,6 +176,6 @@ export const GREEK_STATUS_LABELS: Record<string, string> = {
   written_off: "Διαγραφή",
   will_not_renew: "Δεν θα ανανεωθεί",
   paused: "Σε παύση",
-  stopped: "Διακόπηκε",
+  stopped: "Ακυρώθηκε",
   failed: "Αποτυχία",
 };

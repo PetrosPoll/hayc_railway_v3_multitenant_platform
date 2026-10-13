@@ -76,7 +76,8 @@ type CalendarTotals = {
   collectedCents: number;
   expectedCents: number;
   outstandingCents: number;
-  lostCents: number;
+  canceledCents?: number;
+  lostCents?: number;
   monthTotalCents: number;
   atRiskCount: number;
   atRiskCents: number;
@@ -109,11 +110,14 @@ function statusChipClass(status: string, risk: boolean) {
     return "bg-amber-100 text-amber-900";
   }
   if (["settled", "partially_paid"].includes(status)) return "bg-emerald-100 text-emerald-900";
-  if (["refunded", "partially_refunded", "written_off"].includes(status)) {
+  if (["refunded", "partially_refunded"].includes(status)) {
     return "bg-rose-100 text-rose-900";
   }
-  if (["will_not_renew", "paused", "stopped"].includes(status)) {
-    return "bg-gray-200 text-gray-700 line-through";
+  if (["written_off", "stopped"].includes(status)) {
+    return "bg-rose-100 text-rose-900 line-through";
+  }
+  if (["will_not_renew", "paused"].includes(status)) {
+    return "bg-gray-200 text-gray-700";
   }
   if (risk) return "bg-orange-100 text-orange-900";
   return "bg-blue-100 text-blue-900";
@@ -123,7 +127,7 @@ export function SubscriptionCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [originFilter, setOriginFilter] = useState<"all" | "stripe" | "custom">("all");
-  const [groupFilter, setGroupFilter] = useState<"all" | "collected" | "expected" | "outstanding" | "lost">("all");
+  const [groupFilter, setGroupFilter] = useState<"all" | "collected" | "expected" | "outstanding" | "canceled">("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [settleEntry, setSettleEntry] = useState<CalendarEntry | null>(null);
   const [settleForm, setSettleForm] = useState({
@@ -338,14 +342,16 @@ export function SubscriptionCalendar() {
           )}
         </div>
         <div className="p-2 bg-amber-50 border border-amber-200 rounded">
-          <p className="font-semibold text-amber-800">Εκκρεμούν</p>
+          <p className="font-semibold text-amber-800">Εκκρεμούν / Overdue</p>
           <p className="text-[11px] text-amber-700/80 capitalize">{monthLabel}</p>
           <p className="text-lg font-bold text-amber-700">€{euros(totals?.outstandingCents || 0)}</p>
         </div>
         <div className="p-2 bg-rose-50 border border-rose-200 rounded">
-          <p className="font-semibold text-rose-800">Χάθηκαν</p>
+          <p className="font-semibold text-rose-800">Ακυρωμένα</p>
           <p className="text-[11px] text-rose-700/80 capitalize">{monthLabel}</p>
-          <p className="text-lg font-bold text-rose-700">€{euros(totals?.lostCents || 0)}</p>
+          <p className="text-lg font-bold text-rose-700">
+            €{euros(totals?.canceledCents ?? totals?.lostCents ?? 0)}
+          </p>
         </div>
         <div className="p-2 bg-gray-50 border border-gray-200 rounded">
           <p className="font-semibold text-gray-800">Σύνολο μήνα</p>
@@ -518,7 +524,7 @@ export function SubscriptionCalendar() {
             className="rounded-md border shadow"
           />
           <div className="text-xs space-y-1 px-1">
-            <p><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1" />Εκκρεμούν</p>
+            <p><span className="inline-block w-2 h-2 rounded-full bg-amber-500 mr-1" />Εκκρεμούν / Overdue</p>
             <p><span className="inline-block w-2 h-2 rounded-full bg-orange-500 mr-1" />Σε κίνδυνο</p>
             <p><span className="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1" />Αναμενόμενα</p>
             <p><span className="inline-block w-2 h-2 rounded-full bg-emerald-500 mr-1" />Εισπράχθηκαν</p>
@@ -543,8 +549,8 @@ export function SubscriptionCalendar() {
                 <SelectItem value="all">Όλα status</SelectItem>
                 <SelectItem value="collected">Εισπράχθηκαν</SelectItem>
                 <SelectItem value="expected">Αναμενόμενα</SelectItem>
-                <SelectItem value="outstanding">Εκκρεμούν</SelectItem>
-                <SelectItem value="lost">Χάθηκαν</SelectItem>
+                <SelectItem value="outstanding">Εκκρεμούν / Overdue</SelectItem>
+                <SelectItem value="canceled">Ακυρωμένα</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -571,9 +577,11 @@ export function SubscriptionCalendar() {
                     ? "border-amber-500 bg-amber-50"
                     : e.statusGroup === "collected"
                       ? "border-emerald-500 bg-emerald-50"
-                      : e.statusGroup === "lost"
-                        ? "border-rose-500 bg-rose-50"
-                        : "border-blue-500 bg-blue-50"
+                      : e.statusGroup === "canceled"
+                        ? "border-rose-500 bg-rose-50 opacity-80"
+                        : e.status === "will_not_renew"
+                          ? "border-slate-400 bg-slate-50"
+                          : "border-blue-500 bg-blue-50"
                 }`}
               >
                 <div className="flex justify-between gap-2">

@@ -93,7 +93,10 @@ import {
   handleCalendarStripeEvent,
   isCalendarStripeEvent,
 } from "./services/billing-calendar-webhook";
-import { reconcileStripeCalendar } from "./services/billing-calendar-sync";
+import {
+  reconcileStripeCalendar,
+  stopOpenObligationsForSubscription,
+} from "./services/billing-calendar-sync";
 import { upsertPriceMapSeed } from "./services/stripe-price-map";
 import fs from "fs";
 import path from "path";
@@ -6348,22 +6351,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .where(eq(subscriptionsTable.id, localSubscription.id));
               }
 
-              const obligations = await db
-                .select()
-                .from(paymentObligations)
-                .where(
-                  and(
-                    eq(paymentObligations.subscriptionId, localSubscription.id),
-                    inArray(paymentObligations.status, ['pending', 'grace'])
-                  )
-                );
-
-              for (const obligation of obligations) {
-                await storage.markObligationStopped(obligation.id);
-              }
+              const stoppedCount = await stopOpenObligationsForSubscription(
+                localSubscription.id,
+                {
+                  source: "webhook",
+                  stripeEventId: event.id,
+                  note: "Subscription deleted webhook",
+                },
+              );
 
               console.log(
-                `🛑 Synced cancelled subscription ${deletedSubscription.id} (local #${localSubscription.id}), reason=${patch.cancellationReason ?? localSubscription.cancellationReason ?? "none"}, stopped ${obligations.length} obligations`,
+                `🛑 Synced cancelled subscription ${deletedSubscription.id} (local #${localSubscription.id}), reason=${patch.cancellationReason ?? localSubscription.cancellationReason ?? "none"}, stopped ${stoppedCount} obligations`,
               );
             }
           } catch (error) {
@@ -11443,6 +11441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `Upcoming: ${stats.upcomingUpserted} written, ${stats.upcomingSkipped} skipped · ` +
             `Paid invoices: ${stats.invoicesSynced} · ` +
             `From transactions: ${stats.fromTransactions} · ` +
+            `Orphans stopped: ${stats.orphansStopped} · ` +
             `Custom: ${customCreated} · errors: ${stats.errors}`,
         });
       } catch (reconcileErr) {
@@ -20131,6 +20130,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         to: "development@hayc.gr",
         subject: `🚨 Subscription Cancelled (Admin Action) - Tasks Required for ${subscription.username}`,
         html: adminEmailHtml,
+      });
+
+      // Immediate cancel: stop open calendar obligations (cancel_at_period_end keeps will_not_renew)
+      await stopOpenObligationsForSubscription(subscriptionId, {
+        source: "system",
+        note: "Admin immediate cancellation",
       });
 
       res.json({ success: true });

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { addRecurrence, toLocalDateKey } from "@shared/billing-recurrence";
 import { PaymentObligationStatus } from "@shared/schema";
+import {
+  isLocalSubCancelled,
+  isOpenObligationStatus,
+} from "./billing-calendar-matching";
 
 /**
  * Pure-logic coverage for scenarios that don't need a live DB.
@@ -34,6 +38,22 @@ describe("calendar v2 scenario helpers", () => {
 
   it("5 cancel at period end uses will_not_renew", () => {
     expect(PaymentObligationStatus.WILL_NOT_RENEW).toBe("will_not_renew");
+  });
+
+  it("canceled subscription maps open rows to stopped status constant", () => {
+    expect(PaymentObligationStatus.STOPPED).toBe("stopped");
+  });
+
+  it("orphan sweep: cancelled local statuses stop open obligations", () => {
+    expect(isLocalSubCancelled("cancelled")).toBe(true);
+    expect(isLocalSubCancelled("canceled")).toBe(true);
+    expect(isLocalSubCancelled("incomplete_expired")).toBe(true);
+    expect(isLocalSubCancelled("active")).toBe(false);
+    expect(isLocalSubCancelled("past_due")).toBe(false);
+    expect(isOpenObligationStatus("upcoming")).toBe(true);
+    expect(isOpenObligationStatus("will_not_renew")).toBe(true);
+    expect(isOpenObligationStatus("settled")).toBe(false);
+    expect(isOpenObligationStatus("stopped")).toBe(false);
   });
 
   it("9 pause status exists", () => {
