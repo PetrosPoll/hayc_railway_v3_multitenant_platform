@@ -48,6 +48,7 @@ import GoldenServicesProject from "@/pages/projects/goldenservices";
 import DelliosGardenExpertsProject from "@/pages/projects/delliosgardenexperts";
 import AnkologisticsProject from "@/pages/projects/ankologistics";
 import MarianthiKatsoudaProject from "@/pages/projects/marianthikatsouda";
+import Portfolio from "@/pages/portfolio";
 import CancelSubscriptionFeedback from "@/pages/cancel-subscription-feedback";
 import Legal from "@/pages/legal";
 import TermsOfService from "@/pages/terms-of-service";
@@ -84,6 +85,7 @@ function ConditionalFooter() {
     location.pathname.includes("/email-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
+    location.pathname === "/portfolio" ||
     isContactCardPath(location.pathname)
   ) {
     return null;
@@ -107,6 +109,7 @@ function ConditionalNavMenu() {
     location.pathname.includes("/email-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
+    location.pathname === "/portfolio" ||
     isContactCardPath(location.pathname)
   ) {
     return null;
@@ -191,6 +194,7 @@ function MainAppContent() {
           <Route path="/projects/delliosgardenexperts" element={<DelliosGardenExpertsProject />} />
           <Route path="/projects/ankologistics" element={<AnkologisticsProject />} />
           <Route path="/projects/marianthikatsouda" element={<MarianthiKatsoudaProject />} />
+          <Route path="/portfolio" element={<Portfolio />} />
           <Route
             path="/dashboard"
             element={
