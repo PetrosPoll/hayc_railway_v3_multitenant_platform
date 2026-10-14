@@ -8,9 +8,73 @@ export type PortfolioSite = {
 
 /**
  * Client websites for the public portfolio offer page.
- * Thumbs live in /public/portfolio-thumbs (captured from live or *.hayc.gr).
+ * Order matters — first entries appear at the top of the grid.
+ * Thumbs live in /public/portfolio-thumbs.
  */
 export const portfolioSites: PortfolioSite[] = [
+  {
+    domain: "stamatopoulosbakery.gr",
+    name: "Stamatopoulos Bakery",
+    url: "https://stamatopoulosbakery.gr",
+    thumb: "/portfolio-thumbs/stamatopoulosbakery-gr.jpg",
+    category: "Food",
+  },
+  {
+    domain: "vayo.gr",
+    name: "Vayo Tours & Transfers",
+    url: "https://vayo.gr",
+    thumb: "/portfolio-thumbs/vayo-gr.jpg",
+    category: "Travel",
+  },
+  {
+    domain: "calypsoyachting.com",
+    name: "Calypso Yachting",
+    url: "https://calypsoyachting.com",
+    thumb: "/portfolio-thumbs/calypsoyachting-com.jpg",
+    category: "Yachting",
+  },
+  {
+    domain: "nathaliespiliopoulou.com",
+    name: "Nathalie Spiliopoulou",
+    url: "https://nathaliespiliopoulou.com",
+    thumb: "/portfolio-thumbs/nathaliespiliopoulou-com.jpg",
+    category: "Professional",
+  },
+  {
+    domain: "taniamiliou.com",
+    name: "Tania Miliou Fine Art",
+    url: "https://taniamiliou.com",
+    thumb: "/portfolio-thumbs/taniamiliou-com.jpg",
+    category: "Art",
+  },
+  {
+    domain: "accountex.gr",
+    name: "AccountEx",
+    url: "https://accountex.gr",
+    thumb: "/portfolio-thumbs/accountex-gr.jpg",
+    category: "Business",
+  },
+  {
+    domain: "eskapex.hayc.gr",
+    name: "eSKapex",
+    url: "https://eskapex.hayc.gr",
+    thumb: "/portfolio-thumbs/eskapex-hayc-gr.jpg",
+    category: "Adventure",
+  },
+  {
+    domain: "dekapus.com.gr",
+    name: "Dekapus",
+    url: "https://dekapus.com.gr",
+    thumb: "/portfolio-thumbs/dekapus-com-gr.jpg",
+    category: "Business",
+  },
+  {
+    domain: "proiosoffice.com",
+    name: "Proios Office",
+    url: "http://proiosoffice.com",
+    thumb: "/portfolio-thumbs/proiosoffice-com.jpg",
+    category: "Business",
+  },
   {
     domain: "ak-business-consultant.gr",
     name: "AK Business Consultant",
@@ -54,13 +118,6 @@ export const portfolioSites: PortfolioSite[] = [
     category: "Health",
   },
   {
-    domain: "nathaliespiliopoulou.com",
-    name: "Nathalie Spiliopoulou",
-    url: "https://nathaliespiliopoulou.com",
-    thumb: "/portfolio-thumbs/nathaliespiliopoulou-com.jpg",
-    category: "Professional",
-  },
-  {
     domain: "primaverastudios.net",
     name: "Primavera Studios",
     url: "https://primaverastudios.net",
@@ -81,39 +138,11 @@ export const portfolioSites: PortfolioSite[] = [
     thumb: "/portfolio-thumbs/spanishwithdiaconis-com.jpg",
     category: "Education",
   },
-  {
-    domain: "stamatopoulosbakery.gr",
-    name: "Stamatopoulos Bakery",
-    url: "https://stamatopoulosbakery.gr",
-    thumb: "/portfolio-thumbs/stamatopoulosbakery-gr.jpg",
-    category: "Food",
-  },
-  {
-    domain: "vayo.gr",
-    name: "Vayo Tours & Transfers",
-    url: "https://vayo.gr",
-    thumb: "/portfolio-thumbs/vayo-gr.jpg",
-    category: "Travel",
-  },
-  // Domains from Cloudflare without a public homepage we could screenshot yet
-  {
-    domain: "accountnr.gr",
-    name: "Account NR",
-    url: "https://accountnr.gr",
-    thumb: null,
-    category: "In progress",
-  },
+  // Remaining domains without a confirmed public homepage yet
   {
     domain: "adytomykonos.com",
     name: "Adyto Mykonos",
     url: "https://adytomykonos.com",
-    thumb: null,
-    category: "In progress",
-  },
-  {
-    domain: "dexapus.com.gr",
-    name: "Dexapus",
-    url: "https://dexapus.com.gr",
     thumb: null,
     category: "In progress",
   },
@@ -156,20 +185,6 @@ export const portfolioSites: PortfolioSite[] = [
     domain: "primelustransfer.com",
     name: "Prime Lus Transfer",
     url: "https://primelustransfer.com",
-    thumb: null,
-    category: "In progress",
-  },
-  {
-    domain: "proisoffice.com",
-    name: "Prois Office",
-    url: "https://proisoffice.com",
-    thumb: null,
-    category: "In progress",
-  },
-  {
-    domain: "taniamillou.com",
-    name: "Tania Millou",
-    url: "https://taniamillou.com",
     thumb: null,
     category: "In progress",
   },
