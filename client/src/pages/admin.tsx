@@ -2,10 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Loader2,
   Shield,
-  Download,
   ChevronRight,
   ChevronDown,
-  X,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -20,7 +18,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { subscriptions, UserRole, RolePermissions } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
-import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { toGreekSafeUpperCase } from "@/lib/greek-text";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -54,10 +51,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import React from "react";
 import { useImpersonation } from "@/hooks/use-impersonation";
 import { EmailTester } from "@/components/ui/email-tester";
@@ -117,16 +113,6 @@ interface User {
   createdAt: string;
 }
 
-interface Transaction {
-  id: number;
-  subscriptionId: number;
-  amount: number;
-  currency: string;
-  status: string;
-  pdfUrl: string | null;
-  createdAt: string;
-}
-
 interface Subscription {
   id: number;
   userId: number;
@@ -141,7 +127,13 @@ interface Subscription {
   cancellationReason: string | null;
   nextBillingDate?: string;
   price?: number;
-  transactions?: Transaction[];
+  productType?: string | null;
+  productId?: string | null;
+}
+
+function subscriptionDisplayLabel(sub: Subscription): string {
+  if (sub.productType === "addon" && sub.productId) return sub.productId;
+  return sub.tier || sub.productId || "subscription";
 }
 
 const isCancelledSubscriptionStatus = (status: string | null | undefined) => {
@@ -624,15 +616,26 @@ export default function AdminDashboard() {
 
   // Keep local tab state in sync with URL (back/forward, deep links)
   useEffect(() => {
+    // Legacy deep link: All Subscriptions merged into Subscriptions
+    if (tabFromUrl === "all-subscriptions") {
+      setActiveTab("subscriptions");
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("tab", "subscriptions");
+        return next;
+      }, { replace: true });
+      return;
+    }
     setActiveTab(tabFromUrl);
-  }, [tabFromUrl]);
+  }, [tabFromUrl, setSearchParams]);
 
   const handleTabChange = (newTab: string) => {
     // Update UI immediately — URL-only control left Radix Tabs stuck after heavy tabs (e.g. invoices)
-    setActiveTab(newTab);
+    const tab = newTab === "all-subscriptions" ? "subscriptions" : newTab;
+    setActiveTab(tab);
     setSearchParams((prev) => {
       const next = new URLSearchParams(prev);
-      next.set("tab", newTab);
+      next.set("tab", tab);
       return next;
     });
   };
@@ -676,18 +679,19 @@ export default function AdminDashboard() {
     );
   }, [activeTab]);
 
-  const [expandedSubscriptionId, setExpandedSubscriptionId] = useState<
-    number | null
-  >(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [subscriptionToCancel, setSubscriptionToCancel] =
-    useState<Subscription | null>(null);
-  const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
-  const [cancellationReason, setCancellationReason] = useState("");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState<
+    "all" | "active" | "cancelled" | "other"
+  >("active");
+  const [userSubscriptionFilter, setUserSubscriptionFilter] = useState<
+    "all" | "active" | "cancelled" | "other"
+  >("active");
+  const [expandedUserKeys, setExpandedUserKeys] = useState<Set<string>>(
+    () => new Set(),
+  );
   const [verifyingUserId, setVerifyingUserId] = useState<number | null>(null);
   const [showVerifyDialog, setShowVerifyDialog] = useState(false);
   const [userToVerify, setUserToVerify] = useState<User | null>(null);
@@ -778,51 +782,6 @@ export default function AdminDashboard() {
     },
   });
 
-  // Cancel subscription mutation
-  const cancelSubscriptionMutation = useMutation({
-    mutationFn: async ({
-      subscriptionId,
-      reason,
-    }: {
-      subscriptionId: number;
-      reason: string;
-    }) => {
-      const response = await fetch(
-        `/api/admin/subscriptions/${subscriptionId}/cancel`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason }),
-        },
-      );
-      if (!response.ok) {
-        throw new Error("Failed to cancel subscription");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
-      queryClient.invalidateQueries({
-        queryKey: ["/api/admin/all-subscriptions"],
-      });
-      toast({
-        title: "Success",
-        description: "Subscription cancelled successfully",
-      });
-      setShowCancelConfirm(false);
-      setShowCancelDialog(false);
-      setSubscriptionToCancel(null);
-      setCancellationReason("");
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to cancel subscription",
-        variant: "destructive",
-      });
-    },
-  });
-
   // Fetch current user data to check admin status
   const { data: userData, isLoading: userLoading } = useQuery<{ user: User }>({
     queryKey: ["/api/user"],
@@ -839,19 +798,12 @@ export default function AdminDashboard() {
     enabled: userPermissions?.canViewUsers || false,
   });
 
-  // Fetch all subscriptions and their transactions
-  const { data: subscriptionsData, isLoading: subscriptionsLoading } =
-    useQuery<{ subscriptions: Subscription[] }>({
-      queryKey: ["/api/admin/subscriptions"],
-      enabled: userPermissions?.canViewSubscriptions || false,
-      refetchInterval: 30000, // Auto-refresh every 30 seconds
-    });
-
-  // Fetch all subscriptions (including cancelled) and their transactions
+  // Subscriptions list + Users tab filter (active subscribers)
   const { data: allSubscriptionsData, isLoading: allSubscriptionsLoading } =
     useQuery<{ subscriptions: Subscription[] }>({
       queryKey: ["/api/admin/all-subscriptions"],
-      enabled: userPermissions?.canViewSubscriptions || false,
+      enabled:
+        !!(userPermissions?.canViewSubscriptions || userPermissions?.canViewUsers),
       refetchInterval: 30000, // Auto-refresh every 30 seconds
     });
 
@@ -912,86 +864,6 @@ export default function AdminDashboard() {
     },
   });
 
-  // Mutation for updating PDF
-  const updatePdf = useMutation({
-    mutationFn: async ({
-      id,
-      pdfUrl,
-      type,
-    }: {
-      id: number;
-      pdfUrl: string;
-      type: "subscription" | "transaction" | "website";
-    }) => {
-      let endpoint;
-      if (type === "subscription") {
-        endpoint = `/api/admin/subscriptions/${id}/pdf`;
-      } else if (type === "transaction") {
-        endpoint = `/api/admin/transactions/${id}/pdf`;
-      } else {
-        endpoint = `/api/admin/websites/${id}/pdf`;
-      }
-
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pdfUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update PDF");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
-      toast({
-        title: "Success",
-        description: "PDF uploaded successfully",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to update PDF",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Add this mutation after the existing mutations
-  const syncSubscriptions = useMutation({
-    mutationFn: async () => {
-      const response = await fetch("/api/admin/sync-subscriptions", {
-        method: "POST",
-      });
-      if (!response.ok) {
-        throw new Error("Failed to sync subscriptions");
-      }
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/subscriptions"] });
-      queryClient.invalidateQueries({
-        queryKey: ["/api/admin/all-subscriptions"],
-      });
-      toast({
-        title: "Success",
-        description: "Active subscriptions synced successfully",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to sync subscriptions",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Separate mutation for syncing all subscriptions (preserves cancelled ones)
   const syncAllSubscriptions = useMutation({
     mutationFn: async () => {
       const response = await fetch("/api/admin/sync-all-subscriptions", {
@@ -1156,86 +1028,6 @@ export default function AdminDashboard() {
     updateRole.mutate({ userId: user.id, role: newRole });
   };
 
-  const initializeCloudinaryWidget = useCallback(
-    (id: number, type: "subscription" | "transaction" | "website") => {
-      const widget = window.cloudinary.createUploadWidget(
-        {
-          cloudName: "dem12vqtl",
-          uploadPreset: "hayc_prese",
-          folder: type === "subscription" ? "subscriptions" : type === "transaction" ? "transactions" : "websites",
-          multiple: false,
-          maxFiles: 1,
-          resourceType: "raw",
-        },
-        (error: any, result: any) => {
-          if (!error && result && result.event === "success") {
-            console.log("Upload success:", result.info);
-            updatePdf.mutate({
-              id,
-              pdfUrl: result.info.secure_url,
-              type,
-            });
-          } else if (error) {
-            console.error("Upload error:", error);
-            toast({
-              title: "Error",
-              description: "Failed to upload PDF",
-              variant: "destructive",
-            });
-          }
-        },
-      );
-
-      return widget;
-    },
-    [updatePdf, toast],
-  );
-
-  const handleUploadClick = async (
-    id: number,
-    type: "subscription" | "transaction" | "website",
-  ) => {
-    try {
-      await loadCloudinaryWidget();
-    } catch {
-      toast({
-        title: "Error",
-        description: "Upload widget failed to load. Please refresh and try again.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const widget = initializeCloudinaryWidget(id, type);
-    widget.open();
-  };
-
-  const handleCancelSubscription = (subscription: Subscription) => {
-    setSubscriptionToCancel(subscription);
-    setShowCancelDialog(true);
-  };
-
-  const handleCancelReasonSubmit = () => {
-    if (!cancellationReason.trim()) {
-      toast({
-        title: "Error",
-        description: "Please provide a reason for cancellation",
-        variant: "destructive",
-      });
-      return;
-    }
-    setShowCancelDialog(false);
-    setShowCancelConfirm(true);
-  };
-
-  const handleConfirmCancellation = () => {
-    if (subscriptionToCancel) {
-      cancelSubscriptionMutation.mutate({
-        subscriptionId: subscriptionToCancel.id,
-        reason: cancellationReason,
-      });
-    }
-  };
-
   const handleVerifyReviewClick = async (user: User) => {
     setUserToVerify(user);
 
@@ -1306,10 +1098,61 @@ export default function AdminDashboard() {
     );
   };
 
-  const sortedSubscriptions = subscriptionsData?.subscriptions
+  const matchesSubscriptionStatusFilter = (sub: Subscription) => {
+    if (subscriptionStatusFilter === "all") return true;
+    if (subscriptionStatusFilter === "active") {
+      return isActiveSubscriptionStatus(sub.status);
+    }
+    if (subscriptionStatusFilter === "cancelled") {
+      return isCancelledSubscriptionStatus(sub.status);
+    }
+    return (
+      !isActiveSubscriptionStatus(sub.status) &&
+      !isCancelledSubscriptionStatus(sub.status)
+    );
+  };
+
+  const userIdsWithActiveSub = new Set<number>();
+  const userIdsWithCancelledSub = new Set<number>();
+  const userIdsWithOtherSub = new Set<number>();
+  for (const sub of allSubscriptionsData?.subscriptions || []) {
+    if (!sub.userId) continue;
+    if (isActiveSubscriptionStatus(sub.status)) {
+      userIdsWithActiveSub.add(sub.userId);
+    } else if (isCancelledSubscriptionStatus(sub.status)) {
+      userIdsWithCancelledSub.add(sub.userId);
+    } else {
+      userIdsWithOtherSub.add(sub.userId);
+    }
+  }
+
+  const filteredAdminUsers = (adminData?.users || []).filter((user) => {
+    if (userSubscriptionFilter === "all") return true;
+    if (userSubscriptionFilter === "active") {
+      return userIdsWithActiveSub.has(user.id);
+    }
+    if (userSubscriptionFilter === "cancelled") {
+      return (
+        userIdsWithCancelledSub.has(user.id) && !userIdsWithActiveSub.has(user.id)
+      );
+    }
+    // other: has a non-active/non-cancelled sub, or no subscription at all
+    if (userIdsWithActiveSub.has(user.id) || userIdsWithCancelledSub.has(user.id)) {
+      return userIdsWithOtherSub.has(user.id) && !userIdsWithActiveSub.has(user.id);
+    }
+    return true; // users without subscriptions
+  });
+
+  const sortedSubscriptions = (allSubscriptionsData?.subscriptions || [])
+    .filter(matchesSubscriptionStatusFilter)
     .slice()
     .sort((a, b) => {
-      if (!sortColumn) return 0;
+      if (!sortColumn) {
+        // Default: username then id
+        const u = a.username.toLowerCase().localeCompare(b.username.toLowerCase());
+        if (u !== 0) return u;
+        return a.id - b.id;
+      }
 
       let aValue: any;
       let bValue: any;
@@ -1328,8 +1171,8 @@ export default function AdminDashboard() {
           bValue = b.email.toLowerCase();
           break;
         case "tier":
-          aValue = a.tier.toLowerCase();
-          bValue = b.tier.toLowerCase();
+          aValue = subscriptionDisplayLabel(a).toLowerCase();
+          bValue = subscriptionDisplayLabel(b).toLowerCase();
           break;
         case "status":
           aValue = a.status.toLowerCase();
@@ -1351,60 +1194,6 @@ export default function AdminDashboard() {
           aValue = a.nextBillingDate ? new Date(a.nextBillingDate).getTime() : 0;
           bValue = b.nextBillingDate ? new Date(b.nextBillingDate).getTime() : 0;
           break;
-        default:
-          return 0;
-      }
-
-      if (aValue < bValue) {
-        return sortDirection === "asc" ? -1 : 1;
-      }
-      if (aValue > bValue) {
-        return sortDirection === "asc" ? 1 : -1;
-      }
-      return 0;
-    });
-
-  const sortedAllSubscriptions = allSubscriptionsData?.subscriptions
-    .slice()
-    .sort((a, b) => {
-      if (!sortColumn) return 0;
-
-      let aValue: any;
-      let bValue: any;
-
-      switch (sortColumn) {
-        case "id":
-          aValue = a.id;
-          bValue = b.id;
-          break;
-        case "username":
-          aValue = a.username.toLowerCase();
-          bValue = b.username.toLowerCase();
-          break;
-        case "email":
-          aValue = a.email.toLowerCase();
-          bValue = b.email.toLowerCase();
-          break;
-        case "tier":
-          aValue = a.tier.toLowerCase();
-          bValue = b.tier.toLowerCase();
-          break;
-        case "status":
-          aValue = a.status.toLowerCase();
-          bValue = b.status.toLowerCase();
-          break;
-        case "invoiceType":
-          aValue = a.invoiceType.toLowerCase();
-          bValue = b.invoiceType.toLowerCase();
-          break;
-        case "vatNumber":
-          aValue = (a.vatNumber || "").toLowerCase();
-          bValue = (b.vatNumber || "").toLowerCase();
-          break;
-        case "createdAt":
-          aValue = new Date(a.createdAt).getTime();
-          bValue = new Date(b.createdAt).getTime();
-          break;
         case "cancellationReason":
           aValue = (a.cancellationReason || "").toLowerCase();
           bValue = (b.cancellationReason || "").toLowerCase();
@@ -1422,24 +1211,49 @@ export default function AdminDashboard() {
       return 0;
     });
 
-  if (
-    userLoading ||
-    usersLoading ||
-    subscriptionsLoading ||
-    allSubscriptionsLoading
-  ) {
+  // Group filtered subscriptions by user (preserve sort order of first appearance)
+  const subscriptionGroups: { key: string; subs: Subscription[] }[] = [];
+  {
+    const byUser = new Map<string, Subscription[]>();
+    for (const sub of sortedSubscriptions) {
+      const key = String(sub.userId ?? sub.email ?? sub.username);
+      const list = byUser.get(key) || [];
+      list.push(sub);
+      byUser.set(key, list);
+    }
+    const seen = new Set<string>();
+    for (const sub of sortedSubscriptions) {
+      const key = String(sub.userId ?? sub.email ?? sub.username);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      subscriptionGroups.push({ key, subs: byUser.get(key)! });
+    }
+  }
+
+  const toggleUserExpand = (key: string) => {
+    setExpandedUserKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const expandAllUsers = () => {
+    setExpandedUserKeys(new Set(subscriptionGroups.map((g) => g.key)));
+  };
+
+  const collapseAllUsers = () => {
+    setExpandedUserKeys(new Set());
+  };
+
+  if (userLoading || usersLoading || allSubscriptionsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
-
-  const toggleSubscriptionExpand = (subscriptionId: number) => {
-    setExpandedSubscriptionId(
-      expandedSubscriptionId === subscriptionId ? null : subscriptionId,
-    );
-  };
 
   return (
     <div className="container mx-auto mt-[70px] py-8">
@@ -1495,10 +1309,7 @@ export default function AdminDashboard() {
                       items: showBilling ? (
                         <>
                           <TabsTrigger value="subscriptions" className={triggerClass}>
-                            Active Subscriptions
-                          </TabsTrigger>
-                          <TabsTrigger value="all-subscriptions" className={triggerClass}>
-                            All Subscriptions
+                            Subscriptions
                           </TabsTrigger>
                           <TabsTrigger value="invoices" className={triggerClass}>
                             Invoices
@@ -1784,446 +1595,169 @@ export default function AdminDashboard() {
             <TabsContent value="users" className="mt-0">
               <section>
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">User Management</h2>
+                  <h2 className="text-xl font-semibold">
+                    User Management ({filteredAdminUsers.length})
+                  </h2>
                   {userData?.user.role === UserRole.ADMINISTRATOR && (
                     <StaffUserCreationDialog />
                   )}
                 </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Username</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Created At</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {adminData?.users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>{user.username}</TableCell>
-                        <TableCell>{user.email}</TableCell>
-                        <TableCell>{user.role}</TableCell>
-                        <TableCell>
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                const params = new URLSearchParams();
-                                params.set("tab", "user-details");
-                                params.set("userId", user.id.toString());
-                                setSearchParams(params);
-                              }}
-                              data-testid={`button-view-user-${user.id}`}
-                            >
-                              View Details
-                            </Button>
-                            {userData?.user.role === UserRole.ADMINISTRATOR &&
-                              user.role === UserRole.SUBSCRIBER && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleViewAsCustomer(user.id)}
-                                  disabled={
-                                    impersonatingUserId === user.id || isStarting
-                                  }
-                                  className="bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
-                                  data-testid={`button-view-as-customer-${user.id}`}
-                                >
-                                  {impersonatingUserId === user.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <>
-                                      <Eye className="h-4 w-4 mr-1" />
-                                      View as Customer
-                                    </>
-                                  )}
-                                </Button>
-                              )}
-                            {userPermissions?.canManageUsers && (
-                              <>
-                                <Select
-                                  value={user.role}
-                                  onValueChange={(newRole) => updateRole.mutate({ userId: user.id, role: newRole })}
-                                  disabled={user.id === userData?.user.id}
-                                >
-                                  <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="Select role" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {rolesData?.map((role) => (
-                                      <SelectItem key={role.name} value={role.name}>
-                                        {role.displayName}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleVerifyReviewClick(user)}
-                                  disabled={
-                                    verifyingUserId === user.id ||
-                                    user.id === userData?.user.id
-                                  }
-                                  className="bg-green-50 hover:bg-green-100 text-green-700"
-                                >
-                                  {verifyingUserId === user.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    "Next Month 100% Discount"
-                                  )}
-                                </Button>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => {
-                                    setUserToDelete(user);
-                                    setShowDeleteConfirm(true);
-                                  }}
-                                  disabled={user.id === userData?.user.id}
-                                >
-                                  Delete User
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </section>
-            </TabsContent>
-            <TabsContent value="subscriptions" className="mt-0">
-              <section>
-                <h2 className="text-xl font-semibold mb-4">
-                  Subscription Management
-                </h2>
-                <div className="flex justify-end mb-4">
-                  <Button
-                    onClick={() => syncSubscriptions.mutate()}
-                    disabled={syncSubscriptions.isPending}
-                  >
-                    {syncSubscriptions.isPending ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Syncing...
-                      </>
-                    ) : (
-                      "Sync Subscriptions"
-                    )}
-                  </Button>
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <span className="text-sm text-muted-foreground mr-1">
+                    Subscription:
+                  </span>
+                  {(
+                    [
+                      ["all", "All"],
+                      ["active", "Active"],
+                      ["cancelled", "Cancelled"],
+                      ["other", "Other"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <Button
+                      key={value}
+                      size="sm"
+                      variant={
+                        userSubscriptionFilter === value ? "default" : "outline"
+                      }
+                      onClick={() => setUserSubscriptionFilter(value)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
                 </div>
-
-                {/* Check if subscriptions list is empty */}
-                {subscriptionsData?.subscriptions.length === 0 ? (
+                {filteredAdminUsers.length === 0 ? (
                   <div className="text-center text-gray-500 py-4">
-                    No subscriptions available.
+                    No users match this filter.
                   </div>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead></TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("id")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            ID {getSortIcon("id")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("username")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            User {getSortIcon("username")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("email")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Email {getSortIcon("email")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("tier")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Tier {getSortIcon("tier")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("status")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Status {getSortIcon("status")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("invoiceType")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Document Type {getSortIcon("invoiceType")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("vatNumber")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            VAT Number {getSortIcon("vatNumber")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("createdAt")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Purchased at {getSortIcon("createdAt")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("nextBillingDate")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Next Invoice {getSortIcon("nextBillingDate")}
-                          </Button>
-                        </TableHead>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead>Created At</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortedSubscriptions?.map((subscription) => {
-                        const isExpanded = expandedSubscriptionId === subscription.id;
-                        return [
-                          <TableRow key={subscription.id}>
-                            <TableCell>
+                      {filteredAdminUsers.map((user) => (
+                        <TableRow key={user.id}>
+                          <TableCell>{user.username}</TableCell>
+                          <TableCell>{user.email}</TableCell>
+                          <TableCell>{user.role}</TableCell>
+                          <TableCell>
+                            {new Date(user.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
                               <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
-                                onClick={() =>
-                                  toggleSubscriptionExpand(subscription.id)
-                                }
+                                onClick={() => {
+                                  const params = new URLSearchParams();
+                                  params.set("tab", "user-details");
+                                  params.set("userId", user.id.toString());
+                                  setSearchParams(params);
+                                }}
+                                data-testid={`button-view-user-${user.id}`}
                               >
-                                {expandedSubscriptionId === subscription.id ? (
-                                  <ChevronDown className="h-4 w-4" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4" />
-                                )}
+                                View Details
                               </Button>
-                            </TableCell>
-                            <TableCell>{subscription.id}</TableCell>
-                            <TableCell>{subscription.username}</TableCell>
-                            <TableCell>{subscription.email}</TableCell>
-                            <TableCell>{subscription.tier}</TableCell>
-                            <TableCell>
-                              {subscription.price
-                                ? `€${(subscription.price / 100).toFixed(2)}`
-                                : 'N/A'}
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={`text-white text-xs font-semibold px-3 py-1 rounded-full 
-                                  ${subscription.status === "active" ? "bg-green-500" : "bg-gray-400"}`}
-                              >
-                                {subscription.status}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={`text-xs font-medium px-2 py-1 rounded-full ${subscription.invoiceType === "invoice"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-green-100 text-green-800"
-                                  }`}
-                              >
-                                {subscription.invoiceType === "invoice"
-                                  ? "Invoice"
-                                  : "Receipt"}
-                              </span>
-                            </TableCell>
-                            <TableCell>
-                              {subscription.invoiceType === "invoice" ? (
-                                subscription.vatNumber || (
-                                  <span className="text-muted-foreground text-sm">
-                                    Not provided
-                                  </span>
-                                )
-                              ) : (
-                                <span className="text-muted-foreground text-sm">
-                                  N/A
-                                </span>
+                              {userData?.user.role === UserRole.ADMINISTRATOR &&
+                                user.role === UserRole.SUBSCRIBER && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleViewAsCustomer(user.id)}
+                                    disabled={
+                                      impersonatingUserId === user.id || isStarting
+                                    }
+                                    className="bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300"
+                                    data-testid={`button-view-as-customer-${user.id}`}
+                                  >
+                                    {impersonatingUserId === user.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <>
+                                        <Eye className="h-4 w-4 mr-1" />
+                                        View as Customer
+                                      </>
+                                    )}
+                                  </Button>
+                                )}
+                              {userPermissions?.canManageUsers && (
+                                <>
+                                  <Select
+                                    value={user.role}
+                                    onValueChange={(newRole) =>
+                                      updateRole.mutate({
+                                        userId: user.id,
+                                        role: newRole,
+                                      })
+                                    }
+                                    disabled={user.id === userData?.user.id}
+                                  >
+                                    <SelectTrigger className="w-[180px]">
+                                      <SelectValue placeholder="Select role" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {rolesData?.map((role) => (
+                                        <SelectItem
+                                          key={role.name}
+                                          value={role.name}
+                                        >
+                                          {role.displayName}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleVerifyReviewClick(user)}
+                                    disabled={
+                                      verifyingUserId === user.id ||
+                                      user.id === userData?.user.id
+                                    }
+                                    className="bg-green-50 hover:bg-green-100 text-green-700"
+                                  >
+                                    {verifyingUserId === user.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      "Next Month 100% Discount"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                      setUserToDelete(user);
+                                      setShowDeleteConfirm(true);
+                                    }}
+                                    disabled={user.id === userData?.user.id}
+                                  >
+                                    Delete User
+                                  </Button>
+                                </>
                               )}
-                            </TableCell>
-                            <TableCell>
-                              {formatDate(subscription.createdAt)}
-                            </TableCell>
-                            <TableCell>
-                              {subscription.nextBillingDate ? (
-                                <span className="text-sm">
-                                  {formatDate(subscription.nextBillingDate)}
-                                </span>
-                              ) : (
-                                <span className="text-sm text-muted-foreground">
-                                  Not available
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {subscription.status === "active" && (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleCancelSubscription(subscription)
-                                  }
-                                >
-                                  <X className="h-4 w-4 mr-2" />
-                                  Cancel
-                                </Button>
-                              )}
-                            </TableCell>
-                          </TableRow>,
-
-                          isExpanded && (
-                            <TableRow key={`${subscription.id}-expanded`}>
-                              <TableCell colSpan={9}>
-                                <div className="p-4 bg-muted/50 rounded-lg">
-                                  <h3 className="text-sm font-semibold mb-2">
-                                    Transactions
-                                  </h3>
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead>ID</TableHead>
-                                        <TableHead>Amount</TableHead>
-                                        <TableHead>Currency</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>PDF</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {subscription.transactions
-                                        ?.slice()
-                                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                        .map((transaction) => (
-                                          <TableRow key={transaction.id}>
-                                            <TableCell>
-                                              {transaction.id}
-                                            </TableCell>
-                                            <TableCell>
-                                              {(
-                                                transaction.amount / 100
-                                              ).toLocaleString("el-GR", {
-                                                style: "currency",
-                                                currency: "EUR",
-                                              })}
-                                            </TableCell>
-                                            <TableCell>
-                                              {transaction.currency}
-                                            </TableCell>
-                                            <TableCell>
-                                              {transaction.status}
-                                            </TableCell>
-                                            <TableCell>
-                                              {formatDate(
-                                                transaction.createdAt,
-                                              )}
-                                            </TableCell>
-                                            <TableCell>
-                                              {transaction.pdfUrl ? (
-                                                <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() =>
-                                                    transaction.pdfUrl && window.open(
-                                                      transaction.pdfUrl,
-                                                      "_blank",
-                                                    )
-                                                  }
-                                                >
-                                                  <Download className="h-4 w-4 mr-2" />
-                                                  View PDF
-                                                </Button>
-                                              ) : (
-                                                "No PDF"
-                                              )}
-                                            </TableCell>
-                                            <TableCell>
-                                              <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() =>
-                                                  handleUploadClick(
-                                                    transaction.id,
-                                                    "transaction",
-                                                  )
-                                                }
-                                              >
-                                                Upload PDF
-                                              </Button>
-                                            </TableCell>
-                                          </TableRow>
-                                        ),
-                                        )}
-                                    </TableBody>
-                                  </Table>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )
-                        ];
-                      })}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
                   </Table>
                 )}
               </section>
             </TabsContent>
-            <TabsContent value="email-testing" className="mt-0">
-              <div className="max-w-md mx-auto">
-                <EmailTester />
-              </div>
-            </TabsContent>
-            <TabsContent value="all-subscriptions" className="mt-0">
+            <TabsContent value="subscriptions" className="mt-0">
               <section>
                 <h2 className="text-xl font-semibold mb-4">
-                  All Subscriptions (Including Cancelled)
+                  Subscriptions ({subscriptionGroups.length} accounts ·{" "}
+                  {sortedSubscriptions.length} products)
                 </h2>
-                <div className="flex justify-end mb-4 space-x-4">
+                <div className="flex justify-end mb-4 flex-wrap gap-2">
                   <Button
                     onClick={() => syncAllSubscriptions.mutate()}
                     disabled={syncAllSubscriptions.isPending}
@@ -2267,8 +1801,37 @@ export default function AdminDashboard() {
                   </Button>
                 </div>
 
-                {/* Check if all subscriptions list is empty */}
-                {allSubscriptionsData?.subscriptions.length === 0 ? (
+                <div className="flex flex-wrap items-center gap-2 mb-4">
+                  <span className="text-sm text-muted-foreground mr-1">Status:</span>
+                  {(
+                    [
+                      ["all", "All"],
+                      ["active", "Active"],
+                      ["cancelled", "Cancelled"],
+                      ["other", "Other"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <Button
+                      key={value}
+                      size="sm"
+                      variant={
+                        subscriptionStatusFilter === value ? "default" : "outline"
+                      }
+                      onClick={() => setSubscriptionStatusFilter(value)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                  <span className="mx-2 h-4 w-px bg-border" />
+                  <Button size="sm" variant="outline" onClick={expandAllUsers}>
+                    Expand all
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={collapseAllUsers}>
+                    Collapse all
+                  </Button>
+                </div>
+
+                {subscriptionGroups.length === 0 ? (
                   <div className="text-center text-gray-500 py-4">
                     No subscriptions available.
                   </div>
@@ -2276,17 +1839,7 @@ export default function AdminDashboard() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead></TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("id")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            ID {getSortIcon("id")}
-                          </Button>
-                        </TableHead>
+                        <TableHead className="w-10" />
                         <TableHead>
                           <Button
                             variant="ghost"
@@ -2307,17 +1860,7 @@ export default function AdminDashboard() {
                             Email {getSortIcon("email")}
                           </Button>
                         </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("tier")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Tier {getSortIcon("tier")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>Price</TableHead>
+                        <TableHead>Products</TableHead>
                         <TableHead>
                           <Button
                             variant="ghost"
@@ -2328,221 +1871,169 @@ export default function AdminDashboard() {
                             Status {getSortIcon("status")}
                           </Button>
                         </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("invoiceType")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Document Type {getSortIcon("invoiceType")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("vatNumber")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            VAT Number {getSortIcon("vatNumber")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("createdAt")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Purchased at {getSortIcon("createdAt")}
-                          </Button>
-                        </TableHead>
-                        <TableHead>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort("cancellationReason")}
-                            className="h-auto p-0 font-semibold"
-                          >
-                            Cancellation Reason{" "}
-                            {getSortIcon("cancellationReason")}
-                          </Button>
-                        </TableHead>
+                        <TableHead>Details</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sortedAllSubscriptions?.map((subscription) => {
-                        const isExpanded = expandedSubscriptionId === subscription.id;
-                        return [
-                          <TableRow key={subscription.id}>
-                            <TableCell>
+                      {subscriptionGroups.flatMap(({ key, subs }) => {
+                        const head = subs[0];
+                        const isOpen = expandedUserKeys.has(key);
+                        const productSummary = subs
+                          .map(subscriptionDisplayLabel)
+                          .join(" · ");
+                        const activeCount = subs.filter((s) =>
+                          isActiveSubscriptionStatus(s.status),
+                        ).length;
+                        const cancelledCount = subs.filter((s) =>
+                          isCancelledSubscriptionStatus(s.status),
+                        ).length;
+                        const statusLabel =
+                          activeCount === subs.length
+                            ? "active"
+                            : cancelledCount === subs.length
+                              ? "cancelled"
+                              : "mixed";
+                        const statusClass =
+                          statusLabel === "active"
+                            ? "bg-green-500"
+                            : statusLabel === "cancelled"
+                              ? "bg-red-500"
+                              : "bg-amber-500";
+
+                        const rows = [
+                          <TableRow
+                            key={`user-${key}`}
+                            className="cursor-pointer"
+                            onClick={() => toggleUserExpand(key)}
+                          >
+                            <TableCell className="w-10">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() =>
-                                  toggleSubscriptionExpand(subscription.id)
-                                }
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleUserExpand(key);
+                                }}
                               >
-                                {expandedSubscriptionId === subscription.id ? (
+                                {isOpen ? (
                                   <ChevronDown className="h-4 w-4" />
                                 ) : (
                                   <ChevronRight className="h-4 w-4" />
                                 )}
                               </Button>
                             </TableCell>
-                            <TableCell>{subscription.id}</TableCell>
-                            <TableCell>{subscription.username}</TableCell>
-                            <TableCell>{subscription.email}</TableCell>
-                            <TableCell>{subscription.tier}</TableCell>
+                            <TableCell className="font-medium">
+                              {head.username}
+                            </TableCell>
+                            <TableCell>{head.email}</TableCell>
                             <TableCell>
-                              <span
-                                className={`text-white text-xs font-semibold px-3 py-1 rounded-full 
-                                  ${subscription.status === "active"
-                                    ? "bg-green-500"
-                                    : subscription.status === "cancelled"
-                                      ? "bg-red-500"
-                                      : "bg-gray-400"
-                                  }`}
-                              >
-                                {subscription.status}
+                              <span className="text-sm">
+                                {subs.length}{" "}
+                                {subs.length === 1 ? "product" : "products"}
+                              </span>
+                              <span className="block text-xs text-muted-foreground mt-0.5">
+                                {productSummary}
                               </span>
                             </TableCell>
                             <TableCell>
                               <span
-                                className={`text-xs font-medium px-2 py-1 rounded-full ${subscription.invoiceType === "invoice"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-green-100 text-green-800"
-                                  }`}
+                                className={`text-white text-xs font-semibold px-3 py-1 rounded-full ${statusClass}`}
                               >
-                                {subscription.invoiceType === "invoice"
-                                  ? "Invoice"
-                                  : "Receipt"}
+                                {statusLabel}
+                                {statusLabel === "mixed"
+                                  ? ` (${activeCount} active)`
+                                  : ""}
                               </span>
                             </TableCell>
-                            <TableCell>
-                              {subscription?.vatNumber || (
-                                <span className="text-muted-foreground text-sm">
-                                  Not provided
-                                </span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {formatDate(subscription.createdAt)}
-                            </TableCell>
-                            <TableCell>
-                              {subscription.status === "cancelled" &&
-                                subscription.cancellationReason ? (
-                                <div className="max-w-xs">
-                                  <span className="text-sm text-red-600 break-words">
-                                    {subscription.cancellationReason}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">
-                                  {subscription.status === "cancelled"
-                                    ? "No reason provided"
-                                    : "N/A"}
-                                </span>
-                              )}
+                            <TableCell className="text-sm text-muted-foreground">
+                              {isOpen ? "Hide products" : "Show products"}
                             </TableCell>
                           </TableRow>,
-
-                          isExpanded && (
-                            <TableRow key={`${subscription.id}-expanded`}>
-                              <TableCell colSpan={10}>
-                                <div className="p-4 bg-muted/50 rounded-lg">
-                                  <h3 className="text-sm font-semibold mb-2">
-                                    Transactions
-                                  </h3>
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow>
-                                        <TableHead>ID</TableHead>
-                                        <TableHead>Amount</TableHead>
-                                        <TableHead>Currency</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>PDF</TableHead>
-                                        <TableHead>Actions</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {subscription.transactions
-                                        ?.slice()
-                                        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                                        .map((transaction) => (
-                                          <TableRow key={transaction.id}>
-                                            <TableCell>
-                                              {transaction.id}
-                                            </TableCell>
-                                            <TableCell>
-                                              {(
-                                                transaction.amount / 100
-                                              ).toLocaleString("el-GR", {
-                                                style: "currency",
-                                                currency: "EUR",
-                                              })}
-                                            </TableCell>
-                                            <TableCell>
-                                              {transaction.currency}
-                                            </TableCell>
-                                            <TableCell>
-                                              {transaction.status}
-                                            </TableCell>
-                                            <TableCell>
-                                              {formatDate(
-                                                transaction.createdAt,
-                                              )}
-                                            </TableCell>
-                                            <TableCell>
-                                              {transaction.pdfUrl ? (
-                                                <Button
-                                                  variant="outline"
-                                                  size="sm"
-                                                  onClick={() =>
-                                                    transaction.pdfUrl && window.open(
-                                                      transaction.pdfUrl,
-                                                      "_blank",
-                                                    )
-                                                  }
-                                                >
-                                                  <Download className="h-4 w-4 mr-2" />
-                                                  View PDF
-                                                </Button>
-                                              ) : (
-                                                "No PDF"
-                                              )}
-                                            </TableCell>
-                                            <TableCell>
-                                              <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() =>
-                                                  handleUploadClick(
-                                                    transaction.id,
-                                                    "transaction",
-                                                  )
-                                                }
-                                              >
-                                                Upload PDF
-                                              </Button>
-                                            </TableCell>
-                                          </TableRow>
-                                        ),
-                                        )}
-                                    </TableBody>
-                                  </Table>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )
                         ];
+
+                        if (isOpen) {
+                          for (const subscription of subs) {
+                            rows.push(
+                              <TableRow
+                                key={subscription.id}
+                                className="bg-muted/30"
+                              >
+                                <TableCell />
+                                <TableCell
+                                  colSpan={2}
+                                  className="text-sm text-muted-foreground pl-8"
+                                >
+                                  #{subscription.id}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="font-medium text-sm">
+                                    {subscriptionDisplayLabel(subscription)}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-0.5">
+                                    {subscription.price
+                                      ? `€${(subscription.price / 100).toFixed(2)}`
+                                      : "Price N/A"}
+                                    {" · "}
+                                    {subscription.invoiceType === "invoice"
+                                      ? "Invoice"
+                                      : "Receipt"}
+                                    {subscription.invoiceType === "invoice"
+                                      ? ` · VAT ${subscription.vatNumber || "—"}`
+                                      : ""}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <span
+                                    className={`text-white text-xs font-semibold px-3 py-1 rounded-full ${
+                                      isActiveSubscriptionStatus(subscription.status)
+                                        ? "bg-green-500"
+                                        : isCancelledSubscriptionStatus(
+                                              subscription.status,
+                                            )
+                                          ? "bg-red-500"
+                                          : "bg-gray-400"
+                                    }`}
+                                  >
+                                    {subscription.status}
+                                  </span>
+                                  {isCancelledSubscriptionStatus(
+                                    subscription.status,
+                                  ) && subscription.cancellationReason ? (
+                                    <p className="text-xs text-red-600 mt-1 max-w-xs break-words">
+                                      {subscription.cancellationReason}
+                                    </p>
+                                  ) : null}
+                                </TableCell>
+                                <TableCell>
+                                  <div className="text-xs text-muted-foreground space-y-1">
+                                    <div>
+                                      Purchased {formatDate(subscription.createdAt)}
+                                    </div>
+                                    {subscription.nextBillingDate ? (
+                                      <div>
+                                        Next invoice{" "}
+                                        {formatDate(subscription.nextBillingDate)}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                </TableCell>
+                              </TableRow>,
+                            );
+                          }
+                        }
+
+                        return rows;
                       })}
                     </TableBody>
                   </Table>
                 )}
               </section>
+            </TabsContent>
+            <TabsContent value="email-testing" className="mt-0">
+              <div className="max-w-md mx-auto">
+                <EmailTester />
+              </div>
             </TabsContent>
             <TabsContent value="invoices" className="mt-0">
               {activeTab === "invoices" && <AdminWebsiteInvoices />}
@@ -2741,95 +2232,6 @@ export default function AdminDashboard() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Delete User"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Subscription Cancellation Reason Dialog */}
-      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cancel Subscription</DialogTitle>
-            <DialogDescription>
-              You are about to cancel the subscription for{" "}
-              {subscriptionToCancel?.username} ({subscriptionToCancel?.email}).
-              Please provide a reason for the cancellation.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="reason">Cancellation Reason</Label>
-              <Textarea
-                id="reason"
-                placeholder="Please explain why this subscription is being cancelled..."
-                value={cancellationReason}
-                onChange={(e) => setCancellationReason(e.target.value)}
-                className="min-h-[100px]"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowCancelDialog(false);
-                setSubscriptionToCancel(null);
-                setCancellationReason("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleCancelReasonSubmit}
-              disabled={!cancellationReason.trim()}
-            >
-              Continue to Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Final Confirmation Dialog */}
-      <AlertDialog open={showCancelConfirm} onOpenChange={setShowCancelConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Final Confirmation</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you absolutely sure you want to cancel this subscription?
-              <br />
-              <br />
-              <strong>User:</strong> {subscriptionToCancel?.username} (
-              {subscriptionToCancel?.email})
-              <br />
-              <strong>Plan:</strong> {subscriptionToCancel?.tier}
-              <br />
-              <strong>Reason:</strong> {cancellationReason}
-              <br />
-              <br />
-              This action cannot be undone. The user will lose access to their
-              subscription immediately and will receive a cancellation email.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setShowCancelConfirm(false);
-                setShowCancelDialog(true);
-              }}
-            >
-              Go Back
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmCancellation}
-              className="bg-destructive text-destructive-foreground"
-            >
-              {cancelSubscriptionMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                "Yes, Cancel Subscription"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
