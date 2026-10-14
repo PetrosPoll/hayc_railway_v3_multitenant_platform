@@ -83,7 +83,11 @@ import {
 } from "./lib/form-automations";
 import { startWorkflowForFormSubmit } from "./lib/automation-engine";
 import { demoReadOnlyMiddleware } from "./lib/demo-mode";
-import { duplicateDemoWebsite } from "./lib/demo-website-clone";
+import {
+  createDedicatedDemoUser,
+  duplicateDemoWebsite,
+  ensureDedicatedDemoOwners,
+} from "./lib/demo-website-clone";
 import { handleChurnStripeEvent } from "./services/churn-event-handlers";
 import {
   ensureCustomerStripeAccount,
@@ -2022,6 +2026,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: "Not authorized" });
       }
 
+      // Self-heal shared demo owners so each portal has isolated analytics.
+      await ensureDedicatedDemoOwners();
+
       const rows = await db
         .select({
           id: websiteProgress.id,
@@ -2112,11 +2119,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(websiteProgress.id, websiteId))
         .returning();
 
+      let websiteOut = updated;
+
       if (parsed.data.isDemo) {
         await db
           .update(users)
           .set({ isDemo: true })
           .where(eq(users.id, website.userId));
+
+        // If this owner already has another demo website, give this one a
+        // dedicated demo user so analytics stay isolated.
+        const siblings = await db
+          .select({ id: websiteProgress.id })
+          .from(websiteProgress)
+          .where(
+            and(
+              eq(websiteProgress.userId, website.userId),
+              eq(websiteProgress.isDemo, true),
+              ne(websiteProgress.id, websiteId),
+            ),
+          )
+          .limit(1);
+
+        if (siblings.length > 0) {
+          const owner = await storage.getUserById(website.userId);
+          if (owner) {
+            const dedicated = await createDedicatedDemoUser(
+              owner,
+              demoSlug || updated.demoSlug || updated.domain || `website-${websiteId}`,
+            );
+            const [reassigned] = await db
+              .update(websiteProgress)
+              .set({ userId: dedicated.id, updatedAt: new Date() })
+              .where(eq(websiteProgress.id, websiteId))
+              .returning();
+            await db
+              .update(subscriptionsTable)
+              .set({ userId: dedicated.id })
+              .where(eq(subscriptionsTable.websiteProgressId, websiteId));
+            if (reassigned) websiteOut = reassigned;
+          }
+        }
       } else {
         const remaining = await db
           .select({ id: websiteProgress.id })
@@ -2134,7 +2177,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      return res.json({ website: updated });
+      return res.json({ website: websiteOut });
     } catch (err: any) {
       if (err?.code === "23505") {
         return res.status(409).json({ error: "Demo slug already in use" });
@@ -2167,11 +2210,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid date range" });
       }
 
-      const demoUsers = await db
-        .select({ id: users.id, email: users.email, username: users.username })
-        .from(users)
-        .where(eq(users.isDemo, true));
-      const demoUserIds = demoUsers.map((u) => u.id);
+      await ensureDedicatedDemoOwners();
+
+      const demos = await db
+        .select({
+          id: websiteProgress.id,
+          projectName: websiteProgress.projectName,
+          domain: websiteProgress.domain,
+          demoSlug: websiteProgress.demoSlug,
+          demoEnabled: websiteProgress.demoEnabled,
+          userId: websiteProgress.userId,
+          userEmail: users.email,
+        })
+        .from(websiteProgress)
+        .innerJoin(users, eq(users.id, websiteProgress.userId))
+        .where(eq(websiteProgress.isDemo, true))
+        .orderBy(desc(websiteProgress.updatedAt));
+
+      // Scope to owners of demo websites only (not orphaned isDemo users).
+      const demoUserIds = Array.from(new Set(demos.map((d) => d.userId)));
       if (demoUserIds.length === 0) {
         return res.json({
           from: from.toISOString(),
@@ -2187,13 +2244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let filterUserIds = demoUserIds;
       if (!Number.isNaN(websiteIdRaw)) {
-        const [site] = await db
-          .select({ userId: websiteProgress.userId })
-          .from(websiteProgress)
-          .where(
-            and(eq(websiteProgress.id, websiteIdRaw), eq(websiteProgress.isDemo, true)),
-          )
-          .limit(1);
+        const site = demos.find((d) => d.id === websiteIdRaw);
         if (!site) {
           return res.status(404).json({ error: "Demo website not found" });
         }
@@ -2242,21 +2293,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .groupBy(platformAnalyticsEvents.path)
         .orderBy(sql`count(*) desc`)
         .limit(15);
-
-      const demos = await db
-        .select({
-          id: websiteProgress.id,
-          projectName: websiteProgress.projectName,
-          domain: websiteProgress.domain,
-          demoSlug: websiteProgress.demoSlug,
-          demoEnabled: websiteProgress.demoEnabled,
-          userId: websiteProgress.userId,
-          userEmail: users.email,
-        })
-        .from(websiteProgress)
-        .innerJoin(users, eq(users.id, websiteProgress.userId))
-        .where(eq(websiteProgress.isDemo, true))
-        .orderBy(desc(websiteProgress.updatedAt));
 
       return res.json({
         from: from.toISOString(),
@@ -2313,16 +2349,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      await ensureDedicatedDemoOwners();
+
+      const [freshSite] = await db
+        .select({
+          id: websiteProgress.id,
+          userId: websiteProgress.userId,
+          projectName: websiteProgress.projectName,
+          domain: websiteProgress.domain,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+      if (!freshSite) {
+        return res.status(404).json({ error: "Demo website not found" });
+      }
+
+      const otherDemos = await db
+        .select({ id: websiteProgress.id })
+        .from(websiteProgress)
+        .where(
+          and(
+            eq(websiteProgress.userId, freshSite.userId),
+            eq(websiteProgress.isDemo, true),
+            ne(websiteProgress.id, websiteId),
+          ),
+        )
+        .limit(1);
+      if (otherDemos.length > 0) {
+        return res.status(409).json({
+          error:
+            "This demo still shares an owner with another demo; refresh and try again",
+        });
+      }
+
       const deleted = await db
         .delete(platformAnalyticsEvents)
-        .where(eq(platformAnalyticsEvents.userId, site.userId))
+        .where(eq(platformAnalyticsEvents.userId, freshSite.userId))
         .returning({ id: platformAnalyticsEvents.id });
 
       return res.json({
-        websiteId: site.id,
-        userId: site.userId,
+        websiteId: freshSite.id,
+        userId: freshSite.userId,
         deletedCount: deleted.length,
-        label: site.projectName || site.domain,
+        label: freshSite.projectName || freshSite.domain,
       });
     } catch (err) {
       console.error("Error resetting demo analytics:", err);

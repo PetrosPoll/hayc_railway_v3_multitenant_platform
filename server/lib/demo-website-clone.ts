@@ -1,7 +1,8 @@
 import { randomBytes } from "crypto";
-import { eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "../db";
 import {
+  AccountKind,
   analyticsDailySummaries,
   analyticsEvents,
   contactTags,
@@ -11,6 +12,7 @@ import {
   newsletterSubscribers,
   subscriptions,
   tags,
+  UserRole,
   users,
   websiteAutomationWorkflows,
   websiteEmailTemplates,
@@ -18,8 +20,10 @@ import {
   websiteProgress,
   websiteStages,
   type AutomationGraph,
+  type User,
   type WebsiteProgress,
 } from "@shared/schema";
+import { hashPassword } from "../auth";
 import { storage } from "../storage";
 
 export type DuplicateDemoWebsiteInput = {
@@ -27,7 +31,10 @@ export type DuplicateDemoWebsiteInput = {
   demoSlug: string;
   projectName?: string;
   domain?: string;
-  /** Defaults to source owner (same demo user). */
+  /**
+   * Optional explicit owner. When omitted, a new dedicated demo user is created
+   * so platform analytics stay isolated per demo website.
+   */
   targetUserId?: number;
 };
 
@@ -57,6 +64,115 @@ function slugify(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 80);
+}
+
+function demoIdentitySuffix(): string {
+  return `${Date.now().toString(36)}${randomBytes(3).toString("hex")}`;
+}
+
+/**
+ * Create a dedicated demo portal user (unique login identity for analytics).
+ * Copies language from source; password is a fresh hash (demo enter is passwordless).
+ */
+export async function createDedicatedDemoUser(
+  sourceOwner: User,
+  slugHint: string,
+): Promise<User> {
+  const base = slugify(slugHint) || "demo";
+  const suffix = demoIdentitySuffix();
+  const username = `demo_${base}_${suffix}`.slice(0, 80);
+  const email = `demo+${base}-${suffix}@hayc.demo`.slice(0, 200);
+  const password = await hashPassword(randomBytes(24).toString("hex"));
+
+  const [created] = await db
+    .insert(users)
+    .values({
+      username,
+      email,
+      password,
+      phone: null,
+      stripeCustomerId: null,
+      role: UserRole.SUBSCRIBER,
+      accountKind: AccountKind.CUSTOMER,
+      language: sourceOwner.language ?? "en",
+      analyticsEmail: null,
+      vatNumber: null,
+      emailNotificationsEnabled: false,
+      tipEmailNotifications: false,
+      tipsEmailNotifications: false,
+      isDemo: true,
+    })
+    .returning();
+
+  return created;
+}
+
+/**
+ * Each demo website must own a unique demo user so platform analytics do not bleed.
+ * Keeps the oldest website on the shared owner; reassigns the rest to new users.
+ */
+export async function ensureDedicatedDemoOwners(): Promise<{
+  reassigned: Array<{ websiteId: number; fromUserId: number; toUserId: number }>;
+}> {
+  const demos = await db
+    .select({
+      id: websiteProgress.id,
+      userId: websiteProgress.userId,
+      demoSlug: websiteProgress.demoSlug,
+      domain: websiteProgress.domain,
+      createdAt: websiteProgress.createdAt,
+    })
+    .from(websiteProgress)
+    .where(eq(websiteProgress.isDemo, true))
+    .orderBy(asc(websiteProgress.createdAt), asc(websiteProgress.id));
+
+  const byUser = new Map<number, typeof demos>();
+  for (const demo of demos) {
+    const list = byUser.get(demo.userId) ?? [];
+    list.push(demo);
+    byUser.set(demo.userId, list);
+  }
+
+  const reassigned: Array<{
+    websiteId: number;
+    fromUserId: number;
+    toUserId: number;
+  }> = [];
+
+  for (const [ownerId, group] of Array.from(byUser.entries())) {
+    if (group.length <= 1) continue;
+
+    const owner = await storage.getUserById(ownerId);
+    if (!owner) continue;
+
+    // Keep the first (oldest) website on the existing owner.
+    for (const demo of group.slice(1)) {
+      const newUser = await createDedicatedDemoUser(
+        owner,
+        demo.demoSlug || demo.domain || `website-${demo.id}`,
+      );
+
+      await db.transaction(async (tx) => {
+        await tx
+          .update(websiteProgress)
+          .set({ userId: newUser.id, updatedAt: new Date() })
+          .where(eq(websiteProgress.id, demo.id));
+
+        await tx
+          .update(subscriptions)
+          .set({ userId: newUser.id })
+          .where(eq(subscriptions.websiteProgressId, demo.id));
+      });
+
+      reassigned.push({
+        websiteId: demo.id,
+        fromUserId: ownerId,
+        toUserId: newUser.id,
+      });
+    }
+  }
+
+  return { reassigned };
 }
 
 function remapTagIds(
@@ -126,14 +242,19 @@ export async function duplicateDemoWebsite(
     });
   }
 
-  const targetUserId = input.targetUserId ?? source.userId;
-  if (targetUserId !== source.userId) {
-    const target = await storage.getUserById(targetUserId);
-    if (!target?.isDemo) {
-      throw Object.assign(new Error("Target user must be a demo account"), {
-        status: 400,
-      });
+  let targetUserId = input.targetUserId;
+  if (targetUserId != null) {
+    if (targetUserId !== source.userId) {
+      const target = await storage.getUserById(targetUserId);
+      if (!target?.isDemo) {
+        throw Object.assign(new Error("Target user must be a demo account"), {
+          status: 400,
+        });
+      }
     }
+  } else {
+    const dedicated = await createDedicatedDemoUser(owner, demoSlug);
+    targetUserId = dedicated.id;
   }
 
   const projectName =
