@@ -88,6 +88,7 @@ import {
   duplicateDemoWebsite,
   ensureDedicatedDemoOwners,
 } from "./lib/demo-website-clone";
+import { ensureSubscriptionItemsFromStripe } from "./lib/ensure-subscription-items";
 import { handleChurnStripeEvent } from "./services/churn-event-handlers";
 import {
   ensureCustomerStripeAccount,
@@ -471,6 +472,20 @@ for (const addon of availableAddOnsWithPriceIds) {
 // Add yearly prices (from ADDON_YEARLY_PRICE_MAP which was built from env)
 for (const [addonId, config] of Object.entries(ADDON_YEARLY_PRICE_MAP)) {
   PRICE_TO_ADDON_MAP[config.priceId] = addonId;
+}
+
+function buildSubscriptionPriceMaps() {
+  return {
+    planPrices: {
+      basic: SUBSCRIPTION_PRICES.basic,
+      essential: SUBSCRIPTION_PRICES.essential,
+      pro: SUBSCRIPTION_PRICES.pro,
+    },
+    setupFeePriceIds: Object.values(SETUP_FEE_PRICES).filter(
+      (id): id is string => Boolean(id),
+    ),
+    priceToAddon: { ...PRICE_TO_ADDON_MAP },
+  };
 }
 
 // Helper to get all price IDs for an add-on (monthly + yearly if exists)
@@ -4280,19 +4295,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           quantity: 1,
         });
 
-        // Add selected add-ons to line items
+        // Add selected add-ons to line items (accept display names or schema ids)
         if (body.addOns && body.addOns.length > 0) {
           console.log('📦 Processing add-ons:', body.addOns);
-          body.addOns.forEach((addonId) => {
-            const priceId = ADDON_PRICE_MAP[addonId];
-            console.log(`  - Add-on "${addonId}" -> Price ID: ${priceId}`);
+          const seenAddonIds = new Set<string>();
+          body.addOns.forEach((rawAddonId) => {
+            const addonId = ADDON_DISPLAY_NAME_TO_ID[rawAddonId] ?? rawAddonId;
+            if (seenAddonIds.has(addonId)) return;
+            seenAddonIds.add(addonId);
+            const priceId =
+              body.billingPeriod === "yearly"
+                ? (ADDON_YEARLY_PRICE_MAP[addonId]?.priceId ?? ADDON_PRICE_MAP[addonId])
+                : ADDON_PRICE_MAP[addonId];
+            console.log(`  - Add-on "${rawAddonId}" -> "${addonId}" -> Price ID: ${priceId}`);
             if (priceId) {
               lineItems.push({
                 price: priceId,
                 quantity: 1,
               });
             } else {
-              console.warn(`Unknown add-on ID: ${addonId}`);
+              console.warn(`Unknown add-on ID: ${addonId} (raw: ${rawAddonId})`);
             }
           });
         }
@@ -5934,168 +5956,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
             
-            // Create a separate subscription record for each subscription item
-            let planSubscriptionId: number | null = null;
-            for (const item of stripeSubscription.items.data) {
-              const priceId = item.price.id;
-              
-              // Determine if this is a tier or an add-on
-              let productType: 'plan' | 'addon' | null = null;
-              let productId: string | null = null;
-              
-              // Check if this price ID matches the setup fee - skip it
-              if (priceId === SETUP_FEE_PRICES[planId]) {
-                console.log('⏭️  Skipping setup fee item:', priceId);
-                continue;
-              }
-              
-              // Check if this price ID matches any add-on
-              if (PRICE_TO_ADDON_MAP[priceId]) {
-                productType = 'addon';
-                productId = PRICE_TO_ADDON_MAP[priceId];
-              } else if (priceId === SUBSCRIPTION_PRICES[planId].monthly || priceId === SUBSCRIPTION_PRICES[planId].yearly) {
-                productType = 'plan';
-                productId = planId;
-              } else {
-                // Unknown price ID - skip it to avoid creating duplicate subscriptions
-                console.warn('Unknown price ID in subscription items, skipping:', priceId);
-                continue;
-              }
-              
-              // Check if this subscription came from a schedule
-              // If so, find the existing record with the schedule ID and update it
-              if (stripeSubscription.schedule) {
-                console.log('🗓️  This subscription came from a schedule:', stripeSubscription.schedule);
-                
-                const scheduleId = typeof stripeSubscription.schedule === 'string' 
-                  ? stripeSubscription.schedule 
+            // If checkout activated a subscription schedule, remap the scheduled
+            // local row to the live Stripe subscription id before item upsert.
+            if (stripeSubscription.schedule) {
+              const scheduleId =
+                typeof stripeSubscription.schedule === "string"
+                  ? stripeSubscription.schedule
                   : stripeSubscription.schedule.id;
-                
-                const scheduledSubscription = await db
-                  .select()
-                  .from(subscriptionsTable)
-                  .where(eq(subscriptionsTable.stripeSubscriptionId, scheduleId))
-                  .limit(1);
-                
-                if (scheduledSubscription.length > 0) {
-                  console.log('✅ Found existing scheduled subscription, updating with new subscription ID');
-                  
-                  await db
-                    .update(subscriptionsTable)
-                    .set({
-                      stripeSubscriptionId: stripeSubscription.id,
-                      stripeSubscriptionItemId: item.id,
-                      status: stripeSubscription.status,
-                      price: item.price.unit_amount || null,
-                    })
-                    .where(eq(subscriptionsTable.id, scheduledSubscription[0].id));
-                  
-                  console.log('✅ Updated scheduled subscription to active subscription');
-                  if (productType === "plan") {
-                    planSubscriptionId = scheduledSubscription[0].id;
-                  }
-                  continue; // Don't create a new record
-                }
-              }
-              
-              // Check if subscription already exists with this Stripe subscription item ID
-              const existingSubscription = await db
-                .select()
-                .from(subscriptionsTable)
-                .where(eq(subscriptionsTable.stripeSubscriptionItemId, item.id))
-                .limit(1);
-              
-              // Get the price from Stripe (keep in cents as integer)
-              const subscriptionPrice = item.price.unit_amount || null;
-
-              // Website creation is now handled in /api/onboarding/initialize endpoint
-              // Webhook only creates/updates subscription without websiteProgressId
-              let websiteProgressId = null;
-              let createdSubscription;
-              
-              if (existingSubscription.length > 0) {
-                console.log('Subscription already exists for item:', item.id, '- updating with billing info from checkout');
-                createdSubscription = existingSubscription[0];
-                // Keep existing websiteProgressId if it exists, but don't create new one here
-                websiteProgressId = createdSubscription.websiteProgressId;
-                
-                // Update existing subscription with billing info from checkout session
-                // This ensures VAT number and other billing details are saved even for existing subscriptions
-                const vatFromSession =
-                  session.metadata.vatNumber?.trim() ||
-                  createdSubscription.vatNumber ||
-                  null;
-                const updateResult = await db
-                  .update(subscriptionsTable)
-                  .set({
-                    vatNumber: vatFromSession,
-                    city: session.metadata.city?.trim() || createdSubscription.city || null,
-                    street: session.metadata.street?.trim() || createdSubscription.street || null,
-                    number: session.metadata.number?.trim() || createdSubscription.number || null,
-                    postalCode: session.metadata.postalCode?.trim() || createdSubscription.postalCode || null,
-                    invoiceType: session.metadata.invoiceType || createdSubscription.invoiceType || "invoice",
-                  })
-                  .where(eq(subscriptionsTable.id, createdSubscription.id))
-                  .returning();
-                
-                if (updateResult.length > 0) {
-                  createdSubscription = updateResult[0];
-                  console.log('✅ Existing subscription updated with billing info:', {
-                    subscriptionId: createdSubscription.id,
-                    vatNumber: createdSubscription.vatNumber,
-                    invoiceType: createdSubscription.invoiceType,
-                  });
-                }
-              } else {
-                // Create subscription record without websiteProgressId
-                // Website will be created when user visits /onboarding page
-                try {
-                  createdSubscription = await storage.createSubscription({
-                    userId: user.id,
-                    websiteProgressId: null, // Will be set when user initializes onboarding
-                    productType,
-                    productId,
-                    stripeSubscriptionId: stripeSubscription.id,
-                    stripeSubscriptionItemId: item.id,
-                    tier: productType === 'plan' ? productId : null,
-                    status: stripeSubscription.status,
-                    price: subscriptionPrice,
-                    vatNumber: session.metadata.vatNumber?.trim() || null,
-                    city: session.metadata.city?.trim() || null,
-                    street: session.metadata.street?.trim() || null,
-                    number: session.metadata.number?.trim() || null,
-                    postalCode: session.metadata.postalCode?.trim() || null,
-                    invoiceType: session.metadata.invoiceType || "invoice",
-                    billingPeriod: stripeSubscription.items.data[0].plan.interval === 'year' ? 'yearly' : 'monthly',
-                    createdAt: new Date(session.created * 1000),
-                  });
-                  
-                  console.log('✅ Subscription created (website will be created on onboarding):', {
-                    userId: user.id,
-                    productType,
-                    productId,
-                    subscriptionId: createdSubscription.id,
-                    stripeSubscriptionItemId: item.id
-                  });
-                } catch (subscriptionError: any) {
-                  console.error('❌ Failed to create subscription:', {
-                    error: subscriptionError?.message,
-                    stack: subscriptionError?.stack,
-                    userId: user.id,
-                    productType,
-                    productId,
-                    stripeSubscriptionId: stripeSubscription.id,
-                    metadata: session.metadata
-                  });
-                  throw subscriptionError;
-                }
-              }
-
-              if (productType === "plan" && createdSubscription?.id) {
-                planSubscriptionId = createdSubscription.id;
-              }
-
+              await db
+                .update(subscriptionsTable)
+                .set({ stripeSubscriptionId: stripeSubscription.id })
+                .where(eq(subscriptionsTable.stripeSubscriptionId, scheduleId));
             }
+
+            // One local row per recurring Stripe item (plan + each add-on).
+            const ensured = await ensureSubscriptionItemsFromStripe({
+              userId: user.id,
+              stripeSubscription,
+              maps: buildSubscriptionPriceMaps(),
+              billing: {
+                vatNumber: session.metadata.vatNumber?.trim() || null,
+                city: session.metadata.city?.trim() || null,
+                street: session.metadata.street?.trim() || null,
+                number: session.metadata.number?.trim() || null,
+                postalCode: session.metadata.postalCode?.trim() || null,
+                invoiceType: session.metadata.invoiceType || "invoice",
+              },
+              createdAt: new Date(session.created * 1000),
+            });
+
+            console.log("✅ Subscription items synced from Stripe checkout:", {
+              stripeSubscriptionId: stripeSubscription.id,
+              created: ensured.created,
+              updated: ensured.updated,
+              rows: ensured.rows.map((row) => ({
+                id: row.id,
+                productType: row.productType,
+                productId: row.productId,
+                stripeSubscriptionItemId: row.stripeSubscriptionItemId,
+                price: row.price,
+              })),
+              skipped: ensured.skipped,
+            });
+
+            const planSubscriptionId =
+              ensured.rows.find((row) => row.productType === "plan")?.id ?? null;
 
             // Attribute ambassador promo code redemption (idempotent on checkout session)
             const promoCodeIdMeta = session.metadata?.promoCodeId
@@ -6524,6 +6429,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .select()
                 .from(subscriptionsTable)
                 .where(eq(subscriptionsTable.stripeSubscriptionId, invoice.subscription as string));
+
+              // Backfill missing plan/addon rows from live Stripe items before
+              // creating transactions / draft invoices.
+              try {
+                const stripeSubForEnsure = await stripe.subscriptions.retrieve(
+                  invoice.subscription as string,
+                  { expand: ["items.data.price"] },
+                );
+                const ownerUserId =
+                  dbSubscriptions[0]?.userId ??
+                  (
+                    await db
+                      .select({ id: users.id })
+                      .from(users)
+                      .where(
+                        eq(
+                          users.stripeCustomerId,
+                          typeof invoice.customer === "string"
+                            ? invoice.customer
+                            : invoice.customer?.id || "",
+                        ),
+                      )
+                      .limit(1)
+                  )[0]?.id;
+
+                if (ownerUserId) {
+                  const ensured = await ensureSubscriptionItemsFromStripe({
+                    userId: ownerUserId,
+                    stripeSubscription: stripeSubForEnsure,
+                    maps: buildSubscriptionPriceMaps(),
+                    websiteProgressId:
+                      dbSubscriptions.find((s) => s.websiteProgressId)?.websiteProgressId ??
+                      null,
+                  });
+                  if (ensured.created > 0 || ensured.updated > 0) {
+                    console.log(
+                      "✅ [WEBHOOK] Synced subscription items before invoice handling:",
+                      {
+                        stripeSubscriptionId: stripeSubForEnsure.id,
+                        created: ensured.created,
+                        updated: ensured.updated,
+                        skipped: ensured.skipped,
+                      },
+                    );
+                    dbSubscriptions = ensured.rows.filter(
+                      (row) => row.userId === ownerUserId,
+                    );
+                    if (dbSubscriptions.length === 0) {
+                      dbSubscriptions = ensured.rows;
+                    }
+                  }
+                }
+              } catch (ensureErr) {
+                console.warn(
+                  "⚠️ [WEBHOOK] Could not ensure subscription items from Stripe:",
+                  ensureErr,
+                );
+              }
 
               // If none found, check if this subscription came from a schedule
               if (dbSubscriptions.length === 0) {
