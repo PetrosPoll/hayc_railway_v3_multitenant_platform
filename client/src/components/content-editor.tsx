@@ -21,14 +21,249 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { PickImageFromMediaDialog } from "@/components/ui/pick-image-from-media-dialog";
 import * as VisuallyHidden from "@radix-ui/react-visually-hidden";
 
+/** Strip technical size suffixes like P500 / p1080 before display. */
 function formatLabel(key: string): string {
   return key
+    .replace(/[Pp]\d{3,4}$/, "")
     .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ")
     .replace(/^./, (str) => str.toUpperCase())
     .trim();
+}
+
+/** bannerImageP500 → { base: "bannerImage", width: 500 } */
+const IMAGE_SIZE_SUFFIX_RE = /^(.*?)[Pp](\d{3,4})$/;
+
+function parseImageSizeSuffix(key: string): { base: string; width: number } | null {
+  const m = IMAGE_SIZE_SUFFIX_RE.exec(key);
+  if (!m?.[1]) return null;
+  return { base: m[1], width: Number(m[2]) };
+}
+
+function isAltFieldKey(key: string): boolean {
+  const k = key.toLowerCase();
+  return k === "alt" || k === "alttext" || k.endsWith("alt") || k.endsWith("alttext");
+}
+
+/** Inject / replace c_limit,w_N on Cloudinary delivery URLs; otherwise return url as-is. */
+function withCloudinaryWidth(url: string, width: number): string {
+  try {
+    const u = new URL(url);
+    if (!u.hostname.includes("cloudinary.com")) return url;
+    const parts = u.pathname.split("/");
+    const uploadIdx = parts.indexOf("upload");
+    if (uploadIdx === -1) return url;
+    const after = parts.slice(uploadIdx + 1);
+    if (after.length === 0) return url;
+    const looksLikeTransform =
+      /[,_/]/.test(after[0]) ||
+      /^(c_|w_|h_|f_|q_|g_|ar_|e_|dpr_|fl_)/.test(after[0]);
+    let rest = after;
+    if (looksLikeTransform) {
+      const kept = after[0]
+        .split(",")
+        .filter((p) => p && !/^w_\d+$/.test(p) && p !== "c_limit" && p !== "c_scale" && p !== "c_fit");
+      rest = [`c_limit,w_${width}${kept.length ? `,${kept.join(",")}` : ""}`, ...after.slice(1)];
+    } else {
+      rest = [`c_limit,w_${width}`, ...after];
+    }
+    u.pathname = [...parts.slice(0, uploadIdx + 1), ...rest].join("/");
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+function setValueAtPath(obj: Record<string, unknown>, path: string, newValue: unknown) {
+  const keys = path.split(".");
+  let current: any = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    const k = Number.isNaN(Number(keys[i])) ? keys[i] : Number(keys[i]);
+    current = current[k];
+  }
+  const last = Number.isNaN(Number(keys[keys.length - 1]))
+    ? keys[keys.length - 1]
+    : Number(keys[keys.length - 1]);
+  current[last] = newValue;
+}
+
+type ImageVariant = { key: string; path: string; width: number; value: string };
+type ImagePickTarget = {
+  primaryPath: string;
+  variants: { path: string; width: number | null }[];
+};
+
+type FieldRenderItem =
+  | { type: "field"; key: string; value: unknown }
+  | {
+      type: "image-group";
+      baseKey: string;
+      variants: ImageVariant[];
+      altKey?: string;
+      altValue?: unknown;
+    };
+
+function collectImageVariants(
+  obj: Record<string, unknown>,
+  baseKey: string,
+  parentPath: string,
+): ImageVariant[] {
+  const variants: ImageVariant[] = [];
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value !== "string") continue;
+    if (!isFileFieldKey(key)) continue;
+    const parsed = parseImageSizeSuffix(key);
+    if (!parsed || parsed.base !== baseKey) continue;
+    variants.push({
+      key,
+      path: parentPath ? `${parentPath}.${key}` : key,
+      width: parsed.width,
+      value,
+    });
+  }
+  variants.sort((a, b) => a.width - b.width);
+  return variants;
+}
+
+function buildFieldRenderItems(
+  obj: Record<string, unknown>,
+  parentPath: string,
+): FieldRenderItem[] {
+  const entries = Object.entries(obj).filter(([key, val]) => !shouldHideField(key, val));
+  const used = new Set<string>();
+  const items: FieldRenderItem[] = [];
+  const baseToKeys = new Map<string, string[]>();
+
+  for (const [key, value] of entries) {
+    if (typeof value !== "string" || !isFileFieldKey(key)) continue;
+    const parsed = parseImageSizeSuffix(key);
+    if (!parsed) continue;
+    const list = baseToKeys.get(parsed.base) ?? [];
+    list.push(key);
+    baseToKeys.set(parsed.base, list);
+  }
+
+  for (const [baseKey, keys] of baseToKeys) {
+    if (keys.length < 2) continue;
+    const variants = collectImageVariants(obj, baseKey, parentPath);
+    if (variants.length < 2) continue;
+    keys.forEach((k) => used.add(k));
+
+    const altKey = entries.find(([k]) => {
+      if (used.has(k) || !isAltFieldKey(k)) return false;
+      const lower = k.toLowerCase();
+      const baseLower = baseKey.toLowerCase();
+      return (
+        lower === `${baseLower}alt` ||
+        lower === `${baseLower}alttext` ||
+        lower === "alt" ||
+        lower === "alttext"
+      );
+    })?.[0];
+
+    let altValue: unknown;
+    if (altKey) {
+      used.add(altKey);
+      altValue = obj[altKey];
+    }
+
+    items.push({ type: "image-group", baseKey, variants, altKey, altValue });
+  }
+
+  for (const [key, value] of entries) {
+    if (used.has(key)) continue;
+    items.push({ type: "field", key, value });
+  }
+
+  return items;
+}
+
+function findImageEditTarget(
+  focusPath: string,
+  config: Record<string, unknown>,
+): ImagePickTarget | null {
+  const path = normalizeEditablePath(focusPath);
+  const parts = path.split(".");
+  const fieldKey = parts[parts.length - 1] ?? "";
+  const parentPath = parts.slice(0, -1).join(".");
+  const parentRaw = parentPath ? getValueAtPath(config, parentPath) : config;
+  const parentObj =
+    parentRaw && typeof parentRaw === "object" && !Array.isArray(parentRaw)
+      ? (parentRaw as Record<string, unknown>)
+      : null;
+
+  const variantsForBase = (base: string): ImagePickTarget | null => {
+    if (!parentObj) return null;
+    const variants = collectImageVariants(parentObj, base, parentPath);
+    if (variants.length >= 2) {
+      return {
+        primaryPath: variants[Math.floor(variants.length / 2)]?.path ?? variants[0].path,
+        variants: variants.map((v) => ({ path: v.path, width: v.width })),
+      };
+    }
+    return null;
+  };
+
+  if (parentObj && isAltFieldKey(fieldKey)) {
+    const baseFromAlt = fieldKey.replace(/alttext$/i, "").replace(/alt$/i, "");
+    if (baseFromAlt) {
+      const grouped = variantsForBase(baseFromAlt);
+      if (grouped) return grouped;
+    }
+    for (const [key, value] of Object.entries(parentObj)) {
+      if (typeof value !== "string" || !isFileFieldKey(key)) continue;
+      const parsed = parseImageSizeSuffix(key);
+      if (parsed) {
+        const grouped = variantsForBase(parsed.base);
+        if (grouped) return grouped;
+      }
+      return {
+        primaryPath: parentPath ? `${parentPath}.${key}` : key,
+        variants: [{ path: parentPath ? `${parentPath}.${key}` : key, width: null }],
+      };
+    }
+  }
+
+  const directVal = getValueAtPath(config, path);
+  if (typeof directVal === "string" && isFileField(fieldKey, directVal)) {
+    const parsed = parseImageSizeSuffix(fieldKey);
+    if (parsed) {
+      const grouped = variantsForBase(parsed.base);
+      if (grouped) return grouped;
+    }
+    return {
+      primaryPath: path,
+      variants: [{ path, width: parsed?.width ?? null }],
+    };
+  }
+
+  if (parentObj && isFileFieldKey(fieldKey)) {
+    const parsed = parseImageSizeSuffix(fieldKey);
+    if (parsed) {
+      const grouped = variantsForBase(parsed.base);
+      if (grouped) return grouped;
+    }
+    return {
+      primaryPath: path,
+      variants: [{ path, width: parsed?.width ?? null }],
+    };
+  }
+
+  return null;
 }
 
 function isLocaleString(val: unknown): boolean {
@@ -95,6 +330,164 @@ interface ConfigFieldProps {
   readOnlyFields?: string[];
   websiteLanguage?: string;
   onRequestPickImage?: (path: string) => void;
+  onRequestPickImageGroup?: (target: ImagePickTarget) => void;
+}
+
+function ImageGroupField({
+  baseKey,
+  variants,
+  altKey,
+  altValue,
+  parentPath,
+  onChange,
+  highlightedPath,
+  websiteLanguage,
+  onRequestPickImageGroup,
+  readOnly,
+}: {
+  baseKey: string;
+  variants: ImageVariant[];
+  altKey?: string;
+  altValue?: unknown;
+  parentPath: string;
+  onChange: (path: string, value: unknown) => void;
+  highlightedPath?: string | null;
+  websiteLanguage?: string;
+  onRequestPickImageGroup?: (target: ImagePickTarget) => void;
+  readOnly?: boolean;
+}) {
+  const previewUrl =
+    variants.find((v) => v.value.trim())?.value ||
+    variants[Math.floor(variants.length / 2)]?.value ||
+    "";
+  const primary = variants[Math.floor(variants.length / 2)] ?? variants[0];
+  const highlightClass = variants.some((v) => highlightedPath === v.path)
+    ? "hayc-field-highlighted"
+    : "";
+  const altPath = altKey ? (parentPath ? `${parentPath}.${altKey}` : altKey) : null;
+
+  return (
+    <div
+      data-field-path={primary.path}
+      className={`rounded-lg border border-border/60 bg-muted/20 p-3 space-y-3 ${highlightClass}`.trim()}
+    >
+      <div className="flex items-start gap-3">
+        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-border">
+          {previewUrl ? (
+            <img
+              src={previewUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+              No image
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1 space-y-2">
+          <div>
+            <p className="text-sm font-medium">{formatLabel(baseKey)}</p>
+            <p className="text-xs text-muted-foreground">
+              One upload · {variants.map((v) => `P${v.width}`).join(" / ")} generated automatically
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            disabled={readOnly}
+            onClick={() =>
+              onRequestPickImageGroup?.({
+                primaryPath: primary.path,
+                variants: variants.map((v) => ({ path: v.path, width: v.width })),
+              })
+            }
+          >
+            Change image
+          </Button>
+        </div>
+      </div>
+      {altPath && altValue !== undefined && (
+        <div className="border-t border-border/50 pt-2">
+          <p className="mb-1 text-xs font-medium text-muted-foreground">Alt text</p>
+          <ConfigField
+            path={altPath}
+            fieldKey={altKey!}
+            value={altValue}
+            onChange={onChange}
+            highlightedPath={highlightedPath}
+            websiteLanguage={websiteLanguage}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ObjectFields({
+  obj,
+  parentPath,
+  onChange,
+  focusedPath,
+  highlightedPath,
+  websiteLanguage,
+  onRequestPickImage,
+  onRequestPickImageGroup,
+  readOnlyFields,
+}: {
+  obj: Record<string, unknown>;
+  parentPath: string;
+  onChange: (path: string, value: unknown) => void;
+  focusedPath?: string | null;
+  highlightedPath?: string | null;
+  websiteLanguage?: string;
+  onRequestPickImage?: (path: string) => void;
+  onRequestPickImageGroup?: (target: ImagePickTarget) => void;
+  readOnlyFields?: string[];
+}) {
+  const items = buildFieldRenderItems(obj, parentPath);
+  return (
+    <>
+      {items.map((item) => {
+        if (item.type === "image-group") {
+          return (
+            <div key={`img:${item.baseKey}`} className="mb-3">
+              <ImageGroupField
+                baseKey={item.baseKey}
+                variants={item.variants}
+                altKey={item.altKey}
+                altValue={item.altValue}
+                parentPath={parentPath}
+                onChange={onChange}
+                highlightedPath={highlightedPath}
+                websiteLanguage={websiteLanguage}
+                onRequestPickImageGroup={onRequestPickImageGroup}
+                readOnly={readOnlyFields?.includes(item.baseKey)}
+              />
+            </div>
+          );
+        }
+        return (
+          <div key={item.key} className="mb-3">
+            <ConfigField
+              path={parentPath ? `${parentPath}.${item.key}` : item.key}
+              fieldKey={item.key}
+              value={item.value}
+              onChange={onChange}
+              focusedPath={focusedPath}
+              highlightedPath={highlightedPath}
+              readOnlyFields={readOnlyFields}
+              websiteLanguage={websiteLanguage}
+              onRequestPickImage={onRequestPickImage}
+              onRequestPickImageGroup={onRequestPickImageGroup}
+            />
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 const IMAGE_FIELD_KEYWORDS = [
@@ -142,7 +535,7 @@ function isFileField(fieldKey: string, value: string): boolean {
   return isFileFieldKey(fieldKey) || looksLikeFilePath(value);
 }
 
-function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlightedPath, readOnlyFields, websiteLanguage, onRequestPickImage }: ConfigFieldProps) {
+function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlightedPath, readOnlyFields, websiteLanguage, onRequestPickImage, onRequestPickImageGroup }: ConfigFieldProps) {
   const highlightClass = highlightedPath === path ? "hayc-field-highlighted" : "";
   const isReadOnly = readOnlyFields?.includes(fieldKey) ?? false;
   if (isLocaleString(value)) {
@@ -182,28 +575,59 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
 
   if (typeof value === "string") {
     const isFile = isFileField(fieldKey, value);
+    const isImage =
+      isFile &&
+      IMAGE_FIELD_KEYWORDS.some((k) => fieldKey.toLowerCase().includes(k)) &&
+      !/\.(pdf|mp4|webm|mp3|wav|svg)(\?|$)/i.test(value);
 
     return (
       <div data-field-path={path} className={highlightClass}>
         <label className="text-sm font-medium mb-1 block">{formatLabel(fieldKey)}</label>
         {isFile ? (
-          <div className="flex items-center gap-2">
-            <Input
-              data-path={path}
-              value={value}
-              readOnly
-              placeholder="No file selected"
-              className="w-full bg-muted/50"
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => onRequestPickImage?.(path)}
-              disabled={isReadOnly}
-            >
-              Choose File
-            </Button>
+          <div className="flex items-center gap-3">
+            {isImage && (
+              <div className="h-14 w-14 shrink-0 overflow-hidden rounded-md bg-muted ring-1 ring-border">
+                {value.trim() ? (
+                  <img src={value} alt="" className="h-full w-full object-cover" loading="lazy" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
+                    —
+                  </div>
+                )}
+              </div>
+            )}
+            <div className="min-w-0 flex-1 space-y-2">
+              <Input
+                data-path={path}
+                value={value}
+                readOnly
+                placeholder="No file selected"
+                className="w-full bg-muted/50 text-xs"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  if (onRequestPickImageGroup) {
+                    onRequestPickImageGroup({
+                      primaryPath: path,
+                      variants: [
+                        {
+                          path,
+                          width: parseImageSizeSuffix(fieldKey)?.width ?? null,
+                        },
+                      ],
+                    });
+                  } else {
+                    onRequestPickImage?.(path);
+                  }
+                }}
+                disabled={isReadOnly}
+              >
+                {isImage ? "Change image" : "Choose File"}
+              </Button>
+            </div>
           </div>
         ) : isReadOnly ? (
           <Input data-path={path} value={value} readOnly className="bg-muted/50" />
@@ -259,6 +683,7 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
             highlightedPath={highlightedPath}
             websiteLanguage={websiteLanguage}
             onRequestPickImage={onRequestPickImage}
+            onRequestPickImageGroup={onRequestPickImageGroup}
           />
         ))}
       </div>
@@ -266,28 +691,22 @@ function ConfigField({ path, fieldKey, value, onChange, focusedPath, highlighted
   }
 
   if (typeof value === "object" && value !== null) {
-    const filteredEntries = Object.entries(value as Record<string, unknown>)
-      .filter(([key, val]) => !shouldHideField(key, val));
-    
-    if (filteredEntries.length === 0) return null;
-    
+    const items = buildFieldRenderItems(value as Record<string, unknown>, path);
+    if (items.length === 0) return null;
+
     return (
       <div data-field-path={path} className={`pl-3 border-l-2 ml-1 mt-1 ${highlightClass}`.trim()}>
         <label className="text-sm font-medium mb-2 block">{formatLabel(fieldKey)}</label>
-        {filteredEntries.map(([key, val]) => (
-          <div key={key} className="mb-3">
-            <ConfigField
-              path={`${path}.${key}`}
-              fieldKey={key}
-              value={val}
-              onChange={onChange}
-              focusedPath={focusedPath}
-              highlightedPath={highlightedPath}
-              websiteLanguage={websiteLanguage}
-              onRequestPickImage={onRequestPickImage}
-            />
-          </div>
-        ))}
+        <ObjectFields
+          obj={value as Record<string, unknown>}
+          parentPath={path}
+          onChange={onChange}
+          focusedPath={focusedPath}
+          highlightedPath={highlightedPath}
+          websiteLanguage={websiteLanguage}
+          onRequestPickImage={onRequestPickImage}
+          onRequestPickImageGroup={onRequestPickImageGroup}
+        />
       </div>
     );
   }
@@ -306,6 +725,7 @@ interface ArrayItemCollapsibleProps {
   highlightedPath?: string | null;
   websiteLanguage?: string;
   onRequestPickImage?: (path: string) => void;
+  onRequestPickImageGroup?: (target: ImagePickTarget) => void;
 }
 
 function ArrayItemCollapsible({
@@ -319,6 +739,7 @@ function ArrayItemCollapsible({
   highlightedPath,
   websiteLanguage,
   onRequestPickImage,
+  onRequestPickImageGroup,
 }: ArrayItemCollapsibleProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -340,20 +761,17 @@ function ArrayItemCollapsible({
         <CollapsibleContent>
           <CardContent className="pt-0 px-4 pb-4 space-y-3">
             {typeof item === "object" && item !== null ? (
-              Object.entries(item as Record<string, unknown>).map(([key, val]) => (
-                <ConfigField
-                  key={key}
-                  path={`${path}.${index}.${key}`}
-                  fieldKey={key}
-                  value={val}
-                  onChange={onChange}
-                  focusedPath={focusedPath}
-                  highlightedPath={highlightedPath}
-                  readOnlyFields={["path"]}
-                  websiteLanguage={websiteLanguage}
-                  onRequestPickImage={onRequestPickImage}
-                />
-              ))
+              <ObjectFields
+                obj={item as Record<string, unknown>}
+                parentPath={`${path}.${index}`}
+                onChange={onChange}
+                focusedPath={focusedPath}
+                highlightedPath={highlightedPath}
+                readOnlyFields={["path"]}
+                websiteLanguage={websiteLanguage}
+                onRequestPickImage={onRequestPickImage}
+                onRequestPickImageGroup={onRequestPickImageGroup}
+              />
             ) : (
               <ConfigField
                 path={`${path}.${index}`}
@@ -364,6 +782,7 @@ function ArrayItemCollapsible({
                 highlightedPath={highlightedPath}
                 websiteLanguage={websiteLanguage}
                 onRequestPickImage={onRequestPickImage}
+                onRequestPickImageGroup={onRequestPickImageGroup}
               />
             )}
           </CardContent>
@@ -382,6 +801,7 @@ interface ConfigSectionProps {
   highlightedPath?: string | null;
   websiteLanguage?: string;
   onRequestPickImage?: (path: string) => void;
+  onRequestPickImageGroup?: (target: ImagePickTarget) => void;
 }
 
 const HIDDEN_KEYS = ["version", "exportedAt", "exported_at", "siteConfig", "site_config", "digitalProductsConfig", "forms"];
@@ -410,7 +830,7 @@ function shouldHideField(key: string, value: unknown): boolean {
   return isEmptyValue(value);
 }
 
-function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, highlightedPath, websiteLanguage, onRequestPickImage }: ConfigSectionProps) {
+function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, highlightedPath, websiteLanguage, onRequestPickImage, onRequestPickImageGroup }: ConfigSectionProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
@@ -430,6 +850,7 @@ function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, hi
             highlightedPath={highlightedPath}
             websiteLanguage={websiteLanguage}
             onRequestPickImage={onRequestPickImage}
+            onRequestPickImageGroup={onRequestPickImageGroup}
           />
         </CardContent>
       </Card>
@@ -451,21 +872,16 @@ function ConfigSection({ sectionKey, value, onChange, forceOpen, focusedPath, hi
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="pt-0 px-4 pb-4 space-y-3">
-            {Object.entries(value as Record<string, unknown>)
-              .filter(([key, val]) => !shouldHideField(key, val))
-              .map(([key, val]) => (
-                <ConfigField
-                  key={key}
-                  path={`${sectionKey}.${key}`}
-                  fieldKey={key}
-                  value={val}
-                  onChange={onChange}
-                  focusedPath={focusedPath}
-                  highlightedPath={highlightedPath}
-                  websiteLanguage={websiteLanguage}
-                  onRequestPickImage={onRequestPickImage}
-                />
-              ))}
+            <ObjectFields
+              obj={value as Record<string, unknown>}
+              parentPath={sectionKey}
+              onChange={onChange}
+              focusedPath={focusedPath}
+              highlightedPath={highlightedPath}
+              websiteLanguage={websiteLanguage}
+              onRequestPickImage={onRequestPickImage}
+              onRequestPickImageGroup={onRequestPickImageGroup}
+            />
           </CardContent>
         </CollapsibleContent>
       </Card>
@@ -882,10 +1298,12 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const [highlightedPath, setHighlightedPath] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [previewLanguage, setPreviewLanguage] = useState<string | null>(null);
-  const [pickImagePath, setPickImagePath] = useState<string | null>(null);
+  const [pickImageTarget, setPickImageTarget] = useState<ImagePickTarget | null>(null);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const [configDrawerOpen, setConfigDrawerOpen] = useState(false);
   const [fieldDrawerOpen, setFieldDrawerOpen] = useState(false);
   const [fieldDrawerPath, setFieldDrawerPath] = useState<string | null>(null);
+  const localConfigRef = useRef<Record<string, unknown> | null>(null);
 
   const { data: websiteData } = useQuery<{ websiteLanguage?: string }>({
     queryKey: ["/api/admin/websites", websiteId],
@@ -941,6 +1359,10 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   }, [queryData]);
 
   useEffect(() => {
+    localConfigRef.current = localConfig;
+  }, [localConfig]);
+
+  useEffect(() => {
     if (websiteLanguage && previewLanguage === null) {
       const langs = websiteLanguage === "both"
         ? ["el", "en"]
@@ -974,27 +1396,42 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
       const path = event.data?.path as string;
       if (!path) return;
 
-      const sectionKey = path.split('.')[0];
+      const sectionKey = path.split(".")[0];
       setFocusedSection(sectionKey);
       setFocusedPath(path);
-      setHighlightedPath(path);
 
-      if (isMobile) {
-        // Normalise path: strip trailing .el / .en so we show the whole locale field
-        const normalized = normalizeEditablePath(path);
-        setFieldDrawerPath(normalized);
-        setFieldDrawerOpen(true);
-        setConfigDrawerOpen(false);
+      const cfg = localConfigRef.current;
+      const imageTarget = cfg ? findImageEditTarget(path, cfg) : null;
+      if (imageTarget) {
+        setHighlightedPath(imageTarget.primaryPath);
+        setPickImageTarget(imageTarget);
+        setFieldDrawerPath(imageTarget.primaryPath);
+        if (isMobile) {
+          setFieldDrawerOpen(true);
+          setConfigDrawerOpen(false);
+        } else {
+          setTimeout(() => {
+            const el = document.querySelector(`[data-field-path="${imageTarget.primaryPath}"]`);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 150);
+        }
       } else {
+        setHighlightedPath(path);
         const normalized = normalizeEditablePath(path);
         setFieldDrawerPath(normalized);
-        setTimeout(() => {
-          const el = document.querySelector(`[data-path="${path}"]`)
-            ?? document.querySelector(`[data-field-path="${normalized}"]`)
-            ?? document.querySelector(`[data-field-path="${path}"]`)
-            ?? document.querySelector(`[data-path="${path}.el"]`);
-          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }, 150);
+        if (isMobile) {
+          setFieldDrawerOpen(true);
+          setConfigDrawerOpen(false);
+        } else {
+          setTimeout(() => {
+            const el =
+              document.querySelector(`[data-path="${path}"]`) ??
+              document.querySelector(`[data-field-path="${normalized}"]`) ??
+              document.querySelector(`[data-field-path="${path}"]`) ??
+              document.querySelector(`[data-path="${path}.el"]`);
+            if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }, 150);
+        }
       }
 
       setTimeout(() => {
@@ -1008,6 +1445,24 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
 
   const isDirty =
     localConfig !== null && JSON.stringify(localConfig) !== JSON.stringify(queryData);
+
+  const requestClose = () => {
+    if (isDirty) {
+      setCloseConfirmOpen(true);
+      return;
+    }
+    setConfigDrawerOpen(false);
+    setFieldDrawerOpen(false);
+    onOpenChange(false);
+  };
+
+  const discardAndClose = () => {
+    if (queryData) setLocalConfig(queryData);
+    setCloseConfirmOpen(false);
+    setConfigDrawerOpen(false);
+    setFieldDrawerOpen(false);
+    onOpenChange(false);
+  };
 
   const handleLanguageChange = (lang: string) => {
     setPreviewLanguage(lang);
@@ -1031,16 +1486,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
     setLocalConfig((prev) => {
       if (!prev) return prev;
       const updated = structuredClone(prev);
-      const keys = path.split(".");
-      let current: any = updated;
-      for (let i = 0; i < keys.length - 1; i++) {
-        const k = isNaN(Number(keys[i])) ? keys[i] : Number(keys[i]);
-        current = current[k];
-      }
-      const last = isNaN(Number(keys[keys.length - 1]))
-        ? keys[keys.length - 1]
-        : Number(keys[keys.length - 1]);
-      current[last] = newValue;
+      setValueAtPath(updated, path, newValue);
 
       iframeRef.current?.contentWindow?.postMessage(
         { type: "HAYC_CONFIG_UPDATE", payload: { config: updated } },
@@ -1050,6 +1496,27 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
       return updated;
     });
   };
+
+  const handleImageGroupSelect = (url: string) => {
+    if (!pickImageTarget) return;
+    setLocalConfig((prev) => {
+      if (!prev) return prev;
+      const updated = structuredClone(prev);
+      for (const variant of pickImageTarget.variants) {
+        const nextUrl =
+          variant.width != null ? withCloudinaryWidth(url, variant.width) : url;
+        setValueAtPath(updated, variant.path, nextUrl);
+      }
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "HAYC_CONFIG_UPDATE", payload: { config: updated } },
+        "*"
+      );
+      return updated;
+    });
+    setPickImageTarget(null);
+  };
+
+  const openImagePicker = (target: ImagePickTarget) => setPickImageTarget(target);
 
   const configPanelContent = (
     <>
@@ -1082,7 +1549,10 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                 focusedPath={focusedPath}
                 highlightedPath={highlightedPath}
                 websiteLanguage={previewLanguage ?? websiteLanguage}
-                onRequestPickImage={(path) => setPickImagePath(path)}
+                onRequestPickImage={(path) =>
+                  openImagePicker({ primaryPath: path, variants: [{ path, width: null }] })
+                }
+                onRequestPickImageGroup={openImagePicker}
               />
             ))}
         </div>
@@ -1092,7 +1562,16 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(v) => { if (!v) { setConfigDrawerOpen(false); setFieldDrawerOpen(false); } onOpenChange(v); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) {
+          requestClose();
+          return;
+        }
+        onOpenChange(v);
+      }}
+    >
       <DialogContent className="max-w-none w-screen h-screen h-dvh p-0 rounded-none border-0 gap-0 [&>button]:hidden" style={{ height: '100dvh' }}>
         <VisuallyHidden.Root>
           <DialogTitle>Content Editor</DialogTitle>
@@ -1104,7 +1583,7 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onOpenChange(false)}
+              onClick={requestClose}
               className="mr-1 sm:mr-2 px-2 sm:px-3"
             >
               <X className="h-4 w-4" />
@@ -1248,13 +1727,16 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                     onChange={handleFieldChange}
                     highlightedPath={highlightedPath}
                     websiteLanguage={previewLanguage ?? websiteLanguage}
-                    onRequestPickImage={(path) => setPickImagePath(path)}
+                    onRequestPickImage={(path) =>
+                      openImagePicker({ primaryPath: path, variants: [{ path, width: null }] })
+                    }
+                    onRequestPickImageGroup={openImagePicker}
                   />
                 </div>
               ) : (
                 <div className="shrink-0 border-b px-4 py-2">
                   <p className="text-xs text-muted-foreground">
-                    Turn Edit Mode on, then click text on the preview to edit it here.
+                    Turn Edit Mode on, then click text or an image on the preview to edit it here.
                   </p>
                 </div>
               )}
@@ -1350,7 +1832,10 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                       onChange={handleFieldChange}
                       highlightedPath={highlightedPath}
                       websiteLanguage={previewLanguage ?? websiteLanguage}
-                      onRequestPickImage={(path) => setPickImagePath(path)}
+                      onRequestPickImage={(path) =>
+                        openImagePicker({ primaryPath: path, variants: [{ path, width: null }] })
+                      }
+                      onRequestPickImageGroup={openImagePicker}
                     />
                     <Button
                       className="w-full mt-4"
@@ -1369,30 +1854,43 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
       </DialogContent>
     </Dialog>
     <PickImageFromMediaDialog
-      open={pickImagePath !== null}
-      onClose={() => setPickImagePath(null)}
-      onSelect={(url) => {
-        if (pickImagePath) {
-          handleFieldChange(pickImagePath, url);
-        }
-        setPickImagePath(null);
-      }}
+      open={pickImageTarget !== null}
+      onClose={() => setPickImageTarget(null)}
+      onSelect={handleImageGroupSelect}
       websiteId={websiteId}
       currentFieldUrl={
-        pickImagePath && localConfig
-          ? String(getValueAtPath(localConfig, pickImagePath) ?? "")
+        pickImageTarget && localConfig
+          ? String(getValueAtPath(localConfig, pickImageTarget.primaryPath) ?? "")
           : ""
       }
       accept={(() => {
-        if (!pickImagePath) return undefined;
-        const key = pickImagePath.toLowerCase();
-        // Video slots can also take a still image if the customer changes their mind
+        if (!pickImageTarget) return undefined;
+        const key = pickImageTarget.primaryPath.toLowerCase();
         if (["video", "audio"].some((k) => key.includes(k))) return "media";
         if (["pdf", "document", "attachment"].some((k) => key.includes(k))) return "file";
         if (IMAGE_FIELD_KEYWORDS.some((k) => key.includes(k))) return "image";
-        return undefined;
+        return "image";
       })()}
     />
+    <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have edits that are not saved yet. If you close now, those changes will be lost.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep editing</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={discardAndClose}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Discard & close
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     </>
   );
 }
