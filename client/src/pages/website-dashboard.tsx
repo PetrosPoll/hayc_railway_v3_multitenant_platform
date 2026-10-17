@@ -864,6 +864,39 @@ export default function WebsiteDashboard() {
     },
   });
 
+  /** Fully cancelled plan → Stripe Checkout for a new sub on the same website. */
+  const resubscribeMutation = useMutation({
+    mutationFn: async (subscriptionId: number) => {
+      const response = await fetch(
+        `/api/subscriptions/${subscriptionId}/resubscribe`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to start resubscribe");
+      }
+      return response.json() as Promise<{ url: string }>;
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: "No checkout URL returned",
+        variant: "destructive",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const updateBillingMutation = useMutation({
     mutationFn: async ({ subscriptionId, vatNumber, city, street, number, postalCode }: { subscriptionId: number; vatNumber: string; city: string; street: string; number: string; postalCode: string }) => {
       const response = await fetch("/api/update-subscription", {
@@ -1081,6 +1114,28 @@ export default function WebsiteDashboard() {
       return response.json();
     },
   });
+
+  // After Stripe resubscribe Checkout success
+  useEffect(() => {
+    if (searchParams.get("resubscribed") !== "1") return;
+    setActiveSection("billing");
+    setBillingView("overview");
+    toast({
+      title: t("dashboard.resubscribeSuccess") || "Subscription restarted",
+      description:
+        t("dashboard.resubscribeSuccessDesc") ||
+        "Your new subscription is linked to this website.",
+    });
+    queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+    queryClient.invalidateQueries({
+      queryKey: ["/api/websites", websiteId, "stripe", "status"],
+    });
+    const next = new URLSearchParams(searchParams);
+    next.delete("resubscribed");
+    if (!next.get("tab")) next.set("tab", "billing");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Auto-redirect to content tab when progress is complete and no tab was explicitly set
   useEffect(() => {
@@ -2379,18 +2434,27 @@ export default function WebsiteDashboard() {
                   {t("dashboard.cancelSubscription") || "CANCEL SUBSCRIPTION"}
                 </Button>
               ) : (
-                selectedSubscription.status === "cancelled" && (
-                  <div className="w-full space-y-1">
+                selectedSubscription.status === "cancelled" &&
+                selectedSubscription.productType === "plan" && (
+                  <div className="w-full space-y-2">
                     <Button
                       variant="default"
                       className="w-full"
-                      data-testid="button-resume-subscription"
-                      disabled={true}
+                      data-testid="button-resubscribe-subscription"
+                      disabled={isDemo || resubscribeMutation.isPending}
+                      onClick={() => {
+                        if (blockIfDemo()) return;
+                        resubscribeMutation.mutate(selectedSubscription.id);
+                      }}
                     >
-                      {t("dashboard.resume") || "Resume Subscription"}
+                      {resubscribeMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : null}
+                      {t("dashboard.resume") || "Resubscribe"}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
-                      To resubscribe, please contact support or purchase a new plan.
+                      {t("dashboard.resubscribeHint") ||
+                        "Starts a new subscription for this website (setup fee waived)."}
                     </p>
                   </div>
                 )

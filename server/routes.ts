@@ -4342,8 +4342,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             addOns: body.addOns ? JSON.stringify(body.addOns) : "",
             language: body.language || "en", //default language is en
             isResume: body.isResume ? "true" : "false",
+            ...(body.websiteProgressId
+              ? { websiteProgressId: String(body.websiteProgressId) }
+              : {}),
           },
         };
+
+        if (body.isResume && body.websiteProgressId) {
+          const base = `${req.protocol}://${req.get("host")}`;
+          sessionConfig.success_url = `${base}/dashboard/website/${body.websiteProgressId}?tab=billing&resubscribed=1`;
+          sessionConfig.cancel_url = `${base}/dashboard/website/${body.websiteProgressId}?tab=billing`;
+        }
 
         if (stripeCustomerId) {
           sessionConfig.customer = stripeCustomerId;
@@ -5969,11 +5978,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .where(eq(subscriptionsTable.stripeSubscriptionId, scheduleId));
             }
 
+            const websiteProgressIdFromMeta = session.metadata?.websiteProgressId
+              ? parseInt(session.metadata.websiteProgressId, 10)
+              : NaN;
+            const priorSubscriptionIdFromMeta = session.metadata?.priorSubscriptionId
+              ? parseInt(session.metadata.priorSubscriptionId, 10)
+              : NaN;
+            const resumeWebsiteProgressId = Number.isFinite(websiteProgressIdFromMeta)
+              ? websiteProgressIdFromMeta
+              : null;
+
             // One local row per recurring Stripe item (plan + each add-on).
             const ensured = await ensureSubscriptionItemsFromStripe({
               userId: user.id,
               stripeSubscription,
               maps: buildSubscriptionPriceMaps(),
+              websiteProgressId: resumeWebsiteProgressId,
               billing: {
                 vatNumber: session.metadata.vatNumber?.trim() || null,
                 city: session.metadata.city?.trim() || null,
@@ -5985,8 +6005,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
               createdAt: new Date(session.created * 1000),
             });
 
+            if (resumeWebsiteProgressId != null) {
+              await db
+                .update(subscriptionsTable)
+                .set({ websiteProgressId: resumeWebsiteProgressId })
+                .where(
+                  and(
+                    eq(subscriptionsTable.stripeSubscriptionId, stripeSubscription.id),
+                    eq(subscriptionsTable.userId, user.id),
+                    isNull(subscriptionsTable.websiteProgressId),
+                  ),
+                );
+            }
+
+            if (Number.isFinite(priorSubscriptionIdFromMeta) && priorSubscriptionIdFromMeta > 0) {
+              const planRow =
+                ensured.rows.find((row) => row.productType === "plan") ?? ensured.rows[0];
+              if (planRow) {
+                await db
+                  .update(subscriptionsTable)
+                  .set({ reactivationOf: priorSubscriptionIdFromMeta })
+                  .where(eq(subscriptionsTable.id, planRow.id));
+              }
+            }
+
             console.log("✅ Subscription items synced from Stripe checkout:", {
               stripeSubscriptionId: stripeSubscription.id,
+              websiteProgressId: resumeWebsiteProgressId,
+              priorSubscriptionId: Number.isFinite(priorSubscriptionIdFromMeta)
+                ? priorSubscriptionIdFromMeta
+                : null,
               created: ensured.created,
               updated: ensured.updated,
               rows: ensured.rows.map((row) => ({
@@ -7254,6 +7302,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error resuming subscription:", error);
       return res.status(500).json({ error: "Failed to resume subscription" });
+    }
+  });
+
+  /**
+   * Fully cancelled plan → new Stripe Checkout (no setup fee), linked to the same website.
+   * Distinct from /resume which only clears cancel_at_period_end on a still-live Stripe sub.
+   */
+  app.post("/api/subscriptions/:id/resubscribe", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const subscriptionId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(subscriptionId)) {
+        return res.status(400).json({ error: "Invalid subscription id" });
+      }
+
+      const currentUser = await storage.getUserById(req.user.id);
+      if (!currentUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const userSubscriptions = await storage.getUserSubscriptions(currentUser.id);
+      const localSubscription = userSubscriptions.find((s) => s.id === subscriptionId);
+      if (!localSubscription) {
+        return res.status(404).json({ error: "Subscription not found" });
+      }
+
+      if (localSubscription.status !== "cancelled") {
+        return res.status(400).json({
+          error:
+            localSubscription.cancelAtPeriodEnd
+              ? "Subscription is only scheduled to cancel — use Continue instead"
+              : "Only cancelled subscriptions can be resubscribed",
+        });
+      }
+
+      if (localSubscription.productType !== "plan") {
+        return res.status(400).json({
+          error: "Only plan subscriptions can be resubscribed from the dashboard",
+        });
+      }
+
+      const websiteProgressId = localSubscription.websiteProgressId;
+      if (!websiteProgressId) {
+        return res.status(400).json({ error: "Subscription is not linked to a website" });
+      }
+
+      const [wp] = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteProgressId))
+        .limit(1);
+      if (!wp || wp.userId !== currentUser.id) {
+        return res.status(403).json({ error: "Not authorized for this website" });
+      }
+
+      const alreadyActive = userSubscriptions.some(
+        (s) =>
+          s.websiteProgressId === websiteProgressId &&
+          s.productType === "plan" &&
+          s.status === "active",
+      );
+      if (alreadyActive) {
+        return res.status(400).json({
+          error: "This website already has an active plan subscription",
+        });
+      }
+
+      const planId = (localSubscription.tier || localSubscription.productId) as SubscriptionTier;
+      if (!planId || !["basic", "essential", "pro"].includes(planId)) {
+        return res.status(400).json({ error: "Unknown plan tier on cancelled subscription" });
+      }
+      const billingPeriod =
+        localSubscription.billingPeriod === "yearly" ? "yearly" : "monthly";
+
+      const { price } = await verifyPriceCurrencies(planId, billingPeriod);
+      const base = `${req.protocol}://${req.get("host")}`;
+
+      const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+        payment_method_types: ["card"],
+        mode: "subscription",
+        line_items: [{ price: price.id, quantity: 1 }],
+        success_url: `${base}/dashboard/website/${websiteProgressId}?tab=billing&resubscribed=1`,
+        cancel_url: `${base}/dashboard/website/${websiteProgressId}?tab=billing`,
+        metadata: {
+          username: currentUser.username,
+          phone: currentUser.phone || "",
+          planId,
+          billingPeriod,
+          password: "",
+          vatNumber: (localSubscription.vatNumber ?? "").trim(),
+          city: (localSubscription.city ?? "").trim(),
+          street: (localSubscription.street ?? "").trim(),
+          number: (localSubscription.number ?? "").trim(),
+          postalCode: (localSubscription.postalCode ?? "").trim(),
+          invoiceType: localSubscription.invoiceType || "invoice",
+          addOns: "",
+          language: currentUser.language || "en",
+          isResume: "true",
+          websiteProgressId: String(websiteProgressId),
+          priorSubscriptionId: String(localSubscription.id),
+        },
+      };
+
+      if (currentUser.stripeCustomerId) {
+        sessionConfig.customer = currentUser.stripeCustomerId;
+      } else if (currentUser.email) {
+        sessionConfig.customer_email = currentUser.email;
+      } else {
+        return res.status(400).json({ error: "User has no Stripe customer or email" });
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionConfig);
+      if (!session.url) {
+        return res.status(500).json({ error: "Stripe did not return a checkout URL" });
+      }
+      return res.json({ url: session.url });
+    } catch (error) {
+      console.error("Error creating resubscribe checkout:", error);
+      return res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Failed to start resubscribe checkout",
+      });
     }
   });
 

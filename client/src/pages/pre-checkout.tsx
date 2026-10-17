@@ -115,12 +115,14 @@ interface PreCheckoutPageProps {
   planId: string;
   isYearly: boolean;
   isResume?: boolean;
+  websiteProgressId?: number;
 }
 
 function PreCheckoutPage({
   planId,
   isYearly,
   isResume = false,
+  websiteProgressId,
 }: PreCheckoutPageProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -330,6 +332,7 @@ function PreCheckoutPage({
             .map((id) => AVAILABLE_ADDONS.find((addon) => addon.id === id)?.id)
             .filter((id): id is string => id !== undefined),
           isResume: isResume,
+          websiteProgressId,
           language: i18n.language,
         };
       } else {
@@ -355,6 +358,7 @@ function PreCheckoutPage({
             .map((id) => AVAILABLE_ADDONS.find((addon) => addon.id === id)?.id)
             .filter((id): id is string => id !== undefined),
           isResume: isResume,
+          websiteProgressId,
           language: i18n.language,
         };
       }
@@ -845,6 +849,10 @@ export default function PreCheckout() {
   const planId = params.planId;
   const isYearly = queryParams.get("isYearly") === "true"; // Convert to boolean
   const isResume = queryParams.get("isResume") === "true"; // Check if this is a resume flow
+  const websiteProgressIdParam = queryParams.get("websiteProgressId");
+  const websiteProgressId = websiteProgressIdParam
+    ? parseInt(websiteProgressIdParam, 10)
+    : undefined;
 
   if (!planId) {
     return (
@@ -868,6 +876,9 @@ export default function PreCheckout() {
         planId={planId}
         isYearly={isYearly}
         isResume={isResume}
+        websiteProgressId={
+          Number.isFinite(websiteProgressId) ? websiteProgressId : undefined
+        }
       />
     </div>
   );

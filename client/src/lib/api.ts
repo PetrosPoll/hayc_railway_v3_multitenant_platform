@@ -11,6 +11,7 @@ export async function createCheckoutSession(data: {
   password?: string;
   addOns?: string[]; // Add support for add-ons
   isResume?: boolean; // Add support for resume flow
+  websiteProgressId?: number; // Link new sub to an existing website (resubscribe)
   language?: string; // Add support for language preference
 }) {
   console.log('Creating checkout session with data:', data);
