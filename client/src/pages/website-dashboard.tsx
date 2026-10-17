@@ -805,7 +805,7 @@ export default function WebsiteDashboard() {
       }
       return response.json() as Promise<{ accessUntil?: string }>;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data, subscriptionId) => {
       const end =
         data.accessUntil != null
           ? new Date(data.accessUntil).toLocaleDateString()
@@ -819,7 +819,17 @@ export default function WebsiteDashboard() {
             : "Your subscription stays active until the end of the billing period."),
       });
       setSubscriptionToCancel(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+      // Optimistic UI so buttons switch immediately (selectedSubscription is a local snapshot)
+      setSelectedSubscription((prev: any) =>
+        prev && prev.id === subscriptionId
+          ? {
+              ...prev,
+              cancelAtPeriodEnd: true,
+              accessUntil: data.accessUntil ?? prev.accessUntil,
+            }
+          : prev,
+      );
+      await queryClient.refetchQueries({ queryKey: ["/api/subscriptions", websiteId] });
       queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "stripe", "status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
@@ -845,14 +855,23 @@ export default function WebsiteDashboard() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (_data, subscriptionId) => {
       toast({
         title: t("dashboard.subscriptionResumed") || "Subscription continued",
         description:
           t("dashboard.subscriptionResumedDesc") ||
           "Your subscription will renew as usual.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+      setSelectedSubscription((prev: any) =>
+        prev && prev.id === subscriptionId
+          ? {
+              ...prev,
+              cancelAtPeriodEnd: false,
+              cancellationReason: null,
+            }
+          : prev,
+      );
+      await queryClient.refetchQueries({ queryKey: ["/api/subscriptions", websiteId] });
       queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "stripe", "status"] });
     },
     onError: (err: Error) => {
@@ -2102,7 +2121,87 @@ export default function WebsiteDashboard() {
     );
   };
 
+  const getSubscriptionAmount = (subscription: any): number => {
+    const amount = subscription?.nextBillingAmount ?? subscription?.price;
+    return typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
+  };
+
+  const getSubscriptionLabel = (subscription: any): string => {
+    if (subscription?.productType === "addon" && subscription.productId) {
+      return (
+        AVAILABLE_ADDONS.find((a) => a.id === subscription.productId)?.name ||
+        subscription.productId
+      );
+    }
+    return subscription?.plan?.name || subscription?.tier || "Subscription";
+  };
+
+  /** Group plan + add-ons that share one Stripe subscription; leave standalone rows alone. */
+  const getSubscriptionDisplayGroups = (subs: any[] | undefined | null) => {
+    if (!subs?.length) return [] as Array<{ key: string; primary: any; companions: any[] }>;
+
+    const byStripe = new Map<string, any[]>();
+    const withoutStripe: any[] = [];
+
+    for (const sub of subs) {
+      const stripeId = sub.stripeSubscriptionId as string | null | undefined;
+      if (!stripeId) {
+        withoutStripe.push(sub);
+        continue;
+      }
+      const bucket = byStripe.get(stripeId);
+      if (bucket) bucket.push(sub);
+      else byStripe.set(stripeId, [sub]);
+    }
+
+    const groups: Array<{ key: string; primary: any; companions: any[] }> = [];
+
+    for (const [stripeId, rows] of byStripe) {
+      const plan = rows.find((r) => r.productType === "plan");
+      const addons = rows.filter((r) => r.productType === "addon");
+      if (plan && addons.length > 0) {
+        groups.push({ key: stripeId, primary: plan, companions: addons });
+      } else if (plan) {
+        groups.push({ key: stripeId, primary: plan, companions: [] });
+      } else {
+        for (const addon of addons) {
+          groups.push({ key: `${stripeId}-${addon.id}`, primary: addon, companions: [] });
+        }
+        for (const other of rows.filter(
+          (r) => r.productType !== "addon" && r.productType !== "plan",
+        )) {
+          groups.push({ key: `${stripeId}-${other.id}`, primary: other, companions: [] });
+        }
+      }
+    }
+
+    for (const orphan of withoutStripe) {
+      groups.push({ key: `local-${orphan.id}`, primary: orphan, companions: [] });
+    }
+
+    return groups;
+  };
+
+  const getCompanionsForSubscription = (subscription: any): any[] => {
+    if (
+      !subscription ||
+      subscription.productType !== "plan" ||
+      !subscription.stripeSubscriptionId ||
+      !subscriptions?.length
+    ) {
+      return [];
+    }
+    return subscriptions.filter(
+      (s: any) =>
+        s.productType === "addon" &&
+        s.stripeSubscriptionId === subscription.stripeSubscriptionId &&
+        s.id !== subscription.id,
+    );
+  };
+
   const renderSubscriptionsList = () => {
+    const displayGroups = getSubscriptionDisplayGroups(subscriptions);
+
     return (
       <div data-testid="subscriptions-list">
         <h2 className="text-2xl font-bold mb-6">
@@ -2144,9 +2243,19 @@ export default function WebsiteDashboard() {
                 t("dashboard.activeSubscriptions") || "Active Subscriptions",
               )}
             </h3>
-            {subscriptions.map((subscription: any) => (
+            {displayGroups.map(({ key, primary: subscription, companions }) => {
+              const totalAmount =
+                getSubscriptionAmount(subscription) +
+                companions.reduce(
+                  (sum, addon) => sum + getSubscriptionAmount(addon),
+                  0,
+                );
+              const currency = subscription.currency || "EUR";
+              const period = subscription.billingPeriod || "monthly";
+
+              return (
               <Card
-                key={subscription.id}
+                key={key}
                 className="cursor-pointer hover:border-primary transition-colors"
                 onClick={() => {
                   setSelectedSubscription(subscription);
@@ -2162,12 +2271,7 @@ export default function WebsiteDashboard() {
                           className="text-base font-semibold capitalize"
                           data-testid={`tier-${subscription.id}`}
                         >
-                          {subscription.productType === "addon" &&
-                            subscription.productId
-                            ? AVAILABLE_ADDONS.find(
-                              (a) => a.id === subscription.productId,
-                            )?.name || subscription.productId
-                            : subscription.plan?.name || subscription.tier}
+                          {getSubscriptionLabel(subscription)}
                         </h3>
                         <Badge
                           variant={
@@ -2185,6 +2289,14 @@ export default function WebsiteDashboard() {
                           {subscription.status}
                         </Badge>
                       </div>
+                      {companions.length > 0 && (
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {t("dashboard.includesAddOns") || "Includes"}:{" "}
+                          {companions
+                            .map((addon) => getSubscriptionLabel(addon))
+                            .join(", ")}
+                        </p>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         {subscription.status === "active" &&
                           subscription.nextBillingDate ? (
@@ -2192,10 +2304,13 @@ export default function WebsiteDashboard() {
                             Renews on {formatDate(subscription.nextBillingDate)}{" "}
                             for{" "}
                             {(() => {
+                              if (companions.length > 0) {
+                                return formatCurrency(totalAmount, currency);
+                              }
                               const actualPrice = subscription.nextBillingAmount || subscription.price;
                               const standardPrice = getStandardPrice(
                                 subscription.tier,
-                                subscription.billingPeriod || "monthly",
+                                period,
                                 subscription.productType,
                                 subscription.price
                               );
@@ -2205,88 +2320,50 @@ export default function WebsiteDashboard() {
                                 return (
                                   <span className="inline-flex items-center gap-2">
                                     <span className="line-through text-gray-400">
-                                      {formatCurrency(standardPrice, subscription.currency || "EUR")}
+                                      {formatCurrency(standardPrice, currency)}
                                     </span>
                                     <span className="text-green-600 font-semibold">
-                                      {formatCurrency(actualPrice, subscription.currency || "EUR")}
+                                      {formatCurrency(actualPrice, currency)}
                                     </span>
                                   </span>
                                 );
                               } else {
-                                return formatCurrency(actualPrice, subscription.currency || "EUR");
+                                return formatCurrency(actualPrice, currency);
                               }
                             })()}{" "}
-                            {subscription.billingPeriod || "monthly"}
+                            {period}
                           </>
                         ) : subscription.status === "cancelled" &&
                           subscription.accessUntil ? (
                           <>
                             Access expires on{" "}
                             {formatDate(subscription.accessUntil)}
-                            {(subscription.nextBillingAmount || subscription.price) && (
+                            {(totalAmount > 0 || subscription.price) && (
                               <>
                                 {" • "}
-                                {(() => {
-                                  const actualPrice = subscription.nextBillingAmount || subscription.price;
-                                  const standardPrice = getStandardPrice(
-                                    subscription.tier,
-                                    subscription.billingPeriod || "monthly",
-                                    subscription.productType,
-                                    subscription.price
-                                  );
-                                  const isDiscounted = actualPrice < standardPrice;
-
-                                  if (isDiscounted) {
-                                    return (
-                                      <span className="inline-flex items-center gap-2">
-                                        <span className="line-through text-gray-400">
-                                          {formatCurrency(standardPrice, subscription.currency || "EUR")}
-                                        </span>
-                                        <span className="text-green-600 font-semibold">
-                                          {formatCurrency(actualPrice, subscription.currency || "EUR")}
-                                        </span>
-                                      </span>
-                                    );
-                                  } else {
-                                    return formatCurrency(actualPrice, subscription.currency || "EUR");
-                                  }
-                                })()}{" "}
-                                {subscription.billingPeriod || "monthly"}
+                                {formatCurrency(
+                                  companions.length > 0
+                                    ? totalAmount
+                                    : getSubscriptionAmount(subscription),
+                                  currency,
+                                )}{" "}
+                                {period}
                               </>
                             )}
                           </>
                         ) : (
                           <>
                             {t("dashboard.activeSubscriptionsStartedOn") || "Started on"} {formatDate(subscription.createdAt)}
-                            {(subscription.nextBillingAmount || subscription.price) && (
+                            {(totalAmount > 0 || subscription.price) && (
                               <>
                                 {" • "}
-                                {(() => {
-                                  const actualPrice = subscription.nextBillingAmount || subscription.price;
-                                  const standardPrice = getStandardPrice(
-                                    subscription.tier,
-                                    subscription.billingPeriod || "monthly",
-                                    subscription.productType,
-                                    subscription.price
-                                  );
-                                  const isDiscounted = actualPrice < standardPrice;
-
-                                  if (isDiscounted) {
-                                    return (
-                                      <span className="inline-flex items-center gap-2">
-                                        <span className="line-through text-gray-400">
-                                          {formatCurrency(standardPrice, subscription.currency || "EUR")}
-                                        </span>
-                                        <span className="text-green-600 font-semibold">
-                                          {formatCurrency(actualPrice, subscription.currency || "EUR")}
-                                        </span>
-                                      </span>
-                                    );
-                                  } else {
-                                    return formatCurrency(actualPrice, subscription.currency || "EUR");
-                                  }
-                                })()}{" "}
-                                {t(`dashboard.billingPeriods.${subscription.billingPeriod || "monthly"}`)}
+                                {formatCurrency(
+                                  companions.length > 0
+                                    ? totalAmount
+                                    : getSubscriptionAmount(subscription),
+                                  currency,
+                                )}{" "}
+                                {t(`dashboard.billingPeriods.${period}`)}
                               </>
                             )}
                           </>
@@ -2297,7 +2374,8 @@ export default function WebsiteDashboard() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -2307,17 +2385,19 @@ export default function WebsiteDashboard() {
   const renderSubscriptionDetail = () => {
     if (!selectedSubscription) return null;
 
+    const companionAddons = getCompanionsForSubscription(selectedSubscription);
+    const nextPaymentTotal =
+      getSubscriptionAmount(selectedSubscription) +
+      companionAddons.reduce(
+        (sum, addon) => sum + getSubscriptionAmount(addon),
+        0,
+      );
+
     return (
       <div data-testid="subscription-detail">
         <div className="flex items-center gap-3 mb-6">
           <h2 className="text-2xl font-bold capitalize">
-            {selectedSubscription.productType === "addon" &&
-              selectedSubscription.productId
-              ? AVAILABLE_ADDONS.find(
-                (a) => a.id === selectedSubscription.productId,
-              )?.name || selectedSubscription.productId
-              : selectedSubscription.plan?.name ||
-              selectedSubscription.tier}{" "}
+            {getSubscriptionLabel(selectedSubscription)}{" "}
             {t("dashboard.subscription") || "Subscription"}
           </h2>
           <Badge
@@ -2347,11 +2427,8 @@ export default function WebsiteDashboard() {
             <div className="flex items-center justify-between py-3 border-b">
               <div>
                 <p className="font-semibold capitalize">
-                  {selectedSubscription.productType === "addon" &&
-                    selectedSubscription.productId
-                    ? AVAILABLE_ADDONS.find(
-                      (a) => a.id === selectedSubscription.productId,
-                    )?.name || selectedSubscription.productId
+                  {selectedSubscription.productType === "addon"
+                    ? getSubscriptionLabel(selectedSubscription)
                     : (selectedSubscription.plan?.name ||
                       selectedSubscription.tier) + " Plan"}
                 </p>
@@ -2393,6 +2470,54 @@ export default function WebsiteDashboard() {
               </span>
 
             </div>
+
+            {companionAddons.length > 0 && (
+              <div className="space-y-2 pb-2 border-b">
+                <p className="text-sm font-medium">
+                  {t("dashboard.includedAddOns") || "Included add-ons"}
+                </p>
+                {companionAddons.map((addon) => (
+                  <div
+                    key={addon.id}
+                    className="flex items-center justify-between text-sm"
+                    data-testid={`companion-addon-${addon.id}`}
+                  >
+                    <span className="text-muted-foreground capitalize">
+                      {getSubscriptionLabel(addon)}
+                    </span>
+                    <span>
+                      {formatCurrency(
+                        getSubscriptionAmount(addon),
+                        addon.currency || selectedSubscription.currency || "EUR",
+                      )}{" "}
+                      /{" "}
+                      {t(
+                        `dashboard.billingPeriods.${
+                          addon.billingPeriod ||
+                          selectedSubscription.billingPeriod ||
+                          "monthly"
+                        }`,
+                      )}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between text-sm font-semibold pt-1">
+                  <span>{t("dashboard.totalWithAddOns") || "Total"}</span>
+                  <span>
+                    {formatCurrency(
+                      nextPaymentTotal,
+                      selectedSubscription.currency || "EUR",
+                    )}{" "}
+                    /{" "}
+                    {t(
+                      `dashboard.billingPeriods.${
+                        selectedSubscription.billingPeriod || "monthly"
+                      }`,
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="pt-2 space-y-2">
@@ -2533,14 +2658,18 @@ export default function WebsiteDashboard() {
                 data-testid={`next-payment-${selectedSubscription.id}`}
               >
                 {formatCurrency(
-                  (selectedSubscription as any).nextBillingAmount !== undefined && (selectedSubscription as any).nextBillingAmount !== null
-                    ? (selectedSubscription as any).nextBillingAmount
-                    : selectedSubscription.price,
+                  companionAddons.length > 0
+                    ? nextPaymentTotal
+                    : (selectedSubscription as any).nextBillingAmount !== undefined &&
+                        (selectedSubscription as any).nextBillingAmount !== null
+                      ? (selectedSubscription as any).nextBillingAmount
+                      : selectedSubscription.price,
                   selectedSubscription.currency || "EUR",
                 )}
               </span>
             </div>
-            {(selectedSubscription as any).nextBillingAmount === 0 && (
+            {(selectedSubscription as any).nextBillingAmount === 0 &&
+              companionAddons.length === 0 && (
               <div className="py-3 border-b">
                 <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
                   <span className="text-blue-600 dark:text-blue-400 text-xs mt-0.5">ℹ️</span>
