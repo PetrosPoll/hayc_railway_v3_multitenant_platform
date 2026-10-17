@@ -864,7 +864,7 @@ export default function WebsiteDashboard() {
     },
   });
 
-  /** Fully cancelled plan → Stripe Checkout for a new sub on the same website. */
+  /** Fully cancelled plan/add-on → Checkout (or attach addon to active plan). */
   const resubscribeMutation = useMutation({
     mutationFn: async (subscriptionId: number) => {
       const response = await fetch(
@@ -875,11 +875,28 @@ export default function WebsiteDashboard() {
         const body = await response.json().catch(() => ({}));
         throw new Error(body.error || "Failed to start resubscribe");
       }
-      return response.json() as Promise<{ url: string }>;
+      return response.json() as Promise<{
+        url?: string;
+        attachedToPlan?: boolean;
+        restoredAddOns?: string[];
+      }>;
     },
     onSuccess: (data) => {
       if (data.url) {
         window.location.href = data.url;
+        return;
+      }
+      if (data.attachedToPlan) {
+        toast({
+          title: t("dashboard.resubscribeSuccess") || "Subscription restarted",
+          description:
+            t("dashboard.resubscribeAddonAttachedDesc") ||
+            "The add-on was added back to your active plan.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+        queryClient.invalidateQueries({
+          queryKey: ["/api/websites", websiteId, "stripe", "status"],
+        });
         return;
       }
       toast({
@@ -2435,7 +2452,8 @@ export default function WebsiteDashboard() {
                 </Button>
               ) : (
                 selectedSubscription.status === "cancelled" &&
-                selectedSubscription.productType === "plan" && (
+                (selectedSubscription.productType === "plan" ||
+                  selectedSubscription.productType === "addon") && (
                   <div className="w-full space-y-2">
                     <Button
                       variant="default"
@@ -2450,11 +2468,14 @@ export default function WebsiteDashboard() {
                       {resubscribeMutation.isPending ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       ) : null}
-                      {t("dashboard.resume") || "Resubscribe"}
+                      {t("dashboard.resume") || "Continue"}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
-                      {t("dashboard.resubscribeHint") ||
-                        "Starts a new subscription for this website (setup fee waived)."}
+                      {selectedSubscription.productType === "addon"
+                        ? t("dashboard.resubscribeAddonHint") ||
+                          "Restores this add-on on the website. Setup fee does not apply."
+                        : t("dashboard.resubscribeHint") ||
+                          "Starts a new plan for this website and restores cancelled add-ons. Setup fee waived."}
                     </p>
                   </div>
                 )

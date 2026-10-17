@@ -5781,6 +5781,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Create subscription record for the add-on (keep price in cents)
               const addOnPrice = stripeSubscription.items.data[0].price.unit_amount || null;
               
+              const priorAddonIdMeta = session.metadata?.priorSubscriptionId
+                ? parseInt(session.metadata.priorSubscriptionId, 10)
+                : NaN;
+
               const createdSubscription = await storage.createSubscription({
                 userId,
                 websiteProgressId,
@@ -5797,10 +5801,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 createdAt: new Date(session.created * 1000),
               });
 
+              if (Number.isFinite(priorAddonIdMeta) && priorAddonIdMeta > 0) {
+                await db
+                  .update(subscriptionsTable)
+                  .set({ reactivationOf: priorAddonIdMeta })
+                  .where(eq(subscriptionsTable.id, createdSubscription.id));
+              }
+
               console.log('✅ Add-on subscription created:', {
                 subscriptionId: createdSubscription.id,
                 addOnId,
-                stripeSubscriptionId: stripeSubscription.id
+                stripeSubscriptionId: stripeSubscription.id,
+                isResume: session.metadata?.isResume === "true",
+                reactivationOf: Number.isFinite(priorAddonIdMeta) ? priorAddonIdMeta : null,
               });
 
               // Create DRAFT invoice for add-on purchase
@@ -6027,6 +6040,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   .set({ reactivationOf: priorSubscriptionIdFromMeta })
                   .where(eq(subscriptionsTable.id, planRow.id));
               }
+            }
+
+            try {
+              const priorCompanionsRaw = session.metadata?.priorCompanionAddons;
+              if (priorCompanionsRaw) {
+                const priorCompanions = JSON.parse(priorCompanionsRaw) as Array<{
+                  id: number;
+                  productId: string;
+                }>;
+                for (const companion of priorCompanions) {
+                  if (!companion?.productId || !Number.isFinite(companion.id)) continue;
+                  const addonRow = ensured.rows.find(
+                    (row) =>
+                      row.productType === "addon" && row.productId === companion.productId,
+                  );
+                  if (!addonRow) continue;
+                  await db
+                    .update(subscriptionsTable)
+                    .set({ reactivationOf: companion.id })
+                    .where(eq(subscriptionsTable.id, addonRow.id));
+                }
+              }
+            } catch (companionErr) {
+              console.error(
+                "[checkout.session.completed] Failed to link companion addon reactivations:",
+                companionErr,
+              );
             }
 
             console.log("✅ Subscription items synced from Stripe checkout:", {
@@ -7306,7 +7346,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   /**
-   * Fully cancelled plan → new Stripe Checkout (no setup fee), linked to the same website.
+   * Fully cancelled plan or add-on → new Stripe Checkout (no setup fee), same website.
+   * Plan resubscribe also restores cancelled companion add-ons on that website.
    * Distinct from /resume which only clears cancel_at_period_end on a still-live Stripe sub.
    */
   app.post("/api/subscriptions/:id/resubscribe", async (req, res) => {
@@ -7339,12 +7380,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (localSubscription.productType !== "plan") {
-        return res.status(400).json({
-          error: "Only plan subscriptions can be resubscribed from the dashboard",
-        });
-      }
-
       const websiteProgressId = localSubscription.websiteProgressId;
       if (!websiteProgressId) {
         return res.status(400).json({ error: "Subscription is not linked to a website" });
@@ -7357,6 +7392,142 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .limit(1);
       if (!wp || wp.userId !== currentUser.id) {
         return res.status(403).json({ error: "Not authorized for this website" });
+      }
+
+      const base = `${req.protocol}://${req.get("host")}`;
+      const successUrl = `${base}/dashboard/website/${websiteProgressId}?tab=billing&resubscribed=1`;
+      const cancelUrl = `${base}/dashboard/website/${websiteProgressId}?tab=billing`;
+
+      const resolveAddonPriceId = (
+        addonId: string,
+        billingPeriod: "monthly" | "yearly",
+      ): string | null => {
+        if (billingPeriod === "yearly") {
+          return (
+            ADDON_YEARLY_PRICE_MAP[addonId]?.priceId ??
+            ADDON_PRICE_MAP[addonId] ??
+            null
+          );
+        }
+        return ADDON_PRICE_MAP[addonId] ?? null;
+      };
+
+      // ── Cancelled add-on only ──────────────────────────────────────────
+      if (localSubscription.productType === "addon") {
+        const addonId = localSubscription.productId;
+        if (!addonId) {
+          return res.status(400).json({ error: "Add-on has no product id" });
+        }
+        const alreadyActiveAddon = userSubscriptions.some(
+          (s) =>
+            s.websiteProgressId === websiteProgressId &&
+            s.productType === "addon" &&
+            s.productId === addonId &&
+            s.status === "active",
+        );
+        if (alreadyActiveAddon) {
+          return res.status(400).json({
+            error: "This add-on is already active on the website",
+          });
+        }
+
+        const billingPeriod =
+          localSubscription.billingPeriod === "yearly" ? "yearly" : "monthly";
+        const addonPriceId = resolveAddonPriceId(addonId, billingPeriod);
+        if (!addonPriceId) {
+          return res.status(400).json({ error: `No Stripe price for add-on ${addonId}` });
+        }
+
+        const activePlan = userSubscriptions.find(
+          (s) =>
+            s.websiteProgressId === websiteProgressId &&
+            s.productType === "plan" &&
+            s.status === "active" &&
+            !!s.stripeSubscriptionId,
+        );
+
+        // Prefer attaching to the live plan Stripe subscription when one exists.
+        if (activePlan?.stripeSubscriptionId && currentUser.stripeCustomerId) {
+          try {
+            await stripe.subscriptionItems.create({
+              subscription: activePlan.stripeSubscriptionId,
+              price: addonPriceId,
+              quantity: 1,
+              proration_behavior: "create_prorations",
+            });
+            const stripeSubscription = await stripe.subscriptions.retrieve(
+              activePlan.stripeSubscriptionId,
+              { expand: ["items.data.price"] },
+            );
+            const ensured = await ensureSubscriptionItemsFromStripe({
+              userId: currentUser.id,
+              stripeSubscription,
+              maps: buildSubscriptionPriceMaps(),
+              websiteProgressId,
+            });
+            const newAddonRow = ensured.rows.find(
+              (row) =>
+                row.productType === "addon" &&
+                row.productId === addonId &&
+                row.status === "active",
+            );
+            if (newAddonRow) {
+              await db
+                .update(subscriptionsTable)
+                .set({ reactivationOf: localSubscription.id })
+                .where(eq(subscriptionsTable.id, newAddonRow.id));
+            }
+            return res.json({
+              success: true,
+              attachedToPlan: true,
+              subscriptionId: newAddonRow?.id ?? null,
+            });
+          } catch (attachErr) {
+            console.warn(
+              "[resubscribe] attach addon to plan failed, falling back to Checkout:",
+              attachErr,
+            );
+          }
+        }
+
+        if (!currentUser.stripeCustomerId && !currentUser.email) {
+          return res.status(400).json({ error: "User has no Stripe customer or email" });
+        }
+
+        const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+          payment_method_types: ["card"],
+          mode: "subscription",
+          line_items: [{ price: addonPriceId, quantity: 1 }],
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          metadata: {
+            userId: String(currentUser.id),
+            websiteProgressId: String(websiteProgressId),
+            addOnId: addonId,
+            isResume: "true",
+            priorSubscriptionId: String(localSubscription.id),
+            username: currentUser.username,
+            language: currentUser.language || "en",
+          },
+        };
+        if (currentUser.stripeCustomerId) {
+          sessionConfig.customer = currentUser.stripeCustomerId;
+        } else {
+          sessionConfig.customer_email = currentUser.email!;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+        if (!session.url) {
+          return res.status(500).json({ error: "Stripe did not return a checkout URL" });
+        }
+        return res.json({ url: session.url });
+      }
+
+      // ── Cancelled plan (+ companion cancelled add-ons) ────────────────
+      if (localSubscription.productType !== "plan") {
+        return res.status(400).json({
+          error: "Unsupported subscription type for resubscribe",
+        });
       }
 
       const alreadyActive = userSubscriptions.some(
@@ -7379,14 +7550,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
         localSubscription.billingPeriod === "yearly" ? "yearly" : "monthly";
 
       const { price } = await verifyPriceCurrencies(planId, billingPeriod);
-      const base = `${req.protocol}://${req.get("host")}`;
+
+      // Restore cancelled add-ons on this website (prefer those from the same Stripe sub).
+      const companionByProduct = new Map<
+        string,
+        (typeof userSubscriptions)[number]
+      >();
+      for (const s of userSubscriptions) {
+        if (s.productType !== "addon" || s.status !== "cancelled" || !s.productId) continue;
+        if (s.websiteProgressId !== websiteProgressId) continue;
+        const hasActive = userSubscriptions.some(
+          (a) =>
+            a.productType === "addon" &&
+            a.productId === s.productId &&
+            a.websiteProgressId === websiteProgressId &&
+            a.status === "active",
+        );
+        if (hasActive) continue;
+        const existing = companionByProduct.get(s.productId);
+        if (!existing) {
+          companionByProduct.set(s.productId, s);
+          continue;
+        }
+        // Prefer rows that shared the cancelled plan's Stripe subscription id.
+        if (
+          localSubscription.stripeSubscriptionId &&
+          s.stripeSubscriptionId === localSubscription.stripeSubscriptionId &&
+          existing.stripeSubscriptionId !== localSubscription.stripeSubscriptionId
+        ) {
+          companionByProduct.set(s.productId, s);
+        }
+      }
+      const companionAddons = [...companionByProduct.values()];
+
+      const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+        { price: price.id, quantity: 1 },
+      ];
+      const addonIdsForMeta: string[] = [];
+      const priorCompanionMeta: Array<{ id: number; productId: string }> = [];
+
+      for (const addon of companionAddons) {
+        const addonBilling =
+          addon.billingPeriod === "yearly" ? "yearly" : billingPeriod;
+        const addonPriceId = resolveAddonPriceId(addon.productId!, addonBilling);
+        if (!addonPriceId) {
+          console.warn(
+            `[resubscribe] skip companion addon ${addon.productId}: no price id`,
+          );
+          continue;
+        }
+        lineItems.push({ price: addonPriceId, quantity: 1 });
+        addonIdsForMeta.push(addon.productId!);
+        priorCompanionMeta.push({ id: addon.id, productId: addon.productId! });
+      }
 
       const sessionConfig: Stripe.Checkout.SessionCreateParams = {
         payment_method_types: ["card"],
         mode: "subscription",
-        line_items: [{ price: price.id, quantity: 1 }],
-        success_url: `${base}/dashboard/website/${websiteProgressId}?tab=billing&resubscribed=1`,
-        cancel_url: `${base}/dashboard/website/${websiteProgressId}?tab=billing`,
+        line_items: lineItems,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
         metadata: {
           username: currentUser.username,
           phone: currentUser.phone || "",
@@ -7399,11 +7622,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           number: (localSubscription.number ?? "").trim(),
           postalCode: (localSubscription.postalCode ?? "").trim(),
           invoiceType: localSubscription.invoiceType || "invoice",
-          addOns: "",
+          addOns: JSON.stringify(addonIdsForMeta),
           language: currentUser.language || "en",
           isResume: "true",
           websiteProgressId: String(websiteProgressId),
           priorSubscriptionId: String(localSubscription.id),
+          priorCompanionAddons: JSON.stringify(priorCompanionMeta),
         },
       };
 
@@ -7419,7 +7643,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!session.url) {
         return res.status(500).json({ error: "Stripe did not return a checkout URL" });
       }
-      return res.json({ url: session.url });
+      return res.json({
+        url: session.url,
+        restoredAddOns: addonIdsForMeta,
+      });
     } catch (error) {
       console.error("Error creating resubscribe checkout:", error);
       return res.status(500).json({
