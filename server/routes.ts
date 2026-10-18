@@ -51,6 +51,8 @@ import {
   appSettings,
   emailTemplates,
   insertEmailTemplateSchema,
+  popupTemplates,
+  insertPopupTemplateSchema,
   campaignMessages,
   newsletterCampaigns as newsletterCampaignsTable,
   templates as templatesTable,
@@ -3794,6 +3796,265 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting email template:", error);
       res.status(500).json({ error: "Failed to delete email template" });
+    }
+  });
+
+  // ── Popup templates (Unlayer visit popups — separate from newsletters) ──
+
+  async function assertWebsiteAccess(websiteId: number, userId: number, role?: string) {
+    const [website] = await db
+      .select()
+      .from(websiteProgress)
+      .where(eq(websiteProgress.id, websiteId))
+      .limit(1);
+    if (!website) return { error: "Website not found" as const, status: 404 as const };
+    const isAdmin = role === "admin" || role === "administrator";
+    if (website.userId !== userId && !isAdmin) {
+      return { error: "Not authorized" as const, status: 403 as const };
+    }
+    return { website };
+  }
+
+  app.get("/api/popup-templates/:websiteId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const websiteId = parseInt(req.params.websiteId, 10);
+      if (!Number.isFinite(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+      const access = await assertWebsiteAccess(websiteId, req.user.id, req.user.role);
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      const templates = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.websiteProgressId, websiteId))
+        .orderBy(desc(popupTemplates.updatedAt));
+
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching popup templates:", error);
+      res.status(500).json({ error: "Failed to fetch popup templates" });
+    }
+  });
+
+  app.get("/api/popup-template/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const templateId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(templateId)) {
+        return res.status(400).json({ error: "Invalid popup id" });
+      }
+
+      const [template] = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.id, templateId))
+        .limit(1);
+      if (!template) {
+        return res.status(404).json({ error: "Popup not found" });
+      }
+
+      const access = await assertWebsiteAccess(
+        template.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching popup template:", error);
+      res.status(500).json({ error: "Failed to fetch popup template" });
+    }
+  });
+
+  app.post("/api/popup-templates", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const validatedData = insertPopupTemplateSchema.parse(req.body);
+      const access = await assertWebsiteAccess(
+        validatedData.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      const [newTemplate] = await db
+        .insert(popupTemplates)
+        .values({
+          ...validatedData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(newTemplate);
+    } catch (error) {
+      console.error("Error creating popup template:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid popup data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create popup template" });
+    }
+  });
+
+  app.patch("/api/popup-templates/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const templateId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(templateId)) {
+        return res.status(400).json({ error: "Invalid popup id" });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.id, templateId))
+        .limit(1);
+      if (!existing) {
+        return res.status(404).json({ error: "Popup not found" });
+      }
+
+      const access = await assertWebsiteAccess(
+        existing.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      const validatedData = insertPopupTemplateSchema.partial().parse(req.body);
+      // Never allow moving a popup to another website via PATCH
+      delete (validatedData as { websiteProgressId?: number }).websiteProgressId;
+
+      const contentChanged =
+        validatedData.html !== undefined || validatedData.design !== undefined;
+
+      const [updatedTemplate] = await db
+        .update(popupTemplates)
+        .set({
+          ...validatedData,
+          ...(contentChanged ? { version: (existing.version || 1) + 1 } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(popupTemplates.id, templateId))
+        .returning();
+
+      res.json(updatedTemplate);
+    } catch (error) {
+      console.error("Error updating popup template:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid popup data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update popup template" });
+    }
+  });
+
+  app.delete("/api/popup-templates/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const templateId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(templateId)) {
+        return res.status(400).json({ error: "Invalid popup id" });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.id, templateId))
+        .limit(1);
+      if (!existing) {
+        return res.status(404).json({ error: "Popup not found" });
+      }
+
+      const access = await assertWebsiteAccess(
+        existing.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      await db.delete(popupTemplates).where(eq(popupTemplates.id, templateId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting popup template:", error);
+      res.status(500).json({ error: "Failed to delete popup template" });
+    }
+  });
+
+  app.post("/api/popup-templates/:id/duplicate", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const templateId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(templateId)) {
+        return res.status(400).json({ error: "Invalid popup id" });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.id, templateId))
+        .limit(1);
+      if (!existing) {
+        return res.status(404).json({ error: "Popup not found" });
+      }
+
+      const access = await assertWebsiteAccess(
+        existing.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      const [copy] = await db
+        .insert(popupTemplates)
+        .values({
+          websiteProgressId: existing.websiteProgressId,
+          name: `${existing.name} (copy)`,
+          html: existing.html,
+          design: existing.design,
+          thumbnail: existing.thumbnail,
+          enabled: false,
+          delayMs: existing.delayMs,
+          showOnceEveryDays: existing.showOnceEveryDays,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(copy);
+    } catch (error) {
+      console.error("Error duplicating popup template:", error);
+      res.status(500).json({ error: "Failed to duplicate popup template" });
     }
   });
 

@@ -1153,6 +1153,53 @@ export const insertEmailTemplateSchema = createInsertSchema(emailTemplates)
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
 
+/** Site visit popups designed in Unlayer (separate from newsletter email templates). */
+export const popupTemplates = pgTable(
+  "popup_templates",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    name: text("name").notNull(),
+    html: text("html").notNull(),
+    design: text("design").notNull(), // JSON string of Unlayer design
+    thumbnail: text("thumbnail"),
+    enabled: boolean("enabled").notNull().default(false),
+    delayMs: integer("delay_ms").notNull().default(1500),
+    /** 0 = every visit; otherwise hide for N days after dismiss (localStorage/cookie on live site). */
+    showOnceEveryDays: integer("show_once_every_days").notNull().default(7),
+    /** Bump on content save so live sites can invalidate dismiss cookies. */
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteIdx: index("popup_templates_website_idx").on(table.websiteProgressId),
+  }),
+);
+
+export const insertPopupTemplateSchema = createInsertSchema(popupTemplates)
+  .pick({
+    websiteProgressId: true,
+    name: true,
+    html: true,
+    design: true,
+    thumbnail: true,
+    enabled: true,
+    delayMs: true,
+    showOnceEveryDays: true,
+  })
+  .extend({
+    thumbnail: z.string().nullable().optional(),
+    enabled: z.boolean().optional(),
+    delayMs: z.number().int().min(0).max(120_000).optional(),
+    showOnceEveryDays: z.number().int().min(0).max(365).optional(),
+  });
+
+export type PopupTemplate = typeof popupTemplates.$inferSelect;
+export type InsertPopupTemplate = z.infer<typeof insertPopupTemplateSchema>;
+
 // Website Analytics tables
 export const websiteAnalyticsKeys = pgTable("website_analytics_keys", {
   id: serial("id").primaryKey(),

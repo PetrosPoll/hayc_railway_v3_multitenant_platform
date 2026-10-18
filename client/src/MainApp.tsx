@@ -36,6 +36,7 @@ import Auth from "@/pages/auth";
 import WebsitesList from "@/pages/websites-list";
 import WebsiteDashboard from "@/pages/website-dashboard";
 import EmailBuilderPage from "@/pages/email-builder";
+import PopupBuilderPage from "@/pages/popup-builder";
 import CampaignAnalytics from "@/pages/campaign-analytics";
 import NotFound from "@/pages/not-found";
 import Admin from "@/pages/admin";
@@ -83,6 +84,7 @@ function ConditionalFooter() {
     location.pathname === "/get-started/onboarding/content-media" ||
     location.pathname === "/reviews-program" ||
     location.pathname.includes("/email-builder") ||
+    location.pathname.includes("/popup-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
     location.pathname === "/portfolio" ||
@@ -107,6 +109,7 @@ function ConditionalNavMenu() {
     location.pathname === "/demo" ||
     location.pathname.startsWith("/demo/") ||
     location.pathname.includes("/email-builder") ||
+    location.pathname.includes("/popup-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
     location.pathname === "/portfolio" ||
@@ -216,6 +219,14 @@ function MainAppContent() {
             element={
               <ProtectedRoute redirectAdminsToAdmin={true}>
                 <EmailBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/websites/:websiteId/popup-builder"
+            element={
+              <ProtectedRoute redirectAdminsToAdmin={true}>
+                <PopupBuilderPage />
               </ProtectedRoute>
             }
           />

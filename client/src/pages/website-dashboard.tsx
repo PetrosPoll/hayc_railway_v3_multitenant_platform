@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { WebsiteProgress } from "@/components/ui/website-progress";
 import { WebsiteAnalytics } from "@/components/ui/website-analytics";
 import { Separator } from "@/components/ui/separator";
@@ -75,6 +76,7 @@ import {
   Film,
   Ticket,
   Zap,
+  AppWindow,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
@@ -82,7 +84,7 @@ import { useAuth } from "@/components/ui/authContext";
 import { impersonationMinHSvh } from "@/lib/impersonation-layout";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { Subscription } from "@shared/schema";
+import { Subscription, type PopupTemplate } from "@shared/schema";
 import { AVAILABLE_ADDONS } from "@/lib/addons";
 import { toGreekSafeUpperCase } from "@/lib/greek-text";
 import { usePricing, getAddonPrice } from "@/hooks/use-pricing";
@@ -633,6 +635,116 @@ export default function WebsiteDashboard() {
       enabled: !!websiteId && newsletterView === "templates",
     },
   );
+
+  const { data: popupTemplates, isLoading: popupsLoading } = useQuery<
+    PopupTemplate[]
+  >({
+    queryKey: ["/api/popup-templates", websiteId],
+    queryFn: async () => {
+      const response = await fetch(`/api/popup-templates/${websiteId}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch popups");
+      }
+      return response.json();
+    },
+    enabled: !!websiteId && activeSection === "popups",
+  });
+
+  const [popupToDelete, setPopupToDelete] = useState<number | null>(null);
+
+  const deletePopupMutation = useMutation({
+    mutationFn: async (popupId: number) => {
+      const response = await fetch(`/api/popup-templates/${popupId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete popup");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setPopupToDelete(null);
+      queryClient.invalidateQueries({
+        queryKey: ["/api/popup-templates", websiteId],
+      });
+      toast({
+        title: t("dashboard.success") || "Success",
+        description: t("dashboard.popupDeleted") || "Popup deleted",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const togglePopupEnabledMutation = useMutation({
+    mutationFn: async ({
+      popupId,
+      enabled,
+    }: {
+      popupId: number;
+      enabled: boolean;
+    }) => {
+      const response = await fetch(`/api/popup-templates/${popupId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update popup");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/popup-templates", websiteId],
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const duplicatePopupMutation = useMutation({
+    mutationFn: async (popupId: number) => {
+      const response = await fetch(`/api/popup-templates/${popupId}/duplicate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to duplicate popup");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/popup-templates", websiteId],
+      });
+      toast({
+        title: t("dashboard.success") || "Success",
+        description: t("dashboard.popupDuplicated") || "Popup duplicated",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch website-specific invoices at the top level
   const { data: websiteInvoices, isLoading: invoicesLoading } = useQuery({
@@ -1555,6 +1667,7 @@ export default function WebsiteDashboard() {
 
     const marketingItems = [
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
+      { id: "popups", label: t("dashboard.popups") || "Popups", icon: AppWindow },
       ...(website?.siteId
         ? [{ id: "automations", label: t("dashboard.automations") || "Automations", icon: Zap }]
         : []),
@@ -1833,6 +1946,16 @@ export default function WebsiteDashboard() {
                       {t("dashboard.newsletter") || "Newsletter"}
                     </BreadcrumbLink>
                   )}
+                </BreadcrumbItem>
+              </>
+            )}
+            {activeSection === "popups" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage data-testid="breadcrumb-popups">
+                    {t("dashboard.popups") || "Popups"}
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </>
             )}
@@ -3983,6 +4106,270 @@ export default function WebsiteDashboard() {
     );
   };
 
+  const renderPopupsList = () => {
+    return (
+      <div data-testid="popups-list">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">
+              {t("dashboard.popups") || "Popups"}
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              {t("dashboard.popupsDescription") ||
+                "Design visit popups with the visual editor. Separate from newsletter templates."}
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              if (blockIfDemo()) return;
+              sessionStorage.removeItem("loadPopupId");
+              navigate(`/websites/${websiteId}/popup-builder`);
+            }}
+            disabled={isDemo}
+            data-testid="button-create-popup"
+            className="shrink-0"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t("dashboard.createPopup") || "Create Popup"}
+          </Button>
+        </div>
+
+        {popupsLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" data-testid="loader-popups" />
+          </div>
+        ) : !popupTemplates || popupTemplates.length === 0 ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="p-4 bg-muted rounded-md">
+                    <AppWindow className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">
+                  {t("dashboard.noPopupsYet") || "No popups yet"}
+                </h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  {t("dashboard.createFirstPopup") ||
+                    "Create your first visit popup with the Unlayer editor."}
+                </p>
+                <Button
+                  onClick={() => {
+                    if (blockIfDemo()) return;
+                    sessionStorage.removeItem("loadPopupId");
+                    navigate(`/websites/${websiteId}/popup-builder`);
+                  }}
+                  disabled={isDemo}
+                  size="lg"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("dashboard.createPopup") || "Create Popup"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {popupTemplates.map((popup) => (
+              <Card
+                key={popup.id}
+                className="hover:border-primary transition-colors flex flex-col overflow-hidden"
+                data-testid={`popup-card-${popup.id}`}
+              >
+                <button
+                  type="button"
+                  className="relative aspect-[3/4] w-full bg-muted overflow-hidden border-b text-left cursor-pointer"
+                  onClick={() => {
+                    sessionStorage.setItem("loadPopupId", popup.id.toString());
+                    navigate(`/websites/${websiteId}/popup-builder`);
+                  }}
+                  data-testid={`button-popup-thumbnail-${popup.id}`}
+                >
+                  {popup.thumbnail ? (
+                    <img
+                      src={popup.thumbnail}
+                      alt={popup.name}
+                      className="absolute inset-0 h-full w-full object-cover object-top"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <AppWindow className="h-10 w-10" />
+                      <span className="px-3 text-center text-xs">
+                        {t("dashboard.noThumbnail") || "No preview"}
+                      </span>
+                    </div>
+                  )}
+                </button>
+                <CardHeader className="p-3 pb-2 space-y-1.5">
+                  <CardTitle className="text-sm font-semibold leading-snug line-clamp-2">
+                    {popup.name}
+                  </CardTitle>
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge
+                      variant={popup.enabled ? "default" : "secondary"}
+                      className={popup.enabled ? "bg-green-500" : ""}
+                    >
+                      {popup.enabled
+                        ? t("dashboard.popupStatusEnabled") || "Enabled"
+                        : t("dashboard.popupStatusDisabled") || "Disabled"}
+                    </Badge>
+                    <Switch
+                      checked={!!popup.enabled}
+                      disabled={isDemo || togglePopupEnabledMutation.isPending}
+                      onCheckedChange={(checked) => {
+                        if (blockIfDemo()) return;
+                        togglePopupEnabledMutation.mutate({
+                          popupId: popup.id,
+                          enabled: checked,
+                        });
+                      }}
+                      data-testid={`switch-popup-enabled-${popup.id}`}
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(
+                      popup.updatedAt || popup.createdAt || Date.now(),
+                    ).toLocaleDateString()}
+                  </p>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 mt-auto">
+                  <TooltipProvider>
+                    <div className="flex gap-1.5 justify-center flex-wrap">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              sessionStorage.setItem(
+                                "loadPopupId",
+                                popup.id.toString(),
+                              );
+                              navigate(`/websites/${websiteId}/popup-builder`);
+                            }}
+                            data-testid={`button-edit-popup-${popup.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("dashboard.edit") || "Edit"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              const previewWindow = window.open("", "_blank");
+                              if (previewWindow) {
+                                previewWindow.document.write(popup.html);
+                                previewWindow.document.close();
+                              }
+                            }}
+                            data-testid={`button-preview-popup-${popup.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("dashboard.preview") || "Preview"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={
+                              isDemo || duplicatePopupMutation.isPending
+                            }
+                            onClick={() => {
+                              if (blockIfDemo()) return;
+                              duplicatePopupMutation.mutate(popup.id);
+                            }}
+                            data-testid={`button-duplicate-popup-${popup.id}`}
+                          >
+                            {duplicatePopupMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("dashboard.duplicate") || "Duplicate"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={isDemo}
+                            onClick={() => {
+                              if (blockIfDemo()) return;
+                              setPopupToDelete(popup.id);
+                            }}
+                            data-testid={`button-delete-popup-${popup.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("dashboard.delete") || "Delete"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <AlertDialog
+          open={popupToDelete !== null}
+          onOpenChange={(open) => !open && setPopupToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("dashboard.deletePopupTitle") || "Delete popup?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("dashboard.deletePopupDesc") ||
+                  "This permanently deletes the popup design. This cannot be undone."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletePopupMutation.isPending}>
+                {t("dashboard.cancel") || "Cancel"}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                disabled={deletePopupMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (popupToDelete != null) {
+                    deletePopupMutation.mutate(popupToDelete);
+                  }
+                }}
+              >
+                {deletePopupMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  t("dashboard.delete") || "Delete"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  };
+
   const renderMediaSection = () => {
     const mediaFiles = mediaData?.media || [];
 
@@ -4965,6 +5352,10 @@ export default function WebsiteDashboard() {
                   {newsletterView === "templates" && renderTemplatesView()}
                   {newsletterView === "campaigns" && renderCampaignsView()}
                 </div>
+              )}
+
+              {activeSection === "popups" && (
+                <div data-testid="section-popups">{renderPopupsList()}</div>
               )}
 
               {activeSection === "automations" && website?.siteId && (
