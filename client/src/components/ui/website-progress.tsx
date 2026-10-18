@@ -527,11 +527,48 @@ export function WebsiteProgress({ websiteId }: WebsiteProgressProps) {
                               },
                               (error: any, result: any) => {
                                 if (!error && result.event === "success") {
+                                  const info = result.info || {};
+                                  const resourceType =
+                                    info.resource_type === "image" ||
+                                    info.resource_type === "video" ||
+                                    info.resource_type === "raw"
+                                      ? info.resource_type
+                                      : undefined;
+
+                                  // Persist + notify admin (same path as Media tab uploads)
+                                  void fetch(`/api/websites/${websiteId}/media`, {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    credentials: "include",
+                                    body: JSON.stringify({
+                                      url: info.secure_url,
+                                      publicId: info.public_id,
+                                      name: info.original_filename || "Untitled",
+                                      ...(resourceType ? { resourceType } : {}),
+                                    }),
+                                  })
+                                    .then((res) => {
+                                      if (res.ok) {
+                                        queryClient.invalidateQueries({
+                                          queryKey: ["/api/websites", websiteId, "media"],
+                                        });
+                                        queryClient.invalidateQueries({
+                                          queryKey: ["/api/admin/websites", websiteId],
+                                        });
+                                      }
+                                    })
+                                    .catch((persistErr) => {
+                                      console.error(
+                                        "Failed to persist progress upload / notify admin:",
+                                        persistErr,
+                                      );
+                                    });
+
                                   toast({
                                     title:
                                       t("websiteProgress.uploadSuccessful") ||
                                       "Upload Successful",
-                                    description: `${t("websiteProgress.file") || "File"} "${result.info.original_filename}" ${t("websiteProgress.uploadedSuccessfully") || "uploaded successfully"}`,
+                                    description: `${t("websiteProgress.file") || "File"} "${info.original_filename}" ${t("websiteProgress.uploadedSuccessfully") || "uploaded successfully"}`,
                                   });
                                 } else if (error) {
                                   toast({
