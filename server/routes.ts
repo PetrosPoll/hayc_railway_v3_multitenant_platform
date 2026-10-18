@@ -76,6 +76,7 @@ import {
   websiteAutomationJobs,
   websiteAutomationRuns,
   websiteAutomationSteps,
+  automationEvents,
 } from "@shared/schema";
 import {
   applyFormEmailPlaceholders,
@@ -93,7 +94,11 @@ import {
 } from "./lib/automation-events";
 import { syncWebsiteFormFieldsFromConfig } from "./lib/automation-form-fields";
 import { migrateLegacyFormAutomationsToWorkflows } from "./lib/automation-legacy-migrate";
-import { cancelRuns } from "./lib/automation-engine-v2";
+import {
+  cancelRuns,
+  formWorkflowHasNotifyOwner,
+} from "./lib/automation-engine-v2";
+import { AUTOMATION_PRESETS, getAutomationPreset } from "./lib/automation-presets";
 import { demoReadOnlyMiddleware } from "./lib/demo-mode";
 import {
   createDedicatedDemoUser,
@@ -25333,32 +25338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         siteLabel: siteLabel || "",
       };
 
-      // Email 1 — Notification to business owner
-      const ownerSubject = `New contact form message from ${name} — ${siteLabel}`;
-      const ownerHtml = loadTemplate(
-        "public-contact-owner-notification.html",
-        {
-          name: escapeHtml(name),
-          email: escapeHtml(email),
-          phone: escapeHtml(phone || "N/A"),
-          extraFields: extraFieldsHtml.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
-          message: escapeHtml(message),
-          siteLabel: escapeHtml(siteLabel),
-        },
-        "en",
-      );
-
-      const ownerSend = EmailService.sendEmail({
-        to: ownerEmail,
-        subject: ownerSubject,
-        message: ownerSubject,
-        fromEmail: fromAddress,
-        fromName: senderName,
-        html: ownerHtml,
-        replyToAddresses: [email],
-      });
-
-      // Email 2 — prefer visual workflow (legacy or v2), then simple automation, then default
+      // Prefer visual workflow (legacy or v2), then simple automation, then default
       let workflowHandled = false;
       if (formId) {
         try {
@@ -25390,6 +25370,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
           workflowHandled = false;
         }
       }
+
+      // Owner notification: skip hard-coded send when v2 workflow has notify_owner
+      const engineModeEarly = await getAutomationsEngineMode(website.id);
+      const skipHardcodedOwner =
+        !!formId &&
+        engineModeEarly === "v2" &&
+        (await formWorkflowHasNotifyOwner(website.id, formId));
+
+      const ownerSubject = `New contact form message from ${name} — ${siteLabel}`;
+      const ownerHtml = loadTemplate(
+        "public-contact-owner-notification.html",
+        {
+          name: escapeHtml(name),
+          email: escapeHtml(email),
+          phone: escapeHtml(phone || "N/A"),
+          extraFields: extraFieldsHtml.replace(/\$/g, "&#36;").replace(/\{/g, "&#123;"),
+          message: escapeHtml(message),
+          siteLabel: escapeHtml(siteLabel),
+        },
+        "en",
+      );
+
+      const ownerSend = skipHardcodedOwner
+        ? Promise.resolve({ success: true as const })
+        : EmailService.sendEmail({
+            to: ownerEmail,
+            subject: ownerSubject,
+            message: ownerSubject,
+            fromEmail: fromAddress,
+            fromName: senderName,
+            html: ownerHtml,
+            replyToAddresses: [email],
+          });
 
       let visitorResult: { success: boolean; error?: string } = { success: true };
       if (!workflowHandled) {
@@ -27201,11 +27214,26 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   });
 
   // ----- Visual automation workflows -----
+  const automationNodeTypeSchema = z.enum([
+    "trigger",
+    "email",
+    "delay",
+    "notify_owner",
+    "owner_reminder",
+    "add_tag",
+    "remove_tag",
+    "condition",
+  ]);
+  const automationFrequencySchema = z.enum([
+    "every_time",
+    "once_per_contact",
+    "once_per_contact_per_24h",
+  ]);
   const automationGraphSchema = z.object({
     nodes: z.array(
       z.object({
         id: z.string().min(1),
-        type: z.enum(["trigger", "email", "delay"]),
+        type: automationNodeTypeSchema,
         position: z.object({ x: z.number(), y: z.number() }),
         data: z.record(z.unknown()).default({}),
       }),
@@ -27254,6 +27282,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         enabled: z.boolean().optional(),
         triggerFormId: z.string().min(1).max(120),
         graph: automationGraphSchema.optional(),
+        frequency: automationFrequencySchema.optional(),
+        presetKey: z.string().max(80).nullable().optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
@@ -27283,6 +27313,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           triggerType: "form.submitted",
           triggerConfig: { formId: parsed.data.triggerFormId },
           graph: parsed.data.graph ?? { nodes: [], edges: [] },
+          frequency: parsed.data.frequency ?? "every_time",
+          presetKey: parsed.data.presetKey ?? null,
         })
         .returning();
       return res.status(201).json({ workflow });
@@ -27308,6 +27340,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         enabled: z.boolean(),
         triggerFormId: z.string().min(1).max(120),
         graph: automationGraphSchema,
+        frequency: automationFrequencySchema.optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
@@ -27335,6 +27368,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           enabled: parsed.data.enabled,
           triggerFormId: parsed.data.triggerFormId,
           graph: parsed.data.graph,
+          frequency: parsed.data.frequency ?? "every_time",
           updatedAt: new Date(),
         })
         .where(
@@ -27349,6 +27383,165 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     } catch (error) {
       console.error("Error updating automation workflow:", error);
       return res.status(500).json({ error: "Failed to update workflow" });
+    }
+  });
+
+  app.get("/api/websites/:id/automation-workflows/:workflowId/runs", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const workflowId = parseInt(req.params.workflowId, 10);
+      if (Number.isNaN(websiteId) || Number.isNaN(workflowId)) {
+        return res.status(400).json({ error: "Invalid ids" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const runs = await db
+        .select()
+        .from(websiteAutomationRuns)
+        .where(
+          and(
+            eq(websiteAutomationRuns.workflowId, workflowId),
+            eq(websiteAutomationRuns.websiteProgressId, websiteId),
+          ),
+        )
+        .orderBy(desc(websiteAutomationRuns.startedAt))
+        .limit(100);
+
+      const runIds = runs.map((r) => r.id);
+      const steps =
+        runIds.length === 0
+          ? []
+          : await db
+              .select()
+              .from(websiteAutomationSteps)
+              .where(inArray(websiteAutomationSteps.runId, runIds));
+
+      const eventIds = runs
+        .map((r) => r.eventId)
+        .filter((id): id is number => typeof id === "number");
+      const events =
+        eventIds.length === 0
+          ? []
+          : await db
+              .select()
+              .from(automationEvents)
+              .where(inArray(automationEvents.id, eventIds));
+      const eventById = new Map(events.map((e) => [e.id, e]));
+
+      return res.json({
+        runs: runs.map((run) => {
+          const event = run.eventId ? eventById.get(run.eventId) : undefined;
+          const payload = (event?.payload || {}) as Record<string, unknown>;
+          return {
+            id: run.id,
+            status: run.status,
+            startedAt: run.startedAt,
+            finishedAt: run.finishedAt,
+            contactId: run.contactId,
+            contactEmail: String(
+              payload.visitorEmail || payload.email || "",
+            ),
+            steps: steps
+              .filter((s) => s.runId === run.id)
+              .map((s) => ({
+                id: s.id,
+                nodeId: s.nodeId,
+                status: s.status,
+                runAt: s.runAt,
+                attempts: s.attempts,
+                error: s.error,
+              })),
+          };
+        }),
+      });
+    } catch (error) {
+      console.error("Error fetching automation runs:", error);
+      return res.status(500).json({ error: "Failed to fetch runs" });
+    }
+  });
+
+  app.get("/api/websites/:id/automation-presets", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      return res.json({
+        presets: AUTOMATION_PRESETS.map((p) => ({
+          key: p.key,
+          name: p.name,
+          nameGr: p.nameGr,
+          description: p.description,
+          descriptionGr: p.descriptionGr,
+          formType: p.formType || "any",
+        })),
+      });
+    } catch (error) {
+      console.error("Error listing automation presets:", error);
+      return res.status(500).json({ error: "Failed to list presets" });
+    }
+  });
+
+  app.post("/api/websites/:id/automation-workflows/from-preset", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const schema = z.object({
+        presetKey: z.string().min(1),
+        formId: z.string().min(1),
+        formName: z.string().optional(),
+        enabled: z.boolean().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid preset request" });
+      }
+      const preset = getAutomationPreset(parsed.data.presetKey);
+      if (!preset) return res.status(404).json({ error: "Preset not found" });
+
+      const formId = parsed.data.formId;
+      const formName = parsed.data.formName || formId;
+      const graph = preset.buildGraph(formId, formName);
+
+      if (parsed.data.enabled !== false) {
+        await db
+          .update(websiteAutomationWorkflows)
+          .set({ enabled: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+              eq(websiteAutomationWorkflows.triggerFormId, formId),
+              eq(websiteAutomationWorkflows.enabled, true),
+            ),
+          );
+      }
+
+      const [workflow] = await db
+        .insert(websiteAutomationWorkflows)
+        .values({
+          websiteProgressId: websiteId,
+          name: preset.nameGr || preset.name,
+          enabled: parsed.data.enabled ?? true,
+          triggerFormId: formId,
+          triggerType: "form.submitted",
+          triggerConfig: { formId, presetKey: preset.key },
+          graph,
+          frequency: "every_time",
+          presetKey: preset.key,
+        })
+        .returning();
+      return res.status(201).json({ workflow });
+    } catch (error) {
+      console.error("Error creating workflow from preset:", error);
+      return res.status(500).json({ error: "Failed to create from preset" });
     }
   });
 

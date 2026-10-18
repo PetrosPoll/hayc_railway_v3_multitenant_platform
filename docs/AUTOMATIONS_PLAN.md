@@ -314,3 +314,22 @@ Please review §5 risks, §6 open questions, and §6b proposals, then approve Ph
 | Newsletter / waiting-reminder on same queue | **Deferred** (0.4b) — still use existing schedulers; behavior unchanged |
 
 **Enable v2 for a website:** `PATCH /api/websites/:id/automations-engine` with `{ "automationsEngine": "v2" }` (auto-migrates legacy confirmations).
+
+---
+
+## 11. Phase 1 implementation status
+
+**Shipped (2026-10-19):**
+
+| Item | Status |
+|------|--------|
+| Contact upsert on every `form.submitted` (extend `contacts`: phone, source, dates, consent_marketing) | Done |
+| Actions: `notify_owner`, `owner_reminder`, `add_tag`, `remove_tag` | Done |
+| Condition node `condition` (Yes/No handles; form field / tag / day / time) | Done |
+| Frequency: `every_time` \| `once_per_contact` \| `once_per_contact_per_24h` | Done |
+| History tab (last 100 runs + steps) | Done |
+| Presets gallery + `from-preset` API | Done |
+| Skip hard-coded owner email when workflow has `notify_owner` (v2 only) | Done |
+| Legacy migrate appends `notify_owner` | Done |
+
+**Manual test:** enable v2 → Start from template “Reply & notify” → submit form → visitor + owner emails; History tab shows run; frequency “once per contact” blocks second run.

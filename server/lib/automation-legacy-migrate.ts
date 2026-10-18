@@ -53,6 +53,7 @@ export async function migrateLegacyFormAutomationsToWorkflows(
 
     const triggerId = "trigger-1";
     const emailId = "email-1";
+    const notifyId = "notify-1";
     const graph = {
       nodes: [
         {
@@ -64,12 +65,22 @@ export async function migrateLegacyFormAutomationsToWorkflows(
         {
           id: emailId,
           type: "email" as const,
-          position: { x: 360, y: 120 },
+          position: { x: 360, y: 80 },
           data: {
             subject: legacy.visitorSubject,
             body: legacy.visitorBody,
             logoUrl: legacy.logoUrl || undefined,
             label: "Αποστολή email",
+          },
+        },
+        {
+          id: notifyId,
+          type: "notify_owner" as const,
+          position: { x: 360, y: 220 },
+          data: {
+            subject: "New message from {{name}} — {{siteLabel}}",
+            body: "Name: {{name}}\nEmail: {{email}}\nPhone: {{phone}}\n\n{{message}}",
+            label: "Ειδοποίηση σε εμένα",
           },
         },
       ],
@@ -78,6 +89,11 @@ export async function migrateLegacyFormAutomationsToWorkflows(
           id: "e-trigger-email",
           source: triggerId,
           target: emailId,
+        },
+        {
+          id: "e-email-notify",
+          source: emailId,
+          target: notifyId,
         },
       ],
     };

@@ -18,22 +18,29 @@ import "@xyflow/react/dist/style.css";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
+  Bell,
   ChevronDown,
   ChevronRight,
   Clock,
   FileText,
+  GitBranch,
   Loader2,
   Mail,
   Plus,
   Save,
+  Tag,
+  TagOff,
   Trash2,
   Zap,
 } from "lucide-react";
 import type {
+  AutomationFrequency,
+  AutomationNodeType,
   SiteFormConfig,
   WebsiteAutomationWorkflow,
   WebsiteEmailTemplate,
 } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,11 +82,15 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
 
   const [formsOpen, setFormsOpen] = useState(true);
   const [actionsOpen, setActionsOpen] = useState(true);
+  const [conditionsOpen, setConditionsOpen] = useState(true);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [builderTab, setBuilderTab] = useState<"canvas" | "history">("canvas");
+  const [presetOpen, setPresetOpen] = useState(false);
 
   const [workflowId, setWorkflowId] = useState<number | null>(null);
   const [workflowName, setWorkflowName] = useState("New automation");
   const [enabled, setEnabled] = useState(true);
+  const [frequency, setFrequency] = useState<AutomationFrequency>("every_time");
   const [triggerFormId, setTriggerFormId] = useState("");
   const [didInitialLoad, setDidInitialLoad] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
@@ -126,9 +137,58 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     },
   });
 
+  const { data: presetsData } = useQuery<{
+    presets: Array<{
+      key: string;
+      name: string;
+      nameGr: string;
+      description: string;
+      descriptionGr: string;
+      formType: string;
+    }>;
+  }>({
+    queryKey: ["/api/websites", websiteId, "automation-presets"],
+    queryFn: async () => {
+      const res = await fetch(`/api/websites/${websiteId}/automation-presets`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to load presets");
+      return res.json();
+    },
+  });
+
+  const { data: historyData, isLoading: historyLoading } = useQuery<{
+    runs: Array<{
+      id: number;
+      status: string;
+      startedAt: string;
+      finishedAt: string | null;
+      contactEmail: string;
+      steps: Array<{
+        id: number;
+        nodeId: string;
+        status: string;
+        error: string | null;
+        attempts: number;
+      }>;
+    }>;
+  }>({
+    queryKey: ["/api/websites", websiteId, "automation-workflows", workflowId, "runs"],
+    enabled: workflowId != null && builderTab === "history",
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/websites/${websiteId}/automation-workflows/${workflowId}/runs`,
+        { credentials: "include" },
+      );
+      if (!res.ok) throw new Error("Failed to load history");
+      return res.json();
+    },
+  });
+
   const forms = formsData?.forms ?? [];
   const workflows = workflowsData?.workflows ?? [];
   const templates = templatesData?.templates ?? [];
+  const presets = presetsData?.presets ?? [];
 
   const startNewWorkflow = useCallback(() => {
     setWorkflowId(null);
@@ -136,14 +196,17 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     setEdges([]);
     setWorkflowName("New automation");
     setEnabled(true);
+    setFrequency("every_time");
     setTriggerFormId(forms[0]?.id || "");
     setSelectedNodeId(null);
+    setBuilderTab("canvas");
   }, [forms]);
 
   const loadWorkflow = useCallback((wf: WebsiteAutomationWorkflow) => {
     setWorkflowId(wf.id);
     setWorkflowName(wf.name);
     setEnabled(wf.enabled);
+    setFrequency((wf.frequency as AutomationFrequency) || "every_time");
     setTriggerFormId(wf.triggerFormId);
     const g = wf.graph || { nodes: [], edges: [] };
     setNodes(
@@ -213,13 +276,12 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     );
   };
 
-  const addNodeFromPalette = (kind: "trigger" | "email" | "delay", form?: SiteFormConfig) => {
+  const addNodeFromPalette = (kind: AutomationNodeType, form?: SiteFormConfig) => {
     const id = uid(kind);
     const baseX = 80 + nodes.length * 40;
     const baseY = 80 + (nodes.length % 4) * 80;
     if (kind === "trigger") {
       if (!form) return;
-      // Only one trigger
       setNodes((nds) => {
         const without = nds.filter((n) => n.type !== "trigger");
         return [
@@ -235,31 +297,39 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
       setTriggerFormId(form.id);
       return;
     }
-    if (kind === "email") {
-      const firstTpl = templates[0];
-      setNodes((nds) => [
-        ...nds,
-        {
-          id,
-          type: "email",
-          position: { x: baseX + 200, y: baseY },
-          data: {
-            templateId: firstTpl?.id,
-            templateName: firstTpl?.name,
-            subject: firstTpl?.subject,
-            body: firstTpl?.body,
-          },
-        },
-      ]);
-      return;
-    }
+    const defaults: Record<string, Record<string, unknown>> = {
+      email: {
+        templateId: templates[0]?.id,
+        templateName: templates[0]?.name,
+        subject: templates[0]?.subject,
+        body: templates[0]?.body,
+      },
+      delay: { amount: 10, unit: "minutes" },
+      notify_owner: {
+        subject: "New message from {{name}} — {{siteLabel}}",
+        body: "Name: {{name}}\nEmail: {{email}}\nPhone: {{phone}}\n\n{{message}}",
+      },
+      owner_reminder: {
+        amount: 2,
+        unit: "hours",
+        subject: "Follow up: {{name}}",
+        body: "{{name}} <{{email}}>\n\n{{message}}",
+      },
+      add_tag: { tag: "lead" },
+      remove_tag: { tag: "lead" },
+      condition: {
+        rules: [
+          { kind: "form_field", fieldKey: "message", operator: "is_not_empty" },
+        ],
+      },
+    };
     setNodes((nds) => [
       ...nds,
       {
         id,
-        type: "delay",
-        position: { x: baseX + 120, y: baseY },
-        data: { amount: 10, unit: "minutes" },
+        type: kind,
+        position: { x: baseX + 160, y: baseY },
+        data: defaults[kind] || {},
       },
     ]);
   };
@@ -275,7 +345,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     if (!raw) return;
     try {
       const parsed = JSON.parse(raw) as {
-        kind: "trigger" | "email" | "delay";
+        kind: AutomationNodeType;
         form?: SiteFormConfig;
       };
       addNodeFromPalette(parsed.kind, parsed.form);
@@ -294,7 +364,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
       const graph = {
         nodes: nodes.map((n) => ({
           id: n.id,
-          type: n.type as "trigger" | "email" | "delay",
+          type: n.type as AutomationNodeType,
           position: n.position,
           data: n.data as Record<string, unknown>,
         })),
@@ -311,6 +381,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
         name: workflowName.trim() || "Automation",
         enabled,
         triggerFormId: formId,
+        frequency,
         graph,
       };
 
@@ -423,6 +494,49 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     },
   });
 
+  const presetMutation = useMutation({
+    mutationFn: async (presetKey: string) => {
+      const form =
+        forms.find((f) => f.id === triggerFormId) || forms[0];
+      if (!form) throw new Error("No form available");
+      const res = await fetch(
+        `/api/websites/${websiteId}/automation-workflows/from-preset`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            presetKey,
+            formId: form.id,
+            formName: form.name,
+          }),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to create from preset");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setPresetOpen(false);
+      if (data?.workflow) loadWorkflow(data.workflow);
+      queryClient.invalidateQueries({
+        queryKey: ["/api/websites", websiteId, "automation-workflows"],
+      });
+      toast({
+        title: t("dashboard.automationsPresetCreated") || "Workflow created from template",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (workflowsLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -468,13 +582,40 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Select
+            value={frequency}
+            onValueChange={(v) => setFrequency(v as AutomationFrequency)}
+          >
+            <SelectTrigger className="w-[200px] h-9" data-testid="automation-frequency">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="every_time">
+                {t("dashboard.automationsFreqEvery") || "Every time"}
+              </SelectItem>
+              <SelectItem value="once_per_contact">
+                {t("dashboard.automationsFreqOnce") || "Once per contact"}
+              </SelectItem>
+              <SelectItem value="once_per_contact_per_24h">
+                {t("dashboard.automationsFreqOnce24h") || "Once per contact / 24h"}
+              </SelectItem>
+            </SelectContent>
+          </Select>
           <div className="flex items-center gap-2">
             <Label htmlFor="wf-enabled" className="text-sm">
               {t("dashboard.automationsEnabled") || "Enabled"}
             </Label>
             <Switch id="wf-enabled" checked={enabled} onCheckedChange={setEnabled} />
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPresetOpen(true)}
+            data-testid="automation-preset-button"
+          >
+            {t("dashboard.automationsStartPreset") || "Start from template"}
+          </Button>
           {workflowId != null && (
             <Button
               variant="outline"
@@ -501,6 +642,61 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
           </Button>
         </div>
       </div>
+
+      <Tabs
+        value={builderTab}
+        onValueChange={(v) => setBuilderTab(v as "canvas" | "history")}
+        className="w-full"
+      >
+        <TabsList>
+          <TabsTrigger value="canvas">
+            {t("dashboard.automationsTabCanvas") || "Builder"}
+          </TabsTrigger>
+          <TabsTrigger value="history" disabled={workflowId == null}>
+            {t("dashboard.automationsTabHistory") || "History"}
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="history" className="mt-3">
+          {historyLoading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (historyData?.runs?.length ?? 0) === 0 ? (
+            <p className="text-sm text-muted-foreground py-6">
+              {t("dashboard.automationsHistoryEmpty") || "No runs yet."}
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-[560px] overflow-y-auto">
+              {historyData!.runs.map((run) => (
+                <details
+                  key={run.id}
+                  className="rounded-md border bg-card px-3 py-2 text-sm"
+                >
+                  <summary className="cursor-pointer flex flex-wrap gap-2 items-center">
+                    <span className="font-medium">
+                      {run.contactEmail || "—"}
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      {new Date(run.startedAt).toLocaleString()}
+                    </span>
+                    <span className="text-xs uppercase tracking-wide">
+                      {run.status}
+                    </span>
+                  </summary>
+                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground pl-2">
+                    {run.steps.map((s) => (
+                      <li key={s.id}>
+                        {s.nodeId}: {s.status}
+                        {s.error ? ` — ${s.error}` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+        <TabsContent value="canvas" className="mt-3">
 
       <div className="grid grid-cols-1 xl:grid-cols-[220px_1fr_280px] gap-3 min-h-[560px]">
         {/* Palette */}
@@ -554,26 +750,55 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             </button>
             {actionsOpen && (
               <div className="space-y-1 pl-1">
-                <div
-                  draggable
-                  onDragStart={(e) => onDragStart(e, JSON.stringify({ kind: "email" }))}
-                  onClick={() => addNodeFromPalette("email")}
-                  className="cursor-grab rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted"
-                >
-                  <div className="flex items-center gap-1.5 font-medium">
-                    <Mail className="h-3.5 w-3.5" />
-                    {t("dashboard.automationsSendEmail") || "Send email"}
+                {(
+                  [
+                    { kind: "email" as const, icon: Mail, label: t("dashboard.automationsSendEmail") || "Send email" },
+                    { kind: "delay" as const, icon: Clock, label: t("dashboard.automationsDelay") || "Wait / Delay" },
+                    { kind: "notify_owner" as const, icon: Bell, label: t("dashboard.automationsNotifyOwner") || "Notify me" },
+                    { kind: "owner_reminder" as const, icon: Bell, label: t("dashboard.automationsOwnerReminder") || "Remind me later" },
+                    { kind: "add_tag" as const, icon: Tag, label: t("dashboard.automationsAddTag") || "Add tag" },
+                    { kind: "remove_tag" as const, icon: TagOff, label: t("dashboard.automationsRemoveTag") || "Remove tag" },
+                  ] as const
+                ).map((item) => (
+                  <div
+                    key={item.kind}
+                    draggable
+                    onDragStart={(e) =>
+                      onDragStart(e, JSON.stringify({ kind: item.kind }))
+                    }
+                    onClick={() => addNodeFromPalette(item.kind)}
+                    className="cursor-grab rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted"
+                  >
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <item.icon className="h-3.5 w-3.5" />
+                      {item.label}
+                    </div>
                   </div>
-                </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="flex w-full items-center gap-1 text-xs font-semibold uppercase text-muted-foreground pt-2"
+              onClick={() => setConditionsOpen((v) => !v)}
+            >
+              {conditionsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              {t("dashboard.automationsConditions") || "Conditions"}
+            </button>
+            {conditionsOpen && (
+              <div className="space-y-1 pl-1">
                 <div
                   draggable
-                  onDragStart={(e) => onDragStart(e, JSON.stringify({ kind: "delay" }))}
-                  onClick={() => addNodeFromPalette("delay")}
+                  onDragStart={(e) =>
+                    onDragStart(e, JSON.stringify({ kind: "condition" }))
+                  }
+                  onClick={() => addNodeFromPalette("condition")}
                   className="cursor-grab rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted"
                 >
                   <div className="flex items-center gap-1.5 font-medium">
-                    <Clock className="h-3.5 w-3.5" />
-                    {t("dashboard.automationsDelay") || "Wait / Delay"}
+                    <GitBranch className="h-3.5 w-3.5" />
+                    {t("dashboard.automationsIfElse") || "If / Else"}
                   </div>
                 </div>
               </div>
@@ -697,7 +922,8 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
                   id: {String(selectedNode.data.formId || "")}
                 </p>
               </div>
-            ) : selectedNode.type === "delay" ? (
+            ) : selectedNode.type === "delay" ||
+              selectedNode.type === "owner_reminder" ? (
               <div className="space-y-2">
                 <Label>{t("dashboard.automationsDelayAmount") || "Wait amount"}</Label>
                 <Input
@@ -728,6 +954,80 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
                     </SelectItem>
                   </SelectContent>
                 </Select>
+                {selectedNode.type === "owner_reminder" && (
+                  <>
+                    <Label>{t("dashboard.automationsSubject") || "Subject"}</Label>
+                    <Input
+                      value={(selectedNode.data.subject as string) || ""}
+                      onChange={(e) => updateSelectedData({ subject: e.target.value })}
+                    />
+                    <Label>{t("dashboard.automationsBody") || "Body"}</Label>
+                    <FormattedTextarea
+                      value={(selectedNode.data.body as string) || ""}
+                      onChange={(e) => updateSelectedData({ body: e.target.value })}
+                      rows={6}
+                      showPreview
+                    />
+                  </>
+                )}
+              </div>
+            ) : selectedNode.type === "add_tag" ||
+              selectedNode.type === "remove_tag" ? (
+              <div className="space-y-2">
+                <Label>{t("dashboard.automationsTagName") || "Tag"}</Label>
+                <Input
+                  value={(selectedNode.data.tag as string) || ""}
+                  onChange={(e) => updateSelectedData({ tag: e.target.value })}
+                  placeholder="lead"
+                />
+              </div>
+            ) : selectedNode.type === "condition" ? (
+              <div className="space-y-2 text-sm">
+                <p className="text-muted-foreground text-xs">
+                  {t("dashboard.automationsConditionHint") ||
+                    "Connect Yes / No handles. Rules are AND’d. Edit JSON rules below."}
+                </p>
+                <Label>{t("dashboard.automationsConditionRules") || "Rules (JSON)"}</Label>
+                <textarea
+                  className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
+                  defaultValue={JSON.stringify(selectedNode.data.rules || [], null, 2)}
+                  key={selectedNode.id}
+                  onBlur={(e) => {
+                    try {
+                      const parsed = JSON.parse(e.target.value);
+                      if (Array.isArray(parsed)) updateSelectedData({ rules: parsed });
+                    } catch {
+                      toast({
+                        title: "Invalid JSON",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                />
+              </div>
+            ) : selectedNode.type === "notify_owner" ? (
+              <div className="space-y-2">
+                <Label>{t("dashboard.automationsSubject") || "Subject"}</Label>
+                <Input
+                  value={(selectedNode.data.subject as string) || ""}
+                  onChange={(e) => updateSelectedData({ subject: e.target.value })}
+                />
+                <Label>{t("dashboard.automationsBody") || "Body"}</Label>
+                <FormattedTextarea
+                  value={(selectedNode.data.body as string) || ""}
+                  onChange={(e) => updateSelectedData({ body: e.target.value })}
+                  rows={8}
+                  showPreview
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  {t("dashboard.automationsPlaceholdersHint", {
+                    name: "{{name}}",
+                    email: "{{email}}",
+                    phone: "{{phone}}",
+                    message: "{{message}}",
+                    siteLabel: "{{siteLabel}}",
+                  })}
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -824,6 +1124,43 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
           </div>
         </div>
       </div>
+        </TabsContent>
+      </Tabs>
+
+      <AlertDialog open={presetOpen} onOpenChange={setPresetOpen}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("dashboard.automationsStartPreset") || "Start from template"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("dashboard.automationsPresetHint") ||
+                "Creates an editable copy for the selected form."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 max-h-72 overflow-y-auto">
+            {presets.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                className="w-full text-left rounded-md border px-3 py-2 hover:bg-muted"
+                disabled={presetMutation.isPending || forms.length === 0}
+                onClick={() => presetMutation.mutate(p.key)}
+              >
+                <div className="font-medium text-sm">
+                  {websiteLanguage === "gr" ? p.nameGr : p.name}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  {websiteLanguage === "gr" ? p.descriptionGr : p.description}
+                </div>
+              </button>
+            ))}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("dashboard.cancel") || "Cancel"}</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
         <AlertDialogContent>

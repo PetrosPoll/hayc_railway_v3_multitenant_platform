@@ -18,6 +18,17 @@ import {
   extractLogoFromSiteConfig,
   formatAutomationBodyToHtml,
 } from "./form-automations";
+import {
+  addTagToContact,
+  getContactTagNames,
+  removeTagFromContact,
+  shouldSkipRunForFrequency,
+  upsertAutomationContact,
+} from "./automation-contacts";
+import {
+  evaluateConditionRules,
+  parseConditionRules,
+} from "./automation-conditions";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -102,12 +113,55 @@ function delayMsFromNode(node: AutomationGraphNode): number {
   return amount * 60_000;
 }
 
-function outgoingTargets(graph: AutomationGraph, nodeId: string): string[] {
-  return graph.edges.filter((e) => e.source === nodeId).map((e) => e.target);
+function outgoingTargets(
+  graph: AutomationGraph,
+  nodeId: string,
+  sourceHandle?: string | null,
+): string[] {
+  return graph.edges
+    .filter((e) => {
+      if (e.source !== nodeId) return false;
+      if (sourceHandle == null || sourceHandle === "") {
+        // Non-condition edges: prefer edges without a handle, or any if none tagged
+        return !e.sourceHandle || e.sourceHandle === "default";
+      }
+      return e.sourceHandle === sourceHandle;
+    })
+    .map((e) => e.target);
 }
 
 function findNode(graph: AutomationGraph, nodeId: string): AutomationGraphNode | undefined {
   return graph.nodes.find((n) => n.id === nodeId);
+}
+
+export function graphHasNotifyOwner(graph: AutomationGraph | null | undefined): boolean {
+  return !!graph?.nodes?.some((n) => n.type === "notify_owner");
+}
+
+/** True when an enabled v2 workflow for this form includes notify_owner. */
+export async function formWorkflowHasNotifyOwner(
+  websiteProgressId: number,
+  formId: string,
+): Promise<boolean> {
+  const rows = await db
+    .select({ graph: websiteAutomationWorkflows.graph })
+    .from(websiteAutomationWorkflows)
+    .where(
+      and(
+        eq(websiteAutomationWorkflows.websiteProgressId, websiteProgressId),
+        eq(websiteAutomationWorkflows.triggerFormId, formId),
+        eq(websiteAutomationWorkflows.enabled, true),
+      ),
+    );
+  return rows.some((r) => graphHasNotifyOwner(r.graph as AutomationGraph));
+}
+
+function eventFields(payload: Record<string, unknown>): Record<string, unknown> {
+  const fields = payload.fields;
+  if (fields && typeof fields === "object" && !Array.isArray(fields)) {
+    return fields as Record<string, unknown>;
+  }
+  return {};
 }
 
 function payloadFromEvent(
@@ -264,6 +318,89 @@ async function enqueueStep(params: {
   });
 }
 
+async function enqueueTargets(params: {
+  graph: AutomationGraph;
+  runId: number;
+  websiteProgressId: number;
+  fromNodeId: string;
+  sourceHandle?: string | null;
+}): Promise<void> {
+  const targets = outgoingTargets(
+    params.graph,
+    params.fromNodeId,
+    params.sourceHandle,
+  );
+  // Condition nodes: if no handle-specific edges matched and handle was set, stop.
+  // For non-condition, also try all edges if none without handle (legacy graphs).
+  let ids = targets;
+  if (
+    ids.length === 0 &&
+    (params.sourceHandle == null || params.sourceHandle === "")
+  ) {
+    ids = params.graph.edges
+      .filter((e) => e.source === params.fromNodeId)
+      .map((e) => e.target);
+  }
+  for (const targetId of ids) {
+    const target = findNode(params.graph, targetId);
+    let runAt = new Date();
+    if (target?.type === "owner_reminder") {
+      runAt = new Date(Date.now() + delayMsFromNode(target));
+    }
+    await enqueueStep({
+      runId: params.runId,
+      websiteProgressId: params.websiteProgressId,
+      nodeId: targetId,
+      runAt,
+    });
+  }
+}
+
+async function sendOwnerAutomationEmail(params: {
+  node: AutomationGraphNode;
+  payload: AutomationJobPayload;
+}): Promise<void> {
+  const { node, payload } = params;
+  const to =
+    (typeof node.data?.recipients === "string" && node.data.recipients.trim()) ||
+    payload.ownerEmail;
+  if (!to) throw new Error("Owner email missing for notify_owner");
+
+  const vars = {
+    name: payload.visitorName,
+    email: payload.visitorEmail,
+    phone: payload.visitorPhone || "",
+    message: payload.visitorMessage,
+    siteLabel: payload.siteLabel,
+  };
+  const subject = applyFormEmailPlaceholders(
+    typeof node.data?.subject === "string"
+      ? node.data.subject
+      : `New message from {{name}} — {{siteLabel}}`,
+    vars,
+  );
+  const bodyText = applyFormEmailPlaceholders(
+    typeof node.data?.body === "string"
+      ? node.data.body
+      : "Name: {{name}}\nEmail: {{email}}\nPhone: {{phone}}\n\n{{message}}",
+    vars,
+  );
+  const html = formatAutomationBodyToHtml(bodyText).replace(/\$/g, "&#36;");
+
+  const result = await EmailService.sendEmail({
+    to,
+    subject,
+    message: subject,
+    fromEmail: "notifications@hayc.gr",
+    fromName: payload.fromName || "Client",
+    html: `<div style="font-family:sans-serif;font-size:14px;line-height:1.5">${html}</div>`,
+    replyToAddresses: payload.visitorEmail ? [payload.visitorEmail] : undefined,
+  });
+  if (!result.success) {
+    throw new Error(result.error || "Failed to send owner notification");
+  }
+}
+
 /**
  * Create runs for all matching active workflows for an event.
  */
@@ -287,8 +424,35 @@ export async function startRunsForEvent(params: {
     workflowMatchesEvent(w, event.type, event.payload || {}),
   );
 
+  const payload = event.payload || {};
+  const email = String(payload.visitorEmail || payload.email || "").trim();
+  const contact = email
+    ? await upsertAutomationContact({
+        websiteProgressId: event.websiteProgressId,
+        email,
+        name: String(payload.visitorName || payload.name || ""),
+        phone: String(payload.visitorPhone || payload.phone || ""),
+        source: event.type,
+        dates:
+          payload.dates && typeof payload.dates === "object"
+            ? (payload.dates as Record<string, string>)
+            : undefined,
+        consentMarketing: payload.consent_marketing === true,
+      })
+    : null;
+
   const runIds: number[] = [];
   for (const workflow of matching) {
+    if (
+      await shouldSkipRunForFrequency({
+        workflowId: workflow.id,
+        frequency: workflow.frequency,
+        contactId: contact?.id ?? null,
+      })
+    ) {
+      continue;
+    }
+
     const graph = workflow.graph as AutomationGraph;
     const formId =
       typeof event.payload?.form_id === "string"
@@ -308,6 +472,7 @@ export async function startRunsForEvent(params: {
         workflowId: workflow.id,
         websiteProgressId: event.websiteProgressId,
         eventId: event.id,
+        contactId: contact?.id ?? null,
         status: "running",
         cancelKey: cancelKey || null,
       })
@@ -372,35 +537,49 @@ async function executeNode(params: {
   runId: number;
   nodeId: string;
   payload: AutomationJobPayload;
+  eventPayload: Record<string, unknown>;
+  contactId: number | null;
 }): Promise<"continue" | "delayed"> {
-  const { workflow, runId, nodeId, payload } = params;
+  const { workflow, runId, nodeId, payload, eventPayload, contactId } = params;
   const graph = workflow.graph as AutomationGraph;
   const node = findNode(graph, nodeId);
   if (!node) return "continue";
 
+  const enqueueFrom = (sourceHandle?: string | null) =>
+    enqueueTargets({
+      graph,
+      runId,
+      websiteProgressId: workflow.websiteProgressId,
+      fromNodeId: nodeId,
+      sourceHandle,
+    });
+
   if (node.type === "trigger") {
-    for (const targetId of outgoingTargets(graph, nodeId)) {
-      await enqueueStep({
-        runId,
-        websiteProgressId: workflow.websiteProgressId,
-        nodeId: targetId,
-      });
-    }
+    await enqueueFrom();
     return "continue";
   }
 
   if (node.type === "delay") {
     const ms = delayMsFromNode(node);
-    // Children run after delay — schedule each child with runAt
     const runAt = new Date(Date.now() + ms);
     const targets = outgoingTargets(graph, nodeId);
-    if (targets.length === 0) return "continue";
-    for (const targetId of targets) {
+    // Fallback: all edges from delay
+    const ids =
+      targets.length > 0
+        ? targets
+        : graph.edges.filter((e) => e.source === nodeId).map((e) => e.target);
+    if (ids.length === 0) return "continue";
+    for (const targetId of ids) {
+      const target = findNode(graph, targetId);
+      const childAt =
+        target?.type === "owner_reminder"
+          ? new Date(runAt.getTime() + delayMsFromNode(target))
+          : runAt;
       await enqueueStep({
         runId,
         websiteProgressId: workflow.websiteProgressId,
         nodeId: targetId,
-        runAt,
+        runAt: childAt,
       });
     }
     return "delayed";
@@ -412,13 +591,53 @@ async function executeNode(params: {
       node,
       payload,
     });
-    for (const targetId of outgoingTargets(graph, nodeId)) {
-      await enqueueStep({
-        runId,
-        websiteProgressId: workflow.websiteProgressId,
-        nodeId: targetId,
-      });
+    await enqueueFrom();
+    return "continue";
+  }
+
+  if (node.type === "notify_owner") {
+    await sendOwnerAutomationEmail({ node, payload });
+    await enqueueFrom();
+    return "continue";
+  }
+
+  if (node.type === "owner_reminder") {
+    // Step was already scheduled with delay when enqueued.
+    await sendOwnerAutomationEmail({ node, payload });
+    await enqueueFrom();
+    return "continue";
+  }
+
+  if (node.type === "add_tag" || node.type === "remove_tag") {
+    const tagName = String(node.data?.tag || node.data?.tagName || "").trim();
+    if (contactId && tagName) {
+      if (node.type === "add_tag") {
+        await addTagToContact({
+          websiteProgressId: workflow.websiteProgressId,
+          contactId,
+          tagName,
+        });
+      } else {
+        await removeTagFromContact({
+          websiteProgressId: workflow.websiteProgressId,
+          contactId,
+          tagName,
+        });
+      }
     }
+    await enqueueFrom();
+    return "continue";
+  }
+
+  if (node.type === "condition") {
+    const tagNames = contactId ? await getContactTagNames(contactId) : [];
+    const pass = evaluateConditionRules({
+      rules: parseConditionRules(node.data || {}),
+      fields: eventFields(eventPayload),
+      payload: eventPayload,
+      tagNames,
+    });
+    await enqueueFrom(pass ? "yes" : "no");
     return "continue";
   }
 
@@ -508,16 +727,27 @@ export async function processDueAutomationSteps(options?: {
         fromName: "Client",
         language: "en",
       };
+      let eventPayload: Record<string, unknown> = {};
       if (run.eventId) {
         const [event] = await db
           .select()
           .from(automationEvents)
           .where(eq(automationEvents.id, run.eventId))
           .limit(1);
-        if (event) payload = payloadFromEvent(event.payload || {});
+        if (event) {
+          eventPayload = event.payload || {};
+          payload = payloadFromEvent(eventPayload);
+        }
       }
 
-      await executeNode({ workflow, runId, nodeId, payload });
+      await executeNode({
+        workflow,
+        runId,
+        nodeId,
+        payload,
+        eventPayload,
+        contactId: run.contactId ?? null,
+      });
 
       await db
         .update(websiteAutomationSteps)

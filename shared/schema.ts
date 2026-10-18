@@ -907,11 +907,19 @@ export const contacts = pgTable("contacts", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   email: text("email").notNull(),
+  /** Phase 1 automations — optional phone from form submits */
+  phone: text("phone"),
+  /** e.g. form.submitted / newsletter / booking */
+  source: text("source"),
+  /** Custom dates from form fields, e.g. { birthday: "1990-05-12" } */
+  dates: jsonb("dates").$type<Record<string, string>>().default({}),
+  consentMarketing: boolean("consent_marketing").notNull().default(false),
   status: text("status").notNull().default("pending"),
   confirmationToken: text("confirmation_token"),
   subscribedAt: timestamp("subscribed_at").defaultNow(),
   confirmedAt: timestamp("confirmed_at"),
   unsubscribedAt: timestamp("unsubscribed_at"),
+  lastBookingAt: timestamp("last_booking_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -1856,9 +1864,19 @@ export type InsertWebsiteFormAutomation = z.infer<
 >;
 
 /** React Flow–compatible graph stored on workflows. */
+export type AutomationNodeType =
+  | "trigger"
+  | "email"
+  | "delay"
+  | "notify_owner"
+  | "owner_reminder"
+  | "add_tag"
+  | "remove_tag"
+  | "condition";
+
 export type AutomationGraphNode = {
   id: string;
-  type: "trigger" | "email" | "delay";
+  type: AutomationNodeType;
   position: { x: number; y: number };
   data: Record<string, unknown>;
 };
