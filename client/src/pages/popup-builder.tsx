@@ -19,6 +19,7 @@ import { useDemoMode } from "@/hooks/use-demo-mode";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Save, Loader2, Eye } from "lucide-react";
 import { impersonationHSvh } from "@/lib/impersonation-layout";
+import { resolvePopupThumbnail } from "@/lib/popup-thumbnail";
 import type { PopupTemplate } from "@shared/schema";
 
 export default function PopupBuilderPage() {
@@ -40,6 +41,7 @@ export default function PopupBuilderPage() {
   const [showOnceEveryDays, setShowOnceEveryDays] = useState(7);
   const [selectedPopupId, setSelectedPopupId] = useState<number | null>(null);
   const selectedPopupIdRef = useRef<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     selectedPopupIdRef.current = selectedPopupId;
@@ -205,41 +207,65 @@ export default function PopupBuilderPage() {
     const unlayer = emailEditorRef.current?.editor;
     if (!unlayer) return;
 
-    const { design, html, thumbnail } = await new Promise<{
-      design: any;
-      html: string;
-      thumbnail: string | null;
-    }>((resolve) => {
-      unlayer.exportHtml((data: { design: any; html: string }) => {
-        unlayer.exportImage(
-          (imageData: { url: string | null }) => {
+    setIsSaving(true);
+    try {
+      const { design, html, unlayerThumbUrl } = await new Promise<{
+        design: any;
+        html: string;
+        unlayerThumbUrl: string | null;
+      }>((resolve) => {
+        unlayer.exportHtml((data: { design: any; html: string }) => {
+          let settled = false;
+          const finish = (url: string | null) => {
+            if (settled) return;
+            settled = true;
             resolve({
               design: data.design,
               html: data.html,
-              thumbnail: imageData.url || null,
+              unlayerThumbUrl: url,
             });
-          },
-          { width: 600, height: 400 },
-        );
+          };
+
+          try {
+            unlayer.exportImage(
+              (imageData: { url?: string | null }) => {
+                finish(imageData?.url || null);
+              },
+              { fullPage: true, width: 800, height: 800 },
+            );
+          } catch {
+            finish(null);
+          }
+
+          // Unlayer sometimes never calls back — don't block save forever
+          setTimeout(() => finish(null), 8000);
+        });
       });
-    });
 
-    let validDesign = design;
-    if (!validDesign || typeof validDesign !== "object") {
-      validDesign = { body: { rows: [], values: {} } };
+      let validDesign = design;
+      if (!validDesign || typeof validDesign !== "object") {
+        validDesign = { body: { rows: [], values: {} } };
+      }
+
+      const thumbnail = await resolvePopupThumbnail({
+        unlayerUrl: unlayerThumbUrl,
+        html,
+      });
+
+      saveMutation.mutate({
+        name: popupName.trim(),
+        html,
+        design: JSON.stringify(validDesign),
+        thumbnail,
+        enabled,
+        delayMs: Number.isFinite(delayMs) ? Math.max(0, delayMs) : 1500,
+        showOnceEveryDays: Number.isFinite(showOnceEveryDays)
+          ? Math.max(0, showOnceEveryDays)
+          : 7,
+      });
+    } finally {
+      setIsSaving(false);
     }
-
-    saveMutation.mutate({
-      name: popupName.trim(),
-      html,
-      design: JSON.stringify(validDesign),
-      thumbnail,
-      enabled,
-      delayMs: Number.isFinite(delayMs) ? Math.max(0, delayMs) : 1500,
-      showOnceEveryDays: Number.isFinite(showOnceEveryDays)
-        ? Math.max(0, showOnceEveryDays)
-        : 7,
-    });
   };
 
   const handleBack = () => {
@@ -302,10 +328,10 @@ export default function PopupBuilderPage() {
           <Button
             size="sm"
             onClick={openSaveDialog}
-            disabled={isDemo || saveMutation.isPending}
+            disabled={isDemo || saveMutation.isPending || isSaving}
             data-testid="button-popup-save"
           >
-            {saveMutation.isPending ? (
+            {saveMutation.isPending || isSaving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
             ) : (
               <Save className="h-4 w-4 mr-2" />
@@ -422,10 +448,10 @@ export default function PopupBuilderPage() {
             </Button>
             <Button
               onClick={handleConfirmSave}
-              disabled={saveMutation.isPending}
+              disabled={saveMutation.isPending || isSaving}
               data-testid="button-confirm-save-popup"
             >
-              {saveMutation.isPending ? (
+              {saveMutation.isPending || isSaving ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : null}
               {t("dashboard.save") || "Save"}

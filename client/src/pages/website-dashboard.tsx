@@ -4170,7 +4170,7 @@ export default function WebsiteDashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
             {popupTemplates.map((popup) => (
               <Card
                 key={popup.id}
@@ -4179,7 +4179,7 @@ export default function WebsiteDashboard() {
               >
                 <button
                   type="button"
-                  className="relative aspect-[3/4] w-full bg-muted overflow-hidden border-b text-left cursor-pointer"
+                  className="relative aspect-square w-full min-h-[280px] bg-muted overflow-hidden border-b text-left cursor-pointer"
                   onClick={() => {
                     sessionStorage.setItem("loadPopupId", popup.id.toString());
                     navigate(`/websites/${websiteId}/popup-builder`);
@@ -4190,12 +4190,26 @@ export default function WebsiteDashboard() {
                     <img
                       src={popup.thumbnail}
                       alt={popup.name}
-                      className="absolute inset-0 h-full w-full object-cover object-top"
+                      className="absolute inset-0 h-full w-full object-contain object-center bg-white"
                     />
+                  ) : popup.html ? (
+                    <div className="absolute inset-0 overflow-hidden bg-white pointer-events-none">
+                      <iframe
+                        title={popup.name}
+                        srcDoc={popup.html}
+                        sandbox=""
+                        className="border-0 origin-top-left"
+                        style={{
+                          width: "200%",
+                          height: "200%",
+                          transform: "scale(0.5)",
+                        }}
+                      />
+                    </div>
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                      <AppWindow className="h-10 w-10" />
-                      <span className="px-3 text-center text-xs">
+                      <AppWindow className="h-12 w-12" />
+                      <span className="px-3 text-center text-sm">
                         {t("dashboard.noThumbnail") || "No preview"}
                       </span>
                     </div>
