@@ -29,7 +29,7 @@ import {
   Plus,
   Save,
   Tag,
-  TagOff,
+  BadgeMinus,
   Trash2,
   Zap,
 } from "lucide-react";
@@ -757,7 +757,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
                     { kind: "notify_owner" as const, icon: Bell, label: t("dashboard.automationsNotifyOwner") || "Notify me" },
                     { kind: "owner_reminder" as const, icon: Bell, label: t("dashboard.automationsOwnerReminder") || "Remind me later" },
                     { kind: "add_tag" as const, icon: Tag, label: t("dashboard.automationsAddTag") || "Add tag" },
-                    { kind: "remove_tag" as const, icon: TagOff, label: t("dashboard.automationsRemoveTag") || "Remove tag" },
+                    { kind: "remove_tag" as const, icon: BadgeMinus, label: t("dashboard.automationsRemoveTag") || "Remove tag" },
                   ] as const
                 ).map((item) => (
                   <div

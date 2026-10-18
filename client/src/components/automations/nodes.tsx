@@ -7,7 +7,7 @@ import {
   GitBranch,
   Mail,
   Tag,
-  TagOff,
+  BadgeMinus,
 } from "lucide-react";
 
 function NodeShell({
@@ -135,7 +135,7 @@ export function RemoveTagNode({ data, selected }: NodeProps) {
     <NodeShell selected={selected} minWidth={140}>
       <Handle type="target" position={Position.Left} className="!bg-muted-foreground !w-2.5 !h-2.5" />
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
-        <TagOff className="h-3 w-3" />
+        <BadgeMinus className="h-3 w-3" />
         Remove tag
       </div>
       <div className="text-sm font-semibold truncate">{tag}</div>
