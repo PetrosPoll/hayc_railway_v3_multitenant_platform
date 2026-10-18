@@ -181,6 +181,11 @@ export const websiteProgress = pgTable("website_progress", {
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status").notNull().default("disconnected"),
   stripeConnectedAt: timestamp("stripe_connected_at"),
+  /**
+   * Automations engine: `legacy` = current startWorkflowForFormSubmit path;
+   * `v2` = event bus + runs/steps worker (Phase 0+).
+   */
+  automationsEngine: text("automations_engine").notNull().default("legacy"),
   // Billing info per website (used for Wrapp invoices; survives subscription sync)
   billingVatNumber: text("billing_vat_number"),
   billingCity: text("billing_city"),
@@ -1858,6 +1863,14 @@ export type AutomationGraphNode = {
   data: Record<string, unknown>;
 };
 
+/** Workflow frequency (Phase 1 UI; enforced in v2 engine when set). */
+export type AutomationFrequency =
+  | "every_time"
+  | "once_per_contact"
+  | "once_per_contact_per_24h";
+
+export type AutomationsEngineMode = "legacy" | "v2";
+
 export type AutomationGraphEdge = {
   id: string;
   source: string;
@@ -1927,11 +1940,22 @@ export const websiteAutomationWorkflows = pgTable(
       .references(() => websiteProgress.id),
     name: text("name").notNull(),
     enabled: boolean("enabled").notNull().default(true),
+    /** Form id for form.submitted triggers (kept for builder compat). */
     triggerFormId: text("trigger_form_id").notNull(),
+    /** e.g. form.submitted | booking.completed | schedule.date_offset */
+    triggerType: text("trigger_type").notNull().default("form.submitted"),
+    triggerConfig: jsonb("trigger_config")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     graph: jsonb("graph")
       .$type<AutomationGraph>()
       .notNull()
       .default({ nodes: [], edges: [] }),
+    frequency: text("frequency").notNull().default("every_time"),
+    isSystem: boolean("is_system").notNull().default(false),
+    presetKey: text("preset_key"),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -1943,8 +1967,117 @@ export const websiteAutomationWorkflows = pgTable(
       table.websiteProgressId,
       table.triggerFormId,
     ),
+    typeIdx: index("website_automation_workflows_type_idx").on(
+      table.websiteProgressId,
+      table.triggerType,
+    ),
   }),
 );
+
+/** Ingested automation events (form submits, booking, etc.). */
+export const automationEvents = pgTable(
+  "automation_events",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    dedupeKey: text("dedupe_key"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    websiteTypeIdx: index("automation_events_website_type_idx").on(
+      table.websiteProgressId,
+      table.type,
+    ),
+    // Partial unique index created in SQL migration (WHERE dedupe_key IS NOT NULL)
+  }),
+);
+
+export type AutomationEvent = typeof automationEvents.$inferSelect;
+
+export const websiteAutomationRuns = pgTable(
+  "website_automation_runs",
+  {
+    id: serial("id").primaryKey(),
+    workflowId: integer("workflow_id")
+      .notNull()
+      .references(() => websiteAutomationWorkflows.id),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    eventId: integer("event_id").references(() => automationEvents.id),
+    contactId: integer("contact_id"),
+    status: text("status").notNull().default("running"), // running | completed | failed | cancelled
+    cancelKey: text("cancel_key"),
+    isTest: boolean("is_test").notNull().default(false),
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    finishedAt: timestamp("finished_at"),
+  },
+  (table) => ({
+    workflowIdx: index("website_automation_runs_workflow_idx").on(table.workflowId),
+    websiteIdx: index("website_automation_runs_website_idx").on(table.websiteProgressId),
+    cancelIdx: index("website_automation_runs_cancel_idx").on(table.cancelKey),
+  }),
+);
+
+export type WebsiteAutomationRun = typeof websiteAutomationRuns.$inferSelect;
+
+export const websiteAutomationSteps = pgTable(
+  "website_automation_steps",
+  {
+    id: serial("id").primaryKey(),
+    runId: integer("run_id")
+      .notNull()
+      .references(() => websiteAutomationRuns.id),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    nodeId: text("node_id").notNull(),
+    status: text("status").notNull().default("pending"), // pending | processing | done | failed | cancelled
+    runAt: timestamp("run_at").notNull().defaultNow(),
+    attempts: integer("attempts").notNull().default(0),
+    output: jsonb("output").$type<Record<string, unknown>>(),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    dueIdx: index("website_automation_steps_due_idx").on(table.status, table.runAt),
+    runIdx: index("website_automation_steps_run_idx").on(table.runId),
+  }),
+);
+
+export type WebsiteAutomationStep = typeof websiteAutomationSteps.$inferSelect;
+
+/** Synced form field catalog (from site config on publish). */
+export const websiteFormFields = pgTable(
+  "website_form_fields",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    formId: text("form_id").notNull(),
+    fieldKey: text("field_key").notNull(),
+    label: text("label").notNull(),
+    fieldType: text("field_type").notNull().default("text"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueField: unique("website_form_fields_unique").on(
+      table.websiteProgressId,
+      table.formId,
+      table.fieldKey,
+    ),
+    websiteIdx: index("website_form_fields_website_idx").on(table.websiteProgressId),
+  }),
+);
+
+export type WebsiteFormField = typeof websiteFormFields.$inferSelect;
 
 export const insertWebsiteAutomationWorkflowSchema = createInsertSchema(
   websiteAutomationWorkflows,

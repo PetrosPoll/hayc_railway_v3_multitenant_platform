@@ -74,6 +74,8 @@ import {
   websiteEmailTemplates,
   websiteAutomationWorkflows,
   websiteAutomationJobs,
+  websiteAutomationRuns,
+  websiteAutomationSteps,
 } from "@shared/schema";
 import {
   applyFormEmailPlaceholders,
@@ -83,7 +85,15 @@ import {
   formatAutomationBodyToHtml,
   parseSiteForms,
 } from "./lib/form-automations";
-import { startWorkflowForFormSubmit } from "./lib/automation-engine";
+import {
+  emitEvent,
+  formSubmitDedupeKey,
+  getAutomationsEngineMode,
+  handleFormSubmittedAutomation,
+} from "./lib/automation-events";
+import { syncWebsiteFormFieldsFromConfig } from "./lib/automation-form-fields";
+import { migrateLegacyFormAutomationsToWorkflows } from "./lib/automation-legacy-migrate";
+import { cancelRuns } from "./lib/automation-engine-v2";
 import { demoReadOnlyMiddleware } from "./lib/demo-mode";
 import {
   createDedicatedDemoUser,
@@ -24826,9 +24836,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const fromAddress = "notifications@hayc.gr";
 
     // A visual workflow wins, exactly as on the contact path.
-    const workflowHandled = await startWorkflowForFormSubmit({
+    const workflowHandled = await handleFormSubmittedAutomation({
       websiteProgressId: website.id,
       formId,
+      dedupeKey: formSubmitDedupeKey({
+        websiteProgressId: website.id,
+        formId,
+        email,
+      }),
       payload: {
         visitorEmail: email,
         visitorName: name,
@@ -24845,6 +24860,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (workflowHandled) {
       console.log(
         `[newsletter/subscribe] ran workflow for form '${formId}' on website ${website.id}.`,
+      );
+      return;
+    }
+
+    // Under v2, legacy per-form confirmations are disabled (migrated to workflows).
+    const engineMode = await getAutomationsEngineMode(website.id);
+    if (engineMode === "v2") {
+      console.log(
+        `[newsletter/subscribe] v2 engine: no matching workflow for form '${formId}' on website ${website.id}; nothing sent.`,
       );
       return;
     }
@@ -25334,13 +25358,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         replyToAddresses: [email],
       });
 
-      // Email 2 — prefer visual workflow, then simple automation, then default template
+      // Email 2 — prefer visual workflow (legacy or v2), then simple automation, then default
       let workflowHandled = false;
       if (formId) {
         try {
-          workflowHandled = await startWorkflowForFormSubmit({
+          workflowHandled = await handleFormSubmittedAutomation({
             websiteProgressId: website.id,
             formId,
+            dedupeKey: formSubmitDedupeKey({
+              websiteProgressId: website.id,
+              formId,
+              email,
+              message,
+            }),
             payload: {
               visitorEmail: email,
               visitorName: name,
@@ -25353,6 +25383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               fromName: senderName,
               language: emailLang,
             },
+            extraPayload: Object.keys(extraFields).length > 0 ? { fields: extraFields } : undefined,
           });
         } catch (wfErr) {
           console.error("[public/contact] workflow failed:", wfErr);
@@ -25362,8 +25393,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let visitorResult: { success: boolean; error?: string } = { success: true };
       if (!workflowHandled) {
+        const engineMode = await getAutomationsEngineMode(website.id);
         let automation: typeof websiteFormAutomations.$inferSelect | undefined;
-        if (formId) {
+        // Legacy confirmations are disabled under v2 (use default template only).
+        if (formId && engineMode !== "v2") {
           const [row] = await db
             .select()
             .from(websiteFormAutomations)
@@ -27247,6 +27280,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           name: parsed.data.name,
           enabled: parsed.data.enabled ?? true,
           triggerFormId: parsed.data.triggerFormId,
+          triggerType: "form.submitted",
+          triggerConfig: { formId: parsed.data.triggerFormId },
           graph: parsed.data.graph ?? { nodes: [], edges: [] },
         })
         .returning();
@@ -27328,10 +27363,23 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       if ("error" in access && access.error) {
         return res.status(access.error.status).json(access.error.body);
       }
-      // Delete jobs first
+      // Delete jobs / runs / steps first (FK order)
       await db
         .delete(websiteAutomationJobs)
         .where(eq(websiteAutomationJobs.workflowId, workflowId));
+      const runs = await db
+        .select({ id: websiteAutomationRuns.id })
+        .from(websiteAutomationRuns)
+        .where(eq(websiteAutomationRuns.workflowId, workflowId));
+      if (runs.length) {
+        const runIds = runs.map((r) => r.id);
+        await db
+          .delete(websiteAutomationSteps)
+          .where(inArray(websiteAutomationSteps.runId, runIds));
+        await db
+          .delete(websiteAutomationRuns)
+          .where(eq(websiteAutomationRuns.workflowId, workflowId));
+      }
       const deleted = await db
         .delete(websiteAutomationWorkflows)
         .where(
@@ -27346,6 +27394,110 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     } catch (error) {
       console.error("Error deleting automation workflow:", error);
       return res.status(500).json({ error: "Failed to delete workflow" });
+    }
+  });
+
+  // Trusted event intake (backend / booking / admin tools). Form posts still go through
+  // /public/contact and /api/newsletter/subscribe which call emitEvent internally on v2.
+  app.post("/api/events", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const schema = z.object({
+        websiteProgressId: z.number().int().positive(),
+        type: z.string().min(1).max(120),
+        payload: z.record(z.unknown()).default({}),
+        dedupeKey: z.string().max(500).nullable().optional(),
+        cancelKey: z.string().max(500).nullable().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid event", details: parsed.error.errors });
+      }
+      const access = await authorizeWebsiteAccess(req, parsed.data.websiteProgressId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const mode = await getAutomationsEngineMode(parsed.data.websiteProgressId);
+      if (mode !== "v2") {
+        return res.status(409).json({
+          error: "Website automations_engine is not v2",
+          automationsEngine: mode,
+        });
+      }
+      const result = await emitEvent({
+        websiteProgressId: parsed.data.websiteProgressId,
+        type: parsed.data.type,
+        payload: parsed.data.payload as Record<string, unknown>,
+        dedupeKey: parsed.data.dedupeKey,
+        cancelKey: parsed.data.cancelKey,
+      });
+      return res.json(result);
+    } catch (error) {
+      console.error("Error emitting automation event:", error);
+      return res.status(500).json({ error: "Failed to emit event" });
+    }
+  });
+
+  app.post("/api/events/cancel", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const cancelKey = String(req.body?.cancelKey || "").trim();
+      if (!cancelKey) return res.status(400).json({ error: "cancelKey required" });
+      const cancelled = await cancelRuns(cancelKey);
+      return res.json({ cancelled });
+    } catch (error) {
+      console.error("Error cancelling automation runs:", error);
+      return res.status(500).json({ error: "Failed to cancel runs" });
+    }
+  });
+
+  app.post("/api/websites/:id/automations/migrate-legacy", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const result = await migrateLegacyFormAutomationsToWorkflows(websiteId);
+      return res.json(result);
+    } catch (error) {
+      console.error("Error migrating legacy automations:", error);
+      return res.status(500).json({ error: "Failed to migrate legacy automations" });
+    }
+  });
+
+  app.patch("/api/websites/:id/automations-engine", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const engine = req.body?.automationsEngine;
+      if (engine !== "legacy" && engine !== "v2") {
+        return res.status(400).json({ error: "automationsEngine must be legacy|v2" });
+      }
+      if (engine === "v2") {
+        await migrateLegacyFormAutomationsToWorkflows(websiteId);
+      }
+      const [updated] = await db
+        .update(websiteProgress)
+        .set({ automationsEngine: engine, updatedAt: new Date() })
+        .where(eq(websiteProgress.id, websiteId))
+        .returning({
+          id: websiteProgress.id,
+          automationsEngine: websiteProgress.automationsEngine,
+        });
+      return res.json(updated);
+    } catch (error) {
+      console.error("Error updating automations engine:", error);
+      return res.status(500).json({ error: "Failed to update automations engine" });
     }
   });
 
@@ -27427,6 +27579,14 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       }
 
       await putConfig(website.siteId, req.body);
+      try {
+        await syncWebsiteFormFieldsFromConfig(
+          website.id,
+          req.body as Record<string, unknown>,
+        );
+      } catch (syncErr) {
+        console.error("[site-config] form fields sync failed:", syncErr);
+      }
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error saving site config:", error);

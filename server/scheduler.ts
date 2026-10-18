@@ -140,6 +140,12 @@ export function startCampaignScheduler(storage: IStorage) {
       console.error('[SCHEDULER] Error processing automation jobs:', error);
     }
     try {
+      const { processDueAutomationSteps } = await import("./lib/automation-engine-v2");
+      await processDueAutomationSteps({ limit: 50 });
+    } catch (error) {
+      console.error("[SCHEDULER] Error processing automation v2 steps:", error);
+    }
+    try {
       const { dateKey, hour, minute } = athensHourMinute();
       if (hour === 3 && minute === 0 && lastBillingNightlyKey !== dateKey) {
         lastBillingNightlyKey = dateKey;
@@ -161,6 +167,11 @@ export function startCampaignScheduler(storage: IStorage) {
   import("./lib/automation-engine")
     .then(({ processDueAutomationJobs }) => processDueAutomationJobs())
     .catch((error) => console.error("[SCHEDULER] Error in initial automation check:", error));
+  import("./lib/automation-engine-v2")
+    .then(({ processDueAutomationSteps }) => processDueAutomationSteps({ limit: 50 }))
+    .catch((error) =>
+      console.error("[SCHEDULER] Error in initial automation v2 check:", error),
+    );
 }
 
 export function stopCampaignScheduler() {
