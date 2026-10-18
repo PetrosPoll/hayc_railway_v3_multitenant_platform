@@ -1313,6 +1313,7 @@
         "resubscribeSuccessDesc": "Your new subscription is linked to this website.",
         "continueSubscription": "Continue subscription",
         "subscriptionEndsOn": "Your subscription ends on {{date}}",
+        "activeUntil": "Active until {{date}}",
         "subscriptionResumed": "Subscription continued",
         "subscriptionResumedDesc": "Your subscription will renew as usual.",
         "cancelAtPeriodEndHint": "Your subscription stays active until the end of the current billing period. You can continue it anytime before then.",

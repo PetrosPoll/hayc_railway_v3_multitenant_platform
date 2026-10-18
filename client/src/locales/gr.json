@@ -1315,6 +1315,7 @@
         "resubscribeSuccessDesc": "Η νέα συνδρομή συνδέθηκε με αυτό το website.",
         "continueSubscription": "Συνέχισε τη συνδρομή",
         "subscriptionEndsOn": "Η συνδρομή σου λήγει στις {{date}}",
+        "activeUntil": "Ενεργή μέχρι {{date}}",
         "subscriptionResumed": "Η συνδρομή συνεχίστηκε",
         "subscriptionResumedDesc": "Η συνδρομή σου θα ανανεώνεται κανονικά.",
         "cancelAtPeriodEndHint": "Η συνδρομή σου παραμένει ενεργή μέχρι το τέλος της τρέχουσας περιόδου χρέωσης. Μπορείς να τη συνεχίσεις οποιαδήποτε στιγμή πριν τη λήξη.",

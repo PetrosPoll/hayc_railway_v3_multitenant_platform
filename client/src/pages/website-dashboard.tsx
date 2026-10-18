@@ -2199,6 +2199,33 @@ export default function WebsiteDashboard() {
     );
   };
 
+  const getSubscriptionStatusBadge = (subscription: any) => {
+    const endsAtPeriodEnd =
+      subscription?.status === "active" && subscription?.cancelAtPeriodEnd;
+    const untilDate = subscription?.accessUntil
+      ? formatDate(subscription.accessUntil)
+      : null;
+
+    return {
+      label: endsAtPeriodEnd
+        ? untilDate
+          ? t("dashboard.activeUntil", { date: untilDate }) ||
+            `Active until ${untilDate}`
+          : t("dashboard.subscriptionEndsOn", { date: "—" }) ||
+            "Active until period end"
+        : subscription?.status,
+      className: endsAtPeriodEnd
+        ? "bg-amber-500 hover:bg-amber-500"
+        : subscription?.status === "active"
+          ? "bg-green-500"
+          : "",
+      variant:
+        subscription?.status === "active"
+          ? ("default" as const)
+          : ("secondary" as const),
+    };
+  };
+
   const renderSubscriptionsList = () => {
     const displayGroups = getSubscriptionDisplayGroups(subscriptions);
 
@@ -2273,21 +2300,19 @@ export default function WebsiteDashboard() {
                         >
                           {getSubscriptionLabel(subscription)}
                         </h3>
-                        <Badge
-                          variant={
-                            subscription.status === "active"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className={
-                            subscription.status === "active"
-                              ? "bg-green-500"
-                              : ""
-                          }
-                          data-testid={`status-${subscription.id}`}
-                        >
-                          {subscription.status}
-                        </Badge>
+                        {(() => {
+                          const statusBadge =
+                            getSubscriptionStatusBadge(subscription);
+                          return (
+                            <Badge
+                              variant={statusBadge.variant}
+                              className={statusBadge.className}
+                              data-testid={`status-${subscription.id}`}
+                            >
+                              {statusBadge.label}
+                            </Badge>
+                          );
+                        })()}
                       </div>
                       {companions.length > 0 && (
                         <p className="text-sm text-muted-foreground mb-1">
@@ -2400,16 +2425,19 @@ export default function WebsiteDashboard() {
             {getSubscriptionLabel(selectedSubscription)}{" "}
             {t("dashboard.subscription") || "Subscription"}
           </h2>
-          <Badge
-            variant={
-              selectedSubscription.status === "active" ? "default" : "secondary"
-            }
-            className={
-              selectedSubscription.status === "active" ? "bg-green-500" : ""
-            }
-          >
-            {selectedSubscription.status}
-          </Badge>
+          {(() => {
+            const statusBadge =
+              getSubscriptionStatusBadge(selectedSubscription);
+            return (
+              <Badge
+                variant={statusBadge.variant}
+                className={statusBadge.className}
+                data-testid={`status-detail-${selectedSubscription.id}`}
+              >
+                {statusBadge.label}
+              </Badge>
+            );
+          })()}
         </div>
         <p className="text-muted-foreground mb-6">
           {t("dashboard.manageSubscriptionBilling") ||
