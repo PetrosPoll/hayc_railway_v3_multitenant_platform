@@ -1454,6 +1454,8 @@
         "noThumbnail": "Χωρίς προεπισκόπηση",
         "createFirstTemplate": "Δημιουργήστε το πρώτο σας πρότυπο email χρησιμοποιώντας τον δημιουργό email",
         "createTemplate": "Δημιουργία Προτύπου",
+        "back": "Πίσω",
+        "save": "Αποθήκευση",
         "popups": "Popups",
         "popupsDescription": "Σχεδίασε visit popups με τον οπτικό editor. Ξεχωριστά από τα newsletter templates.",
         "createPopup": "Δημιουργία Popup",

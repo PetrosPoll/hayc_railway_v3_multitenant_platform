@@ -4170,7 +4170,7 @@ export default function WebsiteDashboard() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 max-w-3xl">
             {popupTemplates.map((popup) => (
               <Card
                 key={popup.id}
@@ -4179,7 +4179,7 @@ export default function WebsiteDashboard() {
               >
                 <button
                   type="button"
-                  className="relative aspect-square w-full min-h-[280px] bg-muted overflow-hidden border-b text-left cursor-pointer"
+                  className="relative aspect-square w-full bg-muted overflow-hidden border-b text-left cursor-pointer"
                   onClick={() => {
                     sessionStorage.setItem("loadPopupId", popup.id.toString());
                     navigate(`/websites/${websiteId}/popup-builder`);

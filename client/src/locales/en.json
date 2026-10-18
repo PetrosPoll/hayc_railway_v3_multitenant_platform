@@ -1452,6 +1452,8 @@
         "noThumbnail": "No preview",
         "createFirstTemplate": "Create your first email template using the email builder",
         "createTemplate": "Create Template",
+        "back": "Back",
+        "save": "Save",
         "popups": "Popups",
         "popupsDescription": "Design visit popups with the visual editor. Separate from newsletter templates.",
         "createPopup": "Create Popup",
