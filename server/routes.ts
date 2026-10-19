@@ -27859,8 +27859,25 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(409).json({ error: "Website automations_engine is not v2" });
       }
 
-      const testEmail = String(req.user.email);
-      // Prefer site contact email as owner for reply-to; still deliver test mail to logged-in user.
+      const fallbackEmail = String(req.user.email);
+      const isValidEmail = (v: string) =>
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+      const visitorEmail = String(req.body?.visitorEmail || "")
+        .trim()
+        .toLowerCase();
+      const ownerEmail = String(req.body?.ownerEmail || "")
+        .trim()
+        .toLowerCase();
+      const visitorName = String(req.body?.visitorName || "Test Contact").trim();
+
+      if (!visitorEmail || !isValidEmail(visitorEmail)) {
+        return res.status(400).json({ error: "Valid visitorEmail is required" });
+      }
+      if (!ownerEmail || !isValidEmail(ownerEmail)) {
+        return res.status(400).json({ error: "Valid ownerEmail is required" });
+      }
+
       const [site] = await db
         .select({
           contactEmail: websiteProgress.contactEmail,
@@ -27877,17 +27894,19 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         dedupeKey: `test:${workflowId}:${Date.now()}`,
         payload: {
           isTest: true,
-          testEmail,
+          testEmail: fallbackEmail,
           testWorkflowId: workflowId,
           form_id: workflow.triggerFormId,
           formId: workflow.triggerFormId,
-          visitorEmail: testEmail,
-          visitorName: "Test Contact",
-          visitorPhone: "",
-          visitorMessage: "Test run — delays skipped where possible.",
+          visitorEmail,
+          visitorName: visitorName || "Test Contact",
+          visitorPhone: String(req.body?.visitorPhone || "").trim(),
+          visitorMessage:
+            String(req.body?.visitorMessage || "").trim() ||
+            "Test run — delays skipped where possible.",
           siteLabel: site?.projectName || "Test",
           siteId: site?.siteId || "",
-          ownerEmail: site?.contactEmail || testEmail,
+          ownerEmail,
           fromName: site?.projectName || "Hayc Test",
           language: "en",
           tag: String((workflow.triggerConfig as any)?.tag || "test"),

@@ -5377,6 +5377,7 @@ export default function WebsiteDashboard() {
                   <AutomationBuilder
                     websiteId={Number(websiteId)}
                     websiteLanguage={website.websiteLanguage}
+                    contactEmail={website.contactEmail}
                   />
                 </div>
               )}

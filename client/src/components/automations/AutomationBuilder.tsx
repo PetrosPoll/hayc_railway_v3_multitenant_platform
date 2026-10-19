@@ -38,7 +38,6 @@ import {
   BadgeMinus,
   Trash2,
   UserPlus,
-  Zap,
 } from "lucide-react";
 import type {
   AutomationFrequency,
@@ -71,17 +70,27 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/components/ui/authContext";
 import { useToast } from "@/hooks/use-toast";
 import { automationNodeTypes } from "./nodes";
 
 type Props = {
   websiteId: number;
   websiteLanguage?: string | null;
+  contactEmail?: string | null;
 };
 
 type ConditionRuleUi = {
@@ -366,9 +375,14 @@ function ConditionRulesEditor({
   );
 }
 
-export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
+export function AutomationBuilder({
+  websiteId,
+  websiteLanguage,
+  contactEmail,
+}: Props) {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const [formsOpen, setFormsOpen] = useState(true);
@@ -377,6 +391,10 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [builderTab, setBuilderTab] = useState<"canvas" | "history">("canvas");
   const [presetOpen, setPresetOpen] = useState(false);
+  const [testOpen, setTestOpen] = useState(false);
+  const [testVisitorEmail, setTestVisitorEmail] = useState("");
+  const [testOwnerEmail, setTestOwnerEmail] = useState("");
+  const [testVisitorName, setTestVisitorName] = useState("Test Contact");
 
   const [workflowId, setWorkflowId] = useState<number | null>(null);
   const [workflowName, setWorkflowName] = useState("New automation");
@@ -855,12 +873,44 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     },
   });
 
+  const openTestDialog = () => {
+    const defaultUser = user?.email || "";
+    const defaultOwner = (contactEmail || "").trim() || defaultUser;
+    setTestVisitorEmail((prev) => prev || defaultUser);
+    setTestOwnerEmail((prev) => prev || defaultOwner);
+    setTestVisitorName((prev) => prev || "Test Contact");
+    setTestOpen(true);
+  };
+
   const testMutation = useMutation({
     mutationFn: async () => {
       if (!workflowId) throw new Error("Save the workflow first");
+      const visitorEmail = testVisitorEmail.trim();
+      const ownerEmail = testOwnerEmail.trim();
+      if (!visitorEmail.includes("@")) {
+        throw new Error(
+          t("dashboard.automationsTestVisitorEmailInvalid") ||
+            "Enter a valid customer email",
+        );
+      }
+      if (!ownerEmail.includes("@")) {
+        throw new Error(
+          t("dashboard.automationsTestOwnerEmailInvalid") ||
+            "Enter a valid owner email",
+        );
+      }
       const res = await fetch(
         `/api/websites/${websiteId}/automation-workflows/${workflowId}/test`,
-        { method: "POST", credentials: "include" },
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            visitorEmail,
+            ownerEmail,
+            visitorName: testVisitorName.trim() || "Test Contact",
+          }),
+        },
       );
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
@@ -869,6 +919,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
       return res.json();
     },
     onSuccess: () => {
+      setTestOpen(false);
       setBuilderTab("history");
       queryClient.invalidateQueries({
         queryKey: ["/api/websites", websiteId, "automation-workflows", workflowId, "runs"],
@@ -941,7 +992,6 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     <div className="space-y-3" data-testid="automation-builder">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
-          <Zap className="h-5 w-5 shrink-0" />
           <Input
             value={workflowName}
             onChange={(e) => setWorkflowName(e.target.value)}
@@ -985,15 +1035,11 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => testMutation.mutate()}
+              onClick={openTestDialog}
               disabled={testMutation.isPending}
               data-testid="automation-test-button"
             >
-              {testMutation.isPending ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Play className="h-4 w-4 mr-1" />
-              )}
+              <Play className="h-4 w-4 mr-1" />
               {t("dashboard.automationsTest") || "Test"}
             </Button>
           )}
@@ -1873,6 +1919,79 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
       </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={testOpen} onOpenChange={setTestOpen}>
+        <DialogContent className="max-w-md" data-testid="automation-test-dialog">
+          <DialogHeader>
+            <DialogTitle>
+              {t("dashboard.automationsTestTitle") || "Run test"}
+            </DialogTitle>
+            <DialogDescription>
+              {t("dashboard.automationsTestHint") ||
+                "Emails go to the addresses you enter. Delays are skipped."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-1">
+            <div className="space-y-1.5">
+              <Label htmlFor="test-visitor-email">
+                {t("dashboard.automationsTestVisitorEmail") ||
+                  "Customer email (form filler)"}
+              </Label>
+              <Input
+                id="test-visitor-email"
+                type="email"
+                value={testVisitorEmail}
+                onChange={(e) => setTestVisitorEmail(e.target.value)}
+                placeholder="customer@example.com"
+                data-testid="automation-test-visitor-email"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="test-visitor-name">
+                {t("dashboard.automationsTestVisitorName") || "Customer name"}
+              </Label>
+              <Input
+                id="test-visitor-name"
+                value={testVisitorName}
+                onChange={(e) => setTestVisitorName(e.target.value)}
+                placeholder="Test Contact"
+                data-testid="automation-test-visitor-name"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="test-owner-email">
+                {t("dashboard.automationsTestOwnerEmail") ||
+                  "Owner / admin email"}
+              </Label>
+              <Input
+                id="test-owner-email"
+                type="email"
+                value={testOwnerEmail}
+                onChange={(e) => setTestOwnerEmail(e.target.value)}
+                placeholder="owner@example.com"
+                data-testid="automation-test-owner-email"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTestOpen(false)}>
+              {t("dashboard.cancel") || "Cancel"}
+            </Button>
+            <Button
+              onClick={() => testMutation.mutate()}
+              disabled={testMutation.isPending}
+              data-testid="automation-test-run"
+            >
+              {testMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Play className="h-4 w-4 mr-2" />
+              )}
+              {t("dashboard.automationsTestRun") || "Run test"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={presetOpen} onOpenChange={setPresetOpen}>
         <AlertDialogContent className="max-w-lg">

@@ -668,15 +668,10 @@ async function executeNode(params: {
 
   if (node.type === "email") {
     const testMode = eventPayload.isTest === true;
-    const testEmail = testMode
-      ? String(eventPayload.testEmail || payload.visitorEmail)
-      : null;
     await sendVisitorAutomationEmail({
       websiteProgressId: workflow.websiteProgressId,
       node,
-      payload: testEmail
-        ? { ...payload, visitorEmail: testEmail }
-        : payload,
+      payload,
       isTest: testMode,
     });
     await enqueueFrom();
@@ -685,12 +680,9 @@ async function executeNode(params: {
 
   if (node.type === "notify_owner") {
     const testMode = eventPayload.isTest === true;
-    const testEmail = testMode
-      ? String(eventPayload.testEmail || payload.ownerEmail)
-      : null;
     await sendOwnerAutomationEmail({
       node,
-      payload: testEmail ? { ...payload, ownerEmail: testEmail } : payload,
+      payload,
       isTest: testMode,
     });
     await enqueueFrom();
@@ -700,12 +692,9 @@ async function executeNode(params: {
   if (node.type === "owner_reminder") {
     // Step was already scheduled with delay when enqueued.
     const testMode = eventPayload.isTest === true;
-    const testEmail = testMode
-      ? String(eventPayload.testEmail || payload.ownerEmail)
-      : null;
     await sendOwnerAutomationEmail({
       node,
-      payload: testEmail ? { ...payload, ownerEmail: testEmail } : payload,
+      payload,
       isTest: testMode,
     });
     await enqueueFrom();
@@ -860,17 +849,11 @@ async function executeNode(params: {
       }
     }
 
-    const to = payload.isTest
-      ? payload.ownerEmail || payload.visitorEmail
-      : payload.visitorEmail;
-    // isTest is on event payload — check eventPayload
     const testMode = eventPayload.isTest === true;
-    const recipient = testMode
-      ? String(eventPayload.testEmail || payload.ownerEmail || payload.visitorEmail)
-      : payload.visitorEmail;
+    const recipient = payload.visitorEmail;
 
     const result = await EmailService.sendEmail({
-      to: recipient || to,
+      to: recipient,
       subject: testMode ? `[TEST] ${subject}` : subject,
       message: subject,
       fromEmail: "notifications@hayc.gr",
