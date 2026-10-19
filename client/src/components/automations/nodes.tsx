@@ -147,24 +147,29 @@ export function RemoveTagNode({ data, selected }: NodeProps) {
 export function ConditionNode({ data, selected }: NodeProps) {
   const rules = Array.isArray(data?.rules) ? data.rules.length : 0;
   return (
-    <NodeShell selected={selected} minWidth={150}>
+    <NodeShell selected={selected} minWidth={168}>
       <Handle type="target" position={Position.Left} className="!bg-muted-foreground !w-2.5 !h-2.5" />
       <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
         <GitBranch className="h-3 w-3" />
         If / Else
       </div>
-      <div className="text-sm font-semibold">{rules ? `${rules} rule(s)` : "Condition"}</div>
-      <div className="relative mt-2 h-4 text-[10px] text-muted-foreground">
-        <span className="absolute left-0 top-0">Yes</span>
-        <span className="absolute right-0 top-0">No</span>
+      <div className="text-sm font-semibold mb-2">
+        {rules ? `${rules} rule(s)` : "Condition"}
+      </div>
+      {/* Yes = green (right). No = red (bottom). Labels sit next to the matching handle. */}
+      <div className="flex items-center justify-end gap-1 text-[10px] text-emerald-700 dark:text-emerald-400 pr-1">
+        <span>Yes</span>
       </div>
       <Handle
         type="source"
         id="yes"
         position={Position.Right}
-        style={{ top: "70%" }}
+        style={{ top: "62%" }}
         className="!bg-emerald-500 !w-2.5 !h-2.5"
       />
+      <div className="mt-3 flex items-center justify-center gap-1 text-[10px] text-rose-700 dark:text-rose-400">
+        <span>No</span>
+      </div>
       <Handle
         type="source"
         id="no"

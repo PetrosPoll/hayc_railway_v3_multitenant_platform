@@ -71,8 +71,286 @@ type Props = {
   websiteLanguage?: string | null;
 };
 
+type ConditionRuleUi = {
+  kind: "form_field" | "contact_tag" | "day_of_week" | "time_of_day";
+  fieldKey?: string;
+  operator?: string;
+  value?: string;
+  values?: string[];
+  timeFrom?: string;
+  timeTo?: string;
+};
+
 function uid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function ConditionRulesEditor({
+  rules,
+  onChange,
+  t,
+}: {
+  rules: ConditionRuleUi[];
+  onChange: (rules: ConditionRuleUi[]) => void;
+  t: (key: string, opts?: Record<string, string>) => string;
+}) {
+  const list = rules.length
+    ? rules
+    : [
+        {
+          kind: "form_field" as const,
+          fieldKey: "message",
+          operator: "is_not_empty",
+        },
+      ];
+
+  const updateRule = (index: number, patch: Partial<ConditionRuleUi>) => {
+    const next = list.map((r, i) => (i === index ? { ...r, ...patch } : r));
+    onChange(next);
+  };
+
+  const removeRule = (index: number) => {
+    onChange(list.filter((_, i) => i !== index));
+  };
+
+  const addRule = () => {
+    onChange([
+      ...list,
+      { kind: "form_field", fieldKey: "message", operator: "is_not_empty" },
+    ]);
+  };
+
+  return (
+    <div className="space-y-3 text-sm">
+      <p className="text-muted-foreground text-xs">
+        {t("dashboard.automationsConditionHint") ||
+          "Green Yes / red No. All rules must pass (AND) for Yes."}
+      </p>
+      {list.map((rule, index) => (
+        <div key={index} className="rounded-md border p-2 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-xs">
+              {t("dashboard.automationsConditionRule") || "Rule"} {index + 1}
+            </Label>
+            {list.length > 1 && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2"
+                onClick={() => removeRule(index)}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
+          <Select
+            value={rule.kind}
+            onValueChange={(v) =>
+              updateRule(index, {
+                kind: v as ConditionRuleUi["kind"],
+                operator:
+                  v === "form_field"
+                    ? "is_not_empty"
+                    : v === "contact_tag"
+                      ? "has"
+                      : v === "day_of_week"
+                        ? "is_one_of"
+                        : "between",
+                fieldKey: v === "form_field" ? rule.fieldKey || "message" : undefined,
+                value: v === "contact_tag" ? rule.value || "" : undefined,
+                values: v === "day_of_week" ? rule.values || ["mon", "tue", "wed", "thu", "fri"] : undefined,
+                timeFrom: v === "time_of_day" ? rule.timeFrom || "09:00" : undefined,
+                timeTo: v === "time_of_day" ? rule.timeTo || "17:00" : undefined,
+              })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="form_field">
+                {t("dashboard.automationsRuleFormField") || "Form field"}
+              </SelectItem>
+              <SelectItem value="contact_tag">
+                {t("dashboard.automationsRuleTag") || "Contact tag"}
+              </SelectItem>
+              <SelectItem value="day_of_week">
+                {t("dashboard.automationsRuleDay") || "Day of week"}
+              </SelectItem>
+              <SelectItem value="time_of_day">
+                {t("dashboard.automationsRuleTime") || "Time of day"}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+
+          {rule.kind === "form_field" && (
+            <>
+              <Label className="text-xs">
+                {t("dashboard.automationsRuleFieldKey") || "Field"}
+              </Label>
+              <Select
+                value={rule.fieldKey || "message"}
+                onValueChange={(v) => updateRule(index, { fieldKey: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="name">name</SelectItem>
+                  <SelectItem value="email">email</SelectItem>
+                  <SelectItem value="phone">phone</SelectItem>
+                  <SelectItem value="message">message</SelectItem>
+                </SelectContent>
+              </Select>
+              <Label className="text-xs">
+                {t("dashboard.automationsRuleOperator") || "Operator"}
+              </Label>
+              <Select
+                value={rule.operator || "is_not_empty"}
+                onValueChange={(v) => updateRule(index, { operator: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="is_not_empty">
+                    {t("dashboard.automationsOpNotEmpty") || "is not empty"}
+                  </SelectItem>
+                  <SelectItem value="is_empty">
+                    {t("dashboard.automationsOpEmpty") || "is empty"}
+                  </SelectItem>
+                  <SelectItem value="equals">
+                    {t("dashboard.automationsOpEquals") || "equals"}
+                  </SelectItem>
+                  <SelectItem value="not_equals">
+                    {t("dashboard.automationsOpNotEquals") || "does not equal"}
+                  </SelectItem>
+                  <SelectItem value="contains">
+                    {t("dashboard.automationsOpContains") || "contains"}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {(rule.operator === "equals" ||
+                rule.operator === "not_equals" ||
+                rule.operator === "contains") && (
+                <>
+                  <Label className="text-xs">
+                    {t("dashboard.automationsRuleValue") || "Value"}
+                  </Label>
+                  <Input
+                    value={rule.value || ""}
+                    onChange={(e) => updateRule(index, { value: e.target.value })}
+                  />
+                </>
+              )}
+            </>
+          )}
+
+          {rule.kind === "contact_tag" && (
+            <>
+              <Label className="text-xs">
+                {t("dashboard.automationsRuleOperator") || "Operator"}
+              </Label>
+              <Select
+                value={rule.operator || "has"}
+                onValueChange={(v) => updateRule(index, { operator: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="has">
+                    {t("dashboard.automationsOpHasTag") || "has tag"}
+                  </SelectItem>
+                  <SelectItem value="does_not_have">
+                    {t("dashboard.automationsOpNoTag") || "does not have tag"}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Label className="text-xs">
+                {t("dashboard.automationsTagName") || "Tag"}
+              </Label>
+              <Input
+                value={rule.value || ""}
+                onChange={(e) => updateRule(index, { value: e.target.value })}
+                placeholder="lead"
+              />
+            </>
+          )}
+
+          {rule.kind === "day_of_week" && (
+            <>
+              <Label className="text-xs">
+                {t("dashboard.automationsRuleDays") || "Days (Europe/Athens)"}
+              </Label>
+              <div className="flex flex-wrap gap-1">
+                {(
+                  [
+                    ["mon", "Δευ"],
+                    ["tue", "Τρι"],
+                    ["wed", "Τετ"],
+                    ["thu", "Πεμ"],
+                    ["fri", "Παρ"],
+                    ["sat", "Σαβ"],
+                    ["sun", "Κυρ"],
+                  ] as const
+                ).map(([key, label]) => {
+                  const selected = (rule.values || []).includes(key);
+                  return (
+                    <Button
+                      key={key}
+                      type="button"
+                      size="sm"
+                      variant={selected ? "default" : "outline"}
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const cur = new Set(rule.values || []);
+                        if (cur.has(key)) cur.delete(key);
+                        else cur.add(key);
+                        updateRule(index, { values: Array.from(cur) });
+                      }}
+                    >
+                      {label}
+                    </Button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {rule.kind === "time_of_day" && (
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">
+                  {t("dashboard.automationsRuleFrom") || "From"}
+                </Label>
+                <Input
+                  type="time"
+                  value={rule.timeFrom || "09:00"}
+                  onChange={(e) => updateRule(index, { timeFrom: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label className="text-xs">
+                  {t("dashboard.automationsRuleTo") || "To"}
+                </Label>
+                <Input
+                  type="time"
+                  value={rule.timeTo || "17:00"}
+                  onChange={(e) => updateRule(index, { timeTo: e.target.value })}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" className="w-full" onClick={addRule}>
+        <Plus className="h-3.5 w-3.5 mr-1" />
+        {t("dashboard.automationsAddRule") || "Add rule"}
+      </Button>
+    </div>
+  );
 }
 
 export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
@@ -982,29 +1260,15 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
                 />
               </div>
             ) : selectedNode.type === "condition" ? (
-              <div className="space-y-2 text-sm">
-                <p className="text-muted-foreground text-xs">
-                  {t("dashboard.automationsConditionHint") ||
-                    "Connect Yes / No handles. Rules are AND’d. Edit JSON rules below."}
-                </p>
-                <Label>{t("dashboard.automationsConditionRules") || "Rules (JSON)"}</Label>
-                <textarea
-                  className="flex min-h-[160px] w-full rounded-md border border-input bg-background px-3 py-2 text-xs font-mono"
-                  defaultValue={JSON.stringify(selectedNode.data.rules || [], null, 2)}
-                  key={selectedNode.id}
-                  onBlur={(e) => {
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      if (Array.isArray(parsed)) updateSelectedData({ rules: parsed });
-                    } catch {
-                      toast({
-                        title: "Invalid JSON",
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                />
-              </div>
+              <ConditionRulesEditor
+                rules={
+                  Array.isArray(selectedNode.data.rules)
+                    ? (selectedNode.data.rules as ConditionRuleUi[])
+                    : []
+                }
+                onChange={(rules) => updateSelectedData({ rules })}
+                t={t}
+              />
             ) : selectedNode.type === "notify_owner" ? (
               <div className="space-y-2">
                 <Label>{t("dashboard.automationsSubject") || "Subject"}</Label>
