@@ -31,6 +31,7 @@ async function markScheduledCampaignFailed(
 let schedulerInterval: NodeJS.Timeout | null = null;
 let lastBillingNightlyKey: string | null = null;
 let lastBillingDigestKey: string | null = null;
+let lastScheduleOffsetKey: string | null = null;
 
 function athensHourMinute(now = new Date()): { dateKey: string; hour: number; minute: number } {
   const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -154,6 +155,14 @@ export function startCampaignScheduler(storage: IStorage) {
       if (hour === 9 && minute === 0 && lastBillingDigestKey !== dateKey) {
         lastBillingDigestKey = dateKey;
         await runBillingAdminDigest();
+      }
+      if (hour === 9 && minute === 0 && lastScheduleOffsetKey !== dateKey) {
+        lastScheduleOffsetKey = dateKey;
+        const { processScheduleDateOffsetTriggers } = await import(
+          "./lib/automation-schedule"
+        );
+        const n = await processScheduleDateOffsetTriggers();
+        console.log(`[SCHEDULER] schedule.date_offset emitted runs: ${n}`);
       }
     } catch (error) {
       console.error("[SCHEDULER] Billing calendar job error:", error);

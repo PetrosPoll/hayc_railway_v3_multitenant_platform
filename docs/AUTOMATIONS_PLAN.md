@@ -333,3 +333,26 @@ Please review §5 risks, §6 open questions, and §6b proposals, then approve Ph
 | Legacy migrate appends `notify_owner` | Done |
 
 **Manual test:** enable v2 → Start from template “Reply & notify” → submit form → visitor + owner emails; History tab shows run; frequency “once per contact” blocks second run.
+
+---
+
+## 12. Phase 2 implementation status
+
+**Shipped (2026-10-19):**
+
+| Item | Status |
+|------|--------|
+| Triggers: contact.created, contact.tag_added, newsletter.subscribed, booking.*, schedule.date_offset | Done |
+| Builder palette groups: Forms / Contacts / Bookings / Time | Done |
+| Actions: webhook, review_request, send_coupon | Done |
+| `google_review_url` on website + PATCH API | Done |
+| Booking ingest `POST /api/websites/:id/booking-events` (+ `BOOKING_EVENTS_SECRET`) | Done |
+| `booking.cancelled` → cancelRuns by booking_id | Done |
+| Daily 09:00 Athens `schedule.date_offset` job | Done |
+| Frequency `once_per_contact_per_90d` | Done |
+| Test run button (emails → logged-in user) | Done |
+| Webhook test button | Done |
+| SES open/click condition (“Άνοιξε το email;”) | Deferred — table `automation_email_events` ready; SNS wiring later |
+| External booking app emit wiring | Needs booking repo to call booking-events API |
+
+**Google review URL:** `PATCH /api/websites/:id/google-review-url` `{ "googleReviewUrl": "https://..." }`

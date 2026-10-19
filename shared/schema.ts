@@ -161,6 +161,8 @@ export const websiteProgress = pgTable("website_progress", {
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
   contactEmail: text("contact_email"),
+  /** Google review / Maps URL for automation `review_request` action. */
+  googleReviewUrl: text("google_review_url"),
   /** Optional dashboard card preview image (staff can set while impersonating when no template chosen). */
   dashboardPreviewImage: text("dashboard_preview_image"),
   /** First time the site entered the Launch stage (set once, never overwritten). */
@@ -1872,7 +1874,10 @@ export type AutomationNodeType =
   | "owner_reminder"
   | "add_tag"
   | "remove_tag"
-  | "condition";
+  | "condition"
+  | "webhook"
+  | "review_request"
+  | "send_coupon";
 
 export type AutomationGraphNode = {
   id: string;
@@ -1881,11 +1886,23 @@ export type AutomationGraphNode = {
   data: Record<string, unknown>;
 };
 
-/** Workflow frequency (Phase 1 UI; enforced in v2 engine when set). */
+/** Workflow frequency (Phase 1–2 UI; enforced in v2 engine when set). */
 export type AutomationFrequency =
   | "every_time"
   | "once_per_contact"
-  | "once_per_contact_per_24h";
+  | "once_per_contact_per_24h"
+  | "once_per_contact_per_90d";
+
+/** Event types the v2 engine can match (Phase 0–2). */
+export type AutomationEventType =
+  | "form.submitted"
+  | "contact.created"
+  | "contact.tag_added"
+  | "newsletter.subscribed"
+  | "booking.created"
+  | "booking.cancelled"
+  | "booking.completed"
+  | "schedule.date_offset";
 
 export type AutomationsEngineMode = "legacy" | "v2";
 
@@ -2015,6 +2032,28 @@ export const automationEvents = pgTable(
 );
 
 export type AutomationEvent = typeof automationEvents.$inferSelect;
+
+/** SES open/click (and test) events for automation emails. */
+export const automationEmailEvents = pgTable(
+  "automation_email_events",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    runId: integer("run_id"),
+    stepId: integer("step_id"),
+    messageId: text("message_id").notNull(),
+    type: text("type").notNull(), // open | click | delivery | bounce | complaint
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    messageIdx: index("automation_email_events_message_idx").on(table.messageId),
+    runIdx: index("automation_email_events_run_idx").on(table.runId),
+  }),
+);
+
+export type AutomationEmailEvent = typeof automationEmailEvents.$inferSelect;
 
 export const websiteAutomationRuns = pgTable(
   "website_automation_runs",

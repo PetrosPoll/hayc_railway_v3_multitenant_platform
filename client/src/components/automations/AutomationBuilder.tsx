@@ -19,18 +19,24 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import {
   Bell,
+  Calendar,
   ChevronDown,
   ChevronRight,
   Clock,
   FileText,
+  Gift,
   GitBranch,
+  Globe,
   Loader2,
   Mail,
   Plus,
+  Play,
   Save,
+  Star,
   Tag,
   BadgeMinus,
   Trash2,
+  UserPlus,
   Zap,
 } from "lucide-react";
 import type {
@@ -370,8 +376,13 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
   const [enabled, setEnabled] = useState(true);
   const [frequency, setFrequency] = useState<AutomationFrequency>("every_time");
   const [triggerFormId, setTriggerFormId] = useState("");
+  const [triggerType, setTriggerType] = useState<string>("form.submitted");
+  const [triggerConfig, setTriggerConfig] = useState<Record<string, unknown>>({});
   const [didInitialLoad, setDidInitialLoad] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [contactsOpen, setContactsOpen] = useState(true);
+  const [bookingOpen, setBookingOpen] = useState(true);
+  const [timeOpen, setTimeOpen] = useState(true);
 
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
@@ -476,6 +487,8 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     setEnabled(true);
     setFrequency("every_time");
     setTriggerFormId(forms[0]?.id || "");
+    setTriggerType("form.submitted");
+    setTriggerConfig({});
     setSelectedNodeId(null);
     setBuilderTab("canvas");
   }, [forms]);
@@ -486,6 +499,8 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     setEnabled(wf.enabled);
     setFrequency((wf.frequency as AutomationFrequency) || "every_time");
     setTriggerFormId(wf.triggerFormId);
+    setTriggerType(wf.triggerType || "form.submitted");
+    setTriggerConfig((wf.triggerConfig as Record<string, unknown>) || {});
     const g = wf.graph || { nodes: [], edges: [] };
     setNodes(
       (g.nodes || []).map((n) => ({
@@ -554,7 +569,29 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     );
   };
 
-  const addNodeFromPalette = (kind: AutomationNodeType, form?: SiteFormConfig) => {
+  const addEventTrigger = (eventType: string, label: string, config: Record<string, unknown> = {}) => {
+    const id = uid("trigger");
+    setNodes((nds) => {
+      const without = nds.filter((n) => n.type !== "trigger");
+      return [
+        ...without,
+        {
+          id,
+          type: "trigger",
+          position: { x: 40, y: 160 },
+          data: { eventType, formName: label, triggerType: eventType, ...config },
+        },
+      ];
+    });
+    setTriggerType(eventType);
+    setTriggerFormId(eventType);
+    setTriggerConfig(config);
+  };
+
+  const addNodeFromPalette = (
+    kind: AutomationNodeType,
+    form?: SiteFormConfig,
+  ) => {
     const id = uid(kind);
     const baseX = 80 + nodes.length * 40;
     const baseY = 80 + (nodes.length % 4) * 80;
@@ -568,11 +605,17 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             id,
             type: "trigger",
             position: { x: 40, y: 160 },
-            data: { formId: form.id, formName: form.name },
+            data: {
+              formId: form.id,
+              formName: form.name,
+              eventType: "form.submitted",
+            },
           },
         ];
       });
       setTriggerFormId(form.id);
+      setTriggerType("form.submitted");
+      setTriggerConfig({ formId: form.id });
       return;
     }
     const defaults: Record<string, Record<string, unknown>> = {
@@ -599,6 +642,18 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
         rules: [
           { kind: "form_field", fieldKey: "message", operator: "is_not_empty" },
         ],
+      },
+      webhook: { url: "https://", secret: "" },
+      review_request: {
+        subject: "How was your visit — {{siteLabel}}?",
+        body: "Hi {{name}},\n\nWe'd love your feedback.",
+      },
+      send_coupon: {
+        couponCode: "WELCOME10",
+        couponDescription: "10% off your next visit",
+        couponExpiry: "",
+        subject: "A gift for you — {{siteLabel}}",
+        body: "Hi {{name}},\n\nUse code {{coupon_code}}.",
       },
     };
     setNodes((nds) => [
@@ -635,9 +690,19 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
   const saveMutation = useMutation({
     mutationFn: async () => {
       const trigger = nodes.find((n) => n.type === "trigger");
+      const eventType =
+        (trigger?.data?.eventType as string) ||
+        (trigger?.data?.triggerType as string) ||
+        triggerType ||
+        "form.submitted";
       const formId =
-        (trigger?.data?.formId as string) || triggerFormId || forms[0]?.id;
-      if (!formId) throw new Error("Add a form trigger first");
+        eventType === "form.submitted"
+          ? (trigger?.data?.formId as string) || triggerFormId || forms[0]?.id
+          : eventType;
+      if (eventType === "form.submitted" && !formId) {
+        throw new Error("Add a form trigger first");
+      }
+      if (!trigger) throw new Error("Add a trigger first");
 
       const graph = {
         nodes: nodes.map((n) => ({
@@ -655,10 +720,18 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
         })),
       };
 
+      const cfgFromTrigger: Record<string, unknown> = {
+        ...triggerConfig,
+        ...(trigger.data || {}),
+      };
+      if (eventType === "form.submitted") cfgFromTrigger.formId = formId;
+
       const body = {
         name: workflowName.trim() || "Automation",
         enabled,
-        triggerFormId: formId,
+        triggerFormId: formId || eventType,
+        triggerType: eventType,
+        triggerConfig: cfgFromTrigger,
         frequency,
         graph,
       };
@@ -772,6 +845,37 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
     },
   });
 
+  const testMutation = useMutation({
+    mutationFn: async () => {
+      if (!workflowId) throw new Error("Save the workflow first");
+      const res = await fetch(
+        `/api/websites/${websiteId}/automation-workflows/${workflowId}/test`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Test failed");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setBuilderTab("history");
+      queryClient.invalidateQueries({
+        queryKey: ["/api/websites", websiteId, "automation-workflows", workflowId, "runs"],
+      });
+      toast({
+        title: t("dashboard.automationsTestStarted") || "Test run started — check History",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const presetMutation = useMutation({
     mutationFn: async (presetKey: string) => {
       const form =
@@ -878,6 +982,9 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
               <SelectItem value="once_per_contact_per_24h">
                 {t("dashboard.automationsFreqOnce24h") || "Once per contact / 24h"}
               </SelectItem>
+              <SelectItem value="once_per_contact_per_90d">
+                {t("dashboard.automationsFreqOnce90d") || "Once per contact / 90 days"}
+              </SelectItem>
             </SelectContent>
           </Select>
           <div className="flex items-center gap-2">
@@ -894,6 +1001,22 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
           >
             {t("dashboard.automationsStartPreset") || "Start from template"}
           </Button>
+          {workflowId != null && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => testMutation.mutate()}
+              disabled={testMutation.isPending}
+              data-testid="automation-test-button"
+            >
+              {testMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Play className="h-4 w-4 mr-1" />
+              )}
+              {t("dashboard.automationsTest") || "Test"}
+            </Button>
+          )}
           {workflowId != null && (
             <Button
               variant="outline"
@@ -989,7 +1112,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
               onClick={() => setFormsOpen((v) => !v)}
             >
               {formsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-              {t("dashboard.automationsForms") || "Forms"}
+              {t("dashboard.automationsTriggersForms") || "Forms"}
             </button>
             {formsOpen && (
               <div className="space-y-1 pl-1">
@@ -1036,6 +1159,9 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
                     { kind: "owner_reminder" as const, icon: Bell, label: t("dashboard.automationsOwnerReminder") || "Remind me later" },
                     { kind: "add_tag" as const, icon: Tag, label: t("dashboard.automationsAddTag") || "Add tag" },
                     { kind: "remove_tag" as const, icon: BadgeMinus, label: t("dashboard.automationsRemoveTag") || "Remove tag" },
+                    { kind: "review_request" as const, icon: Star, label: t("dashboard.automationsReviewRequest") || "Google review" },
+                    { kind: "send_coupon" as const, icon: Gift, label: t("dashboard.automationsSendCoupon") || "Send coupon" },
+                    { kind: "webhook" as const, icon: Globe, label: t("dashboard.automationsWebhook") || "Webhook" },
                   ] as const
                 ).map((item) => (
                   <div
@@ -1053,6 +1179,121 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="flex w-full items-center gap-1 text-xs font-semibold uppercase text-muted-foreground pt-2"
+              onClick={() => setContactsOpen((v) => !v)}
+            >
+              {contactsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              {t("dashboard.automationsTriggersContacts") || "Contacts"}
+            </button>
+            {contactsOpen && (
+              <div className="space-y-1 pl-1">
+                <div
+                  className="cursor-pointer rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted"
+                  onClick={() =>
+                    addEventTrigger(
+                      "contact.created",
+                      t("dashboard.automationsTriggerContactCreated") || "New contact",
+                    )
+                  }
+                >
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <UserPlus className="h-3.5 w-3.5" />
+                    {t("dashboard.automationsTriggerContactCreated") || "New contact"}
+                  </div>
+                </div>
+                <div
+                  className="cursor-pointer rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted"
+                  onClick={() =>
+                    addEventTrigger(
+                      "contact.tag_added",
+                      t("dashboard.automationsTriggerTagAdded") || "Tag added",
+                      { tag: "lead" },
+                    )
+                  }
+                >
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Tag className="h-3.5 w-3.5" />
+                    {t("dashboard.automationsTriggerTagAdded") || "Tag added"}
+                  </div>
+                </div>
+                <div
+                  className="cursor-pointer rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted"
+                  onClick={() =>
+                    addEventTrigger(
+                      "newsletter.subscribed",
+                      t("dashboard.automationsTriggerNewsletter") || "Newsletter subscribed",
+                    )
+                  }
+                >
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Mail className="h-3.5 w-3.5" />
+                    {t("dashboard.automationsTriggerNewsletter") || "Newsletter subscribed"}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="flex w-full items-center gap-1 text-xs font-semibold uppercase text-muted-foreground pt-2"
+              onClick={() => setBookingOpen((v) => !v)}
+            >
+              {bookingOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              {t("dashboard.automationsTriggersBooking") || "Bookings"}
+            </button>
+            {bookingOpen && (
+              <div className="space-y-1 pl-1">
+                {(
+                  [
+                    ["booking.completed", t("dashboard.automationsTriggerBookingDone") || "Appointment completed"],
+                    ["booking.created", t("dashboard.automationsTriggerBookingCreated") || "Booking created"],
+                    ["booking.cancelled", t("dashboard.automationsTriggerBookingCancelled") || "Booking cancelled"],
+                  ] as const
+                ).map(([type, label]) => (
+                  <div
+                    key={type}
+                    className="cursor-pointer rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted"
+                    onClick={() => addEventTrigger(type, label)}
+                  >
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Calendar className="h-3.5 w-3.5" />
+                      {label}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="flex w-full items-center gap-1 text-xs font-semibold uppercase text-muted-foreground pt-2"
+              onClick={() => setTimeOpen((v) => !v)}
+            >
+              {timeOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+              {t("dashboard.automationsTriggersTime") || "Time"}
+            </button>
+            {timeOpen && (
+              <div className="space-y-1 pl-1">
+                <div
+                  className="cursor-pointer rounded-md border bg-background px-2 py-1.5 text-sm hover:bg-muted"
+                  onClick={() =>
+                    addEventTrigger(
+                      "schedule.date_offset",
+                      t("dashboard.automationsTriggerDateOffset") || "X days after a date",
+                      { dateSource: "last_booking", offsetDays: 180, yearly: false },
+                    )
+                  }
+                >
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <Clock className="h-3.5 w-3.5" />
+                    {t("dashboard.automationsTriggerDateOffset") || "X days after a date"}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1194,11 +1435,185 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             ) : selectedNode.type === "trigger" ? (
               <div className="space-y-2 text-sm">
                 <p className="font-medium">
-                  {(selectedNode.data.formName as string) || "Form"}
+                  {(selectedNode.data.formName as string) ||
+                    (selectedNode.data.eventType as string) ||
+                    "Trigger"}
                 </p>
-                <p className="text-muted-foreground text-xs">
-                  id: {String(selectedNode.data.formId || "")}
-                </p>
+                {selectedNode.data.formId ? (
+                  <p className="text-muted-foreground text-xs">
+                    form id: {String(selectedNode.data.formId)}
+                  </p>
+                ) : null}
+                {selectedNode.data.eventType === "contact.tag_added" && (
+                  <>
+                    <Label>{t("dashboard.automationsTagName") || "Tag"}</Label>
+                    <Input
+                      value={(selectedNode.data.tag as string) || ""}
+                      onChange={(e) => {
+                        updateSelectedData({ tag: e.target.value });
+                        setTriggerConfig((c) => ({ ...c, tag: e.target.value }));
+                      }}
+                    />
+                  </>
+                )}
+                {selectedNode.data.eventType === "schedule.date_offset" && (
+                  <>
+                    <Label>
+                      {t("dashboard.automationsDateSource") || "Date source"}
+                    </Label>
+                    <Select
+                      value={(selectedNode.data.dateSource as string) || "last_booking"}
+                      onValueChange={(v) => {
+                        updateSelectedData({ dateSource: v });
+                        setTriggerConfig((c) => ({ ...c, dateSource: v }));
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="last_booking">
+                          {t("dashboard.automationsDateLastBooking") || "Last booking"}
+                        </SelectItem>
+                        <SelectItem value="subscribed_at">
+                          {t("dashboard.automationsDateSubscribed") || "Newsletter signup"}
+                        </SelectItem>
+                        <SelectItem value="dates.birthday">
+                          {t("dashboard.automationsDateBirthday") || "Birthday (custom)"}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Label>
+                      {t("dashboard.automationsOffsetDays") || "Days after"}
+                    </Label>
+                    <Input
+                      type="number"
+                      value={Number(selectedNode.data.offsetDays ?? 0)}
+                      onChange={(e) => {
+                        const offsetDays = Number(e.target.value) || 0;
+                        updateSelectedData({ offsetDays });
+                        setTriggerConfig((c) => ({ ...c, offsetDays }));
+                      }}
+                    />
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        checked={selectedNode.data.yearly === true}
+                        onCheckedChange={(v) => {
+                          updateSelectedData({ yearly: v });
+                          setTriggerConfig((c) => ({ ...c, yearly: v }));
+                        }}
+                      />
+                      <Label>
+                        {t("dashboard.automationsYearly") || "Every year"}
+                      </Label>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : selectedNode.type === "webhook" ? (
+              <div className="space-y-2">
+                <Label>URL (https)</Label>
+                <Input
+                  value={(selectedNode.data.url as string) || ""}
+                  onChange={(e) => updateSelectedData({ url: e.target.value })}
+                />
+                <Label>
+                  {t("dashboard.automationsWebhookSecret") || "Secret (optional)"}
+                </Label>
+                <Input
+                  value={(selectedNode.data.secret as string) || ""}
+                  onChange={(e) => updateSelectedData({ secret: e.target.value })}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(
+                        `/api/websites/${websiteId}/automation-webhook-test`,
+                        {
+                          method: "POST",
+                          credentials: "include",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            url: selectedNode.data.url,
+                            secret: selectedNode.data.secret,
+                          }),
+                        },
+                      );
+                      const data = await res.json();
+                      toast({
+                        title: data.ok
+                          ? `OK (${data.status})`
+                          : `Failed (${data.status || res.status})`,
+                        variant: data.ok ? "default" : "destructive",
+                      });
+                    } catch (e: any) {
+                      toast({
+                        title: e?.message || "Test failed",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  {t("dashboard.automationsWebhookTest") || "Test webhook"}
+                </Button>
+              </div>
+            ) : selectedNode.type === "review_request" ||
+              selectedNode.type === "send_coupon" ? (
+              <div className="space-y-2">
+                {selectedNode.type === "send_coupon" && (
+                  <>
+                    <Label>
+                      {t("dashboard.automationsCouponCode") || "Coupon code"}
+                    </Label>
+                    <Input
+                      value={(selectedNode.data.couponCode as string) || ""}
+                      onChange={(e) =>
+                        updateSelectedData({ couponCode: e.target.value })
+                      }
+                    />
+                    <Label>
+                      {t("dashboard.automationsCouponDesc") || "Offer description"}
+                    </Label>
+                    <Input
+                      value={(selectedNode.data.couponDescription as string) || ""}
+                      onChange={(e) =>
+                        updateSelectedData({ couponDescription: e.target.value })
+                      }
+                    />
+                    <Label>
+                      {t("dashboard.automationsCouponExpiry") || "Expiry (optional)"}
+                    </Label>
+                    <Input
+                      type="date"
+                      value={(selectedNode.data.couponExpiry as string) || ""}
+                      onChange={(e) =>
+                        updateSelectedData({ couponExpiry: e.target.value })
+                      }
+                    />
+                  </>
+                )}
+                {selectedNode.type === "review_request" && (
+                  <p className="text-xs text-amber-700 dark:text-amber-400">
+                    {t("dashboard.automationsReviewUrlHint") ||
+                      "Set Google review URL in website settings before enabling."}
+                  </p>
+                )}
+                <Label>{t("dashboard.automationsSubject") || "Subject"}</Label>
+                <Input
+                  value={(selectedNode.data.subject as string) || ""}
+                  onChange={(e) => updateSelectedData({ subject: e.target.value })}
+                />
+                <Label>{t("dashboard.automationsBody") || "Body"}</Label>
+                <FormattedTextarea
+                  value={(selectedNode.data.body as string) || ""}
+                  onChange={(e) => updateSelectedData({ body: e.target.value })}
+                  rows={6}
+                  showPreview
+                />
               </div>
             ) : selectedNode.type === "delay" ||
               selectedNode.type === "owner_reminder" ? (

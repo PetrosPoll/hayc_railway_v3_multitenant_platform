@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { and, eq, inArray, lte } from "drizzle-orm";
 import { db } from "../db";
 import { getConfig } from "../s3-config";
@@ -8,6 +9,7 @@ import {
   websiteAutomationSteps,
   websiteAutomationWorkflows,
   websiteEmailTemplates,
+  websiteProgress,
   type AutomationGraph,
   type AutomationGraphNode,
   type AutomationJobPayload,
@@ -289,6 +291,8 @@ function workflowMatchesEvent(
   payload: Record<string, unknown>,
 ): boolean {
   if (workflow.triggerType !== eventType) return false;
+  const cfg = (workflow.triggerConfig || {}) as Record<string, unknown>;
+
   if (eventType === "form.submitted") {
     const formId =
       typeof payload.form_id === "string"
@@ -299,6 +303,24 @@ function workflowMatchesEvent(
     if (!formId) return false;
     return workflow.triggerFormId === formId;
   }
+
+  if (eventType === "contact.tag_added") {
+    const want = String(cfg.tag || cfg.tagName || "").trim().toLowerCase();
+    if (!want) return true; // any tag
+    const got = String(payload.tag || payload.tagName || "").trim().toLowerCase();
+    return want === got;
+  }
+
+  if (eventType === "schedule.date_offset") {
+    const wantSource = String(cfg.dateSource || "");
+    const gotSource = String(payload.dateSource || "");
+    if (wantSource && gotSource && wantSource !== gotSource) return false;
+    const wantOffset = Number(cfg.offsetDays ?? 0);
+    const gotOffset = Number(payload.offsetDays ?? 0);
+    if (Number.isFinite(wantOffset) && wantOffset !== gotOffset) return false;
+    return true;
+  }
+
   return true;
 }
 
@@ -426,7 +448,7 @@ export async function startRunsForEvent(params: {
 
   const payload = event.payload || {};
   const email = String(payload.visitorEmail || payload.email || "").trim();
-  const contact = email
+  const upserted = email
     ? await upsertAutomationContact({
         websiteProgressId: event.websiteProgressId,
         email,
@@ -438,8 +460,30 @@ export async function startRunsForEvent(params: {
             ? (payload.dates as Record<string, string>)
             : undefined,
         consentMarketing: payload.consent_marketing === true,
+        lastBookingAt:
+          event.type === "booking.completed" && payload.end_at
+            ? new Date(String(payload.end_at))
+            : event.type === "booking.completed"
+              ? new Date()
+              : undefined,
       })
     : null;
+  const contact = upserted?.contact ?? null;
+
+  // Side-effect events: first-time contact (avoid recurse on contact.created itself)
+  if (upserted?.created && event.type !== "contact.created" && email) {
+    const { emitEvent } = await import("./automation-events");
+    await emitEvent({
+      websiteProgressId: event.websiteProgressId,
+      type: "contact.created",
+      dedupeKey: `contact.created:${event.websiteProgressId}:${email.toLowerCase()}`,
+      payload: {
+        ...payload,
+        visitorEmail: email,
+        contactId: contact?.id,
+      },
+    });
+  }
 
   const runIds: number[] = [];
   for (const workflow of matching) {
@@ -462,7 +506,11 @@ export async function startRunsForEvent(params: {
       graph.nodes.find(
         (n) =>
           n.type === "trigger" &&
-          (n.data?.formId === formId || !n.data?.formId),
+          (event.type === "form.submitted"
+            ? n.data?.formId === formId || !n.data?.formId
+            : n.data?.eventType === event.type ||
+              n.data?.triggerType === event.type ||
+              !n.data?.formId),
       ) || graph.nodes.find((n) => n.type === "trigger");
     if (!trigger) continue;
 
@@ -475,6 +523,7 @@ export async function startRunsForEvent(params: {
         contactId: contact?.id ?? null,
         status: "running",
         cancelKey: cancelKey || null,
+        isTest: payload.isTest === true,
       })
       .returning();
 
@@ -617,6 +666,26 @@ async function executeNode(params: {
           contactId,
           tagName,
         });
+        // Fire contact.tag_added for matching workflows (deduped by minute)
+        const { emitEvent } = await import("./automation-events");
+        const email = payload.visitorEmail.toLowerCase();
+        await emitEvent({
+          websiteProgressId: workflow.websiteProgressId,
+          type: "contact.tag_added",
+          dedupeKey: `tag:${workflow.websiteProgressId}:${email}:${tagName}:${Math.floor(Date.now() / 60_000)}`,
+          payload: {
+            visitorEmail: payload.visitorEmail,
+            visitorName: payload.visitorName,
+            visitorPhone: payload.visitorPhone,
+            tag: tagName,
+            contactId,
+            siteLabel: payload.siteLabel,
+            siteId: payload.siteId,
+            ownerEmail: payload.ownerEmail,
+            fromName: payload.fromName,
+            language: payload.language,
+          },
+        });
       } else {
         await removeTagFromContact({
           websiteProgressId: workflow.websiteProgressId,
@@ -624,6 +693,138 @@ async function executeNode(params: {
           tagName,
         });
       }
+    }
+    await enqueueFrom();
+    return "continue";
+  }
+
+  if (node.type === "webhook") {
+    const url = String(node.data?.url || "").trim();
+    if (!url.startsWith("https://")) {
+      throw new Error("Webhook URL must be https");
+    }
+    const body = {
+      event: eventPayload,
+      contact: {
+        id: contactId,
+        email: payload.visitorEmail,
+        name: payload.visitorName,
+        phone: payload.visitorPhone,
+      },
+      payload: eventPayload,
+      website_id: workflow.websiteProgressId,
+      sent_at: new Date().toISOString(),
+    };
+    const bodyStr = JSON.stringify(body);
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    const secret = String(node.data?.secret || "").trim();
+    if (secret) {
+      headers["X-Hayc-Signature"] = createHmac("sha256", secret)
+        .update(bodyStr)
+        .digest("hex");
+    }
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10_000);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers,
+        body: bodyStr,
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        throw new Error(`Webhook HTTP ${res.status}`);
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+    await enqueueFrom();
+    return "continue";
+  }
+
+  if (node.type === "review_request" || node.type === "send_coupon") {
+    const [site] = await db
+      .select({
+        googleReviewUrl: websiteProgress.googleReviewUrl,
+        projectName: websiteProgress.projectName,
+        contactEmail: websiteProgress.contactEmail,
+      })
+      .from(websiteProgress)
+      .where(eq(websiteProgress.id, workflow.websiteProgressId))
+      .limit(1);
+
+    const reviewUrl = site?.googleReviewUrl?.trim() || "";
+    if (node.type === "review_request" && !reviewUrl) {
+      throw new Error("Google review URL is not configured for this website");
+    }
+
+    const couponCode = String(node.data?.couponCode || "");
+    const couponDescription = String(node.data?.couponDescription || "");
+    const couponExpiry = String(node.data?.couponExpiry || "");
+
+    const vars = {
+      name: payload.visitorName,
+      email: payload.visitorEmail,
+      phone: payload.visitorPhone || "",
+      message: payload.visitorMessage,
+      siteLabel: payload.siteLabel || site?.projectName || "",
+      coupon_code: couponCode,
+      coupon_description: couponDescription,
+      coupon_expiry: couponExpiry,
+      google_review_url: reviewUrl,
+    };
+
+    const subject = applyFormEmailPlaceholders(
+      typeof node.data?.subject === "string"
+        ? node.data.subject
+        : node.type === "review_request"
+          ? "How was your visit — {{siteLabel}}?"
+          : "A gift for you — {{siteLabel}}",
+      vars,
+    );
+
+    let bodyText =
+      typeof node.data?.body === "string"
+        ? node.data.body
+        : node.type === "review_request"
+          ? "Hi {{name}},\n\nWe'd love your feedback. Leave a review here:\n{{google_review_url}}"
+          : "Hi {{name}},\n\nUse code {{coupon_code}} — {{coupon_description}}\nValid until {{coupon_expiry}}";
+
+    bodyText = applyFormEmailPlaceholders(bodyText, vars);
+    let html = formatAutomationBodyToHtml(bodyText).replace(/\$/g, "&#36;");
+
+    if (node.type === "review_request" && reviewUrl) {
+      html += `<p style="margin-top:16px"><a href="${reviewUrl}" style="display:inline-block;padding:10px 16px;background:#111;color:#fff;text-decoration:none;border-radius:6px">Άφησε κριτική</a></p>`;
+    }
+    if (node.type === "send_coupon" && couponCode) {
+      html += `<div style="margin-top:16px;padding:16px;border:2px dashed #999;text-align:center;font-size:20px;font-weight:bold;letter-spacing:0.05em">${couponCode}</div>`;
+      if (couponDescription) {
+        html += `<p style="text-align:center;color:#555">${couponDescription}</p>`;
+      }
+    }
+
+    const to = payload.isTest
+      ? payload.ownerEmail || payload.visitorEmail
+      : payload.visitorEmail;
+    // isTest is on event payload — check eventPayload
+    const testMode = eventPayload.isTest === true;
+    const recipient = testMode
+      ? String(eventPayload.testEmail || payload.ownerEmail || payload.visitorEmail)
+      : payload.visitorEmail;
+
+    const result = await EmailService.sendEmail({
+      to: recipient || to,
+      subject: testMode ? `[TEST] ${subject}` : subject,
+      message: subject,
+      fromEmail: "notifications@hayc.gr",
+      fromName: payload.fromName || site?.projectName || "Client",
+      html: `<div style="font-family:sans-serif;font-size:14px;line-height:1.5">${html}</div>`,
+      replyToAddresses: payload.ownerEmail ? [payload.ownerEmail] : undefined,
+    });
+    if (!result.success) {
+      throw new Error(result.error || "Failed to send marketing email");
     }
     await enqueueFrom();
     return "continue";

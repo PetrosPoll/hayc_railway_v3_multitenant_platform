@@ -25110,6 +25110,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Phase 2: newsletter.subscribed event (v2 engine workflows)
+      if (isSubscribed) {
+        try {
+          const mode = await getAutomationsEngineMode(websiteProgressId);
+          if (mode === "v2") {
+            const displayName =
+              [parsedFirstName, parsedLastName].filter(Boolean).join(" ").trim() ||
+              (typeof name === "string" ? name.trim() : "");
+            await emitEvent({
+              websiteProgressId,
+              type: "newsletter.subscribed",
+              dedupeKey: `newsletter.subscribed:${websiteProgressId}:${email.toLowerCase()}:${Math.floor(Date.now() / 60_000)}`,
+              payload: {
+                visitorEmail: email,
+                visitorName: displayName,
+                visitorPhone: "",
+                visitorMessage: "",
+                form_id: trimmedFormId,
+                contactId: newContact.id,
+              },
+            });
+          }
+        } catch (subEvtErr) {
+          console.error("[newsletter/subscribe] newsletter.subscribed emit failed:", subEvtErr);
+        }
+      }
+
       const message = isSubscribed 
         ? "Successfully subscribed to newsletter" 
         : "Contact added to list";
@@ -27223,11 +27250,25 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     "add_tag",
     "remove_tag",
     "condition",
+    "webhook",
+    "review_request",
+    "send_coupon",
   ]);
   const automationFrequencySchema = z.enum([
     "every_time",
     "once_per_contact",
     "once_per_contact_per_24h",
+    "once_per_contact_per_90d",
+  ]);
+  const automationTriggerTypeSchema = z.enum([
+    "form.submitted",
+    "contact.created",
+    "contact.tag_added",
+    "newsletter.subscribed",
+    "booking.created",
+    "booking.cancelled",
+    "booking.completed",
+    "schedule.date_offset",
   ]);
   const automationGraphSchema = z.object({
     nodes: z.array(
@@ -27280,7 +27321,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const schema = z.object({
         name: z.string().min(1).max(120),
         enabled: z.boolean().optional(),
-        triggerFormId: z.string().min(1).max(120),
+        triggerFormId: z.string().max(120).optional(),
+        triggerType: automationTriggerTypeSchema.optional(),
+        triggerConfig: z.record(z.unknown()).optional(),
         graph: automationGraphSchema.optional(),
         frequency: automationFrequencySchema.optional(),
         presetKey: z.string().max(80).nullable().optional(),
@@ -27290,17 +27333,43 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(400).json({ error: "Invalid workflow", details: parsed.error.errors });
       }
 
-      if (parsed.data.enabled !== false) {
+      const triggerType = parsed.data.triggerType || "form.submitted";
+      const triggerFormId =
+        parsed.data.triggerFormId ||
+        (triggerType === "form.submitted" ? "" : triggerType);
+      if (triggerType === "form.submitted" && !triggerFormId) {
+        return res.status(400).json({ error: "triggerFormId required for form triggers" });
+      }
+
+      if (parsed.data.enabled !== false && triggerType === "form.submitted") {
         await db
           .update(websiteAutomationWorkflows)
           .set({ enabled: false, updatedAt: new Date() })
           .where(
             and(
               eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
-              eq(websiteAutomationWorkflows.triggerFormId, parsed.data.triggerFormId),
+              eq(websiteAutomationWorkflows.triggerFormId, triggerFormId),
               eq(websiteAutomationWorkflows.enabled, true),
             ),
           );
+      }
+
+      // Block enabling review_request workflows without Google URL
+      if (parsed.data.enabled !== false) {
+        const graph = parsed.data.graph;
+        const hasReview = graph?.nodes?.some((n) => n.type === "review_request");
+        if (hasReview) {
+          const [site] = await db
+            .select({ googleReviewUrl: websiteProgress.googleReviewUrl })
+            .from(websiteProgress)
+            .where(eq(websiteProgress.id, websiteId))
+            .limit(1);
+          if (!site?.googleReviewUrl?.trim()) {
+            return res.status(400).json({
+              error: "Set Google review URL before enabling a review request workflow",
+            });
+          }
+        }
       }
 
       const [workflow] = await db
@@ -27309,9 +27378,11 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           websiteProgressId: websiteId,
           name: parsed.data.name,
           enabled: parsed.data.enabled ?? true,
-          triggerFormId: parsed.data.triggerFormId,
-          triggerType: "form.submitted",
-          triggerConfig: { formId: parsed.data.triggerFormId },
+          triggerFormId,
+          triggerType,
+          triggerConfig:
+            parsed.data.triggerConfig ||
+            (triggerType === "form.submitted" ? { formId: triggerFormId } : {}),
           graph: parsed.data.graph ?? { nodes: [], edges: [] },
           frequency: parsed.data.frequency ?? "every_time",
           presetKey: parsed.data.presetKey ?? null,
@@ -27338,7 +27409,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const schema = z.object({
         name: z.string().min(1).max(120),
         enabled: z.boolean(),
-        triggerFormId: z.string().min(1).max(120),
+        triggerFormId: z.string().max(120).optional(),
+        triggerType: automationTriggerTypeSchema.optional(),
+        triggerConfig: z.record(z.unknown()).optional(),
         graph: automationGraphSchema,
         frequency: automationFrequencySchema.optional(),
       });
@@ -27347,18 +27420,42 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         return res.status(400).json({ error: "Invalid workflow", details: parsed.error.errors });
       }
 
-      if (parsed.data.enabled) {
+      const triggerType = parsed.data.triggerType || "form.submitted";
+      const triggerFormId =
+        parsed.data.triggerFormId ||
+        (triggerType === "form.submitted" ? "" : triggerType);
+      if (triggerType === "form.submitted" && !triggerFormId) {
+        return res.status(400).json({ error: "triggerFormId required for form triggers" });
+      }
+
+      if (parsed.data.enabled && triggerType === "form.submitted") {
         await db
           .update(websiteAutomationWorkflows)
           .set({ enabled: false, updatedAt: new Date() })
           .where(
             and(
               eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
-              eq(websiteAutomationWorkflows.triggerFormId, parsed.data.triggerFormId),
+              eq(websiteAutomationWorkflows.triggerFormId, triggerFormId),
               eq(websiteAutomationWorkflows.enabled, true),
               ne(websiteAutomationWorkflows.id, workflowId),
             ),
           );
+      }
+
+      if (parsed.data.enabled) {
+        const hasReview = parsed.data.graph.nodes?.some((n) => n.type === "review_request");
+        if (hasReview) {
+          const [site] = await db
+            .select({ googleReviewUrl: websiteProgress.googleReviewUrl })
+            .from(websiteProgress)
+            .where(eq(websiteProgress.id, websiteId))
+            .limit(1);
+          if (!site?.googleReviewUrl?.trim()) {
+            return res.status(400).json({
+              error: "Set Google review URL before enabling a review request workflow",
+            });
+          }
+        }
       }
 
       const [workflow] = await db
@@ -27366,7 +27463,11 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         .set({
           name: parsed.data.name,
           enabled: parsed.data.enabled,
-          triggerFormId: parsed.data.triggerFormId,
+          triggerFormId,
+          triggerType,
+          triggerConfig:
+            parsed.data.triggerConfig ||
+            (triggerType === "form.submitted" ? { formId: triggerFormId } : {}),
           graph: parsed.data.graph,
           frequency: parsed.data.frequency ?? "every_time",
           updatedAt: new Date(),
@@ -27542,6 +27643,205 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     } catch (error) {
       console.error("Error creating workflow from preset:", error);
       return res.status(500).json({ error: "Failed to create from preset" });
+    }
+  });
+
+  /** Booking app (or dashboard test) → automation events. Does not change booking emails. */
+  app.post("/api/websites/:id/booking-events", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+
+      const bookingSecret = process.env.BOOKING_EVENTS_SECRET;
+      const headerSecret = String(req.headers["x-booking-secret"] || "");
+      const secretOk = !!bookingSecret && headerSecret === bookingSecret;
+      if (!secretOk) {
+        const access = await authorizeWebsiteAccess(req, websiteId);
+        if ("error" in access && access.error) {
+          return res.status(access.error.status).json(access.error.body);
+        }
+      }
+
+      const schema = z.object({
+        type: z.enum(["booking.created", "booking.cancelled", "booking.completed"]),
+        email: z.string().email(),
+        name: z.string().optional(),
+        phone: z.string().optional(),
+        service: z.string().optional(),
+        start_at: z.string().optional(),
+        end_at: z.string().optional(),
+        booking_id: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid booking event", details: parsed.error.errors });
+      }
+
+      const mode = await getAutomationsEngineMode(websiteId);
+      if (mode !== "v2") {
+        return res.status(409).json({ error: "Website automations_engine is not v2" });
+      }
+
+      const cancelKey = parsed.data.booking_id
+        ? `booking:${websiteId}:${parsed.data.booking_id}`
+        : null;
+
+      if (parsed.data.type === "booking.cancelled" && cancelKey) {
+        const cancelled = await cancelRuns(cancelKey);
+        return res.json({ cancelledSteps: cancelled });
+      }
+
+      const result = await emitEvent({
+        websiteProgressId: websiteId,
+        type: parsed.data.type,
+        cancelKey,
+        dedupeKey: cancelKey
+          ? `${parsed.data.type}:${cancelKey}`
+          : undefined,
+        payload: {
+          visitorEmail: parsed.data.email,
+          visitorName: parsed.data.name || "",
+          visitorPhone: parsed.data.phone || "",
+          service: parsed.data.service || "",
+          start_at: parsed.data.start_at || "",
+          end_at: parsed.data.end_at || "",
+          booking_id: parsed.data.booking_id || "",
+        },
+      });
+      return res.json(result);
+    } catch (error) {
+      console.error("Error ingesting booking event:", error);
+      return res.status(500).json({ error: "Failed to ingest booking event" });
+    }
+  });
+
+  app.patch("/api/websites/:id/google-review-url", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const url = typeof req.body?.googleReviewUrl === "string" ? req.body.googleReviewUrl.trim() : "";
+      const [updated] = await db
+        .update(websiteProgress)
+        .set({ googleReviewUrl: url || null, updatedAt: new Date() })
+        .where(eq(websiteProgress.id, websiteId))
+        .returning({
+          id: websiteProgress.id,
+          googleReviewUrl: websiteProgress.googleReviewUrl,
+        });
+      return res.json(updated);
+    } catch (error) {
+      console.error("Error updating google review url:", error);
+      return res.status(500).json({ error: "Failed to update Google review URL" });
+    }
+  });
+
+  app.post("/api/websites/:id/automation-workflows/:workflowId/test", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const workflowId = parseInt(req.params.workflowId, 10);
+      if (Number.isNaN(websiteId) || Number.isNaN(workflowId)) {
+        return res.status(400).json({ error: "Invalid ids" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      if (!req.user?.email) return res.status(401).json({ error: "Not authenticated" });
+
+      const [workflow] = await db
+        .select()
+        .from(websiteAutomationWorkflows)
+        .where(
+          and(
+            eq(websiteAutomationWorkflows.id, workflowId),
+            eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+          ),
+        )
+        .limit(1);
+      if (!workflow) return res.status(404).json({ error: "Workflow not found" });
+
+      const mode = await getAutomationsEngineMode(websiteId);
+      if (mode !== "v2") {
+        return res.status(409).json({ error: "Website automations_engine is not v2" });
+      }
+
+      const testEmail = String(req.user.email);
+      const result = await emitEvent({
+        websiteProgressId: websiteId,
+        type: workflow.triggerType || "form.submitted",
+        dedupeKey: `test:${workflowId}:${Date.now()}`,
+        payload: {
+          isTest: true,
+          testEmail,
+          form_id: workflow.triggerFormId,
+          visitorEmail: testEmail,
+          visitorName: "Test Contact",
+          visitorPhone: "",
+          visitorMessage: "Test run — delays skipped where possible.",
+          siteLabel: "Test",
+          ownerEmail: testEmail,
+          fromName: "Hayc Test",
+          language: "en",
+          tag: String((workflow.triggerConfig as any)?.tag || "test"),
+        },
+      });
+      return res.json(result);
+    } catch (error) {
+      console.error("Error running automation test:", error);
+      return res.status(500).json({ error: "Failed to run test" });
+    }
+  });
+
+  app.post("/api/websites/:id/automation-webhook-test", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const url = String(req.body?.url || "").trim();
+      const secret = String(req.body?.secret || "").trim();
+      if (!url.startsWith("https://")) {
+        return res.status(400).json({ error: "URL must be https" });
+      }
+      const body = {
+        event: { type: "webhook.test" },
+        contact: { email: "test@example.com", name: "Test" },
+        payload: { sample: true },
+        website_id: websiteId,
+        sent_at: new Date().toISOString(),
+      };
+      const bodyStr = JSON.stringify(body);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (secret) {
+        const { createHmac } = await import("crypto");
+        headers["X-Hayc-Signature"] = createHmac("sha256", secret)
+          .update(bodyStr)
+          .digest("hex");
+      }
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const upstream = await fetch(url, {
+          method: "POST",
+          headers,
+          body: bodyStr,
+          signal: controller.signal,
+        });
+        return res.json({ status: upstream.status, ok: upstream.ok });
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch (error: any) {
+      return res.status(502).json({
+        error: "Webhook test failed",
+        message: error?.message || "unknown",
+      });
     }
   });
 

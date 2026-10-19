@@ -29,7 +29,8 @@ export async function upsertAutomationContact(params: {
   source?: string;
   dates?: Record<string, string>;
   consentMarketing?: boolean;
-}): Promise<Contact | null> {
+  lastBookingAt?: Date | null;
+}): Promise<{ contact: Contact; created: boolean } | null> {
   const email = params.email.trim().toLowerCase();
   if (!email || !email.includes("@")) return null;
 
@@ -62,11 +63,15 @@ export async function upsertAutomationContact(params: {
           params.consentMarketing === true
             ? true
             : existing.consentMarketing,
+        lastBookingAt:
+          params.lastBookingAt !== undefined
+            ? params.lastBookingAt
+            : existing.lastBookingAt,
         updatedAt: new Date(),
       })
       .where(eq(contacts.id, existing.id))
       .returning();
-    return updated;
+    return { contact: updated, created: false };
   }
 
   const [created] = await db
@@ -82,9 +87,10 @@ export async function upsertAutomationContact(params: {
       consentMarketing: params.consentMarketing === true,
       status: "lead",
       subscribedAt: null,
+      lastBookingAt: params.lastBookingAt ?? null,
     })
     .returning();
-  return created;
+  return { contact: created, created: true };
 }
 
 export async function getContactTagNames(contactId: number): Promise<string[]> {
@@ -188,8 +194,12 @@ export async function shouldSkipRunForFrequency(params: {
     return !!row;
   }
 
-  if (frequency === "once_per_contact_per_24h") {
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  if (
+    frequency === "once_per_contact_per_24h" ||
+    frequency === "once_per_contact_per_90d"
+  ) {
+    const hours = frequency === "once_per_contact_per_90d" ? 90 * 24 : 24;
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
     const [row] = await db
       .select({ id: websiteAutomationRuns.id })
       .from(websiteAutomationRuns)

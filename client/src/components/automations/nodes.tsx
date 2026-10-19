@@ -4,8 +4,11 @@ import {
   Bell,
   Clock,
   FileText,
+  Gift,
   GitBranch,
+  Globe,
   Mail,
+  Star,
   Tag,
   BadgeMinus,
 } from "lucide-react";
@@ -180,6 +183,54 @@ export function ConditionNode({ data, selected }: NodeProps) {
   );
 }
 
+export function WebhookNode({ data, selected }: NodeProps) {
+  return (
+    <NodeShell selected={selected}>
+      <Handle type="target" position={Position.Left} className="!bg-muted-foreground !w-2.5 !h-2.5" />
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+        <Globe className="h-3 w-3" />
+        Webhook
+      </div>
+      <div className="text-sm font-semibold truncate">
+        {(data?.url as string) || "HTTPS POST"}
+      </div>
+      <Handle type="source" position={Position.Right} className="!bg-primary !w-2.5 !h-2.5" />
+    </NodeShell>
+  );
+}
+
+export function ReviewRequestNode({ data, selected }: NodeProps) {
+  return (
+    <NodeShell selected={selected}>
+      <Handle type="target" position={Position.Left} className="!bg-muted-foreground !w-2.5 !h-2.5" />
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+        <Star className="h-3 w-3" />
+        Review
+      </div>
+      <div className="text-sm font-semibold truncate">
+        {(data?.subject as string) || "Google review"}
+      </div>
+      <Handle type="source" position={Position.Right} className="!bg-primary !w-2.5 !h-2.5" />
+    </NodeShell>
+  );
+}
+
+export function SendCouponNode({ data, selected }: NodeProps) {
+  return (
+    <NodeShell selected={selected}>
+      <Handle type="target" position={Position.Left} className="!bg-muted-foreground !w-2.5 !h-2.5" />
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground mb-1">
+        <Gift className="h-3 w-3" />
+        Coupon
+      </div>
+      <div className="text-sm font-semibold truncate">
+        {(data?.couponCode as string) || "Coupon"}
+      </div>
+      <Handle type="source" position={Position.Right} className="!bg-primary !w-2.5 !h-2.5" />
+    </NodeShell>
+  );
+}
+
 export const automationNodeTypes = {
   trigger: TriggerNode,
   email: EmailNode,
@@ -189,4 +240,7 @@ export const automationNodeTypes = {
   add_tag: AddTagNode,
   remove_tag: RemoveTagNode,
   condition: ConditionNode,
+  webhook: WebhookNode,
+  review_request: ReviewRequestNode,
+  send_coupon: SendCouponNode,
 };
