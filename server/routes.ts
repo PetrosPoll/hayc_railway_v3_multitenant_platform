@@ -27498,6 +27498,90 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       if ("error" in access && access.error) {
         return res.status(access.error.status).json(access.error.body);
       }
+
+      const [workflow] = await db
+        .select()
+        .from(websiteAutomationWorkflows)
+        .where(
+          and(
+            eq(websiteAutomationWorkflows.id, workflowId),
+            eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+          ),
+        )
+        .limit(1);
+      if (!workflow) return res.status(404).json({ error: "Workflow not found" });
+
+      const graphNodes = ((workflow.graph as any)?.nodes || []) as Array<{
+        id: string;
+        type?: string;
+        data?: Record<string, unknown>;
+      }>;
+      const nodeById = new Map(graphNodes.map((n) => [n.id, n]));
+
+      const labelForNode = (nodeId: string): { nodeType: string | null; label: string } => {
+        const node = nodeById.get(nodeId);
+        if (!node) {
+          const prefix = nodeId.split("-")[0] || "step";
+          return { nodeType: null, label: prefix };
+        }
+        const data = node.data || {};
+        const type = String(node.type || "");
+        switch (type) {
+          case "trigger":
+            return {
+              nodeType: type,
+              label: String(
+                data.formName || data.eventType || data.formId || "Trigger",
+              ),
+            };
+          case "email":
+            return {
+              nodeType: type,
+              label: String(data.templateName || data.subject || "Send email"),
+            };
+          case "delay": {
+            const amount = Number(data.amount ?? data.delayMinutes ?? 10) || 10;
+            const unit = String(data.unit || "minutes");
+            return { nodeType: type, label: `Wait ${amount} ${unit}` };
+          }
+          case "notify_owner":
+            return {
+              nodeType: type,
+              label: String(data.subject || "Notify me"),
+            };
+          case "owner_reminder": {
+            const amount = Number(data.amount ?? 2) || 2;
+            const unit = String(data.unit || "hours");
+            return { nodeType: type, label: `Remind me in ${amount} ${unit}` };
+          }
+          case "add_tag":
+            return {
+              nodeType: type,
+              label: data.tag ? `Add tag “${data.tag}”` : "Add tag",
+            };
+          case "remove_tag":
+            return {
+              nodeType: type,
+              label: data.tag ? `Remove tag “${data.tag}”` : "Remove tag",
+            };
+          case "condition":
+            return { nodeType: type, label: "If / Else" };
+          case "review_request":
+            return { nodeType: type, label: "Google review" };
+          case "send_coupon":
+            return {
+              nodeType: type,
+              label: data.couponCode
+                ? `Coupon ${String(data.couponCode)}`
+                : "Send coupon",
+            };
+          case "webhook":
+            return { nodeType: type, label: "Webhook" };
+          default:
+            return { nodeType: type || null, label: type || "Step" };
+        }
+      };
+
       const runs = await db
         .select()
         .from(websiteAutomationRuns)
@@ -27544,16 +27628,22 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
             contactEmail: String(
               payload.visitorEmail || payload.email || "",
             ),
+            isTest: run.isTest === true,
             steps: steps
               .filter((s) => s.runId === run.id)
-              .map((s) => ({
-                id: s.id,
-                nodeId: s.nodeId,
-                status: s.status,
-                runAt: s.runAt,
-                attempts: s.attempts,
-                error: s.error,
-              })),
+              .map((s) => {
+                const meta = labelForNode(s.nodeId);
+                return {
+                  id: s.id,
+                  nodeId: s.nodeId,
+                  nodeType: meta.nodeType,
+                  label: meta.label,
+                  status: s.status,
+                  runAt: s.runAt,
+                  attempts: s.attempts,
+                  error: s.error,
+                };
+              }),
           };
         }),
       });

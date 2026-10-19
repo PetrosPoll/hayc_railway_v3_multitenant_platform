@@ -29,6 +29,7 @@ import {
   Globe,
   Loader2,
   Mail,
+  MoreHorizontal,
   Plus,
   Play,
   Save,
@@ -69,6 +70,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { automationNodeTypes } from "./nodes";
 
@@ -453,9 +460,12 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
       startedAt: string;
       finishedAt: string | null;
       contactEmail: string;
+      isTest?: boolean;
       steps: Array<{
         id: number;
         nodeId: string;
+        nodeType?: string | null;
+        label?: string;
         status: string;
         error: string | null;
         attempts: number;
@@ -965,42 +975,12 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Select
-            value={frequency}
-            onValueChange={(v) => setFrequency(v as AutomationFrequency)}
-          >
-            <SelectTrigger className="w-[200px] h-9" data-testid="automation-frequency">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="every_time">
-                {t("dashboard.automationsFreqEvery") || "Every time"}
-              </SelectItem>
-              <SelectItem value="once_per_contact">
-                {t("dashboard.automationsFreqOnce") || "Once per contact"}
-              </SelectItem>
-              <SelectItem value="once_per_contact_per_24h">
-                {t("dashboard.automationsFreqOnce24h") || "Once per contact / 24h"}
-              </SelectItem>
-              <SelectItem value="once_per_contact_per_90d">
-                {t("dashboard.automationsFreqOnce90d") || "Once per contact / 90 days"}
-              </SelectItem>
-            </SelectContent>
-          </Select>
           <div className="flex items-center gap-2">
             <Label htmlFor="wf-enabled" className="text-sm">
               {t("dashboard.automationsEnabled") || "Enabled"}
             </Label>
             <Switch id="wf-enabled" checked={enabled} onCheckedChange={setEnabled} />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPresetOpen(true)}
-            data-testid="automation-preset-button"
-          >
-            {t("dashboard.automationsStartPreset") || "Start from template"}
-          </Button>
           {workflowId != null && (
             <Button
               variant="outline"
@@ -1017,17 +997,6 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
               {t("dashboard.automationsTest") || "Test"}
             </Button>
           )}
-          {workflowId != null && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setDeleteConfirmOpen(true)}
-              disabled={deleteMutation.isPending}
-              data-testid="automation-delete-button"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
           <Button
             size="sm"
             onClick={() => saveMutation.mutate()}
@@ -1041,6 +1010,32 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             )}
             {t("dashboard.automationsSave") || "Save"}
           </Button>
+          {workflowId != null && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="px-2"
+                  data-testid="automation-more-button"
+                  aria-label={t("dashboard.automationsMore") || "More"}
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  disabled={deleteMutation.isPending}
+                  onClick={() => setDeleteConfirmOpen(true)}
+                  data-testid="automation-delete-button"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  {t("dashboard.automationsDelete") || "Delete"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
@@ -1080,15 +1075,29 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
                     <span className="text-muted-foreground text-xs">
                       {new Date(run.startedAt).toLocaleString()}
                     </span>
-                    <span className="text-xs uppercase tracking-wide">
-                      {run.status}
+                    {run.isTest ? (
+                      <span className="text-[10px] uppercase tracking-wide rounded border px-1.5 py-0.5 text-muted-foreground">
+                        {t("dashboard.automationsHistoryTest") || "Test"}
+                      </span>
+                    ) : null}
+                    <span className="text-xs tracking-wide">
+                      {t(`dashboard.automationsRunStatus_${run.status}`) ||
+                        run.status}
                     </span>
                   </summary>
                   <ul className="mt-2 space-y-1 text-xs text-muted-foreground pl-2">
                     {run.steps.map((s) => (
-                      <li key={s.id}>
-                        {s.nodeId}: {s.status}
-                        {s.error ? ` — ${s.error}` : ""}
+                      <li key={s.id} className="flex flex-wrap gap-x-2 gap-y-0.5">
+                        <span className="text-foreground">
+                          {s.label || s.nodeId}
+                        </span>
+                        <span>
+                          {t(`dashboard.automationsStepStatus_${s.status}`) ||
+                            s.status}
+                        </span>
+                        {s.error ? (
+                          <span className="text-destructive">— {s.error}</span>
+                        ) : null}
                       </li>
                     ))}
                   </ul>
@@ -1377,7 +1386,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
 
         {/* Canvas */}
         <div
-          className="rounded-lg border bg-muted/20 overflow-hidden h-[560px]"
+          className="relative rounded-lg border bg-muted/20 overflow-hidden h-[560px]"
           onDragOver={(e) => e.preventDefault()}
           onDrop={onDrop}
         >
@@ -1398,6 +1407,30 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
               <Controls />
             </ReactFlow>
           </ReactFlowProvider>
+          {nodes.length === 0 && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center p-6">
+              <div className="pointer-events-auto max-w-sm rounded-lg border bg-card/95 px-5 py-4 text-center shadow-sm backdrop-blur-sm">
+                <p className="text-sm font-medium">
+                  {t("dashboard.automationsEmptyCanvasTitle") ||
+                    "Build your automation"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t("dashboard.automationsEmptyCanvasHint") ||
+                    "Drag a trigger from the palette, or start from a ready template."}
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-3"
+                  onClick={() => setPresetOpen(true)}
+                  disabled={forms.length === 0 || presets.length === 0}
+                  data-testid="automation-preset-button"
+                >
+                  {t("dashboard.automationsStartPreset") || "Ready template"}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Editor */}
@@ -1406,6 +1439,41 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
             {t("dashboard.automationsEditor") || "Edit"}
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
+            <div className="space-y-2 rounded-md border bg-muted/30 p-2.5">
+              <Label className="text-xs font-semibold uppercase text-muted-foreground">
+                {t("dashboard.automationsWorkflowSettings") || "Workflow settings"}
+              </Label>
+              <Label htmlFor="wf-frequency" className="text-sm">
+                {t("dashboard.automationsFrequency") || "Frequency"}
+              </Label>
+              <Select
+                value={frequency}
+                onValueChange={(v) => setFrequency(v as AutomationFrequency)}
+              >
+                <SelectTrigger
+                  id="wf-frequency"
+                  className="h-9"
+                  data-testid="automation-frequency"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="every_time">
+                    {t("dashboard.automationsFreqEvery") || "Every time"}
+                  </SelectItem>
+                  <SelectItem value="once_per_contact">
+                    {t("dashboard.automationsFreqOnce") || "Once per contact"}
+                  </SelectItem>
+                  <SelectItem value="once_per_contact_per_24h">
+                    {t("dashboard.automationsFreqOnce24h") || "Once per contact / 24h"}
+                  </SelectItem>
+                  <SelectItem value="once_per_contact_per_90d">
+                    {t("dashboard.automationsFreqOnce90d") || "Once per contact / 90 days"}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {(editingTplId != null || tplSubject || tplBody || tplName) && templatesOpen ? (
               <div className="space-y-2">
                 <Label>{t("dashboard.automationsTemplateName") || "Template name"}</Label>
@@ -1810,7 +1878,7 @@ export function AutomationBuilder({ websiteId, websiteLanguage }: Props) {
         <AlertDialogContent className="max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("dashboard.automationsStartPreset") || "Start from template"}
+              {t("dashboard.automationsStartPreset") || "Ready template"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t("dashboard.automationsPresetHint") ||
