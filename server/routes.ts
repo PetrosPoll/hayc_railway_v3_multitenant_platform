@@ -27770,6 +27770,17 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       }
 
       const testEmail = String(req.user.email);
+      // Prefer site contact email as owner for reply-to; still deliver test mail to logged-in user.
+      const [site] = await db
+        .select({
+          contactEmail: websiteProgress.contactEmail,
+          projectName: websiteProgress.projectName,
+          siteId: websiteProgress.siteId,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+
       const result = await emitEvent({
         websiteProgressId: websiteId,
         type: workflow.triggerType || "form.submitted",
@@ -27777,22 +27788,33 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         payload: {
           isTest: true,
           testEmail,
+          testWorkflowId: workflowId,
           form_id: workflow.triggerFormId,
+          formId: workflow.triggerFormId,
           visitorEmail: testEmail,
           visitorName: "Test Contact",
           visitorPhone: "",
           visitorMessage: "Test run — delays skipped where possible.",
-          siteLabel: "Test",
-          ownerEmail: testEmail,
-          fromName: "Hayc Test",
+          siteLabel: site?.projectName || "Test",
+          siteId: site?.siteId || "",
+          ownerEmail: site?.contactEmail || testEmail,
+          fromName: site?.projectName || "Hayc Test",
           language: "en",
           tag: String((workflow.triggerConfig as any)?.tag || "test"),
         },
       });
+      if (!result.runIds.length) {
+        return res.status(409).json({
+          error:
+            "No run started — check the workflow is enabled and the trigger matches",
+        });
+      }
       return res.json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error running automation test:", error);
-      return res.status(500).json({ error: "Failed to run test" });
+      const detail =
+        error?.cause?.message || error?.message || "Failed to run test";
+      return res.status(500).json({ error: detail });
     }
   });
 

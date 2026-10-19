@@ -242,8 +242,9 @@ async function sendVisitorAutomationEmail(params: {
   websiteProgressId: number;
   node: AutomationGraphNode;
   payload: AutomationJobPayload;
+  isTest?: boolean;
 }): Promise<void> {
-  const { websiteProgressId, node, payload } = params;
+  const { websiteProgressId, node, payload, isTest } = params;
   const content = await resolveEmailContent(
     websiteProgressId,
     node,
@@ -256,7 +257,8 @@ async function sendVisitorAutomationEmail(params: {
     message: payload.visitorMessage,
     siteLabel: payload.siteLabel,
   };
-  const subject = applyFormEmailPlaceholders(content.subject, vars);
+  const subjectRaw = applyFormEmailPlaceholders(content.subject, vars);
+  const subject = isTest ? `[TEST] ${subjectRaw}` : subjectRaw;
   const bodyHtml = formatAutomationBodyToHtml(
     applyFormEmailPlaceholders(content.body, vars),
   ).replace(/\$/g, "&#36;");
@@ -346,6 +348,7 @@ async function enqueueTargets(params: {
   websiteProgressId: number;
   fromNodeId: string;
   sourceHandle?: string | null;
+  skipDelays?: boolean;
 }): Promise<void> {
   const targets = outgoingTargets(
     params.graph,
@@ -366,7 +369,7 @@ async function enqueueTargets(params: {
   for (const targetId of ids) {
     const target = findNode(params.graph, targetId);
     let runAt = new Date();
-    if (target?.type === "owner_reminder") {
+    if (target?.type === "owner_reminder" && !params.skipDelays) {
       runAt = new Date(Date.now() + delayMsFromNode(target));
     }
     await enqueueStep({
@@ -381,11 +384,14 @@ async function enqueueTargets(params: {
 async function sendOwnerAutomationEmail(params: {
   node: AutomationGraphNode;
   payload: AutomationJobPayload;
+  isTest?: boolean;
 }): Promise<void> {
-  const { node, payload } = params;
-  const to =
-    (typeof node.data?.recipients === "string" && node.data.recipients.trim()) ||
-    payload.ownerEmail;
+  const { node, payload, isTest } = params;
+  const configured =
+    typeof node.data?.recipients === "string"
+      ? node.data.recipients.trim()
+      : "";
+  const to = (!isTest && configured) || payload.ownerEmail;
   if (!to) throw new Error("Owner email missing for notify_owner");
 
   const vars = {
@@ -395,12 +401,13 @@ async function sendOwnerAutomationEmail(params: {
     message: payload.visitorMessage,
     siteLabel: payload.siteLabel,
   };
-  const subject = applyFormEmailPlaceholders(
+  const subjectRaw = applyFormEmailPlaceholders(
     typeof node.data?.subject === "string"
       ? node.data.subject
       : `New message from {{name}} — {{siteLabel}}`,
     vars,
   );
+  const subject = isTest ? `[TEST] ${subjectRaw}` : subjectRaw;
   const bodyText = applyFormEmailPlaceholders(
     typeof node.data?.body === "string"
       ? node.data.body
@@ -442,11 +449,26 @@ export async function startRunsForEvent(params: {
       ),
     );
 
-  const matching = workflows.filter((w) =>
-    workflowMatchesEvent(w, event.type, event.payload || {}),
-  );
-
   const payload = event.payload || {};
+  const isTest = payload.isTest === true;
+  const testWorkflowId =
+    typeof payload.testWorkflowId === "number"
+      ? payload.testWorkflowId
+      : typeof payload.testWorkflowId === "string"
+        ? Number(payload.testWorkflowId)
+        : null;
+
+  const matching = workflows.filter((w) => {
+    if (
+      isTest &&
+      testWorkflowId != null &&
+      Number.isFinite(testWorkflowId) &&
+      w.id !== testWorkflowId
+    ) {
+      return false;
+    }
+    return workflowMatchesEvent(w, event.type, payload);
+  });
   const email = String(payload.visitorEmail || payload.email || "").trim();
   const upserted = email
     ? await upsertAutomationContact({
@@ -471,7 +493,13 @@ export async function startRunsForEvent(params: {
   const contact = upserted?.contact ?? null;
 
   // Side-effect events: first-time contact (avoid recurse on contact.created itself)
-  if (upserted?.created && event.type !== "contact.created" && email) {
+  // Skip during test runs to avoid spawning extra workflows.
+  if (
+    !isTest &&
+    upserted?.created &&
+    event.type !== "contact.created" &&
+    email
+  ) {
     const { emitEvent } = await import("./automation-events");
     await emitEvent({
       websiteProgressId: event.websiteProgressId,
@@ -488,11 +516,12 @@ export async function startRunsForEvent(params: {
   const runIds: number[] = [];
   for (const workflow of matching) {
     if (
-      await shouldSkipRunForFrequency({
+      !isTest &&
+      (await shouldSkipRunForFrequency({
         workflowId: workflow.id,
         frequency: workflow.frequency,
         contactId: contact?.id ?? null,
-      })
+      }))
     ) {
       continue;
     }
@@ -594,6 +623,7 @@ async function executeNode(params: {
   const node = findNode(graph, nodeId);
   if (!node) return "continue";
 
+  const skipDelays = eventPayload.isTest === true;
   const enqueueFrom = (sourceHandle?: string | null) =>
     enqueueTargets({
       graph,
@@ -601,6 +631,7 @@ async function executeNode(params: {
       websiteProgressId: workflow.websiteProgressId,
       fromNodeId: nodeId,
       sourceHandle,
+      skipDelays,
     });
 
   if (node.type === "trigger") {
@@ -609,7 +640,7 @@ async function executeNode(params: {
   }
 
   if (node.type === "delay") {
-    const ms = delayMsFromNode(node);
+    const ms = skipDelays ? 0 : delayMsFromNode(node);
     const runAt = new Date(Date.now() + ms);
     const targets = outgoingTargets(graph, nodeId);
     // Fallback: all edges from delay
@@ -621,7 +652,7 @@ async function executeNode(params: {
     for (const targetId of ids) {
       const target = findNode(graph, targetId);
       const childAt =
-        target?.type === "owner_reminder"
+        !skipDelays && target?.type === "owner_reminder"
           ? new Date(runAt.getTime() + delayMsFromNode(target))
           : runAt;
       await enqueueStep({
@@ -631,28 +662,52 @@ async function executeNode(params: {
         runAt: childAt,
       });
     }
-    return "delayed";
+    // In test mode delays are zero — keep draining immediate steps.
+    return skipDelays ? "continue" : "delayed";
   }
 
   if (node.type === "email") {
+    const testMode = eventPayload.isTest === true;
+    const testEmail = testMode
+      ? String(eventPayload.testEmail || payload.visitorEmail)
+      : null;
     await sendVisitorAutomationEmail({
       websiteProgressId: workflow.websiteProgressId,
       node,
-      payload,
+      payload: testEmail
+        ? { ...payload, visitorEmail: testEmail }
+        : payload,
+      isTest: testMode,
     });
     await enqueueFrom();
     return "continue";
   }
 
   if (node.type === "notify_owner") {
-    await sendOwnerAutomationEmail({ node, payload });
+    const testMode = eventPayload.isTest === true;
+    const testEmail = testMode
+      ? String(eventPayload.testEmail || payload.ownerEmail)
+      : null;
+    await sendOwnerAutomationEmail({
+      node,
+      payload: testEmail ? { ...payload, ownerEmail: testEmail } : payload,
+      isTest: testMode,
+    });
     await enqueueFrom();
     return "continue";
   }
 
   if (node.type === "owner_reminder") {
     // Step was already scheduled with delay when enqueued.
-    await sendOwnerAutomationEmail({ node, payload });
+    const testMode = eventPayload.isTest === true;
+    const testEmail = testMode
+      ? String(eventPayload.testEmail || payload.ownerEmail)
+      : null;
+    await sendOwnerAutomationEmail({
+      node,
+      payload: testEmail ? { ...payload, ownerEmail: testEmail } : payload,
+      isTest: testMode,
+    });
     await enqueueFrom();
     return "continue";
   }
