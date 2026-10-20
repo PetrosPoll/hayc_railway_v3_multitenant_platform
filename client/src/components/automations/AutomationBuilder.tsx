@@ -18,6 +18,7 @@ import {
   Plus,
   Play,
   Save,
+  Search,
   Sparkles,
   Star,
   Tag,
@@ -76,7 +77,12 @@ import { useToast } from "@/hooks/use-toast";
 import { toGreekSafeUpperCase } from "@/lib/greek-text";
 
 function uiUpper(text: string, language: string) {
-  const isGr = language === "gr" || language === "el" || language.startsWith("el");
+  const hasGreek = /[\u0370-\u03FF\u1F00-\u1FFF]/.test(text);
+  const isGr =
+    hasGreek ||
+    language === "gr" ||
+    language === "el" ||
+    language.startsWith("el");
   return isGr ? toGreekSafeUpperCase(text) : text.toLocaleUpperCase("en-US");
 }
 
@@ -626,7 +632,8 @@ export function AutomationBuilder({
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const uiLang = websiteLanguage || i18n.language || "en";
+  /** UI language for casing/copy — not website content language. */
+  const uiLang = i18n.language || "en";
 
   const [builderTab, setBuilderTab] = useState<"canvas" | "history">("canvas");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -635,6 +642,7 @@ export function AutomationBuilder({
     "root",
   );
   const [insertAfterId, setInsertAfterId] = useState<string | null>(null);
+  const [workflowSearch, setWorkflowSearch] = useState("");
   const [testOpen, setTestOpen] = useState(false);
   const [testVisitorEmail, setTestVisitorEmail] = useState("");
   const [testOwnerEmail, setTestOwnerEmail] = useState("");
@@ -804,8 +812,15 @@ export function AutomationBuilder({
     setEditorOpen(false);
     setStepPickerOpen(false);
     setInsertAfterId(null);
+    setStepPickerView("root");
     setSelectedNodeId(null);
     setBuilderTab("canvas");
+  }, []);
+
+  const closeStepPicker = useCallback(() => {
+    setStepPickerOpen(false);
+    setStepPickerView("root");
+    setInsertAfterId(null);
   }, []);
 
   const selectedNode = useMemo(
@@ -864,9 +879,7 @@ export function AutomationBuilder({
     setTriggerFormId(triggerFormIdNext);
     setTriggerConfig(triggerConfigNext);
     setSelectedNodeId(id);
-    setStepPickerOpen(false);
-    setInsertAfterId(null);
-    setStepPickerView("root");
+    closeStepPicker();
   };
 
   const addEventTrigger = (
@@ -991,9 +1004,7 @@ export function AutomationBuilder({
     setEdges(nextEdges);
     setNodes(withVerticalLayout(nextNodes, nextEdges));
     setSelectedNodeId(id);
-    setStepPickerOpen(false);
-    setInsertAfterId(null);
-    setStepPickerView("root");
+    closeStepPicker();
   };
 
   const openStepPicker = (
@@ -1006,6 +1017,12 @@ export function AutomationBuilder({
   };
 
   const mainChain = useMemo(() => getMainChain(nodes, edges), [nodes, edges]);
+
+  const filteredWorkflows = useMemo(() => {
+    const q = workflowSearch.trim().toLowerCase();
+    if (!q) return workflows;
+    return workflows.filter((wf) => wf.name.toLowerCase().includes(q));
+  }, [workflows, workflowSearch]);
 
   const triggerLabel = useCallback(
     (wf: WebsiteAutomationWorkflow) => {
@@ -1235,6 +1252,7 @@ export function AutomationBuilder({
             presetKey,
             formId: form.id,
             formName: form.name,
+            enabled: false,
           }),
         },
       );
@@ -1254,7 +1272,9 @@ export function AutomationBuilder({
         queryKey: ["/api/websites", websiteId, "automation-workflows"],
       });
       toast({
-        title: t("dashboard.automationsPresetCreated") || "Workflow created from template",
+        title:
+          t("dashboard.automationsPresetCreated") ||
+          "Added to your automations (inactive until you enable it)",
       });
     },
     onError: (err: Error) => {
@@ -1276,21 +1296,258 @@ export function AutomationBuilder({
 
   const isGr = websiteLanguage === "gr";
 
-  const actionItems = [
-    { kind: "email" as const, icon: Mail, label: t("dashboard.automationsSendEmail") || "Send email" },
-    { kind: "notify_owner" as const, icon: Bell, label: t("dashboard.automationsNotifyOwner") || "Notify me" },
-    { kind: "owner_reminder" as const, icon: Bell, label: t("dashboard.automationsOwnerReminder") || "Remind me later" },
-    { kind: "add_tag" as const, icon: Tag, label: t("dashboard.automationsAddTag") || "Add tag" },
-    { kind: "remove_tag" as const, icon: BadgeMinus, label: t("dashboard.automationsRemoveTag") || "Remove tag" },
-    { kind: "review_request" as const, icon: Star, label: t("dashboard.automationsReviewRequest") || "Google review" },
-    { kind: "send_coupon" as const, icon: Gift, label: t("dashboard.automationsSendCoupon") || "Send coupon" },
-    { kind: "webhook" as const, icon: Globe, label: t("dashboard.automationsWebhook") || "Webhook" },
+  const suggestedStepItems = [
+    {
+      kind: "email" as const,
+      icon: Mail,
+      label: t("dashboard.automationsSendEmail") || "Send email",
+    },
+    {
+      kind: "notify_owner" as const,
+      icon: Bell,
+      label: t("dashboard.automationsNotifyOwner") || "Notify me",
+    },
+    {
+      kind: "delay" as const,
+      icon: Clock,
+      label: t("dashboard.automationsDelay") || "Wait",
+    },
+    {
+      kind: "condition" as const,
+      icon: GitBranch,
+      label: t("dashboard.automationsIfElse") || "If / Else",
+    },
+    {
+      kind: "add_tag" as const,
+      icon: Tag,
+      label: t("dashboard.automationsAddTag") || "Add tag",
+    },
+    {
+      kind: "owner_reminder" as const,
+      icon: Bell,
+      label: t("dashboard.automationsOwnerReminder") || "Remind me later",
+    },
+    {
+      kind: "review_request" as const,
+      icon: Star,
+      label: t("dashboard.automationsReviewRequest") || "Google review",
+    },
+    {
+      kind: "send_coupon" as const,
+      icon: Gift,
+      label: t("dashboard.automationsSendCoupon") || "Send coupon",
+    },
+    {
+      kind: "remove_tag" as const,
+      icon: BadgeMinus,
+      label: t("dashboard.automationsRemoveTag") || "Remove tag",
+    },
+    {
+      kind: "webhook" as const,
+      icon: Globe,
+      label: t("dashboard.automationsWebhook") || "Webhook",
+    },
   ];
 
-  const pickerButtonClass =
-    "flex w-full items-center gap-2 rounded-md border bg-background px-3 py-2.5 text-left text-sm hover:bg-muted transition-colors";
+  const tileClass =
+    "flex flex-col items-center justify-center gap-2 rounded-xl border border-border/70 bg-background px-3 py-3 text-center text-xs font-medium shadow-sm hover:border-border hover:bg-muted/40 transition-colors min-h-[88px]";
 
   const dateLocale = isGr ? "gr" : "en";
+
+  const renderInlineStepPicker = () => (
+    <div
+      className="w-full max-w-lg rounded-xl border border-border/70 bg-background p-3 shadow-sm"
+      data-testid="automation-inline-step-picker"
+    >
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p className="text-sm font-medium">
+          {stepPickerView === "trigger"
+            ? t("dashboard.automationsChooseTrigger") || "Choose trigger"
+            : t("dashboard.automationsAddStep") || "Add step"}
+        </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 w-8 p-0"
+          onClick={closeStepPicker}
+          aria-label={t("dashboard.close") || "Close"}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+
+      {stepPickerView === "trigger" ? (
+        <div className="space-y-3 max-h-[340px] overflow-y-auto">
+          <div>
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-2">
+              {uiUpper(t("dashboard.automationsTriggersForms") || "Forms", uiLang)}
+            </p>
+            {forms.length === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                {t("dashboard.automationsEmptyDescription") ||
+                  "No forms in site config yet."}
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {forms.map((form) => (
+                  <button
+                    key={form.id}
+                    type="button"
+                    className={tileClass}
+                    onClick={() => addFormTrigger(form)}
+                  >
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <span className="leading-snug line-clamp-2">{form.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-2">
+              {uiUpper(
+                t("dashboard.automationsTriggersContacts") || "Contacts",
+                uiLang,
+              )}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                className={tileClass}
+                onClick={() =>
+                  addEventTrigger(
+                    "contact.created",
+                    t("dashboard.automationsTriggerContactCreated") || "New contact",
+                  )
+                }
+              >
+                <UserPlus className="h-5 w-5 text-muted-foreground" />
+                <span className="leading-snug">
+                  {t("dashboard.automationsTriggerContactCreated") || "New contact"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={tileClass}
+                onClick={() =>
+                  addEventTrigger(
+                    "contact.tag_added",
+                    t("dashboard.automationsTriggerTagAdded") || "Tag added",
+                    { tag: "lead" },
+                  )
+                }
+              >
+                <Tag className="h-5 w-5 text-muted-foreground" />
+                <span className="leading-snug">
+                  {t("dashboard.automationsTriggerTagAdded") || "Tag added"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className={tileClass}
+                onClick={() =>
+                  addEventTrigger(
+                    "newsletter.subscribed",
+                    t("dashboard.automationsTriggerNewsletter") ||
+                      "Newsletter subscribed",
+                  )
+                }
+              >
+                <Mail className="h-5 w-5 text-muted-foreground" />
+                <span className="leading-snug">
+                  {t("dashboard.automationsTriggerNewsletter") ||
+                    "Newsletter subscribed"}
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-2">
+              {uiUpper(
+                t("dashboard.automationsTriggersBooking") || "Bookings",
+                uiLang,
+              )}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {(
+                [
+                  [
+                    "booking.completed",
+                    t("dashboard.automationsTriggerBookingDone") ||
+                      "Appointment completed",
+                  ],
+                  [
+                    "booking.created",
+                    t("dashboard.automationsTriggerBookingCreated") ||
+                      "Booking created",
+                  ],
+                  [
+                    "booking.cancelled",
+                    t("dashboard.automationsTriggerBookingCancelled") ||
+                      "Booking cancelled",
+                  ],
+                ] as const
+              ).map(([type, label]) => (
+                <button
+                  key={type}
+                  type="button"
+                  className={tileClass}
+                  onClick={() => addEventTrigger(type, label)}
+                >
+                  <Calendar className="h-5 w-5 text-muted-foreground" />
+                  <span className="leading-snug line-clamp-2">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-2">
+              {uiUpper(t("dashboard.automationsTriggersTime") || "Time", uiLang)}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              <button
+                type="button"
+                className={tileClass}
+                onClick={() =>
+                  addEventTrigger(
+                    "schedule.date_offset",
+                    t("dashboard.automationsTriggerDateOffset") ||
+                      "X days after a date",
+                    { dateSource: "last_booking", offsetDays: 180, yearly: false },
+                  )
+                }
+              >
+                <Clock className="h-5 w-5 text-muted-foreground" />
+                <span className="leading-snug line-clamp-2">
+                  {t("dashboard.automationsTriggerDateOffset") ||
+                    "X days after a date"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {suggestedStepItems.map((item) => (
+            <button
+              key={item.kind}
+              type="button"
+              className={tileClass}
+              onClick={() => addStep(item.kind)}
+              data-testid={`automation-suggest-${item.kind}`}
+            >
+              <item.icon className="h-5 w-5 text-muted-foreground" />
+              <span className="leading-snug line-clamp-2">{item.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div
@@ -1361,20 +1618,43 @@ export function AutomationBuilder({
       )}
 
       <section className="space-y-3">
-        <div>
-          <h4 className="text-sm font-semibold">
-            {t("dashboard.automationsYourWorkflows") || "Your automations"}
-          </h4>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            {t("dashboard.automationsYourWorkflowsHint") ||
-              "Open one to edit steps, test, or turn it on and off."}
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h4 className="text-sm font-semibold">
+              {t("dashboard.automationsYourWorkflows") || "Your automations"}
+            </h4>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("dashboard.automationsYourWorkflowsHint") ||
+                "Open one to edit steps, test, or turn it on and off."}
+            </p>
+          </div>
+          {workflows.length > 0 ? (
+            <div className="relative w-full sm:w-64">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={workflowSearch}
+                onChange={(e) => setWorkflowSearch(e.target.value)}
+                placeholder={
+                  t("dashboard.automationsSearchPlaceholder") || "Search by name…"
+                }
+                className="h-9 pl-8"
+                data-testid="automation-search"
+              />
+            </div>
+          ) : null}
         </div>
         {workflows.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/70 bg-background px-4 py-10 text-center shadow-sm">
             <p className="text-sm text-muted-foreground">
               {t("dashboard.automationsListEmpty") ||
                 "No automations yet. Start from a suggested workflow or create one."}
+            </p>
+          </div>
+        ) : filteredWorkflows.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-border/70 bg-background px-4 py-8 text-center shadow-sm">
+            <p className="text-sm text-muted-foreground">
+              {t("dashboard.automationsSearchEmpty") ||
+                "No automations match your search."}
             </p>
           </div>
         ) : (
@@ -1390,7 +1670,7 @@ export function AutomationBuilder({
               </span>
             </div>
             <div className="divide-y">
-              {workflows.map((wf) => {
+              {filteredWorkflows.map((wf) => {
                 const Icon = triggerIconFor(wf.triggerType);
                 return (
                   <button
@@ -1639,37 +1919,50 @@ export function AutomationBuilder({
               <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-3 h-full min-h-[480px]">
                 <div className="relative rounded-lg border bg-muted/30 overflow-y-auto min-h-[420px]">
                   {mainChain.length === 0 ? (
-                    <div className="flex items-center justify-center p-6 h-full min-h-[420px]">
-                      <div className="max-w-sm rounded-xl border bg-background px-5 py-4 text-center shadow-sm">
-                        <p className="text-sm font-medium">
-                          {t("dashboard.automationsEmptyCanvasTitle") ||
-                            "Build your automation"}
-                        </p>
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {t("dashboard.automationsEmptyCanvasHint") ||
-                            "First choose when this automation should start."}
-                        </p>
-                        <Button
-                          size="sm"
-                          className="mt-3"
-                          onClick={() => openStepPicker("trigger")}
-                          data-testid="automation-choose-trigger"
-                        >
-                          {t("dashboard.automationsChooseTrigger") ||
-                            "Choose trigger"}
-                        </Button>
-                      </div>
+                    <div className="flex flex-col items-center justify-center gap-4 p-6 min-h-[420px]">
+                      {!stepPickerOpen || stepPickerView !== "trigger" ? (
+                        <div className="max-w-sm rounded-xl border bg-background px-5 py-4 text-center shadow-sm">
+                          <p className="text-sm font-medium">
+                            {t("dashboard.automationsEmptyCanvasTitle") ||
+                              "Build your automation"}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {t("dashboard.automationsEmptyCanvasHint") ||
+                              "First choose when this automation should start."}
+                          </p>
+                          <Button
+                            size="sm"
+                            className="mt-3"
+                            onClick={() => openStepPicker("trigger")}
+                            data-testid="automation-choose-trigger"
+                          >
+                            {t("dashboard.automationsChooseTrigger") ||
+                              "Choose trigger"}
+                          </Button>
+                        </div>
+                      ) : (
+                        renderInlineStepPicker()
+                      )}
                     </div>
                   ) : (
                     <div
                       className="flex flex-col items-center px-4 py-8"
                       data-testid="automation-vertical-flow"
                     >
+                      {stepPickerOpen && stepPickerView === "trigger" ? (
+                        <div className="w-full flex justify-center pb-6">
+                          {renderInlineStepPicker()}
+                        </div>
+                      ) : null}
                       {mainChain.map((node, index) => {
                         const meta = stepMeta(node, t);
                         const Icon = meta.icon;
                         const selected = selectedNodeId === node.id;
                         const isLast = index === mainChain.length - 1;
+                        const pickerHere =
+                          stepPickerOpen &&
+                          stepPickerView !== "trigger" &&
+                          insertAfterId === node.id;
                         return (
                           <Fragment key={node.id}>
                             <button
@@ -1701,8 +1994,15 @@ export function AutomationBuilder({
                               <div className="h-3 w-px bg-border" />
                               <button
                                 type="button"
-                                className="flex h-8 w-8 items-center justify-center rounded-full border border-border/80 bg-background text-foreground shadow-sm hover:bg-muted transition-colors"
-                                onClick={() => openStepPicker("root", node.id)}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition-colors ${
+                                  pickerHere
+                                    ? "border-primary bg-primary text-primary-foreground"
+                                    : "border-border/80 bg-background text-foreground hover:bg-muted"
+                                }`}
+                                onClick={() => {
+                                  if (pickerHere) closeStepPicker();
+                                  else openStepPicker("root", node.id);
+                                }}
                                 aria-label={
                                   t("dashboard.automationsAddStep") || "Add step"
                                 }
@@ -1710,10 +2010,20 @@ export function AutomationBuilder({
                               >
                                 <Plus className="h-4 w-4" />
                               </button>
-                              {!isLast ? (
+                              {!isLast && !pickerHere ? (
                                 <div className="h-3 w-px bg-border" />
                               ) : null}
                             </div>
+
+                            {pickerHere ? (
+                              <div className="w-full flex justify-center pb-4 pt-1">
+                                {renderInlineStepPicker()}
+                              </div>
+                            ) : null}
+
+                            {pickerHere && !isLast ? (
+                              <div className="h-3 w-px bg-border mb-1" />
+                            ) : null}
                           </Fragment>
                         );
                       })}
@@ -2161,241 +2471,6 @@ export function AutomationBuilder({
               </div>
             </TabsContent>
           </Tabs>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={stepPickerOpen}
-        onOpenChange={(open) => {
-          setStepPickerOpen(open);
-          if (!open) {
-            setStepPickerView("root");
-            setInsertAfterId(null);
-          }
-        }}
-      >
-        <DialogContent className="max-w-md" data-testid="automation-step-picker">
-          <DialogHeader>
-            <DialogTitle>
-              {stepPickerView === "trigger"
-                ? t("dashboard.automationsChooseTrigger") || "Choose trigger"
-                : stepPickerView === "actions"
-                  ? t("dashboard.automationsActions") || "Actions"
-                  : t("dashboard.automationsAddStep") || "Add step"}
-            </DialogTitle>
-            <DialogDescription>
-              {stepPickerView === "trigger"
-                ? t("dashboard.automationsChooseTriggerHint") ||
-                  "When should this automation start?"
-                : t("dashboard.automationsAddStepHint") ||
-                  "Pick what happens next. It will connect automatically."}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto py-1">
-            {stepPickerView === "root" && (
-              <>
-                <button
-                  type="button"
-                  className={pickerButtonClass}
-                  onClick={() => setStepPickerView("actions")}
-                >
-                  <Mail className="h-4 w-4 shrink-0" />
-                  <span>
-                    <span className="block font-medium">
-                      {t("dashboard.automationsAction") || "Action"}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {t("dashboard.automationsActionHint") ||
-                        "Email, notify, tags, coupon, webhook…"}
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={pickerButtonClass}
-                  onClick={() => addStep("delay")}
-                >
-                  <Clock className="h-4 w-4 shrink-0" />
-                  <span>
-                    <span className="block font-medium">
-                      {t("dashboard.automationsDelay") || "Wait / Delay"}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {t("dashboard.automationsDelayHint") || "Pause before the next step"}
-                    </span>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className={pickerButtonClass}
-                  onClick={() => addStep("condition")}
-                >
-                  <GitBranch className="h-4 w-4 shrink-0" />
-                  <span>
-                    <span className="block font-medium">
-                      {t("dashboard.automationsIfElse") || "If / Else"}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {t("dashboard.automationsConditionPickerHint") ||
-                        "Branch based on rules"}
-                    </span>
-                  </span>
-                </button>
-              </>
-            )}
-
-            {stepPickerView === "actions" && (
-              <>
-                <button
-                  type="button"
-                  className="text-xs text-muted-foreground hover:text-foreground mb-1"
-                  onClick={() => setStepPickerView("root")}
-                >
-                  ← {t("dashboard.back") || "Back"}
-                </button>
-                {actionItems.map((item) => (
-                  <button
-                    key={item.kind}
-                    type="button"
-                    className={pickerButtonClass}
-                    onClick={() => addStep(item.kind)}
-                  >
-                    <item.icon className="h-4 w-4 shrink-0" />
-                    {item.label}
-                  </button>
-                ))}
-              </>
-            )}
-
-            {stepPickerView === "trigger" && (
-              <>
-                <p className="text-xs font-semibold tracking-wide text-muted-foreground pt-1">
-                  {uiUpper(t("dashboard.automationsTriggersForms") || "Forms", uiLang)}
-                </p>
-                {forms.length === 0 ? (
-                  <p className="text-xs text-muted-foreground px-1">
-                    {t("dashboard.automationsEmptyDescription") ||
-                      "No forms in site config yet."}
-                  </p>
-                ) : (
-                  forms.map((form) => (
-                    <button
-                      key={form.id}
-                      type="button"
-                      className={pickerButtonClass}
-                      onClick={() => addFormTrigger(form)}
-                    >
-                      <FileText className="h-4 w-4 shrink-0" />
-                      {form.name}
-                    </button>
-                  ))
-                )}
-
-                <p className="text-xs font-semibold tracking-wide text-muted-foreground pt-3">
-                  {uiUpper(
-                    t("dashboard.automationsTriggersContacts") || "Contacts",
-                    uiLang,
-                  )}
-                </p>
-                <button
-                  type="button"
-                  className={pickerButtonClass}
-                  onClick={() =>
-                    addEventTrigger(
-                      "contact.created",
-                      t("dashboard.automationsTriggerContactCreated") || "New contact",
-                    )
-                  }
-                >
-                  <UserPlus className="h-4 w-4 shrink-0" />
-                  {t("dashboard.automationsTriggerContactCreated") || "New contact"}
-                </button>
-                <button
-                  type="button"
-                  className={pickerButtonClass}
-                  onClick={() =>
-                    addEventTrigger(
-                      "contact.tag_added",
-                      t("dashboard.automationsTriggerTagAdded") || "Tag added",
-                      { tag: "lead" },
-                    )
-                  }
-                >
-                  <Tag className="h-4 w-4 shrink-0" />
-                  {t("dashboard.automationsTriggerTagAdded") || "Tag added"}
-                </button>
-                <button
-                  type="button"
-                  className={pickerButtonClass}
-                  onClick={() =>
-                    addEventTrigger(
-                      "newsletter.subscribed",
-                      t("dashboard.automationsTriggerNewsletter") ||
-                        "Newsletter subscribed",
-                    )
-                  }
-                >
-                  <Mail className="h-4 w-4 shrink-0" />
-                  {t("dashboard.automationsTriggerNewsletter") || "Newsletter subscribed"}
-                </button>
-
-                <p className="text-xs font-semibold tracking-wide text-muted-foreground pt-3">
-                  {uiUpper(
-                    t("dashboard.automationsTriggersBooking") || "Bookings",
-                    uiLang,
-                  )}
-                </p>
-                {(
-                  [
-                    [
-                      "booking.completed",
-                      t("dashboard.automationsTriggerBookingDone") ||
-                        "Appointment completed",
-                    ],
-                    [
-                      "booking.created",
-                      t("dashboard.automationsTriggerBookingCreated") || "Booking created",
-                    ],
-                    [
-                      "booking.cancelled",
-                      t("dashboard.automationsTriggerBookingCancelled") ||
-                        "Booking cancelled",
-                    ],
-                  ] as const
-                ).map(([type, label]) => (
-                  <button
-                    key={type}
-                    type="button"
-                    className={pickerButtonClass}
-                    onClick={() => addEventTrigger(type, label)}
-                  >
-                    <Calendar className="h-4 w-4 shrink-0" />
-                    {label}
-                  </button>
-                ))}
-
-                <p className="text-xs font-semibold tracking-wide text-muted-foreground pt-3">
-                  {uiUpper(t("dashboard.automationsTriggersTime") || "Time", uiLang)}
-                </p>
-                <button
-                  type="button"
-                  className={pickerButtonClass}
-                  onClick={() =>
-                    addEventTrigger(
-                      "schedule.date_offset",
-                      t("dashboard.automationsTriggerDateOffset") ||
-                        "X days after a date",
-                      { dateSource: "last_booking", offsetDays: 180, yearly: false },
-                    )
-                  }
-                >
-                  <Clock className="h-4 w-4 shrink-0" />
-                  {t("dashboard.automationsTriggerDateOffset") || "X days after a date"}
-                </button>
-              </>
-            )}
-          </div>
         </DialogContent>
       </Dialog>
 

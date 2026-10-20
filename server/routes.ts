@@ -27702,7 +27702,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const formName = parsed.data.formName || formId;
       const graph = preset.buildGraph(formId, formName);
 
-      if (parsed.data.enabled !== false) {
+      const enabled = parsed.data.enabled ?? false;
+
+      if (enabled) {
         await db
           .update(websiteAutomationWorkflows)
           .set({ enabled: false, updatedAt: new Date() })
@@ -27720,7 +27722,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         .values({
           websiteProgressId: websiteId,
           name: preset.nameGr || preset.name,
-          enabled: parsed.data.enabled ?? true,
+          enabled,
           triggerFormId: formId,
           triggerType: "form.submitted",
           triggerConfig: { formId, presetKey: preset.key },
