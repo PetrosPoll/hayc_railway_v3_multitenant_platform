@@ -27778,15 +27778,17 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         ? `booking:${websiteId}:${parsed.data.booking_id}`
         : null;
 
+      // Cancel in-flight runs for this booking, then emit so "on cancel" workflows can start.
+      let cancelledSteps = 0;
       if (parsed.data.type === "booking.cancelled" && cancelKey) {
-        const cancelled = await cancelRuns(cancelKey);
-        return res.json({ cancelledSteps: cancelled });
+        cancelledSteps = await cancelRuns(cancelKey);
       }
 
       const result = await emitEvent({
         websiteProgressId: websiteId,
         type: parsed.data.type,
-        cancelKey,
+        cancelKey:
+          parsed.data.type === "booking.cancelled" ? null : cancelKey,
         dedupeKey: cancelKey
           ? `${parsed.data.type}:${cancelKey}`
           : undefined,
@@ -27800,7 +27802,11 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           booking_id: parsed.data.booking_id || "",
         },
       });
-      return res.json(result);
+      return res.json(
+        parsed.data.type === "booking.cancelled"
+          ? { ...result, cancelledSteps }
+          : result,
+      );
     } catch (error) {
       console.error("Error ingesting booking event:", error);
       return res.status(500).json({ error: "Failed to ingest booking event" });
