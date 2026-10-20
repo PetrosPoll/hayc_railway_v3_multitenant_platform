@@ -1,5 +1,62 @@
 /** Build Meta / Facebook Commerce Manager product catalog RSS XML. */
 
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function feedSecret(): string {
+  return (
+    process.env.FACEBOOK_FEED_SECRET ||
+    process.env.SESSION_SECRET ||
+    "dev-facebook-feed-secret"
+  );
+}
+
+/** Stable per-site token for public Meta catalog polling. */
+export function facebookCatalogFeedToken(siteId: string): string {
+  return createHmac("sha256", feedSecret())
+    .update(`facebook-catalog:${siteId}`)
+    .digest("hex")
+    .slice(0, 40);
+}
+
+export function verifyFacebookCatalogFeedToken(
+  siteId: string,
+  token: string,
+): boolean {
+  const expected = facebookCatalogFeedToken(siteId);
+  const a = Buffer.from(expected);
+  const b = Buffer.from(String(token || ""));
+  if (a.length !== b.length) return false;
+  try {
+    return timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
+}
+
+export function publicFacebookCatalogFeedPath(
+  siteId: string,
+  token?: string,
+): string {
+  const t = token || facebookCatalogFeedToken(siteId);
+  return `/public/facebook-catalog/${encodeURIComponent(siteId)}.xml?token=${encodeURIComponent(t)}`;
+}
+
+export function publicFacebookCatalogFeedUrl(
+  siteId: string,
+  baseUrl?: string,
+): string {
+  const base = (
+    baseUrl ||
+    process.env.PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    process.env.VITE_APP_URL ||
+    "https://hayc.gr"
+  )
+    .trim()
+    .replace(/\/$/, "");
+  return `${base}${publicFacebookCatalogFeedPath(siteId)}`;
+}
+
 function escapeXml(value: string): string {
   return value
     .replace(/&/g, "&amp;")

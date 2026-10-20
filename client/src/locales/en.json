@@ -3045,10 +3045,14 @@
             "syncFailed": "Could not sync to website. Please try again."
         },
         "facebookExport": {
-            "button": "Export XML",
+            "button": "Download XML",
             "exporting": "Exporting...",
             "success": "Facebook catalog XML downloaded",
-            "failed": "Could not export Facebook catalog. Please try again."
+            "failed": "Could not export Facebook catalog. Please try again.",
+            "copyLink": "Copy Meta XML link",
+            "copyingLink": "Copying...",
+            "linkCopied": "Meta catalog feed link copied — paste it in Commerce Manager",
+            "linkFailed": "Could not copy Meta feed link. Please try again."
         },
         "table": {
             "title": "Title",

@@ -3045,10 +3045,14 @@
             "syncFailed": "Δεν ήταν δυνατός ο συγχρονισμός. Δοκιμάστε ξανά."
         },
         "facebookExport": {
-            "button": "Export XML",
+            "button": "Λήψη XML",
             "exporting": "Εξαγωγή...",
             "success": "Κατέβηκε το XML καταλόγου Facebook",
-            "failed": "Αποτυχία εξαγωγής. Δοκιμάστε ξανά."
+            "failed": "Αποτυχία εξαγωγής. Δοκιμάστε ξανά.",
+            "copyLink": "Αντιγραφή Meta XML link",
+            "copyingLink": "Αντιγραφή...",
+            "linkCopied": "Το link του καταλόγου αντιγράφηκε — επικόλλησέ το στο Commerce Manager",
+            "linkFailed": "Αποτυχία αντιγραφής του Meta feed link. Δοκίμασε ξανά."
         },
         "table": {
             "title": "Τίτλος",

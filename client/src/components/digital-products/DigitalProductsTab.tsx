@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Download, Loader2 } from "lucide-react";
+import { CheckCircle2, Download, Loader2, Link2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,6 +75,7 @@ export function DigitalProductsTab({
   const [syncedPublishedIds, setSyncedPublishedIds] = useState<string[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isExportingFacebook, setIsExportingFacebook] = useState(false);
+  const [isCopyingFeedLink, setIsCopyingFeedLink] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setIsLoading(true);
@@ -420,6 +421,79 @@ export function DigitalProductsTab({
     }
   };
 
+  const handleCopyFacebookFeedLink = async () => {
+    setIsCopyingFeedLink(true);
+    try {
+      const res = await fetch(
+        `/api/hdp/products/${encodeURIComponent(siteId)}/facebook-feed-url`,
+        { credentials: "include" },
+      );
+      if (!res.ok) {
+        throw new Error("feed url failed");
+      }
+      const data = (await res.json()) as { url?: string };
+      if (!data.url) throw new Error("missing url");
+      await navigator.clipboard.writeText(data.url);
+      toast({
+        title: t("digitalProductsManagement.toasts.successTitle"),
+        description: t("digitalProductsManagement.facebookExport.linkCopied"),
+      });
+    } catch {
+      toast({
+        title: t("digitalProductsManagement.toasts.errorTitle"),
+        description: t("digitalProductsManagement.facebookExport.linkFailed"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsCopyingFeedLink(false);
+    }
+  };
+
+  const facebookCatalogButtons = (size?: "sm") => (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size={size}
+        onClick={handleCopyFacebookFeedLink}
+        disabled={isCopyingFeedLink}
+        data-testid="button-copy-facebook-catalog-link"
+      >
+        {isCopyingFeedLink ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {t("digitalProductsManagement.facebookExport.copyingLink")}
+          </>
+        ) : (
+          <>
+            <Link2 className="mr-2 h-4 w-4" />
+            {t("digitalProductsManagement.facebookExport.copyLink")}
+          </>
+        )}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size={size}
+        onClick={handleExportFacebook}
+        disabled={isExportingFacebook || products.length === 0}
+        data-testid="button-export-facebook-catalog"
+      >
+        {isExportingFacebook ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            {t("digitalProductsManagement.facebookExport.exporting")}
+          </>
+        ) : (
+          <>
+            <Download className="mr-2 h-4 w-4" />
+            {t("digitalProductsManagement.facebookExport.button")}
+          </>
+        )}
+      </Button>
+    </>
+  );
+
   const handleSyncToWebsite = async () => {
     setIsSyncing(true);
     try {
@@ -533,26 +607,7 @@ export function DigitalProductsTab({
               >
                 {t("digitalProductsManagement.configureLookAndFeel")}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleExportFacebook}
-                disabled={isExportingFacebook || products.length === 0}
-                data-testid="button-export-facebook-catalog"
-              >
-                {isExportingFacebook ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("digitalProductsManagement.facebookExport.exporting")}
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    {t("digitalProductsManagement.facebookExport.button")}
-                  </>
-                )}
-              </Button>
+              {facebookCatalogButtons("sm")}
             </div>
           </>
         ) : (
@@ -567,28 +622,7 @@ export function DigitalProductsTab({
             >
               {t("digitalProductsManagement.configureLookAndFeel")}
             </Button>
-            {listMode === "courses" ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleExportFacebook}
-                disabled={isExportingFacebook || products.length === 0}
-                data-testid="button-export-facebook-catalog"
-              >
-                {isExportingFacebook ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    {t("digitalProductsManagement.facebookExport.exporting")}
-                  </>
-                ) : (
-                  <>
-                    <Download className="mr-2 h-4 w-4" />
-                    {t("digitalProductsManagement.facebookExport.button")}
-                  </>
-                )}
-              </Button>
-            ) : null}
+            {listMode === "courses" ? facebookCatalogButtons("sm") : null}
             {listMode === "courses" ? <CreateProductButton onSelect={handleCreateSelect} /> : null}
             {listMode === "buyers" && !demoBuyer && !demoBuyerLoading ? (
               <Button
@@ -620,27 +654,7 @@ export function DigitalProductsTab({
           >
             {t("digitalProductsManagement.configureLookAndFeel")}
           </Button>
-          {listMode === "courses" ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleExportFacebook}
-              disabled={isExportingFacebook || products.length === 0}
-              data-testid="button-export-facebook-catalog"
-            >
-              {isExportingFacebook ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t("digitalProductsManagement.facebookExport.exporting")}
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  {t("digitalProductsManagement.facebookExport.button")}
-                </>
-              )}
-            </Button>
-          ) : null}
+          {listMode === "courses" ? facebookCatalogButtons() : null}
           {listMode === "courses" ? <CreateProductButton onSelect={handleCreateSelect} /> : null}
           {listMode === "buyers" && !demoBuyer && !demoBuyerLoading ? (
             <Button
