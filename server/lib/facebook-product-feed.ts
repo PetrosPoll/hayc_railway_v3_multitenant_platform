@@ -100,7 +100,11 @@ export function buildFacebookProductCatalogXml(input: {
   const fallbackImage = input.brandLogoUrl?.trim() || "";
 
   const items = input.products
-    .filter((p) => String(p.status ?? "").toLowerCase() === "published")
+    .filter((p) => {
+      const status = String(p.status ?? "").toLowerCase().trim();
+      // published-preview rows may omit status; treat blank as published.
+      return !status || status === "published";
+    })
     .map((p) => {
       const id = String(p.id ?? "").trim();
       if (!id) return null;
@@ -119,6 +123,14 @@ export function buildFacebookProductCatalogXml(input: {
           p.image,
           p.thumbnailUrl,
           p.thumbnail,
+          // Nested media shapes from HDP
+          typeof p.cover === "object" && p.cover
+            ? (p.cover as Record<string, unknown>).url
+            : null,
+          typeof p.media === "object" && p.media
+            ? (p.media as Record<string, unknown>).thumbnail ||
+                (p.media as Record<string, unknown>).cover
+            : null,
         ) || fallbackImage;
       if (!image) return null;
 

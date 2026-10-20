@@ -55,4 +55,41 @@ describe("buildFacebookProductCatalogXml", () => {
       "<g:image_link>https://cdn.example.com/logo.png</g:image_link>",
     );
   });
+
+  it("includes published-preview rows that omit status and use thumbnail", () => {
+    const xml = buildFacebookProductCatalogXml({
+      siteId: "site-1",
+      brandName: "Brand",
+      products: [
+        {
+          id: "c1",
+          title: "Live course",
+          thumbnail: "https://cdn.example.com/thumb.jpg",
+          price: 30,
+          currency: "EUR",
+          enrollUrl: "https://hdp.example/enroll?c=1",
+        },
+      ],
+    });
+    expect(xml).toContain("<g:id>c1</g:id>");
+    expect(xml).toContain(
+      "<g:image_link>https://cdn.example.com/thumb.jpg</g:image_link>",
+    );
+  });
+
+  it("skips draft products even when image exists", () => {
+    const xml = buildFacebookProductCatalogXml({
+      siteId: "site-1",
+      products: [
+        {
+          id: "c1",
+          title: "Draft",
+          status: "draft",
+          thumbnail: "https://cdn.example.com/t.jpg",
+          price: 10,
+        },
+      ],
+    });
+    expect(xml).not.toContain("<g:id>c1</g:id>");
+  });
 });
