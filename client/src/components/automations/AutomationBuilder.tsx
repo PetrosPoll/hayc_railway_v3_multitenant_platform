@@ -7,6 +7,7 @@ import {
   Bell,
   Calendar,
   Clock,
+  Copy,
   FileText,
   Gift,
   GitBranch,
@@ -15,6 +16,7 @@ import {
   Mail,
   MessageSquareReply,
   MoreHorizontal,
+  Pencil,
   Plus,
   Play,
   Save,
@@ -70,6 +72,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/ui/authContext";
@@ -634,6 +637,17 @@ export function AutomationBuilder({
   const queryClient = useQueryClient();
   /** UI language for casing/copy — not website content language. */
   const uiLang = i18n.language || "en";
+  const isUiGr =
+    uiLang === "gr" || uiLang === "el" || uiLang.startsWith("el");
+
+  /** Prefer locale string; if i18n returns the raw key, use language fallback. */
+  const tx = (key: string, en: string, grText: string) => {
+    const v = t(key);
+    if (!v || v === key || v.startsWith("dashboard.")) {
+      return isUiGr ? grText : en;
+    }
+    return v;
+  };
 
   const [builderTab, setBuilderTab] = useState<"canvas" | "history">("canvas");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -643,6 +657,15 @@ export function AutomationBuilder({
   );
   const [insertAfterId, setInsertAfterId] = useState<string | null>(null);
   const [workflowSearch, setWorkflowSearch] = useState("");
+  const [renameTarget, setRenameTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [listDeleteTarget, setListDeleteTarget] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
   const [testOpen, setTestOpen] = useState(false);
   const [testVisitorEmail, setTestVisitorEmail] = useState("");
   const [testOwnerEmail, setTestOwnerEmail] = useState("");
@@ -1147,22 +1170,162 @@ export function AutomationBuilder({
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async () => {
-      if (!workflowId) return;
+    mutationFn: async (idOverride?: number) => {
+      const id = idOverride ?? workflowId;
+      if (!id) return;
       const res = await fetch(
-        `/api/websites/${websiteId}/automation-workflows/${workflowId}`,
+        `/api/websites/${websiteId}/automation-workflows/${id}`,
         { method: "DELETE", credentials: "include" },
       );
       if (!res.ok) throw new Error("Failed to delete");
+      return id;
     },
-    onSuccess: () => {
+    onSuccess: (deletedId) => {
       setDeleteConfirmOpen(false);
-      startNewWorkflow();
-      closeEditor();
+      setListDeleteTarget(null);
+      if (deletedId != null && deletedId === workflowId) {
+        startNewWorkflow();
+        closeEditor();
+      }
       queryClient.invalidateQueries({
         queryKey: ["/api/websites", websiteId, "automation-workflows"],
       });
       toast({ title: t("dashboard.automationsDeleted") || "Automation deleted" });
+    },
+  });
+
+  const workflowsQueryKey = [
+    "/api/websites",
+    websiteId,
+    "automation-workflows",
+  ] as const;
+
+  const patchWorkflowMutation = useMutation({
+    mutationFn: async (wf: WebsiteAutomationWorkflow & { name?: string; enabled?: boolean }) => {
+      const body = {
+        name: (wf.name ?? "").trim() || "Automation",
+        enabled: wf.enabled ?? false,
+        triggerFormId: wf.triggerFormId,
+        triggerType: wf.triggerType || "form.submitted",
+        triggerConfig: (wf.triggerConfig as Record<string, unknown>) || {},
+        frequency: (wf.frequency as AutomationFrequency) || "every_time",
+        graph: wf.graph || { nodes: [], edges: [] },
+      };
+      const res = await fetch(
+        `/api/websites/${websiteId}/automation-workflows/${wf.id}`,
+        {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to update");
+      }
+      return res.json() as Promise<{ workflow: WebsiteAutomationWorkflow }>;
+    },
+    onMutate: async (wf) => {
+      await queryClient.cancelQueries({ queryKey: [...workflowsQueryKey] });
+      const previous = queryClient.getQueryData<{
+        workflows: WebsiteAutomationWorkflow[];
+      }>([...workflowsQueryKey]);
+      queryClient.setQueryData<{ workflows: WebsiteAutomationWorkflow[] }>(
+        [...workflowsQueryKey],
+        (old) => {
+          if (!old) return old;
+          return {
+            workflows: old.workflows.map((w) =>
+              w.id === wf.id
+                ? {
+                    ...w,
+                    name: wf.name ?? w.name,
+                    enabled: wf.enabled ?? w.enabled,
+                  }
+                : w,
+            ),
+          };
+        },
+      );
+      return { previous };
+    },
+    onError: (err: Error, _wf, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData([...workflowsQueryKey], context.previous);
+      }
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+    onSuccess: (data) => {
+      if (data?.workflow) {
+        queryClient.setQueryData<{ workflows: WebsiteAutomationWorkflow[] }>(
+          [...workflowsQueryKey],
+          (old) => {
+            if (!old) return old;
+            return {
+              workflows: old.workflows.map((w) =>
+                w.id === data.workflow.id ? data.workflow : w,
+              ),
+            };
+          },
+        );
+        if (data.workflow.id === workflowId) {
+          loadWorkflow(data.workflow);
+        }
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: [...workflowsQueryKey] });
+    },
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: async (wf: WebsiteAutomationWorkflow) => {
+      const lang = i18n.language || websiteLanguage || "en";
+      const copySuffix =
+        lang === "gr" || lang === "el" || lang.startsWith("el")
+          ? " (αντίγραφο)"
+          : " (copy)";
+      const body = {
+        name: `${wf.name}${copySuffix}`.slice(0, 120),
+        enabled: false,
+        triggerFormId: wf.triggerFormId,
+        triggerType: wf.triggerType || "form.submitted",
+        triggerConfig: (wf.triggerConfig as Record<string, unknown>) || {},
+        frequency: (wf.frequency as AutomationFrequency) || "every_time",
+        graph: wf.graph || { nodes: [], edges: [] },
+        presetKey: wf.presetKey ?? null,
+      };
+      const res = await fetch(`/api/websites/${websiteId}/automation-workflows`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to duplicate");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/websites", websiteId, "automation-workflows"],
+      });
+      toast({
+        title: t("dashboard.automationsDuplicated") || "Automation duplicated",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -1659,34 +1822,50 @@ export function AutomationBuilder({
           </div>
         ) : (
           <div className="rounded-xl border border-border/60 bg-background shadow-sm overflow-hidden">
-            <div className="hidden md:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_7.5rem_5.5rem] gap-3 border-b bg-muted/30 px-4 py-2.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+            <div className="hidden md:grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_7rem_7rem_8.5rem] gap-3 border-b bg-muted/30 px-4 py-2.5 text-[11px] font-medium tracking-wide text-muted-foreground">
               <span>{uiUpper(t("dashboard.automationsColName") || "Name", uiLang)}</span>
               <span>{uiUpper(t("dashboard.automationsColTrigger") || "Trigger", uiLang)}</span>
               <span>{uiUpper(t("dashboard.automationsColDoes") || "What it does", uiLang)}</span>
               <span>{uiUpper(t("dashboard.automationsColCreated") || "Created", uiLang)}</span>
               <span>{uiUpper(t("dashboard.automationsColEdited") || "Last edited", uiLang)}</span>
               <span className="text-right">
-                {uiUpper(t("dashboard.automationsColStatus") || "Status", uiLang)}
+                {uiUpper(
+                  tx("dashboard.automationsColActions", "Actions", "Ενέργειες"),
+                  uiLang,
+                )}
               </span>
             </div>
             <div className="divide-y">
               {filteredWorkflows.map((wf) => {
                 const Icon = triggerIconFor(wf.triggerType);
                 return (
-                  <button
+                  <div
                     key={wf.id}
-                    type="button"
-                    className="grid w-full grid-cols-1 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_7.5rem_5.5rem] gap-2 md:gap-3 px-4 py-3.5 text-left hover:bg-muted/30 transition-colors"
+                    className={`grid w-full grid-cols-1 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_7rem_7rem_8.5rem] gap-2 md:gap-3 px-4 py-3.5 text-left transition-colors cursor-pointer ${
+                      wf.enabled
+                        ? "bg-sky-50/80 hover:bg-sky-50 dark:bg-sky-950/25 dark:hover:bg-sky-950/40"
+                        : "hover:bg-muted/30"
+                    }`}
                     onClick={() => openEditor(wf)}
                     data-testid={`automation-row-${wf.id}`}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        openEditor(wf);
+                      }
+                    }}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-background/80 border border-border/50">
                         <Icon className="h-4 w-4" />
                       </span>
-                      <span className="font-medium text-sm truncate">
-                        {wf.name}
-                      </span>
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm truncate">
+                          {wf.name}
+                        </div>
+                      </div>
                     </div>
                     <div className="text-sm text-muted-foreground truncate pl-12 md:pl-0">
                       <span className="md:hidden text-[11px] tracking-wide mr-1.5 text-muted-foreground/80">
@@ -1712,23 +1891,95 @@ export function AutomationBuilder({
                       </span>
                       {formatShortDate(wf.updatedAt, dateLocale)}
                     </div>
-                    <div className="flex md:justify-end items-center pl-12 md:pl-0">
-                      <span
-                        className={
-                          wf.enabled
-                            ? "text-[11px] font-medium tracking-wide rounded-full border px-2.5 py-0.5 text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/40"
-                            : "text-[11px] font-medium tracking-wide rounded-full border px-2.5 py-0.5 text-muted-foreground bg-muted/50"
+                    <div
+                      className="flex md:justify-end items-center gap-2 pl-12 md:pl-0"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
+                      <Switch
+                        checked={wf.enabled}
+                        disabled={patchWorkflowMutation.isPending}
+                        onCheckedChange={(checked) =>
+                          patchWorkflowMutation.mutate({
+                            ...wf,
+                            enabled: checked,
+                          })
                         }
-                      >
-                        {uiUpper(
+                        aria-label={
                           wf.enabled
-                            ? t("dashboard.automationsActive") || "Active"
-                            : t("dashboard.automationsInactive") || "Off",
-                          uiLang,
-                        )}
-                      </span>
+                            ? tx(
+                                "dashboard.automationsSetInactive",
+                                "Turn off",
+                                "Απενεργοποίηση",
+                              )
+                            : tx(
+                                "dashboard.automationsSetActive",
+                                "Turn on",
+                                "Ενεργοποίηση",
+                              )
+                        }
+                        data-testid={`automation-row-enabled-${wf.id}`}
+                      />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0 bg-background"
+                            data-testid={`automation-row-actions-${wf.id}`}
+                            aria-label={tx(
+                              "dashboard.automationsColActions",
+                              "Actions",
+                              "Ενέργειες",
+                            )}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuItem
+                            disabled={duplicateMutation.isPending}
+                            onClick={() => duplicateMutation.mutate(wf)}
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            {tx(
+                              "dashboard.automationsDuplicate",
+                              "Duplicate",
+                              "Αντιγραφή",
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setRenameTarget({ id: wf.id, name: wf.name });
+                              setRenameValue(wf.name);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            {tx(
+                              "dashboard.automationsRename",
+                              "Rename",
+                              "Μετονομασία",
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() =>
+                              setListDeleteTarget({ id: wf.id, name: wf.name })
+                            }
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {tx(
+                              "dashboard.automationsDelete",
+                              "Delete",
+                              "Διαγραφή",
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -2546,15 +2797,89 @@ export function AutomationBuilder({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+      <Dialog
+        open={renameTarget != null}
+        onOpenChange={(open) => {
+          if (!open) setRenameTarget(null);
+        }}
+      >
+        <DialogContent className="max-w-sm" data-testid="automation-rename-dialog">
+          <DialogHeader>
+            <DialogTitle>
+              {tx("dashboard.automationsRename", "Rename", "Μετονομασία")}
+            </DialogTitle>
+            <DialogDescription>
+              {tx(
+                "dashboard.automationsRenameHint",
+                "Choose a new name for this automation.",
+                "Δώσε νέο όνομα σε αυτόν τον αυτοματισμό.",
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            autoFocus
+            data-testid="automation-rename-input"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameTarget(null)}>
+              {t("dashboard.cancel") || "Cancel"}
+            </Button>
+            <Button
+              disabled={
+                !renameTarget ||
+                !renameValue.trim() ||
+                patchWorkflowMutation.isPending
+              }
+              onClick={() => {
+                if (!renameTarget) return;
+                const wf = workflows.find((w) => w.id === renameTarget.id);
+                if (!wf) return;
+                patchWorkflowMutation.mutate(
+                  { ...wf, name: renameValue.trim() },
+                  {
+                    onSuccess: () => {
+                      setRenameTarget(null);
+                      toast({
+                        title:
+                          t("dashboard.automationsRenamed") ||
+                          "Automation renamed",
+                      });
+                    },
+                  },
+                );
+              }}
+              data-testid="automation-rename-save"
+            >
+              {patchWorkflowMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {t("dashboard.automationsSave") || "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteConfirmOpen || listDeleteTarget != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteConfirmOpen(false);
+            setListDeleteTarget(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               {t("dashboard.automationsDeleteTitle") || "Delete workflow?"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t("dashboard.automationsDeleteConfirm", { name: workflowName }) ||
-                `Delete “${workflowName}”? This cannot be undone.`}
+              {t("dashboard.automationsDeleteConfirm", {
+                name: listDeleteTarget?.name || workflowName,
+              }) ||
+                `Delete “${listDeleteTarget?.name || workflowName}”? This cannot be undone.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -2564,7 +2889,7 @@ export function AutomationBuilder({
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                deleteMutation.mutate();
+                deleteMutation.mutate(listDeleteTarget?.id);
               }}
               disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
