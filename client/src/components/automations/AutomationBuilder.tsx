@@ -73,6 +73,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/components/ui/authContext";
 import { useToast } from "@/hooks/use-toast";
+import { toGreekSafeUpperCase } from "@/lib/greek-text";
+
+function uiUpper(text: string, language: string) {
+  const isGr = language === "gr" || language === "el" || language.startsWith("el");
+  return isGr ? toGreekSafeUpperCase(text) : text.toLocaleUpperCase("en-US");
+}
 
 type Props = {
   websiteId: number;
@@ -223,7 +229,9 @@ function stepMeta(
         icon: GitBranch,
         kind: t("dashboard.automationsIfElse") || "If / Else",
         title: Array.isArray(node.data?.rules)
-          ? `${node.data.rules.length} rule(s)`
+          ? t("dashboard.automationsConditionRulesCount", {
+              count: String(node.data.rules.length),
+            }) || `${node.data.rules.length} rule(s)`
           : t("dashboard.automationsIfElse") || "If / Else",
       };
     case "webhook":
@@ -244,10 +252,16 @@ function stepMeta(
       return {
         icon: Gift,
         kind: t("dashboard.automationsSendCoupon") || "Send coupon",
-        title: (node.data?.couponCode as string) || "Coupon",
+        title:
+          (node.data?.couponCode as string) ||
+          (t("dashboard.automationsSendCoupon") || "Coupon"),
       };
     default:
-      return { icon: Sparkles, kind: type || "Step", title: type || "Step" };
+      return {
+        icon: Sparkles,
+        kind: t("dashboard.automationsStep") || "Step",
+        title: type || (t("dashboard.automationsStep") || "Step"),
+      };
   }
 }
 
@@ -296,25 +310,42 @@ function presetIconFor(key: string): LucideIcon {
   }
 }
 
-function workflowSummary(wf: WebsiteAutomationWorkflow, isGr: boolean): string {
+function workflowSummary(
+  wf: WebsiteAutomationWorkflow,
+  t: (key: string) => string,
+): string {
   const nodes = wf.graph?.nodes || [];
   const kinds = new Set(
     nodes.filter((n) => n.type && n.type !== "trigger").map((n) => n.type),
   );
   const parts: string[] = [];
-  if (kinds.has("email")) parts.push(isGr ? "Email" : "Email");
+  if (kinds.has("email")) {
+    parts.push(t("dashboard.automationsSummaryEmail") || "Email");
+  }
   if (kinds.has("notify_owner") || kinds.has("owner_reminder")) {
-    parts.push(isGr ? "Ειδοποίηση" : "Notify");
+    parts.push(t("dashboard.automationsSummaryNotify") || "Notify");
   }
-  if (kinds.has("delay")) parts.push(isGr ? "Αναμονή" : "Wait");
-  if (kinds.has("condition")) parts.push(isGr ? "Συνθήκη" : "Condition");
+  if (kinds.has("delay")) {
+    parts.push(t("dashboard.automationsSummaryWait") || "Wait");
+  }
+  if (kinds.has("condition")) {
+    parts.push(t("dashboard.automationsSummaryCondition") || "Condition");
+  }
   if (kinds.has("add_tag") || kinds.has("remove_tag")) {
-    parts.push("Tags");
+    parts.push(t("dashboard.automationsSummaryTags") || "Tags");
   }
-  if (kinds.has("review_request")) parts.push(isGr ? "Review" : "Review");
-  if (kinds.has("send_coupon")) parts.push(isGr ? "Κουπόνι" : "Coupon");
-  if (kinds.has("webhook")) parts.push("Webhook");
-  if (parts.length === 0) return isGr ? "Χωρίς βήματα ακόμα" : "No steps yet";
+  if (kinds.has("review_request")) {
+    parts.push(t("dashboard.automationsSummaryReview") || "Review");
+  }
+  if (kinds.has("send_coupon")) {
+    parts.push(t("dashboard.automationsSummaryCoupon") || "Coupon");
+  }
+  if (kinds.has("webhook")) {
+    parts.push(t("dashboard.automationsSummaryWebhook") || "Webhook");
+  }
+  if (parts.length === 0) {
+    return t("dashboard.automationsSummaryEmpty") || "No steps yet";
+  }
   return parts.slice(0, 3).join(" · ");
 }
 
@@ -591,10 +622,11 @@ export function AutomationBuilder({
   websiteLanguage,
   contactEmail,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const uiLang = websiteLanguage || i18n.language || "en";
 
   const [builderTab, setBuilderTab] = useState<"canvas" | "history">("canvas");
   const [editorOpen, setEditorOpen] = useState(false);
@@ -1347,14 +1379,14 @@ export function AutomationBuilder({
           </div>
         ) : (
           <div className="rounded-xl border border-border/60 bg-background shadow-sm overflow-hidden">
-            <div className="hidden md:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_7.5rem_5.5rem] gap-3 border-b bg-muted/30 px-4 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              <span>{t("dashboard.automationsColName") || "Name"}</span>
-              <span>{t("dashboard.automationsColTrigger") || "Trigger"}</span>
-              <span>{t("dashboard.automationsColDoes") || "What it does"}</span>
-              <span>{t("dashboard.automationsColCreated") || "Created"}</span>
-              <span>{t("dashboard.automationsColEdited") || "Last edited"}</span>
+            <div className="hidden md:grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_7.5rem_7.5rem_5.5rem] gap-3 border-b bg-muted/30 px-4 py-2.5 text-[11px] font-medium tracking-wide text-muted-foreground">
+              <span>{uiUpper(t("dashboard.automationsColName") || "Name", uiLang)}</span>
+              <span>{uiUpper(t("dashboard.automationsColTrigger") || "Trigger", uiLang)}</span>
+              <span>{uiUpper(t("dashboard.automationsColDoes") || "What it does", uiLang)}</span>
+              <span>{uiUpper(t("dashboard.automationsColCreated") || "Created", uiLang)}</span>
+              <span>{uiUpper(t("dashboard.automationsColEdited") || "Last edited", uiLang)}</span>
               <span className="text-right">
-                {t("dashboard.automationsColStatus") || "Status"}
+                {uiUpper(t("dashboard.automationsColStatus") || "Status", uiLang)}
               </span>
             </div>
             <div className="divide-y">
@@ -1377,26 +1409,26 @@ export function AutomationBuilder({
                       </span>
                     </div>
                     <div className="text-sm text-muted-foreground truncate pl-12 md:pl-0">
-                      <span className="md:hidden text-[11px] uppercase tracking-wide mr-1.5 text-muted-foreground/80">
-                        {t("dashboard.automationsColTrigger") || "Trigger"}:
+                      <span className="md:hidden text-[11px] tracking-wide mr-1.5 text-muted-foreground/80">
+                        {uiUpper(t("dashboard.automationsColTrigger") || "Trigger", uiLang)}:
                       </span>
                       {triggerLabel(wf)}
                     </div>
                     <div className="text-sm text-muted-foreground truncate pl-12 md:pl-0">
-                      <span className="md:hidden text-[11px] uppercase tracking-wide mr-1.5 text-muted-foreground/80">
-                        {t("dashboard.automationsColDoes") || "What it does"}:
+                      <span className="md:hidden text-[11px] tracking-wide mr-1.5 text-muted-foreground/80">
+                        {uiUpper(t("dashboard.automationsColDoes") || "What it does", uiLang)}:
                       </span>
-                      {workflowSummary(wf, isGr)}
+                      {workflowSummary(wf, t)}
                     </div>
                     <div className="text-sm text-muted-foreground pl-12 md:pl-0">
-                      <span className="md:hidden text-[11px] uppercase tracking-wide mr-1.5 text-muted-foreground/80">
-                        {t("dashboard.automationsColCreated") || "Created"}:
+                      <span className="md:hidden text-[11px] tracking-wide mr-1.5 text-muted-foreground/80">
+                        {uiUpper(t("dashboard.automationsColCreated") || "Created", uiLang)}:
                       </span>
                       {formatShortDate(wf.createdAt, dateLocale)}
                     </div>
                     <div className="text-sm text-muted-foreground pl-12 md:pl-0">
-                      <span className="md:hidden text-[11px] uppercase tracking-wide mr-1.5 text-muted-foreground/80">
-                        {t("dashboard.automationsColEdited") || "Last edited"}:
+                      <span className="md:hidden text-[11px] tracking-wide mr-1.5 text-muted-foreground/80">
+                        {uiUpper(t("dashboard.automationsColEdited") || "Last edited", uiLang)}:
                       </span>
                       {formatShortDate(wf.updatedAt, dateLocale)}
                     </div>
@@ -1404,13 +1436,16 @@ export function AutomationBuilder({
                       <span
                         className={
                           wf.enabled
-                            ? "text-[11px] font-medium uppercase tracking-wide rounded-full border px-2.5 py-0.5 text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/40"
-                            : "text-[11px] font-medium uppercase tracking-wide rounded-full border px-2.5 py-0.5 text-muted-foreground bg-muted/50"
+                            ? "text-[11px] font-medium tracking-wide rounded-full border px-2.5 py-0.5 text-emerald-700 border-emerald-200 bg-emerald-50 dark:text-emerald-300 dark:border-emerald-800 dark:bg-emerald-950/40"
+                            : "text-[11px] font-medium tracking-wide rounded-full border px-2.5 py-0.5 text-muted-foreground bg-muted/50"
                         }
                       >
-                        {wf.enabled
-                          ? t("dashboard.automationsActive") || "Active"
-                          : t("dashboard.automationsInactive") || "Off"}
+                        {uiUpper(
+                          wf.enabled
+                            ? t("dashboard.automationsActive") || "Active"
+                            : t("dashboard.automationsInactive") || "Off",
+                          uiLang,
+                        )}
                       </span>
                     </div>
                   </button>
@@ -1563,8 +1598,11 @@ export function AutomationBuilder({
                           {new Date(run.startedAt).toLocaleString()}
                         </span>
                         {run.isTest ? (
-                          <span className="text-[10px] uppercase tracking-wide rounded border px-1.5 py-0.5 text-muted-foreground">
-                            {t("dashboard.automationsHistoryTest") || "Test"}
+                          <span className="text-[10px] tracking-wide rounded border px-1.5 py-0.5 text-muted-foreground">
+                            {uiUpper(
+                              t("dashboard.automationsHistoryTest") || "Test",
+                              uiLang,
+                            )}
                           </span>
                         ) : null}
                         <span className="text-xs tracking-wide">
@@ -1649,8 +1687,8 @@ export function AutomationBuilder({
                                   <Icon className="h-5 w-5" />
                                 </span>
                                 <div className="min-w-0 pt-0.5">
-                                  <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                                    {meta.kind}
+                                  <div className="text-[11px] font-medium tracking-wide text-muted-foreground">
+                                    {uiUpper(meta.kind, uiLang)}
                                   </div>
                                   <div className="text-sm font-semibold truncate mt-0.5">
                                     {meta.title}
@@ -2232,8 +2270,8 @@ export function AutomationBuilder({
 
             {stepPickerView === "trigger" && (
               <>
-                <p className="text-xs font-semibold uppercase text-muted-foreground pt-1">
-                  {t("dashboard.automationsTriggersForms") || "Forms"}
+                <p className="text-xs font-semibold tracking-wide text-muted-foreground pt-1">
+                  {uiUpper(t("dashboard.automationsTriggersForms") || "Forms", uiLang)}
                 </p>
                 {forms.length === 0 ? (
                   <p className="text-xs text-muted-foreground px-1">
@@ -2254,8 +2292,11 @@ export function AutomationBuilder({
                   ))
                 )}
 
-                <p className="text-xs font-semibold uppercase text-muted-foreground pt-3">
-                  {t("dashboard.automationsTriggersContacts") || "Contacts"}
+                <p className="text-xs font-semibold tracking-wide text-muted-foreground pt-3">
+                  {uiUpper(
+                    t("dashboard.automationsTriggersContacts") || "Contacts",
+                    uiLang,
+                  )}
                 </p>
                 <button
                   type="button"
@@ -2299,8 +2340,11 @@ export function AutomationBuilder({
                   {t("dashboard.automationsTriggerNewsletter") || "Newsletter subscribed"}
                 </button>
 
-                <p className="text-xs font-semibold uppercase text-muted-foreground pt-3">
-                  {t("dashboard.automationsTriggersBooking") || "Bookings"}
+                <p className="text-xs font-semibold tracking-wide text-muted-foreground pt-3">
+                  {uiUpper(
+                    t("dashboard.automationsTriggersBooking") || "Bookings",
+                    uiLang,
+                  )}
                 </p>
                 {(
                   [
@@ -2331,8 +2375,8 @@ export function AutomationBuilder({
                   </button>
                 ))}
 
-                <p className="text-xs font-semibold uppercase text-muted-foreground pt-3">
-                  {t("dashboard.automationsTriggersTime") || "Time"}
+                <p className="text-xs font-semibold tracking-wide text-muted-foreground pt-3">
+                  {uiUpper(t("dashboard.automationsTriggersTime") || "Time", uiLang)}
                 </p>
                 <button
                   type="button"
