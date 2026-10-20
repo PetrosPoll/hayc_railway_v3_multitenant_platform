@@ -1689,9 +1689,6 @@ export function AutomationBuilder({
                   </div>
                   <div className="flex-1 overflow-y-auto p-3 space-y-3">
                     <div className="space-y-2 rounded-md border bg-muted/30 p-2.5">
-                      <Label className="text-xs font-semibold uppercase text-muted-foreground">
-                        {t("dashboard.automationsWorkflowSettings") || "Workflow settings"}
-                      </Label>
                       <Label htmlFor="wf-frequency" className="text-sm">
                         {t("dashboard.automationsFrequency") || "Frequency"}
                       </Label>
@@ -1723,12 +1720,7 @@ export function AutomationBuilder({
                       </Select>
                     </div>
 
-                    {!selectedNode ? (
-                      <p className="text-sm text-muted-foreground">
-                        {t("dashboard.automationsSelectNode") ||
-                          "Click a step to edit it, or add the next step."}
-                      </p>
-                    ) : selectedNode.type === "trigger" ? (
+                    {!selectedNode ? null : selectedNode.type === "trigger" ? (
                       <div className="space-y-2 text-sm">
                         <p className="font-medium">
                           {(selectedNode.data.formName as string) ||
