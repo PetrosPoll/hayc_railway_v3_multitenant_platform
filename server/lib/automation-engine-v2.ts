@@ -1,10 +1,11 @@
 import { createHmac } from "node:crypto";
-import { and, eq, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, inArray, lte } from "drizzle-orm";
 import { db } from "../db";
 import { getConfig } from "../s3-config";
 import { EmailService } from "../email-service";
 import {
   automationEvents,
+  onboardingFormResponses,
   websiteAutomationRuns,
   websiteAutomationSteps,
   websiteAutomationWorkflows,
@@ -185,6 +186,80 @@ function payloadFromEvent(
     ownerEmail: String(payload.ownerEmail || ""),
     fromName: String(payload.fromName || "Client"),
     language: String(payload.language || "en"),
+  };
+}
+
+/**
+ * Same owner resolution as contact/newsletter form paths:
+ * website.contactEmail → onboarding accountEmail.
+ * Also fills siteLabel / siteId / fromName / language when missing
+ * (booking & schedule events often omit them).
+ */
+export async function enrichAutomationPayloadFromWebsite(
+  websiteProgressId: number,
+  payload: AutomationJobPayload,
+): Promise<AutomationJobPayload> {
+  const needsOwner = !payload.ownerEmail?.trim();
+  const needsLabel = !payload.siteLabel?.trim();
+  const needsSiteId = !payload.siteId?.trim();
+  const needsFromName = !payload.fromName?.trim() || payload.fromName === "Client";
+  const needsLanguage = !payload.language?.trim() || payload.language === "en";
+  if (!needsOwner && !needsLabel && !needsSiteId && !needsFromName && !needsLanguage) {
+    return payload;
+  }
+
+  const [website] = await db
+    .select({
+      contactEmail: websiteProgress.contactEmail,
+      projectName: websiteProgress.projectName,
+      domain: websiteProgress.domain,
+      siteId: websiteProgress.siteId,
+      websiteLanguage: websiteProgress.websiteLanguage,
+    })
+    .from(websiteProgress)
+    .where(eq(websiteProgress.id, websiteProgressId))
+    .limit(1);
+
+  if (!website) return payload;
+
+  let onboardingAccountEmail = "";
+  let onboardingBusinessName = "";
+  if (needsOwner || needsFromName) {
+    const [onboarding] = await db
+      .select({
+        accountEmail: onboardingFormResponses.accountEmail,
+        businessName: onboardingFormResponses.businessName,
+      })
+      .from(onboardingFormResponses)
+      .where(eq(onboardingFormResponses.websiteProgressId, websiteProgressId))
+      .orderBy(desc(onboardingFormResponses.createdAt))
+      .limit(1);
+    onboardingAccountEmail = onboarding?.accountEmail?.trim() || "";
+    onboardingBusinessName = onboarding?.businessName?.trim() || "";
+  }
+
+  return {
+    ...payload,
+    ownerEmail:
+      payload.ownerEmail?.trim() ||
+      (website.contactEmail || onboardingAccountEmail || "").trim(),
+    siteLabel:
+      payload.siteLabel?.trim() ||
+      (website.projectName || website.domain || "").trim(),
+    siteId: payload.siteId?.trim() || website.siteId || "",
+    fromName:
+      needsFromName
+        ? (
+            website.projectName ||
+            onboardingBusinessName ||
+            website.domain ||
+            "Client"
+          ).trim()
+        : payload.fromName,
+    language:
+      needsLanguage
+        ? (website.websiteLanguage || payload.language || "en").trim()
+        : payload.language,
   };
 }
 
@@ -978,6 +1053,11 @@ export async function processDueAutomationSteps(options?: {
           payload = payloadFromEvent(eventPayload);
         }
       }
+
+      payload = await enrichAutomationPayloadFromWebsite(
+        workflow.websiteProgressId,
+        payload,
+      );
 
       await executeNode({
         workflow,

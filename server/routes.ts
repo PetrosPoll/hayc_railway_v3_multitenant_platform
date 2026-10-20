@@ -27784,6 +27784,36 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         cancelledSteps = await cancelRuns(cancelKey);
       }
 
+      const [bookingSite] = await db
+        .select({
+          contactEmail: websiteProgress.contactEmail,
+          projectName: websiteProgress.projectName,
+          domain: websiteProgress.domain,
+          siteId: websiteProgress.siteId,
+          websiteLanguage: websiteProgress.websiteLanguage,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+      const [bookingOnboarding] = await db
+        .select({
+          accountEmail: onboardingFormResponses.accountEmail,
+          businessName: onboardingFormResponses.businessName,
+        })
+        .from(onboardingFormResponses)
+        .where(eq(onboardingFormResponses.websiteProgressId, websiteId))
+        .orderBy(desc(onboardingFormResponses.createdAt))
+        .limit(1);
+      const ownerEmail =
+        (bookingSite?.contactEmail || bookingOnboarding?.accountEmail || "").trim();
+      const siteLabel = (bookingSite?.projectName || bookingSite?.domain || "").trim();
+      const fromName = (
+        bookingSite?.projectName ||
+        bookingOnboarding?.businessName ||
+        bookingSite?.domain ||
+        "Client"
+      ).trim();
+
       const result = await emitEvent({
         websiteProgressId: websiteId,
         type: parsed.data.type,
@@ -27796,10 +27826,16 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           visitorEmail: parsed.data.email,
           visitorName: parsed.data.name || "",
           visitorPhone: parsed.data.phone || "",
+          visitorMessage: "",
           service: parsed.data.service || "",
           start_at: parsed.data.start_at || "",
           end_at: parsed.data.end_at || "",
           booking_id: parsed.data.booking_id || "",
+          ownerEmail,
+          siteLabel,
+          siteId: bookingSite?.siteId || "",
+          fromName,
+          language: bookingSite?.websiteLanguage || "en",
         },
       });
       return res.json(
