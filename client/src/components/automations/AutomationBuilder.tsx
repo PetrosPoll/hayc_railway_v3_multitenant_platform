@@ -11,6 +11,7 @@ import {
   Clock,
   Copy,
   FileText,
+  Flag,
   Gift,
   GitBranch,
   Globe,
@@ -657,6 +658,11 @@ export function AutomationBuilder({
 
   const [builderTab, setBuilderTab] = useState<"canvas" | "history">("canvas");
   const [editorOpen, setEditorOpen] = useState(false);
+  const [createFlowOpen, setCreateFlowOpen] = useState(false);
+  const [createFlowStep, setCreateFlowStep] = useState<"gallery" | "preview">(
+    "gallery",
+  );
+  const [pendingTriggerId, setPendingTriggerId] = useState<string | null>(null);
   const [stepPickerOpen, setStepPickerOpen] = useState(false);
   const [stepPickerView, setStepPickerView] = useState<"root" | "actions" | "trigger">(
     "root",
@@ -824,24 +830,34 @@ export function AutomationBuilder({
     setSelectedNodeId(null);
   }, []);
 
+  const openCreateFlow = useCallback(() => {
+    setCreateFlowStep("gallery");
+    setPendingTriggerId(null);
+    setTriggerCategory("forms");
+    setTriggerSearch("");
+    setCreateFlowOpen(true);
+  }, []);
+
+  const closeCreateFlow = useCallback(() => {
+    setCreateFlowOpen(false);
+    setCreateFlowStep("gallery");
+    setPendingTriggerId(null);
+    setTriggerSearch("");
+  }, []);
+
   const openEditor = useCallback(
     (wf?: WebsiteAutomationWorkflow) => {
-      if (wf) loadWorkflow(wf);
-      else startNewWorkflow();
+      if (!wf) {
+        openCreateFlow();
+        return;
+      }
+      loadWorkflow(wf);
+      setStepPickerOpen(false);
+      setStepPickerView("root");
       setEditorOpen(true);
       setBuilderTab("canvas");
-      if (!wf) {
-        setInsertAfterId(null);
-        setTriggerCategory("forms");
-        setTriggerSearch("");
-        setStepPickerView("trigger");
-        setStepPickerOpen(true);
-      } else {
-        setStepPickerOpen(false);
-        setStepPickerView("root");
-      }
     },
-    [loadWorkflow, startNewWorkflow],
+    [loadWorkflow, openCreateFlow],
   );
 
   const closeEditor = useCallback(() => {
@@ -1467,6 +1483,65 @@ export function AutomationBuilder({
     },
   });
 
+  const activateFromPickMutation = useMutation({
+    mutationFn: async (payload: {
+      name: string;
+      triggerFormId: string;
+      triggerType: string;
+      triggerConfig: Record<string, unknown>;
+      nodeData: Record<string, unknown>;
+    }) => {
+      const id = uid("trigger");
+      const body = {
+        name: payload.name,
+        enabled: true,
+        triggerFormId: payload.triggerFormId,
+        triggerType: payload.triggerType,
+        triggerConfig: payload.triggerConfig,
+        frequency: "every_time" as AutomationFrequency,
+        graph: {
+          nodes: [
+            {
+              id,
+              type: "trigger" as AutomationNodeType,
+              position: { x: VERTICAL_X, y: VERTICAL_START_Y },
+              data: payload.nodeData,
+            },
+          ],
+          edges: [],
+        },
+      };
+      const res = await fetch(`/api/websites/${websiteId}/automation-workflows`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to create");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      closeCreateFlow();
+      queryClient.invalidateQueries({
+        queryKey: ["/api/websites", websiteId, "automation-workflows"],
+      });
+      toast({
+        title:
+          t("dashboard.automationsPreviewActivated") || "Automation activated",
+      });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   if (workflowsLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -1540,8 +1615,16 @@ export function AutomationBuilder({
     category: TriggerCategory;
     title: string;
     description: string;
+    detail: string;
     icon: LucideIcon;
-    onSelect: () => void;
+    apply: () => void;
+    buildGraph: () => {
+      name: string;
+      triggerFormId: string;
+      triggerType: string;
+      triggerConfig: Record<string, unknown>;
+      nodeData: Record<string, unknown>;
+    };
   };
 
   const triggerCatalog: TriggerCatalogItem[] = [
@@ -1552,8 +1635,22 @@ export function AutomationBuilder({
       description:
         t("dashboard.automationsTriggerFormDesc") ||
         "When this form is submitted",
+      detail:
+        t("dashboard.automationsTriggerFormDetail") ||
+        "Starts every time someone submits this form. Then you can add actions like email, notify, or tags.",
       icon: FileText,
-      onSelect: () => addFormTrigger(form),
+      apply: () => addFormTrigger(form),
+      buildGraph: () => ({
+        name: form.name,
+        triggerFormId: form.id,
+        triggerType: "form.submitted",
+        triggerConfig: { formId: form.id },
+        nodeData: {
+          formId: form.id,
+          formName: form.name,
+          eventType: "form.submitted",
+        },
+      }),
     })),
     {
       id: "contact.created",
@@ -1563,12 +1660,30 @@ export function AutomationBuilder({
       description:
         t("dashboard.automationsTriggerContactCreatedDesc") ||
         "When a new contact is added to your list",
+      detail:
+        t("dashboard.automationsTriggerContactCreatedDetail") ||
+        "Starts when a new contact is added to your list. Great for welcome messages or tags.",
       icon: UserPlus,
-      onSelect: () =>
+      apply: () =>
         addEventTrigger(
           "contact.created",
           t("dashboard.automationsTriggerContactCreated") || "New contact",
         ),
+      buildGraph: () => {
+        const label =
+          t("dashboard.automationsTriggerContactCreated") || "New contact";
+        return {
+          name: label,
+          triggerFormId: "contact.created",
+          triggerType: "contact.created",
+          triggerConfig: {},
+          nodeData: {
+            eventType: "contact.created",
+            formName: label,
+            triggerType: "contact.created",
+          },
+        };
+      },
     },
     {
       id: "contact.tag_added",
@@ -1577,13 +1692,31 @@ export function AutomationBuilder({
       description:
         t("dashboard.automationsTriggerTagAddedDesc") ||
         "When a tag is added to a contact",
+      detail:
+        t("dashboard.automationsTriggerTagAddedDetail") ||
+        "Starts when a tag is added to a contact. Useful for follow-ups by segment.",
       icon: Tag,
-      onSelect: () =>
+      apply: () =>
         addEventTrigger(
           "contact.tag_added",
           t("dashboard.automationsTriggerTagAdded") || "Tag added",
           { tag: "lead" },
         ),
+      buildGraph: () => {
+        const label = t("dashboard.automationsTriggerTagAdded") || "Tag added";
+        return {
+          name: label,
+          triggerFormId: "contact.tag_added",
+          triggerType: "contact.tag_added",
+          triggerConfig: { tag: "lead" },
+          nodeData: {
+            eventType: "contact.tag_added",
+            formName: label,
+            triggerType: "contact.tag_added",
+            tag: "lead",
+          },
+        };
+      },
     },
     {
       id: "newsletter.subscribed",
@@ -1593,12 +1726,30 @@ export function AutomationBuilder({
       description:
         t("dashboard.automationsTriggerNewsletterDesc") ||
         "When someone subscribes to your newsletter",
+      detail:
+        t("dashboard.automationsTriggerNewsletterDetail") ||
+        "Starts when someone subscribes to your newsletter. Ideal for welcome email and tagging.",
       icon: Mail,
-      onSelect: () =>
+      apply: () =>
         addEventTrigger(
           "newsletter.subscribed",
           t("dashboard.automationsTriggerNewsletter") || "Newsletter subscribed",
         ),
+      buildGraph: () => {
+        const label =
+          t("dashboard.automationsTriggerNewsletter") || "Newsletter subscribed";
+        return {
+          name: label,
+          triggerFormId: "newsletter.subscribed",
+          triggerType: "newsletter.subscribed",
+          triggerConfig: {},
+          nodeData: {
+            eventType: "newsletter.subscribed",
+            formName: label,
+            triggerType: "newsletter.subscribed",
+          },
+        };
+      },
     },
     {
       id: "booking.completed",
@@ -1608,12 +1759,31 @@ export function AutomationBuilder({
       description:
         t("dashboard.automationsTriggerBookingDoneDesc") ||
         "When a booking is marked as completed",
+      detail:
+        t("dashboard.automationsTriggerBookingDoneDetail") ||
+        "Starts when a booking is completed. Ideal for review requests or follow-up.",
       icon: CalendarCheck,
-      onSelect: () =>
+      apply: () =>
         addEventTrigger(
           "booking.completed",
           t("dashboard.automationsTriggerBookingDone") || "Appointment completed",
         ),
+      buildGraph: () => {
+        const label =
+          t("dashboard.automationsTriggerBookingDone") ||
+          "Appointment completed";
+        return {
+          name: label,
+          triggerFormId: "booking.completed",
+          triggerType: "booking.completed",
+          triggerConfig: {},
+          nodeData: {
+            eventType: "booking.completed",
+            formName: label,
+            triggerType: "booking.completed",
+          },
+        };
+      },
     },
     {
       id: "booking.created",
@@ -1623,12 +1793,30 @@ export function AutomationBuilder({
       description:
         t("dashboard.automationsTriggerBookingCreatedDesc") ||
         "When a new booking is made",
+      detail:
+        t("dashboard.automationsTriggerBookingCreatedDetail") ||
+        "Starts when a new booking is made. Useful for confirmation or owner notify.",
       icon: CalendarPlus,
-      onSelect: () =>
+      apply: () =>
         addEventTrigger(
           "booking.created",
           t("dashboard.automationsTriggerBookingCreated") || "Booking created",
         ),
+      buildGraph: () => {
+        const label =
+          t("dashboard.automationsTriggerBookingCreated") || "Booking created";
+        return {
+          name: label,
+          triggerFormId: "booking.created",
+          triggerType: "booking.created",
+          triggerConfig: {},
+          nodeData: {
+            eventType: "booking.created",
+            formName: label,
+            triggerType: "booking.created",
+          },
+        };
+      },
     },
     {
       id: "booking.cancelled",
@@ -1638,13 +1826,32 @@ export function AutomationBuilder({
       description:
         t("dashboard.automationsTriggerBookingCancelledDesc") ||
         "When a booking is cancelled",
+      detail:
+        t("dashboard.automationsTriggerBookingCancelledDetail") ||
+        "Starts when a booking is cancelled. You can send an update or adjust tags.",
       icon: CalendarX,
-      onSelect: () =>
+      apply: () =>
         addEventTrigger(
           "booking.cancelled",
           t("dashboard.automationsTriggerBookingCancelled") ||
             "Booking cancelled",
         ),
+      buildGraph: () => {
+        const label =
+          t("dashboard.automationsTriggerBookingCancelled") ||
+          "Booking cancelled";
+        return {
+          name: label,
+          triggerFormId: "booking.cancelled",
+          triggerType: "booking.cancelled",
+          triggerConfig: {},
+          nodeData: {
+            eventType: "booking.cancelled",
+            formName: label,
+            triggerType: "booking.cancelled",
+          },
+        };
+      },
     },
     {
       id: "schedule.date_offset",
@@ -1654,13 +1861,37 @@ export function AutomationBuilder({
       description:
         t("dashboard.automationsTriggerDateOffsetDesc") ||
         "A set number of days after a contact date",
+      detail:
+        t("dashboard.automationsTriggerDateOffsetDetail") ||
+        "Starts a set number of days after a contact date (e.g. last booking).",
       icon: Clock,
-      onSelect: () =>
+      apply: () =>
         addEventTrigger(
           "schedule.date_offset",
           t("dashboard.automationsTriggerDateOffset") || "X days after a date",
           { dateSource: "last_booking", offsetDays: 180, yearly: false },
         ),
+      buildGraph: () => {
+        const label =
+          t("dashboard.automationsTriggerDateOffset") || "X days after a date";
+        const config = {
+          dateSource: "last_booking",
+          offsetDays: 180,
+          yearly: false,
+        };
+        return {
+          name: label,
+          triggerFormId: "schedule.date_offset",
+          triggerType: "schedule.date_offset",
+          triggerConfig: config,
+          nodeData: {
+            eventType: "schedule.date_offset",
+            formName: label,
+            triggerType: "schedule.date_offset",
+            ...config,
+          },
+        };
+      },
     },
   ];
 
@@ -1690,10 +1921,126 @@ export function AutomationBuilder({
       if (!q) return true;
       return (
         item.title.toLowerCase().includes(q) ||
-        item.description.toLowerCase().includes(q)
+        item.description.toLowerCase().includes(q) ||
+        item.detail.toLowerCase().includes(q)
       );
     });
   })();
+
+  const pendingTrigger =
+    triggerCatalog.find((item) => item.id === pendingTriggerId) || null;
+
+  const bootstrapEditorFromPick = (pick: TriggerCatalogItem, makeEnabled: boolean) => {
+    const built = pick.buildGraph();
+    const id = uid("trigger");
+    const nextNodes: Node[] = [
+      {
+        id,
+        type: "trigger",
+        position: { x: VERTICAL_X, y: VERTICAL_START_Y },
+        data: built.nodeData,
+      },
+    ];
+    setWorkflowId(null);
+    setEdges([]);
+    setNodes(nextNodes);
+    setWorkflowName(built.name);
+    setEnabled(makeEnabled);
+    setFrequency("every_time");
+    setTriggerFormId(built.triggerFormId);
+    setTriggerType(built.triggerType);
+    setTriggerConfig(built.triggerConfig);
+    setSelectedNodeId(id);
+    setBuilderTab("canvas");
+    setStepPickerOpen(false);
+    setStepPickerView("root");
+    setInsertAfterId(null);
+  };
+
+  const renderTriggerGalleryList = (onPick: (item: TriggerCatalogItem) => void) => (
+    <div className="flex flex-col sm:flex-row min-h-[360px] max-h-[min(60vh,520px)] flex-1">
+      <nav
+        className="sm:w-48 shrink-0 border-b sm:border-b-0 sm:border-r border-border/60 p-3 flex sm:flex-col gap-1 overflow-x-auto bg-muted/20"
+        aria-label={t("dashboard.automationsCategories") || "Categories"}
+      >
+        <p className="hidden sm:block text-[11px] font-medium tracking-wide text-muted-foreground px-2 mb-2">
+          {uiUpper(t("dashboard.automationsCategories") || "Categories", uiLang)}
+        </p>
+        {triggerCategories.map((cat) => {
+          const active = triggerCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setTriggerCategory(cat.id)}
+              className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                active
+                  ? "bg-sky-50 text-foreground font-medium"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+              data-testid={`automation-trigger-cat-${cat.id}`}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="flex-1 min-w-0 flex flex-col p-4">
+        <div className="relative mb-3">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={triggerSearch}
+            onChange={(e) => setTriggerSearch(e.target.value)}
+            placeholder={
+              t("dashboard.automationsTriggerSearch") || "Search triggers"
+            }
+            className="pl-9 h-9"
+            data-testid="automation-trigger-search"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
+          {triggerCategory === "forms" && forms.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-1 py-4">
+              {t("dashboard.automationsEmptyDescription") ||
+                "No forms in site config yet."}
+            </p>
+          ) : filteredTriggerItems.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-1 py-4">
+              {t("dashboard.automationsTriggerNoResults") ||
+                "No triggers match your search."}
+            </p>
+          ) : (
+            filteredTriggerItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => onPick(item)}
+                  className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-background px-3 py-3 text-left hover:border-border hover:bg-muted/30 transition-colors"
+                  data-testid={`automation-trigger-item-${item.id}`}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold truncate">
+                      {item.title}
+                    </span>
+                    <span className="block text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {item.description}
+                    </span>
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
 
   const renderInlineStepPicker = () => (
     <div
@@ -1733,85 +2080,7 @@ export function AutomationBuilder({
       </div>
 
       {stepPickerView === "trigger" ? (
-        <div className="flex flex-col sm:flex-row min-h-[320px] max-h-[420px]">
-          <nav
-            className="sm:w-44 shrink-0 border-b sm:border-b-0 sm:border-r border-border/60 p-2 flex sm:flex-col gap-1 overflow-x-auto"
-            aria-label={t("dashboard.automationsChooseTrigger") || "Choose trigger"}
-          >
-            {triggerCategories.map((cat) => {
-              const active = triggerCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => setTriggerCategory(cat.id)}
-                  className={`whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                    active
-                      ? "bg-sky-50 text-foreground font-medium"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                  }`}
-                  data-testid={`automation-trigger-cat-${cat.id}`}
-                >
-                  {cat.label}
-                </button>
-              );
-            })}
-          </nav>
-
-          <div className="flex-1 min-w-0 flex flex-col p-3">
-            <div className="relative mb-3">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-              <Input
-                value={triggerSearch}
-                onChange={(e) => setTriggerSearch(e.target.value)}
-                placeholder={
-                  t("dashboard.automationsTriggerSearch") || "Search triggers"
-                }
-                className="pl-9 h-9"
-                data-testid="automation-trigger-search"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
-              {triggerCategory === "forms" && forms.length === 0 ? (
-                <p className="text-xs text-muted-foreground px-1 py-4">
-                  {t("dashboard.automationsEmptyDescription") ||
-                    "No forms in site config yet."}
-                </p>
-              ) : filteredTriggerItems.length === 0 ? (
-                <p className="text-xs text-muted-foreground px-1 py-4">
-                  {t("dashboard.automationsTriggerNoResults") ||
-                    "No triggers match your search."}
-                </p>
-              ) : (
-                filteredTriggerItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={item.onSelect}
-                      className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-background px-3 py-2.5 text-left hover:border-border hover:bg-muted/30 transition-colors"
-                      data-testid={`automation-trigger-item-${item.id}`}
-                    >
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
-                        <Icon className="h-5 w-5" />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-semibold truncate">
-                          {item.title}
-                        </span>
-                        <span className="block text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {item.description}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </div>
+        renderTriggerGalleryList((item) => item.apply())
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {suggestedStepItems.map((item) => (
@@ -2105,6 +2374,176 @@ export function AutomationBuilder({
           </div>
         )}
       </section>
+
+      <Dialog
+        open={createFlowOpen}
+        onOpenChange={(open) => {
+          if (!open) closeCreateFlow();
+        }}
+      >
+        <DialogContent
+          hideClose
+          className="max-w-[min(960px,96vw)] w-full h-[min(88vh,720px)] flex flex-col p-0 gap-0 overflow-hidden"
+          data-testid="automation-create-flow-dialog"
+        >
+          {createFlowStep === "gallery" || !pendingTrigger ? (
+            <>
+              <div className="flex items-start justify-between gap-3 border-b px-5 py-4">
+                <div className="min-w-0">
+                  <DialogTitle className="text-lg font-semibold">
+                    {t("dashboard.automationsCreateTitle") ||
+                      "Create a new automation"}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground mt-1">
+                    {t("dashboard.automationsCreateHint") ||
+                      "Choose a trigger to start, or pick a suggested workflow from the list."}
+                  </DialogDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 shrink-0"
+                  onClick={closeCreateFlow}
+                  aria-label={t("dashboard.close") || "Close"}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              {renderTriggerGalleryList((item) => {
+                setPendingTriggerId(item.id);
+                setCreateFlowStep("preview");
+              })}
+            </>
+          ) : (
+            <>
+              <div className="flex items-start justify-between gap-3 border-b px-5 py-4">
+                <DialogTitle className="text-lg font-semibold">
+                  {t("dashboard.automationsPreviewTitle") || "Preview trigger"}
+                </DialogTitle>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 shrink-0"
+                  onClick={closeCreateFlow}
+                  aria-label={t("dashboard.close") || "Close"}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="flex-1 min-h-0 grid grid-cols-1 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                <div className="border-b md:border-b-0 md:border-r border-border/60 p-5 flex flex-col gap-4 overflow-y-auto">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-border/70 bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                      {triggerCategories.find((c) => c.id === pendingTrigger.category)
+                        ?.label || pendingTrigger.category}
+                    </span>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold leading-snug">
+                      {pendingTrigger.title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+                      {pendingTrigger.detail}
+                    </p>
+                  </div>
+                  <div className="mt-auto pt-4">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="px-0 h-auto text-sm"
+                      onClick={() => {
+                        setCreateFlowStep("gallery");
+                        setPendingTriggerId(null);
+                      }}
+                      data-testid="automation-preview-back"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-1.5" />
+                      {t("dashboard.automationsPreviewBack") ||
+                        "Back to triggers"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-muted/30 p-6 flex flex-col items-center justify-center overflow-y-auto">
+                  {(() => {
+                    const PreviewIcon = pendingTrigger.icon;
+                    return (
+                      <div className="w-full max-w-sm flex flex-col items-center gap-0">
+                        <span className="mb-2 rounded-full border border-border/70 bg-background px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground">
+                          {uiUpper(
+                            t("dashboard.automationsTriggerBadge") || "TRIGGER",
+                            uiLang,
+                          )}
+                        </span>
+                        <div className="w-full rounded-xl border border-border/70 bg-background shadow-sm overflow-hidden">
+                          <div className="flex items-stretch">
+                            <div className="w-1.5 shrink-0 bg-sky-500" />
+                            <div className="flex items-center gap-3 px-4 py-3.5 min-w-0">
+                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
+                                <PreviewIcon className="h-5 w-5" />
+                              </span>
+                              <div className="min-w-0">
+                                <div className="text-sm font-semibold truncate">
+                                  {pendingTrigger.title}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                                  {pendingTrigger.description}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="h-8 w-px bg-border" />
+                        <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                          <Flag className="h-4 w-4" />
+                          <span className="text-[10px] font-semibold tracking-wide">
+                            {uiUpper(
+                              t("dashboard.automationsTriggerEnd") || "END",
+                              uiLang,
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              <div className="border-t px-5 py-3 flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    bootstrapEditorFromPick(pendingTrigger, false);
+                    closeCreateFlow();
+                    setEditorOpen(true);
+                  }}
+                  data-testid="automation-preview-edit"
+                >
+                  {t("dashboard.automationsPreviewEdit") || "Edit"}
+                </Button>
+                <Button
+                  type="button"
+                  disabled={activateFromPickMutation.isPending}
+                  onClick={() =>
+                    activateFromPickMutation.mutate(pendingTrigger.buildGraph())
+                  }
+                  data-testid="automation-preview-activate"
+                >
+                  {activateFromPickMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : null}
+                  {t("dashboard.automationsPreviewActivate") || "Activate"}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={editorOpen}
