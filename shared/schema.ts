@@ -184,10 +184,10 @@ export const websiteProgress = pgTable("website_progress", {
   stripeAccountStatus: text("stripe_account_status").notNull().default("disconnected"),
   stripeConnectedAt: timestamp("stripe_connected_at"),
   /**
-   * Automations engine: `legacy` = current startWorkflowForFormSubmit path;
-   * `v2` = event bus + runs/steps worker (Phase 0+).
+   * Automations engine: `legacy` = old startWorkflowForFormSubmit path;
+   * `v2` = event bus + runs/steps worker (default for all sites).
    */
-  automationsEngine: text("automations_engine").notNull().default("legacy"),
+  automationsEngine: text("automations_engine").notNull().default("v2"),
   // Billing info per website (used for Wrapp invoices; survives subscription sync)
   billingVatNumber: text("billing_vat_number"),
   billingCity: text("billing_city"),

@@ -121,12 +121,30 @@ app.get("/health", (_req, res) => res.status(200).send("ok"));
 
   const port = Number(process.env.PORT) || 5000;
 
+  const ensureAutomationsV2 = async () => {
+    try {
+      const { ensureAllSitesAutomationsV2 } = await import(
+        "./lib/automation-ensure-v2"
+      );
+      const result = await ensureAllSitesAutomationsV2();
+      console.log(
+        `[automations] v2 ensure: flipped=${result.flipped} migrated=${result.migration.created} skipped=${result.migration.skipped}`,
+      );
+    } catch (err) {
+      console.error("[automations] v2 ensure failed:", err);
+    }
+  };
+
   // Start listening immediately so DigitalOcean health checks pass (defer migrations until after)
   server.listen(port, "0.0.0.0", () => {
     console.log(`serving on ${port}`);
     // Run migrations after server is listening (production + staging; skip in development)
     if (isProd) {
-      runMigrations().catch((err) => console.error("Migration failed:", err));
+      runMigrations()
+        .then(() => ensureAutomationsV2())
+        .catch((err) => console.error("Migration failed:", err));
+    } else {
+      ensureAutomationsV2();
     }
   });
 })();

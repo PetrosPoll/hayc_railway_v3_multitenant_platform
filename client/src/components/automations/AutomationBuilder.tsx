@@ -680,6 +680,12 @@ export function AutomationBuilder({
     id: number;
     name: string;
   } | null>(null);
+  const [formConflict, setFormConflict] = useState<{
+    formId: string;
+    formName: string;
+    existingName: string;
+    onConfirm: () => void;
+  } | null>(null);
   const [testOpen, setTestOpen] = useState(false);
   const [testVisitorEmail, setTestVisitorEmail] = useState("");
   const [testOwnerEmail, setTestOwnerEmail] = useState("");
@@ -786,6 +792,43 @@ export function AutomationBuilder({
   const workflows = workflowsData?.workflows ?? [];
   const templates = templatesData?.templates ?? [];
   const presets = presetsData?.presets ?? [];
+
+  const findEnabledFormWorkflow = useCallback(
+    (formId: string, excludeId?: number | null) =>
+      workflows.find(
+        (w) =>
+          (w.triggerType || "form.submitted") === "form.submitted" &&
+          w.triggerFormId === formId &&
+          w.enabled &&
+          (excludeId == null || w.id !== excludeId),
+      ),
+    [workflows],
+  );
+
+  const withFormConflictCheck = useCallback(
+    (
+      formId: string,
+      formName: string,
+      excludeId: number | null | undefined,
+      proceed: () => void,
+    ) => {
+      const existing = findEnabledFormWorkflow(formId, excludeId);
+      if (existing) {
+        setFormConflict({
+          formId,
+          formName,
+          existingName: existing.name,
+          onConfirm: () => {
+            setFormConflict(null);
+            proceed();
+          },
+        });
+        return;
+      }
+      proceed();
+    },
+    [findEnabledFormWorkflow],
+  );
 
   const startNewWorkflow = useCallback(() => {
     setWorkflowId(null);
@@ -2080,7 +2123,15 @@ export function AutomationBuilder({
       </div>
 
       {stepPickerView === "trigger" ? (
-        renderTriggerGalleryList((item) => item.apply())
+        renderTriggerGalleryList((item) => {
+          if (item.category === "forms") {
+            withFormConflictCheck(item.buildGraph().triggerFormId, item.title, workflowId, () =>
+              item.apply(),
+            );
+          } else {
+            item.apply();
+          }
+        })
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {suggestedStepItems.map((item) => (
@@ -2287,12 +2338,28 @@ export function AutomationBuilder({
                       <Switch
                         checked={wf.enabled}
                         disabled={patchWorkflowMutation.isPending}
-                        onCheckedChange={(checked) =>
-                          patchWorkflowMutation.mutate({
-                            ...wf,
-                            enabled: checked,
-                          })
-                        }
+                        onCheckedChange={(checked) => {
+                          const enableForm =
+                            checked &&
+                            (wf.triggerType || "form.submitted") ===
+                              "form.submitted" &&
+                            !!wf.triggerFormId;
+                          const run = () =>
+                            patchWorkflowMutation.mutate({
+                              ...wf,
+                              enabled: checked,
+                            });
+                          if (enableForm) {
+                            withFormConflictCheck(
+                              wf.triggerFormId,
+                              triggerLabel(wf),
+                              wf.id,
+                              run,
+                            );
+                          } else {
+                            run();
+                          }
+                        }}
                         aria-label={
                           wf.enabled
                             ? tx(
@@ -2411,8 +2478,20 @@ export function AutomationBuilder({
                 </Button>
               </div>
               {renderTriggerGalleryList((item) => {
-                setPendingTriggerId(item.id);
-                setCreateFlowStep("preview");
+                const goPreview = () => {
+                  setPendingTriggerId(item.id);
+                  setCreateFlowStep("preview");
+                };
+                if (item.category === "forms") {
+                  withFormConflictCheck(
+                    item.buildGraph().triggerFormId,
+                    item.title,
+                    null,
+                    goPreview,
+                  );
+                } else {
+                  goPreview();
+                }
               })}
             </>
           ) : (
@@ -2580,7 +2659,27 @@ export function AutomationBuilder({
                 <Label htmlFor="wf-enabled" className="text-sm">
                   {t("dashboard.automationsEnabled") || "Enabled"}
                 </Label>
-                <Switch id="wf-enabled" checked={enabled} onCheckedChange={setEnabled} />
+                <Switch
+                  id="wf-enabled"
+                  checked={enabled}
+                  onCheckedChange={(checked) => {
+                    if (
+                      checked &&
+                      (triggerType || "form.submitted") === "form.submitted" &&
+                      triggerFormId
+                    ) {
+                      withFormConflictCheck(
+                        triggerFormId,
+                        forms.find((f) => f.id === triggerFormId)?.name ||
+                          triggerFormId,
+                        workflowId,
+                        () => setEnabled(true),
+                      );
+                    } else {
+                      setEnabled(checked);
+                    }
+                  }}
+                />
               </div>
               {workflowId != null && (
                 <Button
@@ -3418,6 +3517,49 @@ export function AutomationBuilder({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={formConflict != null}
+        onOpenChange={(open) => {
+          if (!open) setFormConflict(null);
+        }}
+      >
+        <AlertDialogContent data-testid="automation-form-conflict-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("dashboard.automationsFormConflictTitle") ||
+                "This form already has an active automation"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const existing = formConflict?.existingName || "";
+                const form = formConflict?.formName || "";
+                const raw = t("dashboard.automationsFormConflictBody", {
+                  existing,
+                  form,
+                });
+                if (!raw || raw === "dashboard.automationsFormConflictBody" || raw.includes("{{")) {
+                  return isUiGr
+                    ? `Το «${existing}» είναι ήδη ενεργό για τη φόρμα «${form}». Μπορείς να συνεχίσεις, αλλά εκείνος θα απενεργοποιηθεί όταν ενεργοποιηθεί ο νέος.`
+                    : `“${existing}” is already active for “${form}”. You can continue, but that automation will be turned off when this one is activated.`;
+                }
+                return raw;
+              })()}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("dashboard.automationsFormConflictCancel") || "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => formConflict?.onConfirm()}
+              data-testid="automation-form-conflict-continue"
+            >
+              {t("dashboard.automationsFormConflictContinue") || "Continue"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog
         open={deleteConfirmOpen || listDeleteTarget != null}

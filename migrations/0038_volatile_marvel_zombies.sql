@@ -1,0 +1,1 @@
+ALTER TABLE "website_progress" ALTER COLUMN "automations_engine" SET DEFAULT 'v2';

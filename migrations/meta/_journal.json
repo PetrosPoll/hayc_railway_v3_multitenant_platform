@@ -267,6 +267,13 @@
       "when": 1792404363429,
       "tag": "0037_youthful_pandemic",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792504026802,
+      "tag": "0038_volatile_marvel_zombies",
+      "breakpoints": true
     }
   ]
 }
