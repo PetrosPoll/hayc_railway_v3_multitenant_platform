@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -872,6 +872,8 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  /** Always-current edit mode for message handlers / iframe load (avoids stale closures). */
+  const editModeRef = useRef(false);
   const isMobile = useIsMobile();
 
   const [localConfig, setLocalConfig] = useState<Record<string, unknown> | null>(null);
@@ -955,22 +957,49 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
     return () => clearTimeout(timer);
   }, [savedAt]);
 
+  const postEditModeToIframe = useCallback((enabled: boolean) => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    const message = { type: "HAYC_EDIT_MODE", payload: { enabled } };
+    // Safari often drops the first postMessage if the iframe just navigated /
+    // listeners are not attached yet — retry a few times.
+    win.postMessage(message, "*");
+    window.setTimeout(() => win.postMessage(message, "*"), 50);
+    window.setTimeout(() => win.postMessage(message, "*"), 250);
+    window.setTimeout(() => win.postMessage(message, "*"), 800);
+  }, []);
+
+  const clearEditFocusUi = useCallback(() => {
+    setFocusedSection(null);
+    setFocusedPath(null);
+    setHighlightedPath(null);
+    setFieldDrawerPath(null);
+    setFieldDrawerOpen(false);
+  }, []);
+
+  useEffect(() => {
+    editModeRef.current = editMode;
+  }, [editMode]);
+
   useEffect(() => {
     if (open) {
       setEditMode(false);
+      editModeRef.current = false;
+      clearEditFocusUi();
     }
-    // Always push the current state to the iframe — on close this resets the
-    // site's edit mode while the iframe is still mounted; on open it enforces
-    // the false we just set above before onLoad fires.
-    iframeRef.current?.contentWindow?.postMessage(
-      { type: "HAYC_EDIT_MODE", payload: { enabled: false } },
-      "*"
-    );
-  }, [open]);
+    // Always push OFF to the iframe — on close this resets the site's edit
+    // mode while the iframe is still mounted; on open it enforces false before
+    // onLoad (needed because ?hayc-edit=true may boot the site in edit mode).
+    postEditModeToIframe(false);
+  }, [open, clearEditFocusUi, postEditModeToIframe]);
 
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type !== "HAYC_FIELD_FOCUS") return;
+      // Parent Switch is source of truth. Safari can leave the iframe still
+      // emitting focus events after Edit mode OFF — ignore them.
+      if (!editModeRef.current) return;
+
       const path = event.data?.path as string;
       if (!path) return;
 
@@ -1134,11 +1163,10 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                 <Switch
                   checked={editMode}
                   onCheckedChange={(checked) => {
+                    editModeRef.current = checked;
                     setEditMode(checked);
-                    iframeRef.current?.contentWindow?.postMessage(
-                      { type: "HAYC_EDIT_MODE", payload: { enabled: checked } },
-                      "*"
-                    );
+                    if (!checked) clearEditFocusUi();
+                    postEditModeToIframe(checked);
                   }}
                 />
                 <span className="text-xs sm:text-sm font-medium whitespace-nowrap">
@@ -1214,10 +1242,9 @@ export function ContentEditor({ websiteId, siteId, open, onOpenChange }: Content
                 }`}
                 title="Site preview"
                 onLoad={() => {
-                  iframeRef.current?.contentWindow?.postMessage(
-                    { type: "HAYC_EDIT_MODE", payload: { enabled: editMode } },
-                    "*"
-                  );
+                  // Prefer ref so a late Safari onLoad cannot re-enable edit
+                  // with a stale React closure from when the iframe started loading.
+                  postEditModeToIframe(editModeRef.current);
                 }}
               />
             </div>
