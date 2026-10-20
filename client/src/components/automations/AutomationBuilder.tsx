@@ -5,7 +5,9 @@ import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   Bell,
-  Calendar,
+  CalendarCheck,
+  CalendarPlus,
+  CalendarX,
   Clock,
   Copy,
   FileText,
@@ -296,15 +298,19 @@ function triggerIconFor(type: string | null | undefined): LucideIcon {
     case "newsletter.subscribed":
       return Mail;
     case "booking.completed":
+      return CalendarCheck;
     case "booking.created":
+      return CalendarPlus;
     case "booking.cancelled":
-      return Calendar;
+      return CalendarX;
     case "schedule.date_offset":
       return Clock;
     default:
       return Sparkles;
   }
 }
+
+type TriggerCategory = "forms" | "contacts" | "bookings" | "time";
 
 function presetIconFor(key: string): LucideIcon {
   switch (key) {
@@ -655,6 +661,8 @@ export function AutomationBuilder({
   const [stepPickerView, setStepPickerView] = useState<"root" | "actions" | "trigger">(
     "root",
   );
+  const [triggerCategory, setTriggerCategory] = useState<TriggerCategory>("forms");
+  const [triggerSearch, setTriggerSearch] = useState("");
   const [insertAfterId, setInsertAfterId] = useState<string | null>(null);
   const [workflowSearch, setWorkflowSearch] = useState("");
   const [renameTarget, setRenameTarget] = useState<{
@@ -824,8 +832,13 @@ export function AutomationBuilder({
       setBuilderTab("canvas");
       if (!wf) {
         setInsertAfterId(null);
+        setTriggerCategory("forms");
+        setTriggerSearch("");
         setStepPickerView("trigger");
         setStepPickerOpen(true);
+      } else {
+        setStepPickerOpen(false);
+        setStepPickerView("root");
       }
     },
     [loadWorkflow, startNewWorkflow],
@@ -836,6 +849,7 @@ export function AutomationBuilder({
     setStepPickerOpen(false);
     setInsertAfterId(null);
     setStepPickerView("root");
+    setTriggerSearch("");
     setSelectedNodeId(null);
     setBuilderTab("canvas");
   }, []);
@@ -1036,6 +1050,10 @@ export function AutomationBuilder({
   ) => {
     setInsertAfterId(afterId);
     setStepPickerView(view);
+    if (view === "trigger") {
+      setTriggerCategory("forms");
+      setTriggerSearch("");
+    }
     setStepPickerOpen(true);
   };
 
@@ -1517,22 +1535,196 @@ export function AutomationBuilder({
 
   const dateLocale = isGr ? "gr" : "en";
 
+  type TriggerCatalogItem = {
+    id: string;
+    category: TriggerCategory;
+    title: string;
+    description: string;
+    icon: LucideIcon;
+    onSelect: () => void;
+  };
+
+  const triggerCatalog: TriggerCatalogItem[] = [
+    ...forms.map((form) => ({
+      id: `form:${form.id}`,
+      category: "forms" as const,
+      title: form.name,
+      description:
+        t("dashboard.automationsTriggerFormDesc") ||
+        "When this form is submitted",
+      icon: FileText,
+      onSelect: () => addFormTrigger(form),
+    })),
+    {
+      id: "contact.created",
+      category: "contacts",
+      title:
+        t("dashboard.automationsTriggerContactCreated") || "New contact",
+      description:
+        t("dashboard.automationsTriggerContactCreatedDesc") ||
+        "When a new contact is added to your list",
+      icon: UserPlus,
+      onSelect: () =>
+        addEventTrigger(
+          "contact.created",
+          t("dashboard.automationsTriggerContactCreated") || "New contact",
+        ),
+    },
+    {
+      id: "contact.tag_added",
+      category: "contacts",
+      title: t("dashboard.automationsTriggerTagAdded") || "Tag added",
+      description:
+        t("dashboard.automationsTriggerTagAddedDesc") ||
+        "When a tag is added to a contact",
+      icon: Tag,
+      onSelect: () =>
+        addEventTrigger(
+          "contact.tag_added",
+          t("dashboard.automationsTriggerTagAdded") || "Tag added",
+          { tag: "lead" },
+        ),
+    },
+    {
+      id: "newsletter.subscribed",
+      category: "contacts",
+      title:
+        t("dashboard.automationsTriggerNewsletter") || "Newsletter subscribed",
+      description:
+        t("dashboard.automationsTriggerNewsletterDesc") ||
+        "When someone subscribes to your newsletter",
+      icon: Mail,
+      onSelect: () =>
+        addEventTrigger(
+          "newsletter.subscribed",
+          t("dashboard.automationsTriggerNewsletter") || "Newsletter subscribed",
+        ),
+    },
+    {
+      id: "booking.completed",
+      category: "bookings",
+      title:
+        t("dashboard.automationsTriggerBookingDone") || "Appointment completed",
+      description:
+        t("dashboard.automationsTriggerBookingDoneDesc") ||
+        "When a booking is marked as completed",
+      icon: CalendarCheck,
+      onSelect: () =>
+        addEventTrigger(
+          "booking.completed",
+          t("dashboard.automationsTriggerBookingDone") || "Appointment completed",
+        ),
+    },
+    {
+      id: "booking.created",
+      category: "bookings",
+      title:
+        t("dashboard.automationsTriggerBookingCreated") || "Booking created",
+      description:
+        t("dashboard.automationsTriggerBookingCreatedDesc") ||
+        "When a new booking is made",
+      icon: CalendarPlus,
+      onSelect: () =>
+        addEventTrigger(
+          "booking.created",
+          t("dashboard.automationsTriggerBookingCreated") || "Booking created",
+        ),
+    },
+    {
+      id: "booking.cancelled",
+      category: "bookings",
+      title:
+        t("dashboard.automationsTriggerBookingCancelled") || "Booking cancelled",
+      description:
+        t("dashboard.automationsTriggerBookingCancelledDesc") ||
+        "When a booking is cancelled",
+      icon: CalendarX,
+      onSelect: () =>
+        addEventTrigger(
+          "booking.cancelled",
+          t("dashboard.automationsTriggerBookingCancelled") ||
+            "Booking cancelled",
+        ),
+    },
+    {
+      id: "schedule.date_offset",
+      category: "time",
+      title:
+        t("dashboard.automationsTriggerDateOffset") || "X days after a date",
+      description:
+        t("dashboard.automationsTriggerDateOffsetDesc") ||
+        "A set number of days after a contact date",
+      icon: Clock,
+      onSelect: () =>
+        addEventTrigger(
+          "schedule.date_offset",
+          t("dashboard.automationsTriggerDateOffset") || "X days after a date",
+          { dateSource: "last_booking", offsetDays: 180, yearly: false },
+        ),
+    },
+  ];
+
+  const triggerCategories: { id: TriggerCategory; label: string }[] = [
+    {
+      id: "forms",
+      label: t("dashboard.automationsTriggersForms") || "Forms",
+    },
+    {
+      id: "contacts",
+      label: t("dashboard.automationsTriggersContacts") || "Contacts",
+    },
+    {
+      id: "bookings",
+      label: t("dashboard.automationsTriggersBooking") || "Bookings",
+    },
+    {
+      id: "time",
+      label: t("dashboard.automationsTriggersTime") || "Time",
+    },
+  ];
+
+  const filteredTriggerItems = (() => {
+    const q = triggerSearch.trim().toLowerCase();
+    return triggerCatalog.filter((item) => {
+      if (item.category !== triggerCategory) return false;
+      if (!q) return true;
+      return (
+        item.title.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q)
+      );
+    });
+  })();
+
   const renderInlineStepPicker = () => (
     <div
-      className="w-full max-w-lg rounded-xl border border-border/70 bg-background p-3 shadow-sm"
+      className={`w-full rounded-xl border border-border/70 bg-background shadow-sm ${
+        stepPickerView === "trigger" ? "max-w-3xl p-0 overflow-hidden" : "max-w-lg p-3"
+      }`}
       data-testid="automation-inline-step-picker"
     >
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <p className="text-sm font-medium">
-          {stepPickerView === "trigger"
-            ? t("dashboard.automationsChooseTrigger") || "Choose trigger"
-            : t("dashboard.automationsAddStep") || "Add step"}
-        </p>
+      <div
+        className={`flex items-center justify-between gap-2 ${
+          stepPickerView === "trigger" ? "px-4 pt-3 pb-2 border-b border-border/60" : "mb-3"
+        }`}
+      >
+        <div>
+          <p className="text-sm font-medium">
+            {stepPickerView === "trigger"
+              ? t("dashboard.automationsChooseTrigger") || "Choose trigger"
+              : t("dashboard.automationsAddStep") || "Add step"}
+          </p>
+          {stepPickerView === "trigger" ? (
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("dashboard.automationsChooseTriggerHint") ||
+                "When should this automation start?"}
+            </p>
+          ) : null}
+        </div>
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          className="h-8 w-8 p-0"
+          className="h-8 w-8 p-0 shrink-0"
           onClick={closeStepPicker}
           aria-label={t("dashboard.close") || "Close"}
         >
@@ -1541,155 +1733,82 @@ export function AutomationBuilder({
       </div>
 
       {stepPickerView === "trigger" ? (
-        <div className="space-y-3 max-h-[340px] overflow-y-auto">
-          <div>
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-2">
-              {uiUpper(t("dashboard.automationsTriggersForms") || "Forms", uiLang)}
-            </p>
-            {forms.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                {t("dashboard.automationsEmptyDescription") ||
-                  "No forms in site config yet."}
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {forms.map((form) => (
-                  <button
-                    key={form.id}
-                    type="button"
-                    className={tileClass}
-                    onClick={() => addFormTrigger(form)}
-                  >
-                    <FileText className="h-5 w-5 text-muted-foreground" />
-                    <span className="leading-snug line-clamp-2">{form.name}</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-2">
-              {uiUpper(
-                t("dashboard.automationsTriggersContacts") || "Contacts",
-                uiLang,
-              )}
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <button
-                type="button"
-                className={tileClass}
-                onClick={() =>
-                  addEventTrigger(
-                    "contact.created",
-                    t("dashboard.automationsTriggerContactCreated") || "New contact",
-                  )
-                }
-              >
-                <UserPlus className="h-5 w-5 text-muted-foreground" />
-                <span className="leading-snug">
-                  {t("dashboard.automationsTriggerContactCreated") || "New contact"}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={tileClass}
-                onClick={() =>
-                  addEventTrigger(
-                    "contact.tag_added",
-                    t("dashboard.automationsTriggerTagAdded") || "Tag added",
-                    { tag: "lead" },
-                  )
-                }
-              >
-                <Tag className="h-5 w-5 text-muted-foreground" />
-                <span className="leading-snug">
-                  {t("dashboard.automationsTriggerTagAdded") || "Tag added"}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={tileClass}
-                onClick={() =>
-                  addEventTrigger(
-                    "newsletter.subscribed",
-                    t("dashboard.automationsTriggerNewsletter") ||
-                      "Newsletter subscribed",
-                  )
-                }
-              >
-                <Mail className="h-5 w-5 text-muted-foreground" />
-                <span className="leading-snug">
-                  {t("dashboard.automationsTriggerNewsletter") ||
-                    "Newsletter subscribed"}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-2">
-              {uiUpper(
-                t("dashboard.automationsTriggersBooking") || "Bookings",
-                uiLang,
-              )}
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {(
-                [
-                  [
-                    "booking.completed",
-                    t("dashboard.automationsTriggerBookingDone") ||
-                      "Appointment completed",
-                  ],
-                  [
-                    "booking.created",
-                    t("dashboard.automationsTriggerBookingCreated") ||
-                      "Booking created",
-                  ],
-                  [
-                    "booking.cancelled",
-                    t("dashboard.automationsTriggerBookingCancelled") ||
-                      "Booking cancelled",
-                  ],
-                ] as const
-              ).map(([type, label]) => (
+        <div className="flex flex-col sm:flex-row min-h-[320px] max-h-[420px]">
+          <nav
+            className="sm:w-44 shrink-0 border-b sm:border-b-0 sm:border-r border-border/60 p-2 flex sm:flex-col gap-1 overflow-x-auto"
+            aria-label={t("dashboard.automationsChooseTrigger") || "Choose trigger"}
+          >
+            {triggerCategories.map((cat) => {
+              const active = triggerCategory === cat.id;
+              return (
                 <button
-                  key={type}
+                  key={cat.id}
                   type="button"
-                  className={tileClass}
-                  onClick={() => addEventTrigger(type, label)}
+                  onClick={() => setTriggerCategory(cat.id)}
+                  className={`whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                    active
+                      ? "bg-sky-50 text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  }`}
+                  data-testid={`automation-trigger-cat-${cat.id}`}
                 >
-                  <Calendar className="h-5 w-5 text-muted-foreground" />
-                  <span className="leading-snug line-clamp-2">{label}</span>
+                  {cat.label}
                 </button>
-              ))}
-            </div>
-          </div>
+              );
+            })}
+          </nav>
 
-          <div>
-            <p className="text-[11px] font-semibold tracking-wide text-muted-foreground mb-2">
-              {uiUpper(t("dashboard.automationsTriggersTime") || "Time", uiLang)}
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              <button
-                type="button"
-                className={tileClass}
-                onClick={() =>
-                  addEventTrigger(
-                    "schedule.date_offset",
-                    t("dashboard.automationsTriggerDateOffset") ||
-                      "X days after a date",
-                    { dateSource: "last_booking", offsetDays: 180, yearly: false },
-                  )
+          <div className="flex-1 min-w-0 flex flex-col p-3">
+            <div className="relative mb-3">
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                value={triggerSearch}
+                onChange={(e) => setTriggerSearch(e.target.value)}
+                placeholder={
+                  t("dashboard.automationsTriggerSearch") || "Search triggers"
                 }
-              >
-                <Clock className="h-5 w-5 text-muted-foreground" />
-                <span className="leading-snug line-clamp-2">
-                  {t("dashboard.automationsTriggerDateOffset") ||
-                    "X days after a date"}
-                </span>
-              </button>
+                className="pl-9 h-9"
+                data-testid="automation-trigger-search"
+              />
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-1.5 pr-0.5">
+              {triggerCategory === "forms" && forms.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-1 py-4">
+                  {t("dashboard.automationsEmptyDescription") ||
+                    "No forms in site config yet."}
+                </p>
+              ) : filteredTriggerItems.length === 0 ? (
+                <p className="text-xs text-muted-foreground px-1 py-4">
+                  {t("dashboard.automationsTriggerNoResults") ||
+                    "No triggers match your search."}
+                </p>
+              ) : (
+                filteredTriggerItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={item.onSelect}
+                      className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-background px-3 py-2.5 text-left hover:border-border hover:bg-muted/30 transition-colors"
+                      data-testid={`automation-trigger-item-${item.id}`}
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold truncate">
+                          {item.title}
+                        </span>
+                        <span className="block text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {item.description}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
