@@ -158,6 +158,8 @@ export const websiteProgress = pgTable("website_progress", {
   bookingEnabled: boolean("booking_enabled").default(false).notNull(),
   paymentsEnabled: boolean("payments_enabled").default(false).notNull(),
   digitalProductsEnabled: boolean("digital_products_enabled").default(false).notNull(),
+  /** Insurance-agent reception inbox. Off by default. Admin-only toggle. */
+  receptionEnabled: boolean("reception_enabled").default(false).notNull(),
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
   contactEmail: text("contact_email"),
@@ -911,6 +913,8 @@ export const contacts = pgTable("contacts", {
   email: text("email").notNull(),
   /** Phase 1 automations — optional phone from form submits */
   phone: text("phone"),
+  /** Cloudinary folder for reception uploads. Reused for later magic-link files. */
+  cloudinaryFolder: text("cloudinary_folder"),
   /** e.g. form.submitted / newsletter / booking */
   source: text("source"),
   /** Custom dates from form fields, e.g. { birthday: "1990-05-12" } */
@@ -927,6 +931,108 @@ export const contacts = pgTable("contacts", {
 }, (table) => ({
   emailWebsiteUnique: unique().on(table.email, table.websiteProgressId),
 }));
+
+export type ReceptionFile = {
+  publicId: string;
+  resourceType: "image" | "raw" | "video";
+  mime: string | null;
+  size: number | null;
+  ext: string;
+};
+
+export type ReceptionTypeField = {
+  key: string;
+  label: string;
+  type: "text" | "textarea" | "select" | "multiselect";
+  required?: boolean;
+  options?: { value: string; label: string }[];
+};
+
+export type ReceptionTypeDoc = {
+  key: string;
+  label: string;
+  required: boolean;
+};
+
+/** Global insurance request types. Same for every agent. */
+export const requestTypes = pgTable("request_types", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  label: text("label").notNull(),
+  kind: text("kind").notNull(),
+  fields: jsonb("fields").$type<ReceptionTypeField[]>().notNull().default([]),
+  requiredDocs: jsonb("required_docs").$type<ReceptionTypeDoc[]>().notNull().default([]),
+  allowUploads: boolean("allow_uploads").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+});
+
+export const requests = pgTable(
+  "requests",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    contactId: integer("contact_id")
+      .notNull()
+      .references(() => contacts.id),
+    typeId: integer("type_id")
+      .notNull()
+      .references(() => requestTypes.id),
+    status: text("status").notNull().default("new"),
+    data: jsonb("data").$type<Record<string, string>>().notNull().default({}),
+    crossSell: text("cross_sell").array().notNull().default(sql`ARRAY[]::text[]`),
+    policyRef: text("policy_ref"),
+    magicTokenHash: text("magic_token_hash"),
+    magicTokenExpiresAt: timestamp("magic_token_expires_at"),
+    lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+    closedAt: timestamp("closed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    websiteIdx: index("requests_website_idx").on(table.websiteProgressId),
+    contactIdx: index("requests_contact_idx").on(table.contactId),
+    magicIdx: index("requests_magic_token_hash_idx").on(table.magicTokenHash),
+  }),
+);
+
+export const requestDocs = pgTable(
+  "request_docs",
+  {
+    id: serial("id").primaryKey(),
+    requestId: integer("request_id")
+      .notNull()
+      .references(() => requests.id, { onDelete: "cascade" }),
+    docKey: text("doc_key").notNull(),
+    label: text("label").notNull(),
+    required: boolean("required").notNull().default(true),
+    received: boolean("received").notNull().default(false),
+    files: jsonb("files").$type<ReceptionFile[]>().notNull().default([]),
+    uploadedAt: timestamp("uploaded_at"),
+    requestedManually: boolean("requested_manually").notNull().default(false),
+  },
+  (table) => ({
+    requestIdx: index("request_docs_request_idx").on(table.requestId),
+  }),
+);
+
+export const requestEvents = pgTable(
+  "request_events",
+  {
+    id: serial("id").primaryKey(),
+    requestId: integer("request_id")
+      .notNull()
+      .references(() => requests.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    actor: text("actor").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    requestIdx: index("request_events_request_idx").on(table.requestId),
+  }),
+);
 
 // Tags table - For categorizing contacts (replaces groups)
 export const tags = pgTable("tags", {
@@ -1902,7 +2008,10 @@ export type AutomationEventType =
   | "booking.created"
   | "booking.cancelled"
   | "booking.completed"
-  | "schedule.date_offset";
+  | "schedule.date_offset"
+  | "request.created"
+  | "request.status_changed"
+  | "request.docs_missing";
 
 export type AutomationsEngineMode = "legacy" | "v2";
 
@@ -1930,6 +2039,8 @@ export type AutomationJobPayload = {
   ownerEmail: string;
   fromName: string;
   language: string;
+  /** Extra {{placeholders}} such as reception email variables. */
+  placeholders?: Record<string, string>;
 };
 
 export const websiteEmailTemplates = pgTable(

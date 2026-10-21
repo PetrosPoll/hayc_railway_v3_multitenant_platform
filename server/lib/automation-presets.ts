@@ -6,7 +6,8 @@ export type PresetGoalCategory =
   | "newsletter"
   | "bookings"
   | "contacts"
-  | "time";
+  | "time"
+  | "reception";
 
 export type PresetBuildContext = {
   formId?: string;
@@ -320,6 +321,116 @@ function dateOffsetFollowup(): AutomationGraph {
   );
 }
 
+function receptionCreatedClient(): AutomationGraph {
+  return chain(eventTrigger("request.created", "Νέο αίτημα"), [
+    {
+      id: "email-1",
+      type: "email",
+      data: {
+        subject: "Λάβαμε το αίτημά σας — {{siteLabel}}",
+        body: "Γεια σας {{client_name}},\n\nΛάβαμε το αίτημά σας ({{request_type}}).\n\n{{missing_docs_list}}\n\n{{magic_link}}",
+      },
+    },
+  ]);
+}
+
+function receptionCreatedAgent(): AutomationGraph {
+  return chain(eventTrigger("request.created", "Νέο αίτημα"), [
+    {
+      id: "notify-1",
+      type: "notify_owner",
+      data: {
+        subject: "Νέο αίτημα από {{client_name}}",
+        body: "Τύπος: {{request_type}}\nΚατάσταση: {{status}}\n\n{{client_name}}\n{{email}}\n{{phone}}",
+      },
+    },
+  ]);
+}
+
+function receptionDocsMissing(offsetDays: number): AutomationGraph {
+  return chain(
+    eventTrigger("request.docs_missing", "Λείπουν έγγραφα", { offsetDays }),
+    [
+      {
+        id: "email-1",
+        type: "email",
+        data: {
+          subject: "Λείπουν έγγραφα για το αίτημά σας",
+          body: "Γεια σας {{client_name}},\n\nΓια το αίτημα «{{request_type}}» λείπουν ακόμα:\n\n{{missing_docs_list}}\n\n{{magic_link}}",
+        },
+      },
+    ],
+  );
+}
+
+function receptionStatusUpdate(): AutomationGraph {
+  return chain(eventTrigger("request.status_changed", "Αλλαγή κατάστασης"), [
+    {
+      id: "email-1",
+      type: "email",
+      data: {
+        subject: "Ενημέρωση αιτήματος — {{status}}",
+        body: "Γεια σας {{client_name}},\n\nΤο αίτημά σας ({{request_type}}) είναι πλέον: {{status}}.",
+      },
+    },
+  ]);
+}
+
+function receptionStuckAgent(): AutomationGraph {
+  return chain(
+    eventTrigger("request.docs_missing", "Κολλημένο αίτημα", { offsetDays: 14 }),
+    [
+      {
+        id: "notify-1",
+        type: "notify_owner",
+        data: {
+          subject: "Πάρε τηλέφωνο τον πελάτη — {{client_name}}",
+          body: "Το αίτημα ({{request_type}}) έχει έγγραφα που λείπουν.\n\n{{missing_docs_list}}\n\nΠάρε τηλέφωνο τον πελάτη {{client_name}}.",
+        },
+      },
+    ],
+  );
+}
+
+function receptionLeadUnanswered(): AutomationGraph {
+  return {
+    nodes: [
+      { ...eventTrigger("request.created", "Νέο lead"), position: { x: VERTICAL_X, y: 40 } },
+      {
+        id: "delay-1",
+        type: "delay",
+        position: { x: VERTICAL_X, y: 180 },
+        data: { amount: 24, unit: "hours" },
+      },
+      {
+        id: "cond-1",
+        type: "condition",
+        position: { x: VERTICAL_X, y: 320 },
+        data: {
+          rules: [
+            { kind: "form_field", fieldKey: "request_type", operator: "equals", value: "quote" },
+            { kind: "form_field", fieldKey: "status", operator: "equals", value: "new" },
+          ],
+        },
+      },
+      {
+        id: "notify-1",
+        type: "notify_owner",
+        position: { x: VERTICAL_X, y: 460 },
+        data: {
+          subject: "Lead χωρίς απάντηση — {{client_name}}",
+          body: "Το lead {{client_name}} ({{email}}, {{phone}}) είναι ακόμα «Νέο» μετά από 24 ώρες.\n\n{{request_type}}",
+        },
+      },
+    ],
+    edges: [
+      { id: "e1", source: "trigger-1", target: "delay-1" },
+      { id: "e2", source: "delay-1", target: "cond-1" },
+      { id: "e3", source: "cond-1", target: "notify-1", sourceHandle: "yes" },
+    ],
+  };
+}
+
 export const AUTOMATION_PRESETS: AutomationPreset[] = [
   {
     key: "reply_and_notify",
@@ -456,6 +567,93 @@ export const AUTOMATION_PRESETS: AutomationPreset[] = [
     },
     buildGraph: () => dateOffsetFollowup(),
   },
+  {
+    key: "reception_confirm",
+    name: "Επιβεβαίωση αιτήματος",
+    nameGr: "Επιβεβαίωση αιτήματος",
+    description: "Επιβεβαίωση στον πελάτη, με σύνδεσμο αν λείπουν έγγραφα.",
+    descriptionGr: "Επιβεβαίωση στον πελάτη, με σύνδεσμο αν λείπουν έγγραφα.",
+    logic: "Νέο αίτημα → Email στον πελάτη",
+    logicGr: "Νέο αίτημα → Email στον πελάτη",
+    category: "reception",
+    triggerType: "request.created",
+    buildGraph: () => receptionCreatedClient(),
+  },
+  {
+    key: "reception_notify_agent",
+    name: "Νέο αίτημα",
+    nameGr: "Νέο αίτημα",
+    description: "Ειδοποίηση του ασφαλιστή για νέο αίτημα.",
+    descriptionGr: "Ειδοποίηση του ασφαλιστή για νέο αίτημα.",
+    logic: "Νέο αίτημα → Ειδοποίηση",
+    logicGr: "Νέο αίτημα → Ειδοποίηση",
+    category: "reception",
+    triggerType: "request.created",
+    buildGraph: () => receptionCreatedAgent(),
+  },
+  {
+    key: "reception_docs_reminder",
+    name: "Υπενθύμιση εγγράφων",
+    nameGr: "Υπενθύμιση εγγράφων",
+    description: "Στέλνει τα έγγραφα που λείπουν και τον σύνδεσμο. Η μέρα ρυθμίζεται στο automation.",
+    descriptionGr: "Στέλνει τα έγγραφα που λείπουν και τον σύνδεσμο. Η μέρα ρυθμίζεται στο automation.",
+    logic: "Λείπουν έγγραφα (3 μέρες) → Email",
+    logicGr: "Λείπουν έγγραφα (3 μέρες) → Email",
+    category: "reception",
+    triggerType: "request.docs_missing",
+    defaultTriggerConfig: { offsetDays: 3 },
+    buildGraph: () => receptionDocsMissing(3),
+  },
+  {
+    key: "reception_docs_reminder_7",
+    name: "Υπενθύμιση εγγράφων (7 μέρες)",
+    nameGr: "Υπενθύμιση εγγράφων (7 μέρες)",
+    description: "Δεύτερη υπενθύμιση με τα έγγραφα που λείπουν.",
+    descriptionGr: "Δεύτερη υπενθύμιση με τα έγγραφα που λείπουν.",
+    logic: "Λείπουν έγγραφα (7 μέρες) → Email",
+    logicGr: "Λείπουν έγγραφα (7 μέρες) → Email",
+    category: "reception",
+    triggerType: "request.docs_missing",
+    defaultTriggerConfig: { offsetDays: 7 },
+    buildGraph: () => receptionDocsMissing(7),
+  },
+  {
+    key: "reception_status",
+    name: "Ενημέρωση status",
+    nameGr: "Ενημέρωση status",
+    description: "Σύντομη ενημέρωση όταν αλλάζει η κατάσταση.",
+    descriptionGr: "Σύντομη ενημέρωση όταν αλλάζει η κατάσταση.",
+    logic: "Αλλαγή κατάστασης → Email",
+    logicGr: "Αλλαγή κατάστασης → Email",
+    category: "reception",
+    triggerType: "request.status_changed",
+    buildGraph: () => receptionStatusUpdate(),
+  },
+  {
+    key: "reception_stuck",
+    name: "Κολλημένο αίτημα",
+    nameGr: "Κολλημένο αίτημα",
+    description: "Υπενθύμιση να πάρεις τηλέφωνο τον πελάτη.",
+    descriptionGr: "Υπενθύμιση να πάρεις τηλέφωνο τον πελάτη.",
+    logic: "Λείπουν έγγραφα (14 μέρες) → Ειδοποίηση",
+    logicGr: "Λείπουν έγγραφα (14 μέρες) → Ειδοποίηση",
+    category: "reception",
+    triggerType: "request.docs_missing",
+    defaultTriggerConfig: { offsetDays: 14 },
+    buildGraph: () => receptionStuckAgent(),
+  },
+  {
+    key: "reception_lead_unanswered",
+    name: "Lead χωρίς απάντηση",
+    nameGr: "Lead χωρίς απάντηση",
+    description: "Υπενθύμιση αν ένα lead μείνει «Νέο» για 24 ώρες.",
+    descriptionGr: "Υπενθύμιση αν ένα lead μείνει «Νέο» για 24 ώρες.",
+    logic: "Νέο lead → 24 ώρες → Ειδοποίηση",
+    logicGr: "Νέο lead → 24 ώρες → Ειδοποίηση",
+    category: "reception",
+    triggerType: "request.created",
+    buildGraph: () => receptionLeadUnanswered(),
+  },
 ];
 
 export const PRESET_GOAL_CATEGORIES: {
@@ -469,6 +667,7 @@ export const PRESET_GOAL_CATEGORIES: {
   { id: "bookings", label: "Bookings", labelGr: "Κρατήσεις" },
   { id: "contacts", label: "Contacts", labelGr: "Επαφές" },
   { id: "time", label: "Time-based", labelGr: "Χρονικά" },
+  { id: "reception", label: "Reception", labelGr: "Υποδοχή" },
 ];
 
 export function getAutomationPreset(key: string): AutomationPreset | undefined {

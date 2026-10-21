@@ -65,6 +65,7 @@ import AdminTemplates from "@/pages/admin-templates";
 import AdminEmailBuilder from "@/pages/admin-email-builder";
 import UnsubscribePage from "@/pages/unsubscribe";
 import ContactCardPage from "@/pages/contact-card";
+import ReceptionUploadPage from "@/pages/reception-upload";
 import { isContactCardPath } from "@shared/contact-cards";
 
 function ConditionalFooter() {
@@ -87,6 +88,7 @@ function ConditionalFooter() {
     location.pathname.includes("/popup-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
+    location.pathname.startsWith("/reception/") ||
     location.pathname === "/portfolio" ||
     isContactCardPath(location.pathname)
   ) {
@@ -112,6 +114,7 @@ function ConditionalNavMenu() {
     location.pathname.includes("/popup-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
+    location.pathname.startsWith("/reception/") ||
     location.pathname === "/portfolio" ||
     isContactCardPath(location.pathname)
   ) {
@@ -329,6 +332,7 @@ function MainAppContent() {
           <Route path="/billing-subscription-policy" element={<BillingSubscriptionPolicy />} />
           <Route path="/acceptable-use-policy" element={<AcceptableUsePolicy />} />
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
+          <Route path="/reception/:token" element={<ReceptionUploadPage />} />
           <Route path="/card/:slug" element={<ContactCardPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

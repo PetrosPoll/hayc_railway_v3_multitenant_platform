@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { EmailService } from "./email-service";
+import { registerReceptionRoutes } from "./reception-routes";
 import { startCampaignScheduler } from "./scheduler";
 import { emailFormSchema } from "@shared/schema";
 import Stripe from "stripe";
@@ -17656,6 +17657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bookingEnabled: websiteProgress.bookingEnabled,
           paymentsEnabled: websiteProgress.paymentsEnabled,
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
+          receptionEnabled: websiteProgress.receptionEnabled,
           contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
@@ -17829,6 +17831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bookingEnabled: websiteProgress.bookingEnabled,
           paymentsEnabled: websiteProgress.paymentsEnabled,
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
+          receptionEnabled: websiteProgress.receptionEnabled,
           contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           customDomain: websiteProgress.customDomain,
@@ -18014,9 +18017,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
+      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; receptionEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -18046,6 +18049,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "digitalProductsEnabled must be a boolean" });
         }
         updates.digitalProductsEnabled = digitalProductsEnabled;
+      }
+
+      if (receptionEnabled !== undefined) {
+        if (typeof receptionEnabled !== "boolean") {
+          return res.status(400).json({ error: "receptionEnabled must be a boolean" });
+        }
+        updates.receptionEnabled = receptionEnabled;
       }
 
       if (siteId !== undefined) {
@@ -18081,7 +18091,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
       }
 
       const [updatedWebsite] = await db
@@ -27269,6 +27279,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     "booking.cancelled",
     "booking.completed",
     "schedule.date_offset",
+    "request.created",
+    "request.status_changed",
+    "request.docs_missing",
   ]);
   const automationGraphSchema = z.object({
     nodes: z.array(
@@ -27337,6 +27350,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const triggerFormId =
         parsed.data.triggerFormId ||
         (triggerType === "form.submitted" ? "" : triggerType);
+      if (triggerType.startsWith("request.") && !access.website.receptionEnabled) {
+        return res.status(403).json({ error: "Reception is disabled" });
+      }
       if (triggerType === "form.submitted" && !triggerFormId) {
         return res.status(400).json({ error: "triggerFormId required for form triggers" });
       }
@@ -27424,6 +27440,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const triggerFormId =
         parsed.data.triggerFormId ||
         (triggerType === "form.submitted" ? "" : triggerType);
+      if (triggerType.startsWith("request.") && !access.website.receptionEnabled) {
+        return res.status(403).json({ error: "Reception is disabled" });
+      }
       if (triggerType === "form.submitted" && !triggerFormId) {
         return res.status(400).json({ error: "triggerFormId required for form triggers" });
       }
@@ -27661,8 +27680,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       if ("error" in access && access.error) {
         return res.status(access.error.status).json(access.error.body);
       }
+      const receptionOn = access.website.receptionEnabled;
       return res.json({
-        presets: AUTOMATION_PRESETS.map((p) => ({
+        presets: AUTOMATION_PRESETS.filter((p) => receptionOn || !p.triggerType.startsWith("request.")).map((p) => ({
           key: p.key,
           name: p.name,
           nameGr: p.nameGr,
@@ -27704,6 +27724,9 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       }
       const preset = getAutomationPreset(parsed.data.presetKey);
       if (!preset) return res.status(404).json({ error: "Preset not found" });
+      if (preset.triggerType.startsWith("request.") && !access.website.receptionEnabled) {
+        return res.status(403).json({ error: "Reception is disabled" });
+      }
 
       const isFormTrigger = preset.triggerType === "form.submitted";
       let formId = parsed.data.formId?.trim() || "";
@@ -30577,6 +30600,8 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   );
 
   const httpServer = createServer(app);
+
+  registerReceptionRoutes(app, authorizeWebsiteAccess);
   return httpServer;
 }
 

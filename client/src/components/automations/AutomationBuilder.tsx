@@ -30,6 +30,7 @@ import {
   BadgeMinus,
   Trash2,
   UserPlus,
+  Inbox,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -96,6 +97,7 @@ type Props = {
   websiteId: number;
   websiteLanguage?: string | null;
   contactEmail?: string | null;
+  receptionEnabled?: boolean;
 };
 
 type ConditionRuleUi = {
@@ -306,12 +308,16 @@ function triggerIconFor(type: string | null | undefined): LucideIcon {
       return CalendarX;
     case "schedule.date_offset":
       return Clock;
+    case "request.created":
+    case "request.status_changed":
+    case "request.docs_missing":
+      return Inbox;
     default:
       return Sparkles;
   }
 }
 
-type TriggerCategory = "forms" | "contacts" | "bookings" | "time";
+type TriggerCategory = "forms" | "contacts" | "bookings" | "time" | "reception";
 
 function presetIconFor(key: string): LucideIcon {
   switch (key) {
@@ -334,6 +340,15 @@ function presetIconFor(key: string): LucideIcon {
       return Tag;
     case "date_offset_followup":
       return Clock;
+    case "reception_confirm":
+    case "reception_docs_reminder":
+    case "reception_docs_reminder_7":
+    case "reception_status":
+      return Mail;
+    case "reception_notify_agent":
+    case "reception_stuck":
+    case "reception_lead_unanswered":
+      return Inbox;
     default:
       return Sparkles;
   }
@@ -345,7 +360,8 @@ type PresetGoalCategory =
   | "newsletter"
   | "bookings"
   | "contacts"
-  | "time";
+  | "time"
+  | "reception";
 
 type AutomationPresetMeta = {
   key: string;
@@ -405,10 +421,12 @@ function ConditionRulesEditor({
   rules,
   onChange,
   t,
+  extraFields = [],
 }: {
   rules: ConditionRuleUi[];
   onChange: (rules: ConditionRuleUi[]) => void;
   t: (key: string, opts?: Record<string, string>) => string;
+  extraFields?: { value: string; label: string }[];
 }) {
   const list = rules.length
     ? rules
@@ -517,6 +535,11 @@ function ConditionRulesEditor({
                   <SelectItem value="email">email</SelectItem>
                   <SelectItem value="phone">phone</SelectItem>
                   <SelectItem value="message">message</SelectItem>
+                  {extraFields.map((field) => (
+                    <SelectItem key={field.value} value={field.value}>
+                      {field.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Label className="text-xs">
@@ -673,6 +696,7 @@ export function AutomationBuilder({
   websiteId,
   websiteLanguage,
   contactEmail,
+  receptionEnabled = false,
 }: Props) {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
@@ -1181,6 +1205,9 @@ export function AutomationBuilder({
           t("dashboard.automationsTriggerBookingCancelled") || "Booking cancelled",
         "schedule.date_offset":
           t("dashboard.automationsTriggerDateOffset") || "X days after a date",
+        "request.created": "Νέο αίτημα",
+        "request.status_changed": "Αλλαγή κατάστασης",
+        "request.docs_missing": "Λείπουν έγγραφα",
       };
       return map[type] || type;
     },
@@ -1981,6 +2008,72 @@ export function AutomationBuilder({
         };
       },
     },
+    ...(receptionEnabled
+      ? [
+          {
+            id: "request.created",
+            category: "reception" as const,
+            title: "Νέο αίτημα",
+            description: "Όταν υποβάλλεται αίτημα στην Υποδοχή",
+            detail: "Ξεκινά όταν δημιουργείται αίτημα.",
+            icon: Inbox,
+            apply: () => addEventTrigger("request.created", "Νέο αίτημα"),
+            buildGraph: () => ({
+              name: "Νέο αίτημα",
+              triggerFormId: "request.created",
+              triggerType: "request.created",
+              triggerConfig: {},
+              nodeData: {
+                eventType: "request.created",
+                formName: "Νέο αίτημα",
+                triggerType: "request.created",
+              },
+            }),
+          },
+          {
+            id: "request.status_changed",
+            category: "reception" as const,
+            title: "Αλλαγή κατάστασης",
+            description: "Όταν αλλάζει η κατάσταση ενός αιτήματος",
+            detail: "Ξεκινά σε κάθε αλλαγή κατάστασης.",
+            icon: Inbox,
+            apply: () => addEventTrigger("request.status_changed", "Αλλαγή κατάστασης"),
+            buildGraph: () => ({
+              name: "Αλλαγή κατάστασης",
+              triggerFormId: "request.status_changed",
+              triggerType: "request.status_changed",
+              triggerConfig: {},
+              nodeData: {
+                eventType: "request.status_changed",
+                formName: "Αλλαγή κατάστασης",
+                triggerType: "request.status_changed",
+              },
+            }),
+          },
+          {
+            id: "request.docs_missing",
+            category: "reception" as const,
+            title: "Λείπουν έγγραφα",
+            description: "Ν μέρες μετά τη δημιουργία, αν λείπουν υποχρεωτικά έγγραφα",
+            detail: "Η μέρα ορίζεται στο automation. Σταματά όταν συμπληρωθούν τα έγγραφα.",
+            icon: Inbox,
+            apply: () =>
+              addEventTrigger("request.docs_missing", "Λείπουν έγγραφα", { offsetDays: 3 }),
+            buildGraph: () => ({
+              name: "Λείπουν έγγραφα",
+              triggerFormId: "request.docs_missing",
+              triggerType: "request.docs_missing",
+              triggerConfig: { offsetDays: 3 },
+              nodeData: {
+                eventType: "request.docs_missing",
+                formName: "Λείπουν έγγραφα",
+                triggerType: "request.docs_missing",
+                offsetDays: 3,
+              },
+            }),
+          },
+        ]
+      : []),
   ];
 
   const triggerCategories: { id: TriggerCategory; label: string }[] = [
@@ -2000,6 +2093,7 @@ export function AutomationBuilder({
       id: "time",
       label: t("dashboard.automationsTriggersTime") || "Time",
     },
+    ...(receptionEnabled ? [{ id: "reception" as const, label: "Υποδοχή" }] : []),
   ];
 
   const filteredTriggerItems = (() => {
@@ -2070,6 +2164,9 @@ export function AutomationBuilder({
       id: "time",
       label: t("dashboard.automationsRecipeCatTime") || "Time-based",
     },
+    ...(presets.some((p) => p.category === "reception")
+      ? [{ id: "reception" as const, label: "Υποδοχή" }]
+      : []),
   ];
 
   const filteredRecipes = (() => {
@@ -2409,7 +2506,7 @@ export function AutomationBuilder({
         </Button>
       </div>
 
-      {presets.some((p) => p.featured) && (
+      {presets.some((p) => p.featured || p.category === "reception") && (
         <section className="space-y-3">
           <div>
             <h4 className="text-sm font-semibold">
@@ -2422,7 +2519,7 @@ export function AutomationBuilder({
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {presets
-              .filter((p) => p.featured)
+              .filter((p) => p.featured || p.category === "reception")
               .map((p) => {
                 const Icon = presetIconFor(p.key);
                 const needsForm =
@@ -3335,6 +3432,20 @@ export function AutomationBuilder({
                             </div>
                           </>
                         )}
+                        {selectedNode.data.eventType === "request.docs_missing" && (
+                          <>
+                            <Label>Μέρες μετά τη δημιουργία</Label>
+                            <Input
+                              type="number"
+                              value={Number(selectedNode.data.offsetDays ?? 3)}
+                              onChange={(e) => {
+                                const offsetDays = Number(e.target.value) || 0;
+                                updateSelectedData({ offsetDays });
+                                setTriggerConfig((c) => ({ ...c, offsetDays }));
+                              }}
+                            />
+                          </>
+                        )}
                       </div>
                     ) : selectedNode.type === "webhook" ? (
                       <div className="space-y-2">
@@ -3513,6 +3624,15 @@ export function AutomationBuilder({
                         }
                         onChange={(rules) => updateSelectedData({ rules })}
                         t={t}
+                        extraFields={
+                          receptionEnabled
+                            ? [
+                                { value: "request_type", label: "Τύπος αιτήματος" },
+                                { value: "status", label: "Κατάσταση" },
+                                { value: "missing_docs", label: "Έγγραφα που λείπουν" },
+                              ]
+                            : []
+                        }
                       />
                     ) : selectedNode.type === "notify_owner" ? (
                       <div className="space-y-2">

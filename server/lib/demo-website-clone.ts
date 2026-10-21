@@ -304,6 +304,7 @@ export async function duplicateDemoWebsite(
           bookingEnabled: source.bookingEnabled,
           paymentsEnabled: source.paymentsEnabled,
           digitalProductsEnabled: source.digitalProductsEnabled,
+          receptionEnabled: source.receptionEnabled,
           siteId: null,
           customDomain: null,
           contactEmail: source.contactEmail,

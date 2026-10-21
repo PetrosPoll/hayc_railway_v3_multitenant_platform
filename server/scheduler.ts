@@ -163,6 +163,9 @@ export function startCampaignScheduler(storage: IStorage) {
         );
         const n = await processScheduleDateOffsetTriggers();
         console.log(`[SCHEDULER] schedule.date_offset emitted runs: ${n}`);
+        const { processReceptionDocsMissing } = await import("./lib/reception-schedule");
+        const docs = await processReceptionDocsMissing();
+        console.log(`[SCHEDULER] request.docs_missing emitted: ${docs}`);
       }
     } catch (error) {
       console.error("[SCHEDULER] Billing calendar job error:", error);

@@ -77,6 +77,7 @@ import {
   Ticket,
   Zap,
   AppWindow,
+  Inbox,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
@@ -98,6 +99,7 @@ import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
 import { AutomationBuilder } from "@/components/automations/AutomationBuilder";
+import { ReceptionPanel } from "@/components/reception/ReceptionPanel";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 import { DigitalProductsTab } from "@/components/digital-products/DigitalProductsTab";
 import {
@@ -162,6 +164,7 @@ type Website = {
   bookingEnabled?: boolean;
    paymentsEnabled?: boolean;
   digitalProductsEnabled?: boolean;
+  receptionEnabled?: boolean;
   siteId?: string | null;
   websiteLanguage?: string | null;
   stages: Array<{
@@ -1402,6 +1405,12 @@ export default function WebsiteDashboard() {
     }
   }, [changesVisibleInUserDashboard, activeSection]);
 
+  useEffect(() => {
+    if (website && !website.receptionEnabled && activeSection === "reception") {
+      setActiveSection("progress");
+    }
+  }, [website, activeSection]);
+
   // Newsletter section is now handled locally, no redirect needed
 
   const [changeSubject, setChangeSubject] = useState("");
@@ -1666,6 +1675,9 @@ export default function WebsiteDashboard() {
     ];
 
     const marketingItems = [
+      ...(website?.receptionEnabled
+        ? [{ id: "reception", label: "Υποδοχή", icon: Inbox }]
+        : []),
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
       { id: "popups", label: t("dashboard.popups") || "Popups", icon: AppWindow },
       ...(website?.siteId
@@ -1737,7 +1749,7 @@ export default function WebsiteDashboard() {
     ];
 
     return items;
-  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, website?.receptionEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
 
   if (websiteLoading) {
     return (
@@ -5378,7 +5390,14 @@ export default function WebsiteDashboard() {
                     websiteId={Number(websiteId)}
                     websiteLanguage={website.websiteLanguage}
                     contactEmail={website.contactEmail}
+                    receptionEnabled={website.receptionEnabled}
                   />
+                </div>
+              )}
+
+              {activeSection === "reception" && website?.receptionEnabled && (
+                <div data-testid="section-reception">
+                  <ReceptionPanel websiteId={Number(websiteId)} />
                 </div>
               )}
 

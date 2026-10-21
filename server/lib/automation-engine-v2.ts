@@ -186,6 +186,14 @@ function payloadFromEvent(
     ownerEmail: String(payload.ownerEmail || ""),
     fromName: String(payload.fromName || "Client"),
     language: String(payload.language || "en"),
+    placeholders: {
+      client_name: String(payload.client_name || payload.visitorName || payload.name || ""),
+      agent_name: String(payload.agent_name || payload.fromName || ""),
+      request_type: String(payload.request_type || ""),
+      missing_docs_list: String(payload.missing_docs_list || ""),
+      status: String(payload.status || ""),
+      magic_link: String(payload.magic_link || ""),
+    },
   };
 }
 
@@ -331,6 +339,7 @@ async function sendVisitorAutomationEmail(params: {
     phone: payload.visitorPhone || "",
     message: payload.visitorMessage,
     siteLabel: payload.siteLabel,
+    ...(payload.placeholders || {}),
   };
   const subjectRaw = applyFormEmailPlaceholders(content.subject, vars);
   const subject = isTest ? `[TEST] ${subjectRaw}` : subjectRaw;
@@ -396,6 +405,12 @@ function workflowMatchesEvent(
     const gotOffset = Number(payload.offsetDays ?? 0);
     if (Number.isFinite(wantOffset) && wantOffset !== gotOffset) return false;
     return true;
+  }
+
+  if (eventType === "request.docs_missing") {
+    const wantOffset = Number(cfg.offsetDays ?? 0);
+    const gotOffset = Number(payload.offsetDays ?? 0);
+    return wantOffset === gotOffset;
   }
 
   return true;
@@ -475,6 +490,7 @@ async function sendOwnerAutomationEmail(params: {
     phone: payload.visitorPhone || "",
     message: payload.visitorMessage,
     siteLabel: payload.siteLabel,
+    ...(payload.placeholders || {}),
   };
   const subjectRaw = applyFormEmailPlaceholders(
     typeof node.data?.subject === "string"
@@ -513,6 +529,14 @@ export async function startRunsForEvent(params: {
   cancelKey?: string | null;
 }): Promise<number[]> {
   const { event, cancelKey } = params;
+  if (event.type.startsWith("request.")) {
+    const [site] = await db
+      .select({ receptionEnabled: websiteProgress.receptionEnabled })
+      .from(websiteProgress)
+      .where(eq(websiteProgress.id, event.websiteProgressId))
+      .limit(1);
+    if (!site?.receptionEnabled) return [];
+  }
   const workflows = await db
     .select()
     .from(websiteAutomationWorkflows)
@@ -893,6 +917,7 @@ async function executeNode(params: {
       coupon_description: couponDescription,
       coupon_expiry: couponExpiry,
       google_review_url: reviewUrl,
+      ...(payload.placeholders || {}),
     };
 
     const subject = applyFormEmailPlaceholders(
@@ -1050,6 +1075,31 @@ export async function processDueAutomationSteps(options?: {
           .limit(1);
         if (event) {
           eventPayload = event.payload || {};
+          if (eventPayload.request_id) {
+            const { loadReceptionAutomationPatch } = await import("./reception-payload");
+            const live = await loadReceptionAutomationPatch(Number(eventPayload.request_id));
+            if (live && !live.enabled) {
+              await db
+                .update(websiteAutomationSteps)
+                .set({ status: "cancelled", updatedAt: new Date() })
+                .where(eq(websiteAutomationSteps.id, stepId));
+              if (run.cancelKey) await cancelRuns(run.cancelKey);
+              continue;
+            }
+            if (live) {
+              const prevFields = eventFields(eventPayload);
+              const liveFields =
+                live.patch.fields && typeof live.patch.fields === "object"
+                  ? (live.patch.fields as Record<string, unknown>)
+                  : {};
+              eventPayload = {
+                ...eventPayload,
+                ...live.patch,
+                magic_link: String(eventPayload.magic_link || ""),
+                fields: { ...prevFields, ...liveFields },
+              };
+            }
+          }
           payload = payloadFromEvent(eventPayload);
         }
       }

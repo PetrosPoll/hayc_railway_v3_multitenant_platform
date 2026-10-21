@@ -133,6 +133,12 @@ app.get("/health", (_req, res) => res.status(200).send("ok"));
     } catch (err) {
       console.error("[automations] v2 ensure failed:", err);
     }
+    try {
+      const { ensureReceptionRequestTypes } = await import("./lib/reception");
+      await ensureReceptionRequestTypes();
+    } catch (err) {
+      console.error("[reception] request types ensure failed:", err);
+    }
   };
 
   // Start listening immediately so DigitalOcean health checks pass (defer migrations until after)

@@ -66,6 +66,7 @@ type Website = {
   bookingEnabled?: boolean
   paymentsEnabled?: boolean
   digitalProductsEnabled?: boolean
+  receptionEnabled?: boolean
   contactEmail?: string | null
   siteId?: string | null
   websiteLanguage?: string | null
@@ -94,6 +95,7 @@ function WebsiteProgressRowActions({
   updateBookingMutation,
   updatePaymentsMutation,
   updateDigitalProductsMutation,
+  updateReceptionMutation,
 }: {
   website: Website
   canManageWebsites?: boolean
@@ -117,11 +119,16 @@ function WebsiteProgressRowActions({
     mutate: (v: { websiteId: number; digitalProductsEnabled: boolean }) => void;
     isPending: boolean;
   };
+  updateReceptionMutation: {
+    mutate: (v: { websiteId: number; receptionEnabled: boolean }) => void;
+    isPending: boolean;
+  };
 }) {
   const settingsPending =
     updateBookingMutation.isPending ||
     updatePaymentsMutation.isPending ||
-    updateDigitalProductsMutation.isPending;
+    updateDigitalProductsMutation.isPending ||
+    updateReceptionMutation.isPending;
 
   return (
     <DropdownMenu>
@@ -220,6 +227,18 @@ function WebsiteProgressRowActions({
               }}
             >
               Digital products
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={website.receptionEnabled ?? false}
+              disabled={settingsPending}
+              onCheckedChange={(checked) => {
+                updateReceptionMutation.mutate({
+                  websiteId: website.id,
+                  receptionEnabled: !!checked,
+                });
+              }}
+            >
+              Ασφαλιστές / Reception
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -1210,6 +1229,28 @@ export function AdminWebsiteProgress() {
     },
   });
 
+  const updateReceptionMutation = useMutation({
+    mutationFn: async ({ websiteId, receptionEnabled }: { websiteId: number; receptionEnabled: boolean }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receptionEnabled }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update reception setting");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Reception setting updated" });
+    },
+    onError: (err: any) => {
+      toast({ description: err.message, variant: "destructive" });
+    },
+  });
+
   const updateSiteIdMutation = useMutation({
     mutationFn: async ({ websiteId, siteId }: { websiteId: number; siteId: string }) => {
       const response = await fetch(`/api/admin/websites/${websiteId}`, {
@@ -1742,6 +1783,7 @@ export function AdminWebsiteProgress() {
                       updateBookingMutation={updateBookingMutation}
                       updatePaymentsMutation={updatePaymentsMutation}
                       updateDigitalProductsMutation={updateDigitalProductsMutation}
+                      updateReceptionMutation={updateReceptionMutation}
                     />
                   </div>
                 </div>
