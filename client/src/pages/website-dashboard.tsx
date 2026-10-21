@@ -190,6 +190,7 @@ type SidebarMenuContentProps = {
   setDigitalProductsSubView: (view: "courses" | "buyers" | "analytics" | "coupons") => void;
   setBillingView: (view: any) => void;
   setNewsletterView: (view: any) => void;
+  resetReception: () => void;
   handleLogout: () => void;
   handleOpenBooking?: () => void;
   isBookingLoading?: boolean;
@@ -205,6 +206,7 @@ function SidebarMenuContent({
   setDigitalProductsSubView,
   setBillingView,
   setNewsletterView,
+  resetReception,
   handleLogout,
   handleOpenBooking,
   isBookingLoading,
@@ -434,6 +436,8 @@ function SidebarMenuContent({
                     setBillingView("overview");
                   } else if (item.id === "newsletter") {
                     setNewsletterView("overview");
+                  } else if (item.id === "reception") {
+                    resetReception();
                   }
                 });
               }}
@@ -508,6 +512,12 @@ export default function WebsiteDashboard() {
   const [activeSection, setActiveSection] = useState(() => {
     return searchParams.get("tab") || "progress";
   });
+  const [receptionHome, setReceptionHome] = useState(0);
+  const [leadName, setLeadName] = useState<string | null>(null);
+  const resetReception = () => {
+    setReceptionHome((n) => n + 1);
+    setLeadName(null);
+  };
 
   // Track the last updated tab to avoid race conditions
   const lastTabRef = useRef(searchParams.get("tab") || "progress");
@@ -1676,7 +1686,7 @@ export default function WebsiteDashboard() {
 
     const marketingItems = [
       ...(website?.receptionEnabled
-        ? [{ id: "reception", label: "Υποδοχή", icon: Inbox }]
+        ? [{ id: "reception", label: "Leads", icon: Inbox }]
         : []),
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
       { id: "popups", label: t("dashboard.popups") || "Popups", icon: AppWindow },
@@ -1979,6 +1989,32 @@ export default function WebsiteDashboard() {
                     {t("dashboard.automations") || "Automations"}
                   </BreadcrumbPage>
                 </BreadcrumbItem>
+              </>
+            )}
+            {activeSection === "reception" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  {leadName ? (
+                    <BreadcrumbLink
+                      onClick={resetReception}
+                      className="cursor-pointer"
+                      data-testid="breadcrumb-leads"
+                    >
+                      Leads
+                    </BreadcrumbLink>
+                  ) : (
+                    <BreadcrumbPage data-testid="breadcrumb-leads">Leads</BreadcrumbPage>
+                  )}
+                </BreadcrumbItem>
+                {leadName && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage data-testid="breadcrumb-lead">{leadName}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
               </>
             )}
             {newsletterView === "groups" && (
@@ -5221,6 +5257,7 @@ export default function WebsiteDashboard() {
                   setDigitalProductsSubView={setDigitalProductsSubView}
                   setBillingView={setBillingView}
                   setNewsletterView={setNewsletterView}
+                  resetReception={resetReception}
                   handleLogout={handleLogout}
                   handleOpenBooking={handleOpenBooking}
                   isBookingLoading={isBookingLoading}
@@ -5397,7 +5434,11 @@ export default function WebsiteDashboard() {
 
               {activeSection === "reception" && website?.receptionEnabled && (
                 <div data-testid="section-reception">
-                  <ReceptionPanel websiteId={Number(websiteId)} />
+                  <ReceptionPanel
+                    websiteId={Number(websiteId)}
+                    homeToken={receptionHome}
+                    onSelectionChange={setLeadName}
+                  />
                 </div>
               )}
 

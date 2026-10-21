@@ -238,7 +238,7 @@ function WebsiteProgressRowActions({
                 });
               }}
             >
-              Ασφαλιστές / Reception
+              Ασφαλιστές / Leads
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

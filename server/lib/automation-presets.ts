@@ -667,7 +667,7 @@ export const PRESET_GOAL_CATEGORIES: {
   { id: "bookings", label: "Bookings", labelGr: "Κρατήσεις" },
   { id: "contacts", label: "Contacts", labelGr: "Επαφές" },
   { id: "time", label: "Time-based", labelGr: "Χρονικά" },
-  { id: "reception", label: "Reception", labelGr: "Υποδοχή" },
+  { id: "reception", label: "Leads", labelGr: "Leads" },
 ];
 
 export function getAutomationPreset(key: string): AutomationPreset | undefined {

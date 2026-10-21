@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Loader2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpDown, Download, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,11 +11,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type ListItem = {
   id: number;
   typeKey: string;
   typeLabel: string;
+  kind: string;
   kindLabel: string;
   status: string;
   statusLabel: string;
@@ -26,7 +28,19 @@ type ListItem = {
   stuck: boolean;
   missingCount: number;
   receivedCount: number;
+  createdAt: string;
+  lastActivityAt: string;
 };
+
+const TYPE_SHORT: Record<string, string> = {
+  quote: "Προσφορά",
+  claim_health: "Υγεία",
+  claim_vehicle: "Όχημα",
+  claim_home: "Κατοικία",
+  general: "Γενικό",
+};
+
+type SortKey = "name" | "type" | "status" | "activity";
 
 type Detail = {
   id: number;
@@ -73,21 +87,45 @@ async function readError(res: Response) {
   throw new Error(body.error || "Αποτυχία");
 }
 
-export function ReceptionPanel({ websiteId }: { websiteId: number }) {
+export function ReceptionPanel({
+  websiteId,
+  homeToken,
+  onSelectionChange,
+}: {
+  websiteId: number;
+  homeToken: number;
+  onSelectionChange: (name: string | null) => void;
+}) {
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
   const [typeKey, setTypeKey] = useState("all");
   const [status, setStatus] = useState("all");
+  const [kind, setKind] = useState("all");
+  const [stuckOnly, setStuckOnly] = useState("all");
+  const [sortKey, setSortKey] = useState<SortKey>("activity");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [askIds, setAskIds] = useState<number[]>([]);
   const [freeText, setFreeText] = useState("");
 
+  useEffect(() => {
+    setSelectedId(null);
+    setSearch("");
+    setTypeKey("all");
+    setStatus("all");
+    setKind("all");
+    setStuckOnly("all");
+    setSortKey("activity");
+    setSortDir("desc");
+    setAskIds([]);
+    setFreeText("");
+    onSelectionChange(null);
+  }, [homeToken, onSelectionChange]);
+
   const listQuery = useQuery({
-    queryKey: ["/api/websites", websiteId, "requests", typeKey, status],
+    queryKey: ["/api/websites", websiteId, "requests"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (typeKey !== "all") params.set("type", typeKey);
-      if (status !== "all") params.set("status", status);
-      const res = await fetch(`/api/websites/${websiteId}/requests?${params}`, {
+      const res = await fetch(`/api/websites/${websiteId}/requests`, {
         credentials: "include",
       });
       if (!res.ok) await readError(res);
@@ -160,19 +198,66 @@ export function ReceptionPanel({ websiteId }: { websiteId: number }) {
 
   const detail = detailQuery.data;
   const requests = listQuery.data?.requests || [];
+  const query = search.trim().toLowerCase();
+  const visible = requests
+    .filter((item) => {
+      if (typeKey !== "all" && item.typeKey !== typeKey) return false;
+      if (status !== "all" && item.status !== status) return false;
+      if (kind !== "all" && item.kind !== kind) return false;
+      if (stuckOnly === "stuck" && !item.stuck) return false;
+      if (!query) return true;
+      const haystack = [
+        item.contactName,
+        item.contactEmail,
+        item.contactPhone,
+        item.typeLabel,
+        TYPE_SHORT[item.typeKey],
+        item.statusLabel,
+        item.kindLabel,
+        ...item.crossSell.map((sell) => sell.label),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    })
+    .sort((a, b) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+      if (sortKey === "activity") {
+        return (new Date(a.lastActivityAt).getTime() - new Date(b.lastActivityAt).getTime()) * dir;
+      }
+      const left = sortKey === "name" ? a.contactName : sortKey === "type" ? (TYPE_SHORT[a.typeKey] || a.typeLabel) : a.statusLabel;
+      const right = sortKey === "name" ? b.contactName : sortKey === "type" ? (TYPE_SHORT[b.typeKey] || b.typeLabel) : b.statusLabel;
+      return left.localeCompare(right, "el") * dir;
+    });
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "activity" ? "desc" : "asc");
+  };
 
   return (
     <div className="space-y-4" data-testid="section-reception">
       <div>
-        <h2 className="text-xl font-semibold">Υποδοχή</h2>
+        <h2 className="text-xl font-semibold">Leads</h2>
         <p className="text-sm text-muted-foreground">Αιτήματα που περιμένουν ενέργεια.</p>
       </div>
 
       {!selectedId ? (
         <>
           <div className="flex flex-wrap gap-2">
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Αναζήτηση ονόματος, email, τηλεφώνου"
+              className="w-full sm:w-[280px]"
+            />
             <Select value={typeKey} onValueChange={setTypeKey}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Τύπος" /></SelectTrigger>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Τύπος" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Όλοι οι τύποι</SelectItem>
                 <SelectItem value="quote">Προσφορά</SelectItem>
@@ -183,7 +268,7 @@ export function ReceptionPanel({ websiteId }: { websiteId: number }) {
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[220px]"><SelectValue placeholder="Κατάσταση" /></SelectTrigger>
+              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Κατάσταση" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Όλες οι καταστάσεις</SelectItem>
                 <SelectItem value="new">Νέο</SelectItem>
@@ -197,37 +282,83 @@ export function ReceptionPanel({ websiteId }: { websiteId: number }) {
                 <SelectItem value="lost">Χάθηκε</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={kind} onValueChange={setKind}>
+              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Είδος" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Lead και υπηρεσία</SelectItem>
+                <SelectItem value="lead">Lead</SelectItem>
+                <SelectItem value="service">Υπηρεσία</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={stuckOnly} onValueChange={setStuckOnly}>
+              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Κολλημένα" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Όλα</SelectItem>
+                <SelectItem value="stuck">Μόνο κολλημένα</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           {listQuery.isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : requests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Δεν υπάρχουν αιτήματα.</p>
+            <p className="text-sm text-muted-foreground">Δεν υπάρχουν leads.</p>
+          ) : visible.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Κανένα lead δεν ταιριάζει.</p>
           ) : (
-            <div className="divide-y rounded-lg border">
-              {requests.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className="flex w-full flex-col gap-2 px-4 py-3 text-left hover:bg-muted/40 sm:flex-row sm:items-center sm:justify-between"
-                  onClick={() => setSelectedId(item.id)}
-                >
-                  <div>
-                    <div className="font-medium">{item.contactName}</div>
-                    <div className="text-sm text-muted-foreground">{item.typeLabel}</div>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    <Badge variant="secondary">{item.kindLabel}</Badge>
-                    <Badge variant="outline">{item.statusLabel}</Badge>
-                    {item.crossSell.map((sell) => (
-                      <Badge key={sell.value}>{sell.label}</Badge>
-                    ))}
-                    {item.stuck && <Badge className="bg-red-600 hover:bg-red-600">Κολλημένο</Badge>}
-                    {item.missingCount > 0 && (
-                      <Badge variant="outline">Λείπουν {item.missingCount}</Badge>
-                    )}
-                  </div>
-                </button>
-              ))}
+            <div className="rounded-lg border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <SortableHead label="Πελάτης" active={sortKey === "name"} dir={sortDir} onClick={() => toggleSort("name")} />
+                    <TableHead>Email</TableHead>
+                    <SortableHead label="Τύπος" active={sortKey === "type"} dir={sortDir} onClick={() => toggleSort("type")} />
+                    <SortableHead label="Κατάσταση" active={sortKey === "status"} dir={sortDir} onClick={() => toggleSort("status")} />
+                    <SortableHead label="Τελευταία κίνηση" active={sortKey === "activity"} dir={sortDir} onClick={() => toggleSort("activity")} />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((item) => (
+                    <TableRow
+                      key={item.id}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedId(item.id);
+                        onSelectionChange(item.contactName);
+                      }}
+                    >
+                      <TableCell>
+                        <div className="font-medium">{item.contactName}</div>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {item.crossSell.map((sell) => (
+                            <Badge key={sell.value}>{sell.label}</Badge>
+                          ))}
+                          {item.stuck && <Badge className="bg-red-600 hover:bg-red-600">Κολλημένο</Badge>}
+                          {item.missingCount > 0 && (
+                            <Badge variant="outline">Λείπουν {item.missingCount}</Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{item.contactEmail}</TableCell>
+                      <TableCell>
+                        <div>{TYPE_SHORT[item.typeKey] || item.typeLabel}</div>
+                        <div className="text-xs text-muted-foreground">{item.kind === "lead" ? "Lead" : "Υπηρεσία"}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{item.statusLabel}</Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">
+                        {new Date(item.lastActivityAt).toLocaleString("el-GR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           )}
         </>
@@ -235,7 +366,10 @@ export function ReceptionPanel({ websiteId }: { websiteId: number }) {
         <Loader2 className="h-5 w-5 animate-spin" />
       ) : (
         <div className="space-y-6">
-          <Button variant="ghost" size="sm" onClick={() => setSelectedId(null)}>
+          <Button variant="ghost" size="sm" onClick={() => {
+            setSelectedId(null);
+            onSelectionChange(null);
+          }}>
             Πίσω στη λίστα
           </Button>
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -366,5 +500,27 @@ export function ReceptionPanel({ websiteId }: { websiteId: number }) {
         </div>
       )}
     </div>
+  );
+}
+
+function SortableHead({
+  label,
+  active,
+  dir,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  dir: "asc" | "desc";
+  onClick: () => void;
+}) {
+  const Icon = !active ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead>
+      <button type="button" className="inline-flex items-center gap-1" onClick={onClick}>
+        {label}
+        <Icon className="h-3.5 w-3.5" />
+      </button>
+    </TableHead>
   );
 }

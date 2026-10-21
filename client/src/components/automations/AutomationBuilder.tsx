@@ -2014,7 +2014,7 @@ export function AutomationBuilder({
             id: "request.created",
             category: "reception" as const,
             title: "Νέο αίτημα",
-            description: "Όταν υποβάλλεται αίτημα στην Υποδοχή",
+            description: "Όταν υποβάλλεται αίτημα στα Leads",
             detail: "Ξεκινά όταν δημιουργείται αίτημα.",
             icon: Inbox,
             apply: () => addEventTrigger("request.created", "Νέο αίτημα"),
@@ -2093,7 +2093,7 @@ export function AutomationBuilder({
       id: "time",
       label: t("dashboard.automationsTriggersTime") || "Time",
     },
-    ...(receptionEnabled ? [{ id: "reception" as const, label: "Υποδοχή" }] : []),
+    ...(receptionEnabled ? [{ id: "reception" as const, label: "Leads" }] : []),
   ];
 
   const filteredTriggerItems = (() => {
@@ -2165,7 +2165,7 @@ export function AutomationBuilder({
       label: t("dashboard.automationsRecipeCatTime") || "Time-based",
     },
     ...(presets.some((p) => p.category === "reception")
-      ? [{ id: "reception" as const, label: "Υποδοχή" }]
+      ? [{ id: "reception" as const, label: "Leads" }]
       : []),
   ];
 
