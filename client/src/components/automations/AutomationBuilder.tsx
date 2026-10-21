@@ -867,7 +867,7 @@ export function AutomationBuilder({
     setNodes([]);
     setEdges([]);
     setWorkflowName(
-      websiteLanguage === "gr" ? "Νέος αυτοματισμός" : "New automation",
+      isUiGr ? "Νέος αυτοματισμός" : "New automation",
     );
     setEnabled(true);
     setFrequency("every_time");
@@ -876,7 +876,7 @@ export function AutomationBuilder({
     setTriggerConfig({});
     setSelectedNodeId(null);
     setBuilderTab("canvas");
-  }, [forms, websiteLanguage]);
+  }, [forms, isUiGr]);
 
   const loadWorkflow = useCallback((wf: WebsiteAutomationWorkflow) => {
     setWorkflowId(wf.id);
@@ -1535,7 +1535,7 @@ export function AutomationBuilder({
             formId,
             formName,
             enabled: false,
-            language: websiteLanguage === "gr" ? "gr" : "en",
+            language: isUiGr ? "gr" : "en",
           }),
         },
       );
@@ -1637,7 +1637,8 @@ export function AutomationBuilder({
     );
   }
 
-  const isGr = websiteLanguage === "gr";
+  /** Account/UI language (profile), not website content language. */
+  const isGr = isUiGr;
 
   const suggestedStepItems = [
     {
