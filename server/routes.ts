@@ -27668,7 +27668,13 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           nameGr: p.nameGr,
           description: p.description,
           descriptionGr: p.descriptionGr,
-          formType: p.formType || "any",
+          logic: p.logic,
+          logicGr: p.logicGr,
+          category: p.category,
+          popular: !!p.popular,
+          featured: !!p.featured,
+          triggerType: p.triggerType,
+          formType: p.formType || null,
         })),
       });
     } catch (error) {
@@ -27687,9 +27693,10 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       }
       const schema = z.object({
         presetKey: z.string().min(1),
-        formId: z.string().min(1),
+        formId: z.string().min(1).optional(),
         formName: z.string().optional(),
         enabled: z.boolean().optional(),
+        language: z.enum(["en", "gr"]).optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
@@ -27698,13 +27705,30 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const preset = getAutomationPreset(parsed.data.presetKey);
       if (!preset) return res.status(404).json({ error: "Preset not found" });
 
-      const formId = parsed.data.formId;
-      const formName = parsed.data.formName || formId;
-      const graph = preset.buildGraph(formId, formName);
+      const isFormTrigger = preset.triggerType === "form.submitted";
+      let formId = parsed.data.formId?.trim() || "";
+      let formName = parsed.data.formName?.trim() || formId;
 
+      if (isFormTrigger) {
+        if (!formId) {
+          return res.status(400).json({
+            error: "formId required for form-based presets",
+          });
+        }
+      } else {
+        formId = preset.triggerType;
+        formName = parsed.data.language === "gr" ? preset.nameGr : preset.name;
+      }
+
+      const graph = preset.buildGraph({ formId, formName });
       const enabled = parsed.data.enabled ?? false;
+      const triggerConfig: Record<string, unknown> = {
+        ...(preset.defaultTriggerConfig || {}),
+        presetKey: preset.key,
+      };
+      if (isFormTrigger) triggerConfig.formId = formId;
 
-      if (enabled) {
+      if (enabled && isFormTrigger) {
         await db
           .update(websiteAutomationWorkflows)
           .set({ enabled: false, updatedAt: new Date() })
@@ -27712,20 +27736,24 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
             and(
               eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
               eq(websiteAutomationWorkflows.triggerFormId, formId),
+              eq(websiteAutomationWorkflows.triggerType, "form.submitted"),
               eq(websiteAutomationWorkflows.enabled, true),
             ),
           );
       }
 
+      const name =
+        parsed.data.language === "en" ? preset.name : preset.nameGr || preset.name;
+
       const [workflow] = await db
         .insert(websiteAutomationWorkflows)
         .values({
           websiteProgressId: websiteId,
-          name: preset.nameGr || preset.name,
+          name,
           enabled,
           triggerFormId: formId,
-          triggerType: "form.submitted",
-          triggerConfig: { formId, presetKey: preset.key },
+          triggerType: preset.triggerType,
+          triggerConfig,
           graph,
           frequency: "every_time",
           presetKey: preset.key,

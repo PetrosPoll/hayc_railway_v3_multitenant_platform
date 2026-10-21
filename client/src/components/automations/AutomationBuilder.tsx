@@ -320,11 +320,47 @@ function presetIconFor(key: string): LucideIcon {
     case "hot_lead":
       return Bell;
     case "welcome_subscriber":
+    case "welcome_form_newsletter":
       return Mail;
+    case "booking_created_notify":
+      return CalendarPlus;
+    case "booking_completed_review":
+      return CalendarCheck;
+    case "booking_cancelled_notify":
+      return CalendarX;
+    case "contact_created_welcome":
+      return UserPlus;
+    case "tag_added_followup":
+      return Tag;
+    case "date_offset_followup":
+      return Clock;
     default:
       return Sparkles;
   }
 }
+
+type PresetGoalCategory =
+  | "popular"
+  | "forms_leads"
+  | "newsletter"
+  | "bookings"
+  | "contacts"
+  | "time";
+
+type AutomationPresetMeta = {
+  key: string;
+  name: string;
+  nameGr: string;
+  description: string;
+  descriptionGr: string;
+  logic?: string;
+  logicGr?: string;
+  category?: PresetGoalCategory;
+  popular?: boolean;
+  featured?: boolean;
+  triggerType?: string;
+  formType?: string | null;
+};
 
 function workflowSummary(
   wf: WebsiteAutomationWorkflow,
@@ -659,9 +695,12 @@ export function AutomationBuilder({
   const [builderTab, setBuilderTab] = useState<"canvas" | "history">("canvas");
   const [editorOpen, setEditorOpen] = useState(false);
   const [createFlowOpen, setCreateFlowOpen] = useState(false);
-  const [createFlowStep, setCreateFlowStep] = useState<"gallery" | "preview">(
-    "gallery",
-  );
+  const [createFlowStep, setCreateFlowStep] = useState<
+    "recipes" | "triggers" | "preview"
+  >("recipes");
+  const [recipeCategory, setRecipeCategory] =
+    useState<PresetGoalCategory>("popular");
+  const [recipeSearch, setRecipeSearch] = useState("");
   const [pendingTriggerId, setPendingTriggerId] = useState<string | null>(null);
   const [stepPickerOpen, setStepPickerOpen] = useState(false);
   const [stepPickerView, setStepPickerView] = useState<"root" | "actions" | "trigger">(
@@ -738,14 +777,7 @@ export function AutomationBuilder({
   });
 
   const { data: presetsData } = useQuery<{
-    presets: Array<{
-      key: string;
-      name: string;
-      nameGr: string;
-      description: string;
-      descriptionGr: string;
-      formType?: string;
-    }>;
+    presets: AutomationPresetMeta[];
   }>({
     queryKey: ["/api/websites", websiteId, "automation-presets"],
     queryFn: async () => {
@@ -874,7 +906,9 @@ export function AutomationBuilder({
   }, []);
 
   const openCreateFlow = useCallback(() => {
-    setCreateFlowStep("gallery");
+    setCreateFlowStep("recipes");
+    setRecipeCategory("popular");
+    setRecipeSearch("");
     setPendingTriggerId(null);
     setTriggerCategory("forms");
     setTriggerSearch("");
@@ -883,9 +917,10 @@ export function AutomationBuilder({
 
   const closeCreateFlow = useCallback(() => {
     setCreateFlowOpen(false);
-    setCreateFlowStep("gallery");
+    setCreateFlowStep("recipes");
     setPendingTriggerId(null);
     setTriggerSearch("");
+    setRecipeSearch("");
   }, []);
 
   const openEditor = useCallback(
@@ -1473,15 +1508,22 @@ export function AutomationBuilder({
   const presetMutation = useMutation({
     mutationFn: async (presetKey: string) => {
       const presetMeta = presets.find((p) => p.key === presetKey);
-      const form =
-        forms.find((f) =>
-          !presetMeta?.formType || presetMeta.formType === "any"
-            ? true
-            : f.type === presetMeta.formType,
-        ) ||
-        forms.find((f) => f.id === triggerFormId) ||
-        forms[0];
-      if (!form) throw new Error("No form available");
+      const isForm = (presetMeta?.triggerType || "form.submitted") === "form.submitted";
+      let formId: string | undefined;
+      let formName: string | undefined;
+      if (isForm) {
+        const form =
+          forms.find((f) =>
+            !presetMeta?.formType || presetMeta.formType === "any"
+              ? true
+              : f.type === presetMeta.formType,
+          ) ||
+          forms.find((f) => f.id === triggerFormId) ||
+          forms[0];
+        if (!form) throw new Error("No form available for this preset");
+        formId = form.id;
+        formName = form.name;
+      }
       const res = await fetch(
         `/api/websites/${websiteId}/automation-workflows/from-preset`,
         {
@@ -1490,9 +1532,10 @@ export function AutomationBuilder({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             presetKey,
-            formId: form.id,
-            formName: form.name,
+            formId,
+            formName,
             enabled: false,
+            language: websiteLanguage === "gr" ? "gr" : "en",
           }),
         },
       );
@@ -1503,6 +1546,7 @@ export function AutomationBuilder({
       return res.json();
     },
     onSuccess: (data) => {
+      closeCreateFlow();
       if (data?.workflow) {
         loadWorkflow(data.workflow);
         setEditorOpen(true);
@@ -2000,6 +2044,194 @@ export function AutomationBuilder({
     setInsertAfterId(null);
   };
 
+  const recipeGoalCategories: { id: PresetGoalCategory; label: string }[] = [
+    {
+      id: "popular",
+      label: t("dashboard.automationsRecipeCatPopular") || "Popular",
+    },
+    {
+      id: "forms_leads",
+      label: t("dashboard.automationsRecipeCatForms") || "Forms & leads",
+    },
+    {
+      id: "newsletter",
+      label: t("dashboard.automationsRecipeCatNewsletter") || "Newsletter",
+    },
+    {
+      id: "bookings",
+      label: t("dashboard.automationsRecipeCatBookings") || "Bookings",
+    },
+    {
+      id: "contacts",
+      label: t("dashboard.automationsRecipeCatContacts") || "Contacts",
+    },
+    {
+      id: "time",
+      label: t("dashboard.automationsRecipeCatTime") || "Time-based",
+    },
+  ];
+
+  const filteredRecipes = (() => {
+    const q = recipeSearch.trim().toLowerCase();
+    return presets.filter((p) => {
+      if (recipeCategory === "popular") {
+        if (!(p.popular || p.featured)) return false;
+      } else if (p.category !== recipeCategory) {
+        return false;
+      }
+      if (!q) return true;
+      const hay = [
+        p.name,
+        p.nameGr,
+        p.description,
+        p.descriptionGr,
+        p.logic,
+        p.logicGr,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  })();
+
+  const renderRecipeGallery = () => (
+    <div className="flex flex-col sm:flex-row min-h-[360px] max-h-[min(60vh,520px)] flex-1">
+      <nav
+        className="sm:w-56 shrink-0 border-b sm:border-b-0 sm:border-r border-border/60 p-3 flex sm:flex-col gap-1 overflow-x-auto bg-muted/20"
+        aria-label={t("dashboard.automationsCategories") || "Categories"}
+      >
+        <p className="hidden sm:block text-[11px] font-medium tracking-wide text-muted-foreground px-2 mb-2">
+          {uiUpper(t("dashboard.automationsCategories") || "Categories", uiLang)}
+        </p>
+        {recipeGoalCategories.map((cat) => {
+          const active = recipeCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setRecipeCategory(cat.id)}
+              className={`whitespace-nowrap rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                active
+                  ? "bg-sky-50 text-foreground font-medium"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+              data-testid={`automation-recipe-cat-${cat.id}`}
+            >
+              {cat.label}
+            </button>
+          );
+        })}
+        <div className="hidden sm:block mt-auto pt-3 border-t border-border/50">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-auto min-h-9 w-full justify-center rounded-full border-border/80 bg-background px-3 py-2 text-xs font-medium leading-snug shadow-none hover:bg-muted/40 whitespace-normal text-center"
+            onClick={() => {
+              setTriggerCategory("forms");
+              setTriggerSearch("");
+              setCreateFlowStep("triggers");
+            }}
+            data-testid="automation-start-from-scratch"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+            <span className="text-left">
+              {t("dashboard.automationsStartFromScratch") || "Start from scratch"}
+            </span>
+          </Button>
+        </div>
+      </nav>
+
+      <div className="flex-1 min-w-0 flex flex-col p-4">
+        <div className="relative mb-3">
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            value={recipeSearch}
+            onChange={(e) => setRecipeSearch(e.target.value)}
+            placeholder={
+              t("dashboard.automationsRecipeSearch") ||
+              "Search by name, trigger, or action"
+            }
+            className="pl-9 h-9"
+            data-testid="automation-recipe-search"
+          />
+        </div>
+
+        <p className="text-sm font-semibold mb-2">
+          {recipeGoalCategories.find((c) => c.id === recipeCategory)?.label}
+        </p>
+
+        <div className="flex-1 overflow-y-auto space-y-2 pr-0.5">
+          {filteredRecipes.length === 0 ? (
+            <p className="text-xs text-muted-foreground px-1 py-4">
+              {t("dashboard.automationsRecipeNoResults") ||
+                "No recipes match your search."}
+            </p>
+          ) : (
+            filteredRecipes.map((p) => {
+              const Icon = presetIconFor(p.key);
+              const needsForm =
+                (p.triggerType || "form.submitted") === "form.submitted";
+              const disabled =
+                presetMutation.isPending || (needsForm && forms.length === 0);
+              return (
+                <div
+                  key={p.key}
+                  className="w-full flex items-center gap-3 rounded-xl border border-border/60 bg-background px-3 py-3"
+                  data-testid={`automation-recipe-row-${p.key}`}
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-700">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold truncate">
+                      {isGr ? p.nameGr : p.name}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                      {isGr
+                        ? p.logicGr || p.descriptionGr
+                        : p.logic || p.description}
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    disabled={disabled}
+                    onClick={() => presetMutation.mutate(p.key)}
+                    data-testid={`automation-recipe-setup-${p.key}`}
+                  >
+                    {presetMutation.isPending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      t("dashboard.automationsRecipeSetUp") || "Set up"
+                    )}
+                  </Button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="sm:hidden mt-3 pt-3 border-t border-border/50">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-auto min-h-9 w-full justify-center rounded-full border-border/80 bg-background px-3 py-2 text-xs font-medium leading-snug shadow-none hover:bg-muted/40 whitespace-normal"
+            onClick={() => setCreateFlowStep("triggers")}
+            data-testid="automation-start-from-scratch-mobile"
+          >
+            <Plus className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+            {t("dashboard.automationsStartFromScratch") || "Start from scratch"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
   const renderTriggerGalleryList = (onPick: (item: TriggerCatalogItem) => void) => (
     <div className="flex flex-col sm:flex-row min-h-[360px] max-h-[min(60vh,520px)] flex-1">
       <nav
@@ -2176,7 +2408,7 @@ export function AutomationBuilder({
         </Button>
       </div>
 
-      {presets.length > 0 && (
+      {presets.some((p) => p.featured) && (
         <section className="space-y-3">
           <div>
             <h4 className="text-sm font-semibold">
@@ -2188,33 +2420,41 @@ export function AutomationBuilder({
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {presets.map((p) => {
-              const Icon = presetIconFor(p.key);
-              return (
-                <button
-                  key={p.key}
-                  type="button"
-                  className="group rounded-xl border border-border/60 bg-background p-4 text-left shadow-sm hover:border-border hover:shadow transition-all disabled:opacity-50"
-                  disabled={presetMutation.isPending || forms.length === 0}
-                  onClick={() => presetMutation.mutate(p.key)}
-                  data-testid={`automation-suggested-${p.key}`}
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <div className="min-w-0 pt-0.5">
-                      <div className="font-medium text-sm leading-snug">
-                        {isGr ? p.nameGr : p.name}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                        {isGr ? p.descriptionGr : p.description}
+            {presets
+              .filter((p) => p.featured)
+              .map((p) => {
+                const Icon = presetIconFor(p.key);
+                const needsForm =
+                  (p.triggerType || "form.submitted") === "form.submitted";
+                const disabled =
+                  presetMutation.isPending || (needsForm && forms.length === 0);
+                return (
+                  <button
+                    key={p.key}
+                    type="button"
+                    className="group rounded-xl border border-border/60 bg-background p-4 text-left shadow-sm hover:border-border hover:shadow transition-all disabled:opacity-50"
+                    disabled={disabled}
+                    onClick={() => presetMutation.mutate(p.key)}
+                    data-testid={`automation-suggested-${p.key}`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0 pt-0.5">
+                        <div className="font-medium text-sm leading-snug">
+                          {isGr ? p.nameGr : p.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                          {isGr
+                            ? p.logicGr || p.descriptionGr
+                            : p.logic || p.description}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
           </div>
         </section>
       )}
@@ -2453,7 +2693,7 @@ export function AutomationBuilder({
           className="max-w-[min(960px,96vw)] w-full h-[min(88vh,720px)] flex flex-col p-0 gap-0 overflow-hidden"
           data-testid="automation-create-flow-dialog"
         >
-          {createFlowStep === "gallery" || !pendingTrigger ? (
+          {createFlowStep === "recipes" ? (
             <>
               <div className="flex items-start justify-between gap-3 border-b px-5 py-4">
                 <div className="min-w-0">
@@ -2462,8 +2702,8 @@ export function AutomationBuilder({
                       "Create a new automation"}
                   </DialogTitle>
                   <DialogDescription className="text-sm text-muted-foreground mt-1">
-                    {t("dashboard.automationsCreateHint") ||
-                      "Choose a trigger to start, or pick a suggested workflow from the list."}
+                    {t("dashboard.automationsCreateRecipesHint") ||
+                      "Choose a ready workflow by goal, or start from scratch with a trigger."}
                   </DialogDescription>
                 </div>
                 <Button
@@ -2476,6 +2716,43 @@ export function AutomationBuilder({
                 >
                   <X className="h-4 w-4" />
                 </Button>
+              </div>
+              {renderRecipeGallery()}
+            </>
+          ) : createFlowStep === "triggers" || !pendingTrigger ? (
+            <>
+              <div className="flex items-start justify-between gap-3 border-b px-5 py-4">
+                <div className="min-w-0">
+                  <DialogTitle className="text-lg font-semibold">
+                    {t("dashboard.automationsChooseTrigger") || "Choose trigger"}
+                  </DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground mt-1">
+                    {t("dashboard.automationsChooseTriggerHint") ||
+                      "When should this automation start?"}
+                  </DialogDescription>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2"
+                    onClick={() => setCreateFlowStep("recipes")}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-1" />
+                    {t("dashboard.automationsBackToRecipes") || "Recipes"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={closeCreateFlow}
+                    aria-label={t("dashboard.close") || "Close"}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               {renderTriggerGalleryList((item) => {
                 const goPreview = () => {
@@ -2535,7 +2812,7 @@ export function AutomationBuilder({
                       size="sm"
                       className="px-0 h-auto text-sm"
                       onClick={() => {
-                        setCreateFlowStep("gallery");
+                        setCreateFlowStep("triggers");
                         setPendingTriggerId(null);
                       }}
                       data-testid="automation-preview-back"
