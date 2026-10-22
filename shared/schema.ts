@@ -160,6 +160,8 @@ export const websiteProgress = pgTable("website_progress", {
   digitalProductsEnabled: boolean("digital_products_enabled").default(false).notNull(),
   /** Insurance-agent reception inbox. Off by default. Admin-only toggle. */
   receptionEnabled: boolean("reception_enabled").default(false).notNull(),
+  /** AI blog tab in the customer dashboard. Off until an admin turns it on. */
+  blogEnabled: boolean("blog_enabled").default(false).notNull(),
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
   contactEmail: text("contact_email"),

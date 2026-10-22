@@ -13,7 +13,7 @@ export function sanitizeBlogHtml(input: string): string {
       const href = /href\s*=\s*"([^"]*)"/i.exec(String(attrs))?.[1]
         || /href\s*=\s*'([^']*)'/i.exec(String(attrs))?.[1]
         || "";
-      if (!/^https?:\/\//i.test(href)) return "<a>";
+      if (!/^https?:\/\//i.test(href) && !href.startsWith("/")) return "<a>";
       const safe = href.replace(/"/g, "");
       return `<a href="${safe}" rel="noopener noreferrer" target="_blank">`;
     }

@@ -67,6 +67,7 @@ type Website = {
   paymentsEnabled?: boolean
   digitalProductsEnabled?: boolean
   receptionEnabled?: boolean
+  blogEnabled?: boolean
   contactEmail?: string | null
   siteId?: string | null
   websiteLanguage?: string | null
@@ -96,6 +97,7 @@ function WebsiteProgressRowActions({
   updatePaymentsMutation,
   updateDigitalProductsMutation,
   updateReceptionMutation,
+  updateBlogMutation,
 }: {
   website: Website
   canManageWebsites?: boolean
@@ -123,12 +125,17 @@ function WebsiteProgressRowActions({
     mutate: (v: { websiteId: number; receptionEnabled: boolean }) => void;
     isPending: boolean;
   };
+  updateBlogMutation: {
+    mutate: (v: { websiteId: number; blogEnabled: boolean }) => void;
+    isPending: boolean;
+  };
 }) {
   const settingsPending =
     updateBookingMutation.isPending ||
     updatePaymentsMutation.isPending ||
     updateDigitalProductsMutation.isPending ||
-    updateReceptionMutation.isPending;
+    updateReceptionMutation.isPending ||
+    updateBlogMutation.isPending;
 
   return (
     <DropdownMenu>
@@ -239,6 +246,18 @@ function WebsiteProgressRowActions({
               }}
             >
               Ασφαλιστές / Leads
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={website.blogEnabled ?? false}
+              disabled={settingsPending}
+              onCheckedChange={(checked) => {
+                updateBlogMutation.mutate({
+                  websiteId: website.id,
+                  blogEnabled: !!checked,
+                });
+              }}
+            >
+              Blog
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -1251,6 +1270,28 @@ export function AdminWebsiteProgress() {
     },
   });
 
+  const updateBlogMutation = useMutation({
+    mutationFn: async ({ websiteId, blogEnabled }: { websiteId: number; blogEnabled: boolean }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blogEnabled }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update blog setting");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Blog setting updated" });
+    },
+    onError: (err: any) => {
+      toast({ description: err.message, variant: "destructive" });
+    },
+  });
+
   const updateSiteIdMutation = useMutation({
     mutationFn: async ({ websiteId, siteId }: { websiteId: number; siteId: string }) => {
       const response = await fetch(`/api/admin/websites/${websiteId}`, {
@@ -1784,6 +1825,7 @@ export function AdminWebsiteProgress() {
                       updatePaymentsMutation={updatePaymentsMutation}
                       updateDigitalProductsMutation={updateDigitalProductsMutation}
                       updateReceptionMutation={updateReceptionMutation}
+                      updateBlogMutation={updateBlogMutation}
                     />
                   </div>
                 </div>

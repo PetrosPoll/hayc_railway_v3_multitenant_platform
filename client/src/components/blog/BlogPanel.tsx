@@ -23,6 +23,12 @@ type BlogPost = {
   updatedAt: string | null;
 };
 
+type BlogUsage = {
+  count: number;
+  recommended: number;
+  limit: number;
+};
+
 type EditorState = {
   id: number | null;
   title: string;
@@ -48,20 +54,15 @@ async function readError(response: Response) {
   return data.error || "Request failed";
 }
 
-export function BlogPanel({
-  websiteId,
-  siteId,
-}: {
-  websiteId: number;
-  siteId?: string | null;
-}) {
+export function BlogPanel({ websiteId }: { websiteId: number }) {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { blockIfDemo } = useDemoMode();
   const queryClient = useQueryClient();
   const [editor, setEditor] = useState<EditorState>(emptyEditor);
+  const [allowExtra, setAllowExtra] = useState(false);
 
-  const postsQuery = useQuery<BlogPost[]>({
+  const postsQuery = useQuery<{ posts: BlogPost[]; usage: BlogUsage }>({
     queryKey: ["/api/websites", websiteId, "blog"],
     queryFn: async () => {
       const response = await fetch(`/api/websites/${websiteId}/blog`, { credentials: "include" });
@@ -80,12 +81,17 @@ export function BlogPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ topic: editor.topic, notes: editor.notes }),
+        body: JSON.stringify({
+          topic: editor.topic,
+          notes: editor.notes,
+          confirmOverRecommended: allowExtra,
+        }),
       });
       if (!response.ok) throw new Error(await readError(response));
-      return response.json() as Promise<BlogPost>;
+      return response.json() as Promise<{ post: BlogPost }>;
     },
-    onSuccess: (post) => {
+    onSuccess: ({ post }) => {
+      setAllowExtra(false);
       setEditor({
         id: post.id,
         title: post.title,
@@ -172,7 +178,10 @@ export function BlogPanel({
     });
   };
 
-  const publicUrl = siteId ? `/api/public/blog/${siteId}` : null;
+  const usage = postsQuery.data?.usage;
+  const count = usage?.count ?? 0;
+  const atHardLimit = count >= (usage?.limit ?? 15);
+  const needsConfirm = count >= (usage?.recommended ?? 7) && !atHardLimit;
 
   return (
     <div className="space-y-6" data-testid="section-blog">
@@ -180,14 +189,21 @@ export function BlogPanel({
         <h2 className="text-2xl font-semibold">{t("dashboard.blog") || "Blog"}</h2>
         <p className="text-sm text-muted-foreground mt-1">
           {t("dashboard.blogDescription") ||
-            "Write a topic. The article is created automatically and can be published to the site."}
+            "Write a topic. The article is created as a draft for you to review."}
         </p>
-        {publicUrl ? (
-          <p className="text-xs text-muted-foreground mt-2">
-            {t("dashboard.blogPublicHint") || "Published posts"}:{" "}
-            <a className="underline" href={publicUrl} target="_blank" rel="noreferrer">
-              {publicUrl}
-            </a>
+        <p className="text-sm mt-2" data-testid="blog-usage">
+          {t("dashboard.blogUsage", { count }) || `${count} / 7 recommended this month`}
+        </p>
+        {atHardLimit ? (
+          <p className="text-sm text-destructive mt-2" data-testid="blog-monthly-limit">
+            {t("dashboard.blogMonthlyLimit") ||
+              "You have reached 15 articles this month. New articles will be available next month."}
+          </p>
+        ) : null}
+        {needsConfirm ? (
+          <p className="text-sm mt-2" data-testid="blog-recommended-warning">
+            {t("dashboard.blogRecommendedWarning") ||
+              "We recommend up to 7 articles a month. Fewer, better articles help Google ranking more than many articles at once. You can continue if you want."}
           </p>
         ) : null}
       </div>
@@ -216,12 +232,26 @@ export function BlogPanel({
               data-testid="input-blog-notes"
             />
           </div>
+          {needsConfirm && !allowExtra ? (
+            <Button
+              variant="outline"
+              onClick={() => setAllowExtra(true)}
+              data-testid="button-blog-continue"
+            >
+              {t("dashboard.blogContinue") || "Continue"}
+            </Button>
+          ) : null}
           <Button
             onClick={() => {
               if (blockIfDemo()) return;
               generateMutation.mutate();
             }}
-            disabled={generateMutation.isPending || editor.topic.trim().length < 3}
+            disabled={
+              generateMutation.isPending ||
+              editor.topic.trim().length < 3 ||
+              atHardLimit ||
+              (needsConfirm && !allowExtra)
+            }
             data-testid="button-blog-generate"
           >
             {generateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -309,10 +339,10 @@ export function BlogPanel({
       </Card>
 
       <div className="space-y-3" data-testid="blog-list">
-        {(postsQuery.data || []).length === 0 ? (
+        {(postsQuery.data?.posts || []).length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("dashboard.blogEmpty") || "No articles yet"}</p>
         ) : (
-          (postsQuery.data || []).map((post) => (
+          (postsQuery.data?.posts || []).map((post) => (
             <button
               key={post.id}
               type="button"

@@ -167,6 +167,7 @@ type Website = {
    paymentsEnabled?: boolean;
   digitalProductsEnabled?: boolean;
   receptionEnabled?: boolean;
+  blogEnabled?: boolean;
   siteId?: string | null;
   websiteLanguage?: string | null;
   stages: Array<{
@@ -1423,6 +1424,12 @@ export default function WebsiteDashboard() {
     }
   }, [website, activeSection]);
 
+  useEffect(() => {
+    if (website && !website.blogEnabled && activeSection === "blog") {
+      setActiveSection("progress");
+    }
+  }, [website, activeSection]);
+
   // Newsletter section is now handled locally, no redirect needed
 
   const [changeSubject, setChangeSubject] = useState("");
@@ -1692,7 +1699,9 @@ export default function WebsiteDashboard() {
         : []),
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
       { id: "popups", label: t("dashboard.popups") || "Popups", icon: AppWindow },
-      { id: "blog", label: t("dashboard.blog") || "Blog", icon: Newspaper },
+      ...(website?.blogEnabled
+        ? [{ id: "blog", label: t("dashboard.blog") || "Blog", icon: Newspaper }]
+        : []),
       ...(website?.siteId
         ? [{ id: "automations", label: t("dashboard.automations") || "Automations", icon: Zap }]
         : []),
@@ -1762,7 +1771,7 @@ export default function WebsiteDashboard() {
     ];
 
     return items;
-  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, website?.receptionEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, website?.receptionEnabled, website?.blogEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
 
   if (websiteLoading) {
     return (
@@ -5434,8 +5443,8 @@ export default function WebsiteDashboard() {
                 <div data-testid="section-popups">{renderPopupsList()}</div>
               )}
 
-              {activeSection === "blog" && websiteId && (
-                <BlogPanel websiteId={Number(websiteId)} siteId={website.siteId} />
+              {activeSection === "blog" && website?.blogEnabled && websiteId && (
+                <BlogPanel websiteId={Number(websiteId)} />
               )}
 
               {activeSection === "automations" && website?.siteId && (

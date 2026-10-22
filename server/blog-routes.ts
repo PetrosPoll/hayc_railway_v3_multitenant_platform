@@ -1,15 +1,21 @@
 import type { Express, Request } from "express";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { blogPosts, RolePermissions, websiteProgress } from "@shared/schema";
 import { db } from "./db";
 import { storage } from "./storage";
 import { sanitizeBlogHtml, slugifyTitle } from "./lib/blog-html";
 import { generateBlogPost } from "./lib/generate-blog-post";
+import {
+  athensMonthStart,
+  BLOG_HARD_LIMIT_PER_MONTH,
+  BLOG_RECOMMENDED_PER_MONTH,
+} from "./lib/blog-quota";
 
 const generateSchema = z.object({
   topic: z.string().trim().min(3).max(400),
   notes: z.string().trim().max(1000).optional(),
+  confirmOverRecommended: z.boolean().optional(),
 });
 
 const saveSchema = z.object({
@@ -40,7 +46,29 @@ async function authorize(req: Request, websiteId: number) {
   if (website.userId !== user.id && !staff) {
     return { error: { status: 403 as const, message: "Not authorized" } };
   }
+  if (!website.blogEnabled) {
+    return { error: { status: 403 as const, message: "Blog is not enabled for this website" } };
+  }
   return { website };
+}
+
+async function monthlyCount(websiteId: number) {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(blogPosts)
+    .where(and(
+      eq(blogPosts.websiteProgressId, websiteId),
+      gte(blogPosts.createdAt, athensMonthStart()),
+    ));
+  return row?.count ?? 0;
+}
+
+function usage(count: number) {
+  return {
+    count,
+    recommended: BLOG_RECOMMENDED_PER_MONTH,
+    limit: BLOG_HARD_LIMIT_PER_MONTH,
+  };
 }
 
 async function uniqueSlug(websiteId: number, title: string, ignoreId?: number) {
@@ -60,58 +88,7 @@ async function uniqueSlug(websiteId: number, title: string, ignoreId?: number) {
   return `${base}-${Date.now()}`;
 }
 
-function publicPost(post: typeof blogPosts.$inferSelect) {
-  return {
-    slug: post.slug,
-    title: post.title,
-    excerpt: post.excerpt,
-    html: post.html,
-    publishedAt: post.publishedAt,
-  };
-}
-
 export function registerBlogRoutes(app: Express) {
-  app.get("/api/public/blog/:siteId", async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    const siteId = req.params.siteId.trim();
-    if (!siteId) return res.status(400).json({ error: "Missing site id" });
-    const [website] = await db
-      .select({ id: websiteProgress.id })
-      .from(websiteProgress)
-      .where(eq(websiteProgress.siteId, siteId))
-      .limit(1);
-    if (!website) return res.status(404).json({ error: "Website not found" });
-    const posts = await db
-      .select()
-      .from(blogPosts)
-      .where(and(eq(blogPosts.websiteProgressId, website.id), eq(blogPosts.published, true)))
-      .orderBy(desc(blogPosts.publishedAt));
-    res.json({ siteId, posts: posts.map(publicPost) });
-  });
-
-  app.get("/api/public/blog/:siteId/:slug", async (req, res) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    const siteId = req.params.siteId.trim();
-    const slug = req.params.slug.trim();
-    const [website] = await db
-      .select({ id: websiteProgress.id })
-      .from(websiteProgress)
-      .where(eq(websiteProgress.siteId, siteId))
-      .limit(1);
-    if (!website) return res.status(404).json({ error: "Website not found" });
-    const [post] = await db
-      .select()
-      .from(blogPosts)
-      .where(and(
-        eq(blogPosts.websiteProgressId, website.id),
-        eq(blogPosts.slug, slug),
-        eq(blogPosts.published, true),
-      ))
-      .limit(1);
-    if (!post) return res.status(404).json({ error: "Post not found" });
-    res.json(publicPost(post));
-  });
-
   app.get("/api/websites/:id/blog", async (req, res) => {
     const websiteId = parseInt(req.params.id, 10);
     if (!Number.isFinite(websiteId)) return res.status(400).json({ error: "Invalid website id" });
@@ -122,7 +99,7 @@ export function registerBlogRoutes(app: Express) {
       .from(blogPosts)
       .where(eq(blogPosts.websiteProgressId, websiteId))
       .orderBy(desc(blogPosts.updatedAt));
-    res.json(posts);
+    res.json({ posts, usage: usage(await monthlyCount(websiteId)) });
   });
 
   app.post("/api/websites/:id/blog/generate", async (req, res) => {
@@ -132,11 +109,28 @@ export function registerBlogRoutes(app: Express) {
     if ("error" in access) return res.status(access.error.status).json({ error: access.error.message });
     const parsed = generateSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Enter a topic of at least 3 characters" });
+
+    const count = await monthlyCount(websiteId);
+    if (count >= BLOG_HARD_LIMIT_PER_MONTH) {
+      return res.status(429).json({
+        code: "monthly_limit",
+        error: "Έχετε φτάσει το όριο των 15 άρθρων για αυτόν τον μήνα. Νέα άρθρα θα είναι διαθέσιμα από τον επόμενο μήνα.",
+        usage: usage(count),
+      });
+    }
+    if (count >= BLOG_RECOMMENDED_PER_MONTH && !parsed.data.confirmOverRecommended) {
+      return res.status(409).json({
+        code: "recommended_limit",
+        error: "Προτείνουμε έως 7 άρθρα τον μήνα. Λιγότερα και πιο ποιοτικά άρθρα βοηθούν περισσότερο στην κατάταξη στη Google από πολλά άρθρα μαζί. Μπορείτε να συνεχίσετε αν θέλετε.",
+        usage: usage(count),
+      });
+    }
+
     try {
       const generated = await generateBlogPost({
         topic: parsed.data.topic,
         notes: parsed.data.notes,
-        websiteLanguage: access.website.websiteLanguage,
+        website: access.website,
       });
       const slug = await uniqueSlug(websiteId, generated.title);
       const [post] = await db
@@ -152,11 +146,11 @@ export function registerBlogRoutes(app: Express) {
           updatedAt: new Date(),
         })
         .returning();
-      res.json(post);
+      res.json({ post, usage: usage(count + 1) });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to generate post";
-      const status = message.includes("OPENAI_API_KEY") ? 503 : 502;
-      res.status(status).json({ error: message });
+      const missingKey = message.includes("is not set");
+      res.status(missingKey ? 503 : 502).json({ error: message });
     }
   });
 
@@ -165,6 +159,14 @@ export function registerBlogRoutes(app: Express) {
     if (!Number.isFinite(websiteId)) return res.status(400).json({ error: "Invalid website id" });
     const access = await authorize(req, websiteId);
     if ("error" in access) return res.status(access.error.status).json({ error: access.error.message });
+    const count = await monthlyCount(websiteId);
+    if (count >= BLOG_HARD_LIMIT_PER_MONTH) {
+      return res.status(429).json({
+        code: "monthly_limit",
+        error: "Έχετε φτάσει το όριο των 15 άρθρων για αυτόν τον μήνα. Νέα άρθρα θα είναι διαθέσιμα από τον επόμενο μήνα.",
+        usage: usage(count),
+      });
+    }
     const parsed = saveSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ error: "Title and body are required" });
     const published = parsed.data.published === true;

@@ -17659,6 +17659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentsEnabled: websiteProgress.paymentsEnabled,
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
           receptionEnabled: websiteProgress.receptionEnabled,
+          blogEnabled: websiteProgress.blogEnabled,
           contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
@@ -17833,6 +17834,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           paymentsEnabled: websiteProgress.paymentsEnabled,
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
           receptionEnabled: websiteProgress.receptionEnabled,
+          blogEnabled: websiteProgress.blogEnabled,
           contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           customDomain: websiteProgress.customDomain,
@@ -18018,9 +18020,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
+      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, blogEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; receptionEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; receptionEnabled: boolean; blogEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -18059,6 +18061,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.receptionEnabled = receptionEnabled;
       }
 
+      if (blogEnabled !== undefined) {
+        if (typeof blogEnabled !== "boolean") {
+          return res.status(400).json({ error: "blogEnabled must be a boolean" });
+        }
+        updates.blogEnabled = blogEnabled;
+      }
+
       if (siteId !== undefined) {
         if (typeof siteId !== 'string') {
           return res.status(400).json({ error: "siteId must be a string" });
@@ -18092,7 +18101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, blogEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
       }
 
       const [updatedWebsite] = await db
