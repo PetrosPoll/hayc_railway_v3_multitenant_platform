@@ -78,6 +78,7 @@ import {
   Zap,
   AppWindow,
   Inbox,
+  Newspaper,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
@@ -100,6 +101,7 @@ import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
 import { AutomationBuilder } from "@/components/automations/AutomationBuilder";
 import { ReceptionPanel } from "@/components/reception/ReceptionPanel";
+import { BlogPanel } from "@/components/blog/BlogPanel";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 import { DigitalProductsTab } from "@/components/digital-products/DigitalProductsTab";
 import {
@@ -1690,6 +1692,7 @@ export default function WebsiteDashboard() {
         : []),
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
       { id: "popups", label: t("dashboard.popups") || "Popups", icon: AppWindow },
+      { id: "blog", label: t("dashboard.blog") || "Blog", icon: Newspaper },
       ...(website?.siteId
         ? [{ id: "automations", label: t("dashboard.automations") || "Automations", icon: Zap }]
         : []),
@@ -1977,6 +1980,16 @@ export default function WebsiteDashboard() {
                 <BreadcrumbItem>
                   <BreadcrumbPage data-testid="breadcrumb-popups">
                     {t("dashboard.popups") || "Popups"}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
+            {activeSection === "blog" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage data-testid="breadcrumb-blog">
+                    {t("dashboard.blog") || "Blog"}
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </>
@@ -5419,6 +5432,10 @@ export default function WebsiteDashboard() {
 
               {activeSection === "popups" && (
                 <div data-testid="section-popups">{renderPopupsList()}</div>
+              )}
+
+              {activeSection === "blog" && websiteId && (
+                <BlogPanel websiteId={Number(websiteId)} siteId={website.siteId} />
               )}
 
               {activeSection === "automations" && website?.siteId && (

@@ -1321,6 +1321,36 @@ export const insertPopupTemplateSchema = createInsertSchema(popupTemplates)
 export type PopupTemplate = typeof popupTemplates.$inferSelect;
 export type InsertPopupTemplate = z.infer<typeof insertPopupTemplateSchema>;
 
+/** Customer-written or AI-generated blog posts for one website. */
+export const blogPosts = pgTable(
+  "blog_posts",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    title: text("title").notNull(),
+    slug: text("slug").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    html: text("html").notNull(),
+    /** The brief the customer typed when asking AI to write the post. */
+    topic: text("topic"),
+    published: boolean("published").notNull().default(false),
+    publishedAt: timestamp("published_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteIdx: index("blog_posts_website_idx").on(table.websiteProgressId),
+    websiteSlugUnique: unique("blog_posts_website_slug_unique").on(
+      table.websiteProgressId,
+      table.slug,
+    ),
+  }),
+);
+
+export type BlogPost = typeof blogPosts.$inferSelect;
+
 // Website Analytics tables
 export const websiteAnalyticsKeys = pgTable("website_analytics_keys", {
   id: serial("id").primaryKey(),

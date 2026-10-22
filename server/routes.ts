@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { EmailService } from "./email-service";
 import { registerReceptionRoutes } from "./reception-routes";
+import { registerBlogRoutes } from "./blog-routes";
 import { startCampaignScheduler } from "./scheduler";
 import { emailFormSchema } from "@shared/schema";
 import Stripe from "stripe";
@@ -30602,6 +30603,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   const httpServer = createServer(app);
 
   registerReceptionRoutes(app, authorizeWebsiteAccess);
+  registerBlogRoutes(app);
   return httpServer;
 }
 
