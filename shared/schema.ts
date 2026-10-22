@@ -1339,6 +1339,9 @@ export const blogPosts = pgTable(
     topic: text("topic"),
     published: boolean("published").notNull().default(false),
     publishedAt: timestamp("published_at"),
+    /** Path written into the site config on the last sync. */
+    sitePath: text("site_path"),
+    syncedAt: timestamp("synced_at"),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

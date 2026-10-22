@@ -20,6 +20,8 @@ type BlogPost = {
   topic: string | null;
   published: boolean;
   publishedAt: string | null;
+  sitePath: string | null;
+  syncedAt: string | null;
   updatedAt: string | null;
 };
 
@@ -142,7 +144,11 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
         published: post.published,
       }));
       invalidate();
-      toast({ description: t("dashboard.blogSaved") || "Saved" });
+      toast({
+        description: post.published
+          ? t("dashboard.blogMarkedForSync") || "Marked for sync. It is not on the site until you sync."
+          : t("dashboard.blogDraftSaved") || "Draft saved in the dashboard. It is not on the site yet.",
+      });
     },
     onError: (error: Error) => {
       toast({ description: error.message, variant: "destructive" });
@@ -178,13 +184,57 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
     });
   };
 
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch(`/api/websites/${websiteId}/blog/sync`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error(await readError(response));
+      return response.json() as Promise<{ count: number }>;
+    },
+    onSuccess: (result) => {
+      invalidate();
+      toast({
+        description: t("dashboard.blogSyncDone", { count: result.count }) || "Synced to the website",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ description: error.message, variant: "destructive" });
+    },
+  });
+
   const usage = postsQuery.data?.usage;
   const count = usage?.count ?? 0;
   const atHardLimit = count >= (usage?.limit ?? 15);
   const needsConfirm = count >= (usage?.recommended ?? 7) && !atHardLimit;
+  const posts = postsQuery.data?.posts || [];
+  const hasChangesSinceSync = posts.some((post) => {
+    if (post.published) {
+      if (!post.syncedAt || !post.sitePath) return true;
+      return Boolean(post.updatedAt && new Date(post.updatedAt) > new Date(post.syncedAt));
+    }
+    return Boolean(post.sitePath);
+  });
 
   return (
     <div className="space-y-6" data-testid="section-blog">
+      {generateMutation.isPending ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 p-6"
+          data-testid="blog-generating-overlay"
+        >
+          <div className="max-w-md rounded-lg border bg-background p-6 text-center shadow-lg">
+            <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin" />
+            <p className="text-base font-medium">
+              {t("dashboard.blogGeneratingTitle") || "Creating the article"}
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t("dashboard.blogGeneratingWait") || "This usually takes about 30 seconds."}
+            </p>
+          </div>
+        </div>
+      ) : null}
       <div>
         <h2 className="text-2xl font-semibold">{t("dashboard.blog") || "Blog"}</h2>
         <p className="text-sm text-muted-foreground mt-1">
@@ -320,7 +370,7 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
               }}
               data-testid="button-blog-publish"
             >
-              {t("dashboard.blogPublish") || "Publish"}
+              {t("dashboard.blogMarkReady") || "Ready to sync"}
             </Button>
             {editor.id ? (
               <Button
@@ -338,11 +388,41 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="pt-6 space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                if (blockIfDemo()) return;
+                syncMutation.mutate();
+              }}
+              disabled={syncMutation.isPending || !hasChangesSinceSync}
+              data-testid="button-sync-blog-to-website"
+            >
+              {syncMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {syncMutation.isPending
+                ? t("dashboard.blogSyncing") || "Syncing..."
+                : t("dashboard.blogSync") || "Sync to website"}
+            </Button>
+            <span className={`text-sm ${hasChangesSinceSync ? "text-amber-600" : "text-green-600"}`}>
+              {hasChangesSinceSync
+                ? t("dashboard.blogSyncPending") || "Changes are not on the site yet"
+                : t("dashboard.blogSyncUpToDate") || "The site is up to date"}
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {t("dashboard.blogSyncHint") || "Sync writes each ready article as its own page and adds its card to the blog list."}
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="space-y-3" data-testid="blog-list">
-        {(postsQuery.data?.posts || []).length === 0 ? (
+        {posts.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("dashboard.blogEmpty") || "No articles yet"}</p>
         ) : (
-          (postsQuery.data?.posts || []).map((post) => (
+          posts.map((post) => (
             <button
               key={post.id}
               type="button"
@@ -354,7 +434,9 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
                 <span className="font-medium">{post.title}</span>
                 <Badge variant={post.published ? "default" : "secondary"}>
                   {post.published
-                    ? t("dashboard.blogPublished") || "Published"
+                    ? post.syncedAt
+                      ? t("dashboard.blogSynced") || "Synced"
+                      : t("dashboard.blogReady") || "Ready"
                     : t("dashboard.blogDraft") || "Draft"}
                 </Badge>
               </div>

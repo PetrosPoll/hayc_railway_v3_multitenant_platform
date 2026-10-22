@@ -5,7 +5,9 @@ import { blogPosts, RolePermissions, websiteProgress } from "@shared/schema";
 import { db } from "./db";
 import { storage } from "./storage";
 import { sanitizeBlogHtml, slugifyTitle } from "./lib/blog-html";
+import { syncBlogPostsIntoConfig } from "./lib/blog-config-sync";
 import { generateBlogPost } from "./lib/generate-blog-post";
+import { getConfig, putConfig } from "./s3-config";
 import {
   athensMonthStart,
   BLOG_HARD_LIMIT_PER_MONTH,
@@ -219,11 +221,60 @@ export function registerBlogRoutes(app: Express) {
         topic: parsed.data.topic ?? existing.topic,
         published,
         publishedAt: published ? existing.publishedAt || new Date() : null,
+        syncedAt: null,
         updatedAt: new Date(),
       })
       .where(eq(blogPosts.id, existing.id))
       .returning();
     res.json(post);
+  });
+
+  app.post("/api/websites/:id/blog/sync", async (req, res) => {
+    const websiteId = parseInt(req.params.id, 10);
+    if (!Number.isFinite(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+    const access = await authorize(req, websiteId);
+    if ("error" in access) return res.status(access.error.status).json({ error: access.error.message });
+    if (!access.website.siteId) {
+      return res.status(404).json({ error: "Αυτό το website δεν έχει site για συγχρονισμό." });
+    }
+    const rows = await db
+      .select()
+      .from(blogPosts)
+      .where(eq(blogPosts.websiteProgressId, websiteId));
+    const ready = rows.filter((post) => post.published);
+    const stalePaths = rows
+      .filter((post) => !post.published && post.sitePath)
+      .map((post) => post.sitePath as string);
+    if (ready.length === 0 && stalePaths.length === 0) {
+      return res.status(400).json({ error: "Δεν υπάρχουν άρθρα έτοιμα για συγχρονισμό." });
+    }
+    try {
+      const config = await getConfig(access.website.siteId);
+      const synced = syncBlogPostsIntoConfig(config, ready.map((post) => ({
+        id: post.id,
+        slug: post.slug,
+        title: post.title,
+        excerpt: post.excerpt,
+        html: post.html,
+        sitePath: post.sitePath,
+      })), stalePaths);
+      if ("error" in synced) return res.status(409).json({ error: synced.error });
+      await putConfig(access.website.siteId, synced.config);
+      const now = new Date();
+      for (const post of ready) {
+        await db.update(blogPosts).set({
+          sitePath: synced.paths[post.id] || post.sitePath,
+          syncedAt: now,
+        }).where(eq(blogPosts.id, post.id));
+      }
+      for (const post of rows.filter((item) => !item.published && item.sitePath)) {
+        await db.update(blogPosts).set({ sitePath: null, syncedAt: null }).where(eq(blogPosts.id, post.id));
+      }
+      res.json({ syncedAt: now.toISOString(), count: ready.length });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to sync blog";
+      res.status(500).json({ error: message });
+    }
   });
 
   app.delete("/api/websites/:id/blog/:postId", async (req, res) => {
