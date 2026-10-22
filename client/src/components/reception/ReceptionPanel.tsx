@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type ListItem = {
   id: number;
@@ -42,9 +43,33 @@ const TYPE_SHORT: Record<string, string> = {
 
 type SortKey = "name" | "type" | "status" | "activity";
 
+const STATUS_ROW: Record<string, string> = {
+  new: "bg-sky-50 hover:bg-sky-100 dark:bg-sky-950/30 dark:hover:bg-sky-950/45",
+  missing_docs: "bg-orange-50 hover:bg-orange-100 dark:bg-orange-950/30 dark:hover:bg-orange-950/45",
+  complete: "bg-lime-50 hover:bg-lime-100 dark:bg-lime-950/30 dark:hover:bg-lime-950/45",
+  sent: "bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/30 dark:hover:bg-indigo-950/45",
+  closed: "bg-stone-100 hover:bg-stone-200 dark:bg-stone-800/40 dark:hover:bg-stone-800/55",
+  won: "bg-teal-50 hover:bg-teal-100 dark:bg-teal-950/30 dark:hover:bg-teal-950/45",
+  lost: "bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-950/45",
+};
+
+const COUNT_WORDS = ["", "ένα", "δύο", "τρία", "τέσσερα", "πέντε", "έξι", "εφτά", "οκτώ", "εννιά", "δέκα"];
+
+function missingDocsLabel(count: number) {
+  if (count <= 0) return "";
+  if (count === 1) return "Λείπει ένα έγγραφο";
+  const word = COUNT_WORDS[count];
+  return word ? `Λείπουν ${word} έγγραφα` : `Λείπουν ${count} έγγραφα`;
+}
+
+function kindText(kind: string) {
+  return kind === "lead" ? "Πιθανός πελάτης" : "Υπηρεσία";
+}
+
 type Detail = {
   id: number;
   typeLabel: string;
+  kind: string;
   kindLabel: string;
   allowUploads: boolean;
   status: string;
@@ -100,7 +125,7 @@ export function ReceptionPanel({
   const [search, setSearch] = useState("");
   const [typeKey, setTypeKey] = useState("all");
   const [status, setStatus] = useState("all");
-  const [kind, setKind] = useState("all");
+  const [kind, setKind] = useState<"lead" | "service">("lead");
   const [stuckOnly, setStuckOnly] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("activity");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -113,7 +138,7 @@ export function ReceptionPanel({
     setSearch("");
     setTypeKey("all");
     setStatus("all");
-    setKind("all");
+    setKind("lead");
     setStuckOnly("all");
     setSortKey("activity");
     setSortDir("desc");
@@ -242,9 +267,30 @@ export function ReceptionPanel({
 
   return (
     <div className="space-y-4" data-testid="section-reception">
-      <div>
-        <h2 className="text-xl font-semibold">Leads</h2>
-        <p className="text-sm text-muted-foreground">Αιτήματα που περιμένουν ενέργεια.</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold">Leads</h2>
+          <p className="text-sm text-muted-foreground">
+            {kind === "lead"
+              ? "Άνθρωποι που ζήτησαν να ασφαλιστούν."
+              : "Ζημιές από ανθρώπους που είναι ήδη πελάτες."}
+          </p>
+        </div>
+        <Tabs
+          value={kind}
+          onValueChange={(value) => {
+            setKind(value as "lead" | "service");
+            setTypeKey("all");
+            setStatus("all");
+            setSelectedId(null);
+            onSelectionChange(null);
+          }}
+        >
+          <TabsList>
+            <TabsTrigger value="lead">Πιθανοί πελάτες</TabsTrigger>
+            <TabsTrigger value="service">Ζημιές</TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {!selectedId ? (
@@ -260,34 +306,37 @@ export function ReceptionPanel({
               <SelectTrigger className="w-[180px]"><SelectValue placeholder="Τύπος" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Όλοι οι τύποι</SelectItem>
-                <SelectItem value="quote">Προσφορά</SelectItem>
-                <SelectItem value="claim_health">Υγεία</SelectItem>
-                <SelectItem value="claim_vehicle">Όχημα</SelectItem>
-                <SelectItem value="claim_home">Κατοικία</SelectItem>
-                <SelectItem value="general">Γενικό</SelectItem>
+                {kind === "lead" ? (
+                  <SelectItem value="quote">Προσφορά</SelectItem>
+                ) : (
+                  <>
+                    <SelectItem value="claim_health">Υγεία</SelectItem>
+                    <SelectItem value="claim_vehicle">Όχημα</SelectItem>
+                    <SelectItem value="claim_home">Κατοικία</SelectItem>
+                    <SelectItem value="general">Γενικό</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[200px]"><SelectValue placeholder="Κατάσταση" /></SelectTrigger>
+              <SelectTrigger className="w-[240px]"><SelectValue placeholder="Κατάσταση" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Όλες οι καταστάσεις</SelectItem>
-                <SelectItem value="new">Νέο</SelectItem>
-                <SelectItem value="missing_docs">Λείπουν έγγραφα</SelectItem>
-                <SelectItem value="complete">Πλήρες</SelectItem>
-                <SelectItem value="sent">Στάλθηκε στην εταιρεία</SelectItem>
-                <SelectItem value="closed">Κλειστό</SelectItem>
-                <SelectItem value="contacted">Επικοινωνία</SelectItem>
-                <SelectItem value="quoted">Προσφορά</SelectItem>
-                <SelectItem value="won">Έγινε πελάτης</SelectItem>
-                <SelectItem value="lost">Χάθηκε</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={kind} onValueChange={setKind}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Είδος" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Lead και υπηρεσία</SelectItem>
-                <SelectItem value="lead">Lead</SelectItem>
-                <SelectItem value="service">Υπηρεσία</SelectItem>
+                {kind === "lead" ? (
+                  <>
+                    <SelectItem value="missing_docs">Λείπουν έγγραφα</SelectItem>
+                    <SelectItem value="won">Έγινε πελάτης</SelectItem>
+                    <SelectItem value="lost">Χάθηκε</SelectItem>
+                  </>
+                ) : (
+                  <>
+                    <SelectItem value="new">Νέο</SelectItem>
+                    <SelectItem value="missing_docs">Λείπουν έγγραφα</SelectItem>
+                    <SelectItem value="complete">Πλήρες</SelectItem>
+                    <SelectItem value="sent">Στάλθηκε στην εταιρεία</SelectItem>
+                    <SelectItem value="closed">Κλειστό</SelectItem>
+                  </>
+                )}
               </SelectContent>
             </Select>
             <Select value={stuckOnly} onValueChange={setStuckOnly}>
@@ -301,9 +350,13 @@ export function ReceptionPanel({
           {listQuery.isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : requests.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Δεν υπάρχουν leads.</p>
+            <p className="text-sm text-muted-foreground">
+              {kind === "lead" ? "Δεν υπάρχουν πιθανοί πελάτες." : "Δεν υπάρχουν ζημιές."}
+            </p>
           ) : visible.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Κανένα lead δεν ταιριάζει.</p>
+            <p className="text-sm text-muted-foreground">
+              {kind === "lead" ? "Κανένας πιθανός πελάτης δεν ταιριάζει." : "Καμία ζημιά δεν ταιριάζει."}
+            </p>
           ) : (
             <div className="rounded-lg border">
               <Table>
@@ -320,7 +373,7 @@ export function ReceptionPanel({
                   {visible.map((item) => (
                     <TableRow
                       key={item.id}
-                      className="cursor-pointer"
+                      className={`cursor-pointer ${STATUS_ROW[item.status] || ""}`}
                       onClick={() => {
                         setSelectedId(item.id);
                         onSelectionChange(item.contactName);
@@ -328,23 +381,22 @@ export function ReceptionPanel({
                     >
                       <TableCell>
                         <div className="font-medium">{item.contactName}</div>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {item.crossSell.map((sell) => (
-                            <Badge key={sell.value}>{sell.label}</Badge>
-                          ))}
-                          {item.stuck && <Badge className="bg-red-600 hover:bg-red-600">Κολλημένο</Badge>}
-                          {item.missingCount > 0 && (
-                            <Badge variant="outline">Λείπουν {item.missingCount}</Badge>
-                          )}
-                        </div>
+                        {(item.stuck || item.missingCount > 0) && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {item.stuck && <Badge className="bg-red-600 hover:bg-red-600">Κολλημένο</Badge>}
+                            {item.missingCount > 0 && (
+                              <Badge variant="outline" className="bg-background">{missingDocsLabel(item.missingCount)}</Badge>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{item.contactEmail}</TableCell>
                       <TableCell>
                         <div>{TYPE_SHORT[item.typeKey] || item.typeLabel}</div>
-                        <div className="text-xs text-muted-foreground">{item.kind === "lead" ? "Lead" : "Υπηρεσία"}</div>
+                        <div className="text-xs text-muted-foreground">{kindText(item.kind)}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{item.statusLabel}</Badge>
+                        <Badge variant="outline" className="bg-background">{item.statusLabel}</Badge>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-muted-foreground">
                         {new Date(item.lastActivityAt).toLocaleString("el-GR", {
@@ -382,7 +434,7 @@ export function ReceptionPanel({
               <p className="text-sm mt-1">{detail.typeLabel}</p>
             </div>
             <div className="flex flex-wrap gap-1">
-              <Badge variant="secondary">{detail.kindLabel}</Badge>
+              <Badge variant="secondary">{kindText(detail.kind)}</Badge>
               {detail.crossSell.map((sell) => (
                 <Badge key={sell.value}>{sell.label}</Badge>
               ))}

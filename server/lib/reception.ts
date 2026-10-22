@@ -220,7 +220,7 @@ async function syncStatus(requestId: number, actor: "client" | "agent" | "system
     cancelKey: `request:${requestId}:status`,
     dedupeKey: `request.status_changed:${requestId}:${next}:${Date.now()}`,
   });
-  if (next !== "new") await cancelRuns(`request:${requestId}`);
+  if (next !== "missing_docs") await cancelRuns(`request:${requestId}`);
   return next;
 }
 
@@ -370,7 +370,7 @@ export async function setReceptionStatus(
     cancelKey: `request:${requestId}:status`,
     dedupeKey: `request.status_changed:${requestId}:${status}:${Date.now()}`,
   });
-  if (status !== "new") await cancelRuns(`request:${requestId}`);
+  if (status !== "missing_docs") await cancelRuns(`request:${requestId}`);
   if (isClosedStatus(status)) await cancelRuns(`request:${requestId}:docs`);
   return getReceptionRequest(websiteProgressId, requestId);
 }

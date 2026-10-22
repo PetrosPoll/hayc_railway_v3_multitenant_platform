@@ -17,11 +17,11 @@ describe("reception checklist status", () => {
     { required: true, received: false },
   ];
 
-  it("marks a vehicle claim missing docs when 2 of 4 are in", () => {
-    expect(nextChecklistStatus("service", "new", four)).toBe("missing_docs");
+  it("marks a claim missing docs when papers are still out", () => {
+    expect(nextChecklistStatus("service", "missing_docs", four)).toBe("missing_docs");
   });
 
-  it("becomes complete when every required doc is in", () => {
+  it("marks a claim complete when every required doc is in", () => {
     expect(
       nextChecklistStatus(
         "service",
@@ -31,12 +31,38 @@ describe("reception checklist status", () => {
     ).toBe("complete");
   });
 
-  it("does not move a request the agent already sent", () => {
+  it("does not move a claim the agent already sent", () => {
     expect(nextChecklistStatus("service", "sent", four)).toBe("sent");
   });
 
-  it("leaves lead statuses alone", () => {
-    expect(nextChecklistStatus("lead", "new", [])).toBe("new");
+  it("does not move a claim the agent already closed", () => {
+    expect(nextChecklistStatus("service", "closed", four)).toBe("closed");
+  });
+
+  it("keeps a new claim new when nothing is required yet", () => {
+    expect(nextChecklistStatus("service", "new", [])).toBe("new");
+  });
+
+  it("moves a new claim to missing docs when papers are out", () => {
+    expect(nextChecklistStatus("service", "new", four)).toBe("missing_docs");
+  });
+
+  it("becomes a client when a lead's required docs are all in", () => {
+    expect(
+      nextChecklistStatus(
+        "lead",
+        "missing_docs",
+        four.map((d) => ({ ...d, received: true })),
+      ),
+    ).toBe("won");
+  });
+
+  it("does not move a lead the agent already marked lost", () => {
+    expect(nextChecklistStatus("lead", "lost", four)).toBe("lost");
+  });
+
+  it("keeps a new application on missing docs until papers exist", () => {
+    expect(nextChecklistStatus("lead", "new", [])).toBe("missing_docs");
   });
 });
 
@@ -74,5 +100,6 @@ describe("reception files", () => {
     expect(isStuck(old, "missing_docs")).toBe(true);
     expect(isStuck(new Date(), "missing_docs")).toBe(false);
     expect(isStuck(old, "closed")).toBe(false);
+    expect(isStuck(old, "sent")).toBe(false);
   });
 });

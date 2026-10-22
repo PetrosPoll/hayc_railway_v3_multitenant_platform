@@ -409,7 +409,7 @@ function receptionLeadUnanswered(): AutomationGraph {
         data: {
           rules: [
             { kind: "form_field", fieldKey: "request_type", operator: "equals", value: "quote" },
-            { kind: "form_field", fieldKey: "status", operator: "equals", value: "new" },
+            { kind: "form_field", fieldKey: "status", operator: "equals", value: "missing_docs" },
           ],
         },
       },
@@ -419,7 +419,7 @@ function receptionLeadUnanswered(): AutomationGraph {
         position: { x: VERTICAL_X, y: 460 },
         data: {
           subject: "Lead χωρίς απάντηση — {{client_name}}",
-          body: "Το lead {{client_name}} ({{email}}, {{phone}}) είναι ακόμα «Νέο» μετά από 24 ώρες.\n\n{{request_type}}",
+          body: "Το lead {{client_name}} ({{email}}, {{phone}}) έχει ακόμα έγγραφα που λείπουν μετά από 24 ώρες.\n\n{{request_type}}",
         },
       },
     ],

@@ -3,8 +3,8 @@ export const RECEPTION_STUCK_DAYS = 7;
 
 export const RECEPTION_MAGIC_DAYS = 30;
 
+export const LEAD_STATUSES = ["missing_docs", "won", "lost"] as const;
 export const SERVICE_STATUSES = ["new", "missing_docs", "complete", "sent", "closed"] as const;
-export const LEAD_STATUSES = ["new", "contacted", "quoted", "won", "lost"] as const;
 
 export const STATUS_LABELS: Record<string, string> = {
   new: "Νέο",
@@ -12,8 +12,8 @@ export const STATUS_LABELS: Record<string, string> = {
   complete: "Πλήρες",
   sent: "Στάλθηκε στην εταιρεία",
   closed: "Κλειστό",
-  contacted: "Επικοινωνία",
-  quoted: "Προσφορά",
+  contacted: "Λείπουν έγγραφα",
+  quoted: "Λείπουν έγγραφα",
   won: "Έγινε πελάτης",
   lost: "Χάθηκε",
 };
@@ -44,7 +44,7 @@ export function statusesForKind(kind: string): readonly string[] {
 }
 
 export function isClosedStatus(status: string): boolean {
-  return status === "closed" || status === "won" || status === "lost";
+  return status === "closed" || status === "sent" || status === "won" || status === "lost";
 }
 
 export function slugPart(value: string): string {
@@ -79,24 +79,28 @@ export function crossSellLabel(value: string): string {
 
 export type ChecklistDoc = { required: boolean; received: boolean };
 
-const AUTO_STATUSES = new Set(["new", "missing_docs", "complete"]);
+const SERVICE_AUTO_STATUSES = new Set(["new", "missing_docs", "complete"]);
 
 /**
- * Service requests: missing required docs → Λείπουν έγγραφα.
- * All required docs in → Πλήρες.
- * Lead statuses and later service statuses stay as the agent set them.
+ * Leads: missing papers, became a client, or lost.
+ * Claims: new stays until papers are missing; all required docs in → complete.
+ * Sent and closed stay as the agent set them.
  */
 export function nextChecklistStatus(
   kind: string,
   status: string,
   docs: ChecklistDoc[],
 ): string {
-  if (kind !== "service") return status;
-  if (!AUTO_STATUSES.has(status)) return status;
+  if (kind === "lead") {
+    if (status === "lost" || status === "won") return status;
+    const required = docs.filter((d) => d.required);
+    if (required.length > 0 && required.every((d) => d.received)) return "won";
+    return "missing_docs";
+  }
+  if (!SERVICE_AUTO_STATUSES.has(status)) return status;
   const required = docs.filter((d) => d.required);
   if (required.length === 0) return status;
-  const missing = required.some((d) => !d.received);
-  if (missing) return "missing_docs";
+  if (required.some((d) => !d.received)) return "missing_docs";
   return "complete";
 }
 
