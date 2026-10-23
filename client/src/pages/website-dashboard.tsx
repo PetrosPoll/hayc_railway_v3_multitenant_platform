@@ -5326,7 +5326,7 @@ export default function WebsiteDashboard() {
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
               <SidebarTrigger />
             </header>
-            <div className="flex-1 p-4 md:p-6 overflow-x-hidden">
+            <div className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-6">
               <div className="hidden md:block">{renderBreadcrumbs()}</div>
 
               {activeSection === "progress" && (

@@ -256,6 +256,14 @@ export function ReceptionPanel({
       return left.localeCompare(right, "el") * dir;
     });
 
+  const chooseKind = (value: "lead" | "service") => {
+    setKind(value);
+    setTypeKey("all");
+    setStatus("all");
+    setSelectedId(null);
+    onSelectionChange(null);
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir((dir) => (dir === "asc" ? "desc" : "asc"));
@@ -266,7 +274,7 @@ export function ReceptionPanel({
   };
 
   return (
-    <div className="space-y-4" data-testid="section-reception">
+    <div className="min-w-0 max-w-full space-y-4" data-testid="section-reception">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Leads</h2>
@@ -276,16 +284,7 @@ export function ReceptionPanel({
               : "Ζημιές από ανθρώπους που είναι ήδη πελάτες."}
           </p>
         </div>
-        <Tabs
-          value={kind}
-          onValueChange={(value) => {
-            setKind(value as "lead" | "service");
-            setTypeKey("all");
-            setStatus("all");
-            setSelectedId(null);
-            onSelectionChange(null);
-          }}
-        >
+        <Tabs className="hidden sm:block" value={kind} onValueChange={(value) => chooseKind(value as "lead" | "service")}>
           <TabsList>
             <TabsTrigger value="lead">Πιθανοί πελάτες</TabsTrigger>
             <TabsTrigger value="service">Ζημιές</TabsTrigger>
@@ -303,7 +302,7 @@ export function ReceptionPanel({
               className="w-full sm:w-[280px]"
             />
             <Select value={typeKey} onValueChange={setTypeKey}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Τύπος" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Τύπος" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Όλοι οι τύποι</SelectItem>
                 {kind === "lead" ? (
@@ -319,7 +318,7 @@ export function ReceptionPanel({
               </SelectContent>
             </Select>
             <Select value={status} onValueChange={setStatus}>
-              <SelectTrigger className="w-[240px]"><SelectValue placeholder="Κατάσταση" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[240px]"><SelectValue placeholder="Κατάσταση" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Όλες οι καταστάσεις</SelectItem>
                 {kind === "lead" ? (
@@ -340,12 +339,20 @@ export function ReceptionPanel({
               </SelectContent>
             </Select>
             <Select value={stuckOnly} onValueChange={setStuckOnly}>
-              <SelectTrigger className="w-[180px]"><SelectValue placeholder="Κολλημένα" /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-[180px]"><SelectValue placeholder="Κολλημένα" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Όλα</SelectItem>
                 <SelectItem value="stuck">Μόνο κολλημένα</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="max-w-full overflow-x-auto sm:hidden" data-testid="leads-kind-scroll">
+            <Tabs value={kind} onValueChange={(value) => chooseKind(value as "lead" | "service")}>
+              <TabsList className="w-max">
+                <TabsTrigger value="lead">Πιθανοί πελάτες</TabsTrigger>
+                <TabsTrigger value="service">Ζημιές</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
           {listQuery.isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -358,8 +365,8 @@ export function ReceptionPanel({
               {kind === "lead" ? "Κανένας πιθανός πελάτης δεν ταιριάζει." : "Καμία ζημιά δεν ταιριάζει."}
             </p>
           ) : (
-            <div className="rounded-lg border">
-              <Table>
+            <div className="max-w-full min-w-0 overflow-x-auto overscroll-x-contain rounded-lg border">
+              <Table className="min-w-[880px]">
                 <TableHeader>
                   <TableRow>
                     <SortableHead label="Πελάτης" active={sortKey === "name"} dir={sortDir} onClick={() => toggleSort("name")} />
