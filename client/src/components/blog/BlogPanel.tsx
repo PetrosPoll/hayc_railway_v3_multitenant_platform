@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import { Loader2, Menu } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 
@@ -63,6 +65,8 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
   const queryClient = useQueryClient();
   const [editor, setEditor] = useState<EditorState>(emptyEditor);
   const [allowExtra, setAllowExtra] = useState(false);
+  const [section, setSection] = useState("topic");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const postsQuery = useQuery<{ posts: BlogPost[]; usage: BlogUsage }>({
     queryKey: ["/api/websites", websiteId, "blog"],
@@ -104,6 +108,7 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
         published: post.published,
       });
       invalidate();
+      setSection("editor");
       toast({ description: t("dashboard.blogGenerated") || "Article created" });
     },
     onError: (error: Error) => {
@@ -182,6 +187,7 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
       notes: "",
       published: post.published,
     });
+    setSection("editor");
   };
 
   const syncMutation = useMutation({
@@ -209,6 +215,12 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
   const atHardLimit = count >= (usage?.limit ?? 15);
   const needsConfirm = count >= (usage?.recommended ?? 7) && !atHardLimit;
   const posts = postsQuery.data?.posts || [];
+  const sections = [
+    { value: "topic", label: t("dashboard.blogTabTopic") || "Topic" },
+    { value: "editor", label: t("dashboard.blogTabEditor") || "Edit" },
+    { value: "articles", label: t("dashboard.blogTabArticles") || "Articles" },
+  ];
+  const currentSection = sections.find((item) => item.value === section) || sections[0];
   const hasChangesSinceSync = posts.some((post) => {
     if (post.published) {
       if (!post.syncedAt || !post.sitePath) return true;
@@ -258,6 +270,47 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
         ) : null}
       </div>
 
+      <Tabs value={section} onValueChange={setSection}>
+        <div className="flex items-center justify-between sm:hidden">
+          <span className="text-sm font-medium">{currentSection.label}</span>
+          <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" aria-label={t("dashboard.blogMenu") || "Menu"} data-testid="blog-menu">
+                <Menu className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle>{t("dashboard.blog") || "Blog"}</SheetTitle>
+              </SheetHeader>
+              <div className="mt-6 flex flex-col gap-2">
+                {sections.map((item) => (
+                  <Button
+                    key={item.value}
+                    variant={item.value === section ? "default" : "ghost"}
+                    className="justify-start"
+                    onClick={() => {
+                      setSection(item.value);
+                      setMenuOpen(false);
+                    }}
+                    data-testid={`blog-menu-${item.value}`}
+                  >
+                    {item.label}
+                  </Button>
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+        <TabsList className="hidden h-auto w-full grid-cols-3 sm:grid" data-testid="blog-tabs">
+          {sections.map((item) => (
+            <TabsTrigger key={item.value} className="whitespace-normal px-2 py-2 text-center" value={item.value} data-testid={`blog-tab-${item.value}`}>
+              {item.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+      <TabsContent value="topic" className="mt-4">
       <Card>
         <CardHeader>
           <CardTitle>{t("dashboard.blogTopic") || "Topic"}</CardTitle>
@@ -309,7 +362,9 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
           </Button>
         </CardContent>
       </Card>
+      </TabsContent>
 
+      <TabsContent value="editor" className="mt-4">
       <Card>
         <CardHeader>
           <CardTitle>{t("dashboard.blogArticle") || "Article"}</CardTitle>
@@ -387,7 +442,9 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
           </div>
         </CardContent>
       </Card>
+      </TabsContent>
 
+      <TabsContent value="articles" className="mt-4 space-y-4">
       <Card>
         <CardContent className="pt-6 space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
@@ -417,7 +474,6 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
           </p>
         </CardContent>
       </Card>
-
       <div className="space-y-3" data-testid="blog-list">
         {posts.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t("dashboard.blogEmpty") || "No articles yet"}</p>
@@ -427,7 +483,7 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
               key={post.id}
               type="button"
               onClick={() => loadPost(post)}
-              className="w-full text-left rounded-md border p-4 hover:bg-muted/40"
+              className={`w-full text-left rounded-md border p-4 hover:bg-muted/40 ${editor.id === post.id ? "border-primary" : ""}`}
               data-testid={`blog-post-${post.id}`}
             >
               <div className="flex items-center justify-between gap-3">
@@ -447,6 +503,8 @@ export function BlogPanel({ websiteId }: { websiteId: number }) {
           ))
         )}
       </div>
+      </TabsContent>
+      </Tabs>
     </div>
   );
 }
