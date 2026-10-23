@@ -53,33 +53,37 @@ async function monthlyCount(websiteId: number) {
 }
 
 async function refreshJob(job: typeof videoJobs.$inferSelect) {
-  if (job.status !== "processing" || !job.providerVideoId || !job.providerTaskId) return job;
+  if (job.status !== "processing" || !job.providerVideoId || !job.providerTaskId) {
+    return { job, stage: null as string | null };
+  }
   try {
     const next = await provider.status({
       providerVideoId: job.providerVideoId,
       providerTaskId: job.providerTaskId,
     });
+    const stage = next.stage || null;
     const clearFile = job.s3Key && (next.status === "completed" || next.status === "failed");
     if (clearFile && job.s3Key) await deleteVideoObject(job.s3Key).catch(() => undefined);
-    if (next.status === job.status && !clearFile) return job;
+    if (next.status === job.status && !clearFile) return { job, stage };
     const [updated] = await db.update(videoJobs).set({
       status: next.status,
       error: next.status === "failed" ? (next.error || "Η επεξεργασία απέτυχε.") : null,
       s3Key: clearFile ? null : job.s3Key,
       updatedAt: new Date(),
     }).where(eq(videoJobs.id, job.id)).returning();
-    return updated || job;
+    return { job: updated || job, stage };
   } catch {
-    return job;
+    return { job, stage: null as string | null };
   }
 }
 
-function publicJob(job: typeof videoJobs.$inferSelect, retentionDays: number) {
+function publicJob(job: typeof videoJobs.$inferSelect, retentionDays: number, stage: string | null) {
   return {
     id: job.id,
     fileName: job.fileName,
     styleName: job.styleName,
     status: job.status,
+    stage,
     error: job.error,
     createdAt: job.createdAt,
     retentionDays,
@@ -95,9 +99,9 @@ export function registerVideoRoutes(app: Express) {
     const rows = await db.select().from(videoJobs).where(eq(videoJobs.websiteProgressId, websiteId)).orderBy(desc(videoJobs.createdAt));
     const jobs = [];
     for (const row of rows) jobs.push(await refreshJob(row));
-    const count = jobs.filter((job) => job.status !== "failed" && job.createdAt && job.createdAt >= athensMonthStart()).length;
+    const count = jobs.filter((item) => item.job.status !== "failed" && item.job.createdAt && item.job.createdAt >= athensMonthStart()).length;
     res.json({
-      jobs: jobs.map((job) => publicJob(job, provider.retentionDays)),
+      jobs: jobs.map((item) => publicJob(item.job, provider.retentionDays, item.stage)),
       usage: { count, limit: VIDEO_LIMIT_PER_MONTH },
       retentionDays: provider.retentionDays,
       maxSeconds: VIDEO_MAX_SECONDS,
@@ -194,7 +198,7 @@ export function registerVideoRoutes(app: Express) {
       status: "processing",
       s3Key: submitted.received ? null : parsed.data.key,
     }).returning();
-    res.status(201).json(publicJob(job, provider.retentionDays));
+    res.status(201).json(publicJob(job, provider.retentionDays, "pending"));
   });
 
   app.get("/api/websites/:id/videos/:jobId/download", async (req, res) => {

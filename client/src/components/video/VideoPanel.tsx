@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
 
@@ -14,6 +16,7 @@ type Job = {
   fileName: string;
   styleName: string;
   status: "processing" | "completed" | "failed";
+  stage: string | null;
   error: string | null;
   createdAt: string | null;
   retentionDays: number;
@@ -28,6 +31,41 @@ type VideoList = {
 async function readError(response: Response) {
   const data = await response.json().catch(() => ({}));
   return data.error || "Κάτι πήγε στραβά.";
+}
+
+type RunProgress = {
+  phase: "upload" | "starting" | "processing" | "done" | "failed";
+  loaded: number;
+  total: number;
+  startedAt: number;
+  jobId: number | null;
+  error: string | null;
+};
+
+function formatClock(seconds: number) {
+  const total = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(total / 60);
+  const rest = total % 60;
+  return `${minutes}:${String(rest).padStart(2, "0")}`;
+}
+
+function uploadWithProgress(url: string, file: File, contentType: string, onProgress: (loaded: number, total: number) => void) {
+  return new Promise<{ key: string }>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.withCredentials = true;
+    xhr.setRequestHeader("Content-Type", contentType);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded, event.total);
+    };
+    xhr.onload = () => {
+      const data = JSON.parse(xhr.responseText || "{}");
+      if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+      else reject(new Error(data.error || "Το ανέβασμα απέτυχε."));
+    };
+    xhr.onerror = () => reject(new TypeError("failed"));
+    xhr.send(file);
+  });
 }
 
 function readDuration(file: File) {
@@ -57,6 +95,8 @@ export function VideoPanel({ websiteId }: { websiteId: number }) {
   const [file, setFile] = useState<File | null>(null);
   const [styleId, setStyleId] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<RunProgress | null>(null);
+  const [now, setNow] = useState(Date.now());
 
   const listQuery = useQuery<VideoList>({
     queryKey: ["/api/websites", websiteId, "videos"],
@@ -91,6 +131,23 @@ export function VideoPanel({ websiteId }: { websiteId: number }) {
     },
   });
 
+  useEffect(() => {
+    if (!progress) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [progress?.phase]);
+
+  useEffect(() => {
+    if (!progress?.jobId) return;
+    const job = listQuery.data?.jobs.find((item) => item.id === progress.jobId);
+    if (!job) return;
+    if (job.status === "completed") {
+      setProgress((current) => current && current.phase !== "done" ? { ...current, phase: "done" } : current);
+    } else if (job.status === "failed") {
+      setProgress((current) => current && current.phase !== "failed" ? { ...current, phase: "failed", error: job.error } : current);
+    }
+  }, [listQuery.data, progress?.jobId]);
+
   const usage = listQuery.data?.usage;
   const count = usage?.count ?? 0;
   const limit = usage?.limit ?? 10;
@@ -115,14 +172,17 @@ export function VideoPanel({ websiteId }: { websiteId: number }) {
           ? "video/mp4"
           : "";
       if (!contentType) throw new Error("Το αρχείο πρέπει να είναι mp4 ή mov.");
-      const uploadResponse = await fetch(`/api/websites/${websiteId}/videos/upload`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": contentType },
-        body: file,
-      });
-      if (!uploadResponse.ok) throw new Error(await readError(uploadResponse));
-      const uploaded = await uploadResponse.json() as { key: string };
+      const startedAt = Date.now();
+      setProgress({ phase: "upload", loaded: 0, total: file.size, startedAt, jobId: null, error: null });
+      const uploaded = await uploadWithProgress(
+        `/api/websites/${websiteId}/videos/upload`,
+        file,
+        contentType,
+        (loaded, total) => {
+          setProgress((current) => current ? { ...current, loaded, total } : current);
+        },
+      );
+      setProgress((current) => current ? { ...current, phase: "starting", startedAt: Date.now() } : current);
       const createResponse = await fetch(`/api/websites/${websiteId}/videos`, {
         method: "POST",
         credentials: "include",
@@ -135,22 +195,95 @@ export function VideoPanel({ websiteId }: { websiteId: number }) {
         }),
       });
       if (!createResponse.ok) throw new Error(await readError(createResponse));
+      const created = await createResponse.json() as Job;
       setFile(null);
       setStyleId("");
+      setProgress((current) => current ? {
+        ...current,
+        phase: "processing",
+        jobId: created.id,
+        startedAt: created.createdAt ? new Date(created.createdAt).getTime() : Date.now(),
+      } : current);
       await queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "videos"] });
-      toast({ description: t("dashboard.videoStarted") || "Η επεξεργασία ξεκίνησε." });
     } catch (error) {
       const message = error instanceof TypeError
         ? "Η σύνδεση με τον server κόπηκε. Έλεγξε ότι τρέχει και δοκίμασε ξανά."
         : error instanceof Error ? error.message : "Κάτι πήγε στραβά.";
       toast({ description: message, variant: "destructive" });
+      setProgress(null);
     } finally {
       setBusy(false);
     }
   };
 
+  const activeJob = progress?.jobId ? listQuery.data?.jobs.find((job) => job.id === progress.jobId) : undefined;
+  const elapsedSeconds = progress ? Math.max(0, (now - progress.startedAt) / 1000) : 0;
+  const uploadSpeed = progress && progress.loaded > 0 ? progress.loaded / Math.max(0.2, (now - progress.startedAt) / 1000) : 0;
+  const remainingSeconds = progress && uploadSpeed > 0 ? (progress.total - progress.loaded) / uploadSpeed : null;
+  const uploadPercent = progress && progress.total > 0 ? Math.min(100, Math.round((progress.loaded / progress.total) * 100)) : 0;
+  const stageLabel = (stage: string | null | undefined) => {
+    if (stage === "transcribing") return t("dashboard.videoStageTranscribing") || "Μεταγραφή ομιλίας";
+    if (stage === "transcriptionCompleted") return t("dashboard.videoStageTranscriptReady") || "Η μεταγραφή ολοκληρώθηκε";
+    if (stage === "rendering") return t("dashboard.videoStageRendering") || "Δημιουργία βίντεο";
+    if (stage === "pending") return t("dashboard.videoStagePending") || "Στην ουρά";
+    return t("dashboard.videoProcessing") || "Επεξεργασία...";
+  };
+  const closeProgress = () => {
+    if (progress?.phase === "upload" || progress?.phase === "starting") return;
+    setProgress(null);
+  };
+
   return (
     <div className="space-y-6" data-testid="section-video">
+      <Dialog open={progress !== null} onOpenChange={(open) => { if (!open) closeProgress(); }}>
+        <DialogContent
+          onPointerDownOutside={(event) => {
+            if (progress?.phase === "upload" || progress?.phase === "starting") event.preventDefault();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (progress?.phase === "upload" || progress?.phase === "starting") event.preventDefault();
+          }}
+          hideClose={progress?.phase === "upload" || progress?.phase === "starting"}
+          data-testid="video-progress-dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>
+              {progress?.phase === "upload"
+                ? t("dashboard.videoUploadTitle") || "Ανέβασμα"
+                : t("dashboard.videoProcessingTitle") || "Επεξεργασία"}
+            </DialogTitle>
+          </DialogHeader>
+          {progress?.phase === "upload" ? (
+            <div className="space-y-3">
+              <Progress value={uploadPercent} />
+              <p className="text-sm">
+                {remainingSeconds === null
+                  ? t("dashboard.videoTimeCalculating") || "Υπολογισμός χρόνου..."
+                  : t("dashboard.videoTimeLeft", { time: formatClock(remainingSeconds) }) || `Απομένουν ${formatClock(remainingSeconds)}`}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm">
+                {progress?.phase === "done"
+                  ? t("dashboard.videoReady") || "Το βίντεο είναι έτοιμο."
+                  : progress?.phase === "failed"
+                    ? progress.error || t("dashboard.videoFailed") || "Απέτυχε"
+                    : progress?.phase === "starting"
+                      ? t("dashboard.videoStarting") || "Ξεκινά η επεξεργασία..."
+                      : stageLabel(activeJob?.stage)}
+              </p>
+              {progress?.phase !== "done" && progress?.phase !== "failed" ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("dashboard.videoElapsed", { time: formatClock(elapsedSeconds) }) || `Διαρκεί ${formatClock(elapsedSeconds)}`}
+                </p>
+              ) : (
+                <Button onClick={closeProgress}>{t("dashboard.videoClose") || "Κλείσιμο"}</Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <div>
         <h2 className="text-2xl font-semibold">{t("dashboard.video") || "Επεξεργασία βίντεο"}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -235,7 +368,7 @@ export function VideoPanel({ websiteId }: { websiteId: number }) {
               <Badge variant={job.status === "failed" ? "destructive" : "secondary"}>
                 {job.status === "failed"
                   ? t("dashboard.videoFailed") || "Απέτυχε"
-                  : t("dashboard.videoProcessing") || "Επεξεργασία..."}
+                  : stageLabel(job.stage)}
               </Badge>
             )}
           </div>

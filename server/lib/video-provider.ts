@@ -22,6 +22,7 @@ export type VideoProvider = {
   }>;
   status(input: { providerVideoId: string; providerTaskId: string }): Promise<{
     status: ProviderJobStatus;
+    stage?: string;
     error?: string;
   }>;
   downloadUrl(input: { providerVideoId: string; providerTaskId: string }): Promise<string>;

@@ -139,7 +139,7 @@ export function createZapcapProvider(): VideoProvider {
       const task = asRecord(await zapcap(`/videos/${providerVideoId}/task/${providerTaskId}`));
       const status = mapProviderStatus(task.status);
       const error = typeof task.error === "string" ? task.error : typeof task.message === "string" && status === "failed" ? task.message : undefined;
-      return { status, error };
+      return { status, stage: String(task.status || ""), error };
     },
     async downloadUrl({ providerVideoId, providerTaskId }) {
       const task = asRecord(await zapcap(`/videos/${providerVideoId}/task/${providerTaskId}`));
