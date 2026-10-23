@@ -20,6 +20,21 @@ const config = {
   ],
 };
 
+const sampleConfig = {
+  blogSampleCardConfig: {
+    title: { el: "Δείγμα άρθρου", en: "Δείγμα άρθρου" },
+    excerpt: { el: "παράδειγμα", en: "παράδειγμα" },
+    href: "/blog/sample-article",
+    image: "/theme/sample.webp",
+  },
+  blogSampleArticleConfig: {
+    title: { el: "Δείγμα άρθρου", en: "Δείγμα άρθρου" },
+    metaDescription: { el: "περιγραφή", en: "περιγραφή" },
+    content: { el: "<p>δείγμα</p>", en: "<p>δείγμα</p>" },
+    image: "/theme/sample.webp",
+  },
+};
+
 describe("syncBlogPostsIntoConfig", () => {
   it("adds a page and a card copied from the existing article", () => {
     const result = syncBlogPostsIntoConfig(config, [{
@@ -73,5 +88,35 @@ describe("syncBlogPostsIntoConfig", () => {
     const cards = (pages[0].cards as Array<Record<string, unknown>>).filter((card) => card.href === "/blog/neo-arthro");
     expect(cards).toHaveLength(1);
     expect(cards[0].title).toBe("Διορθωμένος τίτλος");
+  });
+
+  it("writes bilingual articles and cards from the sample config", () => {
+    const result = syncBlogPostsIntoConfig(sampleConfig, [{
+      id: 8,
+      slug: "neo-arthro",
+      title: "Νέο άρθρο",
+      excerpt: "νέα περίληψη",
+      html: "<p>νέο</p>",
+      sitePath: null,
+    }]);
+    if ("error" in result) throw new Error(result.error);
+    const articles = result.config.blogArticles as Array<Record<string, unknown>>;
+    const cards = result.config.blogCards as Array<Record<string, unknown>>;
+    expect(articles).toHaveLength(1);
+    expect(articles[0]).toMatchObject({
+      title: { el: "Νέο άρθρο", en: "Νέο άρθρο" },
+      metaDescription: { el: "νέα περίληψη", en: "νέα περίληψη" },
+      content: { el: "<p>νέο</p>", en: "<p>νέο</p>" },
+      href: "/blog/neo-arthro",
+      slug: "neo-arthro",
+      image: "/theme/sample.webp",
+    });
+    expect(cards[0]).toMatchObject({
+      title: { el: "Νέο άρθρο", en: "Νέο άρθρο" },
+      excerpt: { el: "νέα περίληψη", en: "νέα περίληψη" },
+      href: "/blog/neo-arthro",
+    });
+    expect(result.config.blogSampleArticleConfig).toEqual(sampleConfig.blogSampleArticleConfig);
+    expect(result.paths[8]).toBe("/blog/neo-arthro");
   });
 });

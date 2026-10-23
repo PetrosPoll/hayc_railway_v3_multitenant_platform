@@ -53,6 +53,72 @@ function collect(node: unknown, parent: unknown[] | Record<string, unknown> | nu
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
+function localeText(current: unknown, text: string): unknown {
+  if (isRecord(current) && ("el" in current || "en" in current)) {
+    return { ...current, el: text, en: text };
+  }
+  if (typeof current === "string") return text;
+  return { el: text, en: text };
+}
+
+function syncSampleShape(
+  next: Record<string, unknown>,
+  posts: BlogSyncPost[],
+  stalePaths: string[],
+): { config: Record<string, unknown>; paths: Record<number, string> } | null {
+  const articleTemplate = next.blogSampleArticleConfig;
+  const cardTemplate = next.blogSampleCardConfig;
+  if (!isRecord(articleTemplate) || !isRecord(cardTemplate)) return null;
+  if (typeof cardTemplate.href !== "string" || !cardTemplate.href.startsWith("/")) return null;
+
+  const articles = (Array.isArray(next.blogArticles) ? next.blogArticles : []).filter(isRecord);
+  const cards = (Array.isArray(next.blogCards) ? next.blogCards : []).filter(isRecord);
+  const paths: Record<number, string> = {};
+  const activePaths = new Set<string>();
+  const image = typeof articleTemplate.image === "string"
+    ? articleTemplate.image
+    : typeof cardTemplate.image === "string" ? cardTemplate.image : "";
+
+  for (const post of posts) {
+    const existingRoute = post.sitePath && (articles.some((item) => item.href === post.sitePath) || cards.some((item) => item.href === post.sitePath))
+      ? post.sitePath
+      : null;
+    const route = existingRoute || `/blog/${post.slug}`;
+    activePaths.add(route);
+    paths[post.id] = route;
+
+    const article = {
+      title: localeText(articleTemplate.title, post.title),
+      metaDescription: localeText(articleTemplate.metaDescription, post.excerpt),
+      content: localeText(articleTemplate.content, post.html),
+      image,
+      href: route,
+      slug: post.slug,
+    };
+    const card = {
+      title: localeText(cardTemplate.title, post.title),
+      excerpt: localeText(cardTemplate.excerpt, post.excerpt),
+      href: route,
+      image: typeof cardTemplate.image === "string" ? cardTemplate.image : image,
+    };
+    const articleIndex = articles.findIndex((item) => item.href === route || item.slug === post.slug);
+    if (articleIndex >= 0) articles[articleIndex] = article;
+    else articles.unshift(article);
+    const cardIndex = cards.findIndex((item) => item.href === route);
+    if (cardIndex >= 0) cards[cardIndex] = card;
+    else cards.unshift(card);
+  }
+
+  const stale = new Set(stalePaths.filter((path) => !activePaths.has(path)));
+  next.blogArticles = articles.filter((item) => typeof item.href !== "string" || !stale.has(item.href));
+  next.blogCards = cards.filter((item) => typeof item.href !== "string" || !stale.has(item.href));
+  return { config: next, paths };
+}
+
 function routeForSlug(templateRoute: string, slug: string): string {
   const trimmed = templateRoute.replace(/\/+$/, "");
   const parts = trimmed.split("/");
@@ -68,9 +134,9 @@ function fill(value: unknown, fromRoute: string, post: BlogSyncPost, nextRoute: 
   if (!value || typeof value !== "object") return value;
   const output: Record<string, unknown> = {};
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (top && TITLE_KEYS.test(key) && typeof child === "string") output[key] = post.title;
-    else if (top && EXCERPT_KEYS.test(key) && typeof child === "string") output[key] = post.excerpt;
-    else if (top && BODY_KEYS.test(key) && typeof child === "string") output[key] = post.html;
+    if (top && TITLE_KEYS.test(key) && (typeof child === "string" || isRecord(child))) output[key] = localeText(child, post.title);
+    else if (top && EXCERPT_KEYS.test(key) && (typeof child === "string" || isRecord(child))) output[key] = localeText(child, post.excerpt);
+    else if (top && BODY_KEYS.test(key) && (typeof child === "string" || isRecord(child))) output[key] = localeText(child, post.html);
     else if (top && key === "slug" && typeof child === "string") output[key] = post.slug;
     else output[key] = fill(child, fromRoute, post, nextRoute, false);
   }
@@ -107,6 +173,8 @@ export function syncBlogPostsIntoConfig(
   stalePaths: string[] = [],
 ): { config: Record<string, unknown>; paths: Record<number, string> } | { error: string } {
   const next = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
+  const sample = syncSampleShape(next, posts, stalePaths);
+  if (sample) return sample;
   const located = [] as Located[];
   collect(next, null, null, located);
   const articles = located.filter((item) => isArticleRoute(item.route));
