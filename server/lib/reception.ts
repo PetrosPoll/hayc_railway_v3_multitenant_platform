@@ -316,7 +316,7 @@ export async function getReceptionRequest(websiteProgressId: number, requestId: 
     typeLabel: bundle.type.label,
     kind: bundle.type.kind,
     kindLabel: bundle.type.kind === "lead" ? "Lead" : "Service",
-    allowUploads: bundle.type.allowUploads,
+    allowUploads: bundle.type.allowUploads || bundle.docs.some((doc) => (doc.files || []).length > 0),
     status: bundle.request.status,
     statusLabel: statusLabel(bundle.request.status),
     statuses: statusesForKind(bundle.type.kind).map((key) => ({
@@ -639,14 +639,13 @@ export async function publicReceptionView(token: string) {
   const missing = request.docs.filter((d) => d.required && !d.received);
   return {
     typeLabel: request.type.label,
-    allowUploads: request.type.allowUploads,
+    allowUploads: missing.length > 0,
     missing: missing.map((d) => ({ id: d.id, key: d.docKey, label: d.label })),
   };
 }
 
 export async function uploadFromMagicLink(token: string, files: IncomingReceptionFile[]) {
   const bundle = await requestByToken(token);
-  if (!bundle.type.allowUploads) throw new ReceptionError(400, "Αυτό το αίτημα δεν δέχεται αρχεία");
   if (!files.length) throw new ReceptionError(400, "Δεν επιλέχθηκε αρχείο");
   const missingKeys = new Set(bundle.docs.filter((d) => !d.received).map((d) => d.docKey));
   for (const file of files) {
@@ -662,7 +661,7 @@ export async function uploadFromMagicLink(token: string, files: IncomingReceptio
 export async function downloadReceptionZip(websiteProgressId: number, requestId: number) {
   await assertReceptionEnabled(websiteProgressId);
   const bundle = await loadBundle(requestId, websiteProgressId);
-  if (!bundle.type.allowUploads) throw new ReceptionError(400, "Δεν υπάρχουν αρχεία για αυτό το αίτημα");
+  if (!bundle.docs.some((doc) => (doc.files || []).length > 0)) throw new ReceptionError(400, "Δεν υπάρχουν αρχεία");
   const items: { docKey: string; ext: string; file: ReceptionFile }[] = [];
   for (const doc of bundle.docs) {
     for (const file of doc.files || []) {
