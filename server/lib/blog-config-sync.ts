@@ -65,21 +65,6 @@ function localeText(current: unknown, text: string): unknown {
   return { el: text, en: text };
 }
 
-function htmlToParagraphs(html: string): string[] {
-  const text = html
-    .replace(/<br\s*\/?>/gi, "\n")
-    .replace(/<\/(p|h1|h2|h3|h4|li|blockquote|div)>/gi, "\n")
-    .replace(/<[^>]+>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, "\"")
-    .replace(/&#39;/g, "'");
-  const parts = text.split(/\n+/).map((part) => part.trim()).filter(Boolean);
-  return parts.length > 0 ? parts : [text.trim()];
-}
-
 function dateLabel(existing: unknown): { el: string; en: string } {
   if (isRecord(existing) && typeof existing.el === "string" && existing.el && typeof existing.en === "string" && existing.en) {
     return { el: existing.el, en: existing.en };
@@ -134,7 +119,7 @@ function syncBlogConfigPosts(
       excerpt: localeText(current?.excerpt ?? template?.excerpt, post.excerpt),
       image,
       imageAlt: localeText(current?.imageAlt ?? template?.imageAlt, post.title),
-      body: htmlToParagraphs(post.html).map((paragraph) => ({ el: paragraph, en: paragraph })),
+      body: [{ el: post.html, en: post.html }],
     };
     if (index >= 0) list[index] = entry;
     else list.unshift(entry);

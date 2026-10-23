@@ -152,11 +152,10 @@ describe("syncBlogPostsIntoConfig", () => {
       title: { el: "Ασφάλεια μοτοσυκλέτας", en: "Ασφάλεια μοτοσυκλέτας" },
       excerpt: { el: "σύντομη περιγραφή", en: "σύντομη περιγραφή" },
       image: "/theme/yamaha.jpg",
-      body: [
-        { el: "Πρώτη παράγραφος.", en: "Πρώτη παράγραφος." },
-        { el: "Τι να προσέξεις", en: "Τι να προσέξεις" },
-        { el: "Δεύτερη παράγραφος.", en: "Δεύτερη παράγραφος." },
-      ],
+      body: [{
+        el: "<p>Πρώτη παράγραφος.</p><h2>Τι να προσέξεις</h2><p>Δεύτερη παράγραφος.</p>",
+        en: "<p>Πρώτη παράγραφος.</p><h2>Τι να προσέξεις</h2><p>Δεύτερη παράγραφος.</p>",
+      }],
     });
     expect(result.paths[3]).toBe("/blog/asfaleia-motosykletas");
     expect((result.config.blogConfig as { pageTitle: unknown }).pageTitle).toEqual({ el: "Blog", en: "Blog" });
