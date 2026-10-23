@@ -119,4 +119,46 @@ describe("syncBlogPostsIntoConfig", () => {
     expect(result.config.blogSampleArticleConfig).toEqual(sampleConfig.blogSampleArticleConfig);
     expect(result.paths[8]).toBe("/blog/neo-arthro");
   });
+
+  it("adds a post to blogConfig.posts and keeps the sample", () => {
+    const yamaha = {
+      blogConfig: {
+        pageTitle: { el: "Blog", en: "Blog" },
+        posts: [
+          {
+            slug: "proto-test-ride",
+            dateLabel: { el: "23 Οκτωβρίου 2026", en: "23 October 2026" },
+            title: { el: "Δείγμα", en: "Sample" },
+            excerpt: { el: "δείγμα", en: "sample" },
+            image: "/theme/yamaha.jpg",
+            imageAlt: { el: "φωτο", en: "photo" },
+            body: [{ el: "παράγραφος", en: "paragraph" }],
+          },
+        ],
+      },
+    };
+    const result = syncBlogPostsIntoConfig(yamaha, [{
+      id: 3,
+      slug: "asfaleia-motosykletas",
+      title: "Ασφάλεια μοτοσυκλέτας",
+      excerpt: "σύντομη περιγραφή",
+      html: "<p>Πρώτη παράγραφος.</p><h2>Τι να προσέξεις</h2><p>Δεύτερη παράγραφος.</p>",
+      sitePath: null,
+    }]);
+    if ("error" in result) throw new Error(result.error);
+    const posts = (result.config.blogConfig as { posts: Array<Record<string, unknown>> }).posts;
+    expect(posts.map((post) => post.slug)).toEqual(["asfaleia-motosykletas", "proto-test-ride"]);
+    expect(posts[0]).toMatchObject({
+      title: { el: "Ασφάλεια μοτοσυκλέτας", en: "Ασφάλεια μοτοσυκλέτας" },
+      excerpt: { el: "σύντομη περιγραφή", en: "σύντομη περιγραφή" },
+      image: "/theme/yamaha.jpg",
+      body: [
+        { el: "Πρώτη παράγραφος.", en: "Πρώτη παράγραφος." },
+        { el: "Τι να προσέξεις", en: "Τι να προσέξεις" },
+        { el: "Δεύτερη παράγραφος.", en: "Δεύτερη παράγραφος." },
+      ],
+    });
+    expect(result.paths[3]).toBe("/blog/asfaleia-motosykletas");
+    expect((result.config.blogConfig as { pageTitle: unknown }).pageTitle).toEqual({ el: "Blog", en: "Blog" });
+  });
 });

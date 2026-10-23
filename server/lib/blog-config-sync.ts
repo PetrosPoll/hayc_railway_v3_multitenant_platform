@@ -65,6 +65,92 @@ function localeText(current: unknown, text: string): unknown {
   return { el: text, en: text };
 }
 
+function htmlToParagraphs(html: string): string[] {
+  const text = html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|h1|h2|h3|h4|li|blockquote|div)>/gi, "\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, "\"")
+    .replace(/&#39;/g, "'");
+  const parts = text.split(/\n+/).map((part) => part.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : [text.trim()];
+}
+
+function dateLabel(existing: unknown): { el: string; en: string } {
+  if (isRecord(existing) && typeof existing.el === "string" && existing.el && typeof existing.en === "string" && existing.en) {
+    return { el: existing.el, en: existing.en };
+  }
+  const now = new Date();
+  return {
+    el: new Intl.DateTimeFormat("el-GR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Athens" }).format(now),
+    en: new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Athens" }).format(now),
+  };
+}
+
+function findBlogConfig(node: unknown): Record<string, unknown> | null {
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = findBlogConfig(item);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (!isRecord(node)) return null;
+  if (isRecord(node.blogConfig) && (Array.isArray((node.blogConfig as Record<string, unknown>).posts) || (node.blogConfig as Record<string, unknown>).posts == null)) {
+    return node.blogConfig as Record<string, unknown>;
+  }
+  for (const child of Object.values(node)) {
+    const found = findBlogConfig(child);
+    if (found) return found;
+  }
+  return null;
+}
+
+function syncBlogConfigPosts(
+  next: Record<string, unknown>,
+  posts: BlogSyncPost[],
+  stalePaths: string[],
+): { config: Record<string, unknown>; paths: Record<number, string> } | null {
+  const blog = findBlogConfig(next);
+  if (!blog) return null;
+  const list = (Array.isArray(blog.posts) ? blog.posts : []).filter(isRecord);
+  const template = list[0];
+  const image = template && typeof template.image === "string" ? template.image : "";
+  const paths: Record<number, string> = {};
+  const activeSlugs = new Set<string>();
+
+  for (const post of posts) {
+    const previousSlug = post.sitePath?.split("/").filter(Boolean).pop() || null;
+    const index = list.findIndex((item) => item.slug === post.slug || (previousSlug && item.slug === previousSlug));
+    const current = index >= 0 ? list[index] : null;
+    const entry = {
+      slug: post.slug,
+      dateLabel: dateLabel(current?.dateLabel),
+      title: localeText(current?.title ?? template?.title, post.title),
+      excerpt: localeText(current?.excerpt ?? template?.excerpt, post.excerpt),
+      image,
+      imageAlt: localeText(current?.imageAlt ?? template?.imageAlt, post.title),
+      body: htmlToParagraphs(post.html).map((paragraph) => ({ el: paragraph, en: paragraph })),
+    };
+    if (index >= 0) list[index] = entry;
+    else list.unshift(entry);
+    activeSlugs.add(post.slug);
+    paths[post.id] = `/blog/${post.slug}`;
+  }
+
+  const staleSlugs = new Set(
+    stalePaths
+      .map((path) => path.split("/").filter(Boolean).pop() || "")
+      .filter((slug) => slug && !activeSlugs.has(slug)),
+  );
+  blog.posts = list.filter((item) => typeof item.slug !== "string" || !staleSlugs.has(item.slug));
+  return { config: next, paths };
+}
+
 function syncSampleShape(
   next: Record<string, unknown>,
   posts: BlogSyncPost[],
@@ -173,6 +259,8 @@ export function syncBlogPostsIntoConfig(
   stalePaths: string[] = [],
 ): { config: Record<string, unknown>; paths: Record<number, string> } | { error: string } {
   const next = JSON.parse(JSON.stringify(config)) as Record<string, unknown>;
+  const blogList = syncBlogConfigPosts(next, posts, stalePaths);
+  if (blogList) return blogList;
   const sample = syncSampleShape(next, posts, stalePaths);
   if (sample) return sample;
   const located = [] as Located[];
