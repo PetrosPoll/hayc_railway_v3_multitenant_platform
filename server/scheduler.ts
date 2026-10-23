@@ -31,6 +31,7 @@ async function markScheduledCampaignFailed(
 let schedulerInterval: NodeJS.Timeout | null = null;
 let lastBillingNightlyKey: string | null = null;
 let lastBillingDigestKey: string | null = null;
+let lastScheduleOffsetKey: string | null = null;
 
 function athensHourMinute(now = new Date()): { dateKey: string; hour: number; minute: number } {
   const fmt = new Intl.DateTimeFormat("en-CA", {
@@ -140,6 +141,12 @@ export function startCampaignScheduler(storage: IStorage) {
       console.error('[SCHEDULER] Error processing automation jobs:', error);
     }
     try {
+      const { processDueAutomationSteps } = await import("./lib/automation-engine-v2");
+      await processDueAutomationSteps({ limit: 50 });
+    } catch (error) {
+      console.error("[SCHEDULER] Error processing automation v2 steps:", error);
+    }
+    try {
       const { dateKey, hour, minute } = athensHourMinute();
       if (hour === 3 && minute === 0 && lastBillingNightlyKey !== dateKey) {
         lastBillingNightlyKey = dateKey;
@@ -148,6 +155,17 @@ export function startCampaignScheduler(storage: IStorage) {
       if (hour === 9 && minute === 0 && lastBillingDigestKey !== dateKey) {
         lastBillingDigestKey = dateKey;
         await runBillingAdminDigest();
+      }
+      if (hour === 9 && minute === 0 && lastScheduleOffsetKey !== dateKey) {
+        lastScheduleOffsetKey = dateKey;
+        const { processScheduleDateOffsetTriggers } = await import(
+          "./lib/automation-schedule"
+        );
+        const n = await processScheduleDateOffsetTriggers();
+        console.log(`[SCHEDULER] schedule.date_offset emitted runs: ${n}`);
+        const { processReceptionDocsMissing } = await import("./lib/reception-schedule");
+        const docs = await processReceptionDocsMissing();
+        console.log(`[SCHEDULER] request.docs_missing emitted: ${docs}`);
       }
     } catch (error) {
       console.error("[SCHEDULER] Billing calendar job error:", error);
@@ -161,6 +179,11 @@ export function startCampaignScheduler(storage: IStorage) {
   import("./lib/automation-engine")
     .then(({ processDueAutomationJobs }) => processDueAutomationJobs())
     .catch((error) => console.error("[SCHEDULER] Error in initial automation check:", error));
+  import("./lib/automation-engine-v2")
+    .then(({ processDueAutomationSteps }) => processDueAutomationSteps({ limit: 50 }))
+    .catch((error) =>
+      console.error("[SCHEDULER] Error in initial automation v2 check:", error),
+    );
 }
 
 export function stopCampaignScheduler() {

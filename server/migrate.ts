@@ -24,6 +24,11 @@ export async function runMigrations() {
       UPDATE contacts SET status = 'active', updated_at = NOW() WHERE status = 'confirmed';
       UPDATE admin_contacts SET status = 'active', updated_at = NOW() WHERE status IN ('confirmed', 'subscribed');
       UPDATE newsletter_subscribers SET status = 'active', updated_at = NOW() WHERE status = 'confirmed';
+      UPDATE website_progress
+        SET automations_engine = 'v2', updated_at = NOW()
+        WHERE automations_engine IS DISTINCT FROM 'v2';
+      ALTER TABLE website_progress
+        ALTER COLUMN automations_engine SET DEFAULT 'v2';
     `);
     console.log("✅ Migrations completed successfully");
   } catch (error) {

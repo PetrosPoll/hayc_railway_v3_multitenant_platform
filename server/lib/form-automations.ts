@@ -25,14 +25,27 @@ export function applyFormEmailPlaceholders(
     phone: string;
     message: string;
     siteLabel: string;
-  },
+  } & Record<string, string>,
 ): string {
-  return template
+  let out = template
     .replace(/\{\{\s*name\s*\}\}/gi, vars.name)
     .replace(/\{\{\s*email\s*\}\}/gi, vars.email)
     .replace(/\{\{\s*phone\s*\}\}/gi, vars.phone)
     .replace(/\{\{\s*message\s*\}\}/gi, vars.message)
     .replace(/\{\{\s*siteLabel\s*\}\}/gi, vars.siteLabel);
+  for (const [key, value] of Object.entries(vars)) {
+    if (
+      key === "name" ||
+      key === "email" ||
+      key === "phone" ||
+      key === "message" ||
+      key === "siteLabel"
+    ) {
+      continue;
+    }
+    out = out.replace(new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "gi"), value ?? "");
+  }
+  return out;
 }
 
 /** Prefer common site-config logo paths used by client templates. */

@@ -10,7 +10,7 @@ const app = express();
 // Skip JSON/urlencoded parsing for webhook endpoints - they need raw body for Stripe signature verification
 // Use larger limit for email templates (base64 images can be large), CMS site-config, and bulk-import endpoints
 app.use((req, res, next) => {
-  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect') {
+  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect' || /\/api\/websites\/\d+\/videos\/upload$/.test(req.path)) {
     next();
   } else if ((req.originalUrl.startsWith('/api/email-templates') || req.originalUrl.startsWith('/api/admin/templates')) && (req.method === 'POST' || req.method === 'PATCH')) {
     // 50MB limit for email templates (to handle base64-encoded images)
@@ -30,7 +30,7 @@ app.use((req, res, next) => {
   }
 });
 app.use((req, res, next) => {
-  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect') {
+  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect' || /\/api\/websites\/\d+\/videos\/upload$/.test(req.path)) {
     next();
   } else {
     express.urlencoded({ extended: false, limit: '1mb' })(req, res, next);
@@ -121,12 +121,36 @@ app.get("/health", (_req, res) => res.status(200).send("ok"));
 
   const port = Number(process.env.PORT) || 5000;
 
+  const ensureAutomationsV2 = async () => {
+    try {
+      const { ensureAllSitesAutomationsV2 } = await import(
+        "./lib/automation-ensure-v2"
+      );
+      const result = await ensureAllSitesAutomationsV2();
+      console.log(
+        `[automations] v2 ensure: flipped=${result.flipped} migrated=${result.migration.created} skipped=${result.migration.skipped}`,
+      );
+    } catch (err) {
+      console.error("[automations] v2 ensure failed:", err);
+    }
+    try {
+      const { ensureReceptionRequestTypes } = await import("./lib/reception");
+      await ensureReceptionRequestTypes();
+    } catch (err) {
+      console.error("[reception] request types ensure failed:", err);
+    }
+  };
+
   // Start listening immediately so DigitalOcean health checks pass (defer migrations until after)
   server.listen(port, "0.0.0.0", () => {
     console.log(`serving on ${port}`);
     // Run migrations after server is listening (production + staging; skip in development)
     if (isProd) {
-      runMigrations().catch((err) => console.error("Migration failed:", err));
+      runMigrations()
+        .then(() => ensureAutomationsV2())
+        .catch((err) => console.error("Migration failed:", err));
+    } else {
+      ensureAutomationsV2();
     }
   });
 })();

@@ -2,6 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { EmailService } from "./email-service";
+import { registerReceptionRoutes } from "./reception-routes";
+import { registerBlogRoutes } from "./blog-routes";
+import { registerVideoRoutes } from "./video-routes";
 import { startCampaignScheduler } from "./scheduler";
 import { emailFormSchema } from "@shared/schema";
 import Stripe from "stripe";
@@ -51,6 +54,8 @@ import {
   appSettings,
   emailTemplates,
   insertEmailTemplateSchema,
+  popupTemplates,
+  insertPopupTemplateSchema,
   campaignMessages,
   newsletterCampaigns as newsletterCampaignsTable,
   templates as templatesTable,
@@ -72,6 +77,9 @@ import {
   websiteEmailTemplates,
   websiteAutomationWorkflows,
   websiteAutomationJobs,
+  websiteAutomationRuns,
+  websiteAutomationSteps,
+  automationEvents,
 } from "@shared/schema";
 import {
   applyFormEmailPlaceholders,
@@ -81,7 +89,19 @@ import {
   formatAutomationBodyToHtml,
   parseSiteForms,
 } from "./lib/form-automations";
-import { startWorkflowForFormSubmit } from "./lib/automation-engine";
+import {
+  emitEvent,
+  formSubmitDedupeKey,
+  getAutomationsEngineMode,
+  handleFormSubmittedAutomation,
+} from "./lib/automation-events";
+import { syncWebsiteFormFieldsFromConfig } from "./lib/automation-form-fields";
+import { migrateLegacyFormAutomationsToWorkflows } from "./lib/automation-legacy-migrate";
+import {
+  cancelRuns,
+  formWorkflowHasNotifyOwner,
+} from "./lib/automation-engine-v2";
+import { AUTOMATION_PRESETS, getAutomationPreset } from "./lib/automation-presets";
 import { demoReadOnlyMiddleware } from "./lib/demo-mode";
 import {
   createDedicatedDemoUser,
@@ -3797,6 +3817,265 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ── Popup templates (Unlayer visit popups — separate from newsletters) ──
+
+  async function assertWebsiteAccess(websiteId: number, userId: number, role?: string) {
+    const [website] = await db
+      .select()
+      .from(websiteProgress)
+      .where(eq(websiteProgress.id, websiteId))
+      .limit(1);
+    if (!website) return { error: "Website not found" as const, status: 404 as const };
+    const isAdmin = role === "admin" || role === "administrator";
+    if (website.userId !== userId && !isAdmin) {
+      return { error: "Not authorized" as const, status: 403 as const };
+    }
+    return { website };
+  }
+
+  app.get("/api/popup-templates/:websiteId", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const websiteId = parseInt(req.params.websiteId, 10);
+      if (!Number.isFinite(websiteId)) {
+        return res.status(400).json({ error: "Invalid website id" });
+      }
+      const access = await assertWebsiteAccess(websiteId, req.user.id, req.user.role);
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      const templates = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.websiteProgressId, websiteId))
+        .orderBy(desc(popupTemplates.updatedAt));
+
+      res.json(templates);
+    } catch (error) {
+      console.error("Error fetching popup templates:", error);
+      res.status(500).json({ error: "Failed to fetch popup templates" });
+    }
+  });
+
+  app.get("/api/popup-template/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+      const templateId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(templateId)) {
+        return res.status(400).json({ error: "Invalid popup id" });
+      }
+
+      const [template] = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.id, templateId))
+        .limit(1);
+      if (!template) {
+        return res.status(404).json({ error: "Popup not found" });
+      }
+
+      const access = await assertWebsiteAccess(
+        template.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      res.json(template);
+    } catch (error) {
+      console.error("Error fetching popup template:", error);
+      res.status(500).json({ error: "Failed to fetch popup template" });
+    }
+  });
+
+  app.post("/api/popup-templates", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const validatedData = insertPopupTemplateSchema.parse(req.body);
+      const access = await assertWebsiteAccess(
+        validatedData.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      const [newTemplate] = await db
+        .insert(popupTemplates)
+        .values({
+          ...validatedData,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(newTemplate);
+    } catch (error) {
+      console.error("Error creating popup template:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid popup data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to create popup template" });
+    }
+  });
+
+  app.patch("/api/popup-templates/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const templateId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(templateId)) {
+        return res.status(400).json({ error: "Invalid popup id" });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.id, templateId))
+        .limit(1);
+      if (!existing) {
+        return res.status(404).json({ error: "Popup not found" });
+      }
+
+      const access = await assertWebsiteAccess(
+        existing.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      const validatedData = insertPopupTemplateSchema.partial().parse(req.body);
+      // Never allow moving a popup to another website via PATCH
+      delete (validatedData as { websiteProgressId?: number }).websiteProgressId;
+
+      const contentChanged =
+        validatedData.html !== undefined || validatedData.design !== undefined;
+
+      const [updatedTemplate] = await db
+        .update(popupTemplates)
+        .set({
+          ...validatedData,
+          ...(contentChanged ? { version: (existing.version || 1) + 1 } : {}),
+          updatedAt: new Date(),
+        })
+        .where(eq(popupTemplates.id, templateId))
+        .returning();
+
+      res.json(updatedTemplate);
+    } catch (error) {
+      console.error("Error updating popup template:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: "Invalid popup data", details: error.errors });
+      }
+      res.status(500).json({ error: "Failed to update popup template" });
+    }
+  });
+
+  app.delete("/api/popup-templates/:id", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const templateId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(templateId)) {
+        return res.status(400).json({ error: "Invalid popup id" });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.id, templateId))
+        .limit(1);
+      if (!existing) {
+        return res.status(404).json({ error: "Popup not found" });
+      }
+
+      const access = await assertWebsiteAccess(
+        existing.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      await db.delete(popupTemplates).where(eq(popupTemplates.id, templateId));
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting popup template:", error);
+      res.status(500).json({ error: "Failed to delete popup template" });
+    }
+  });
+
+  app.post("/api/popup-templates/:id/duplicate", async (req, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        return res.status(401).json({ error: "Not authenticated" });
+      }
+
+      const templateId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(templateId)) {
+        return res.status(400).json({ error: "Invalid popup id" });
+      }
+
+      const [existing] = await db
+        .select()
+        .from(popupTemplates)
+        .where(eq(popupTemplates.id, templateId))
+        .limit(1);
+      if (!existing) {
+        return res.status(404).json({ error: "Popup not found" });
+      }
+
+      const access = await assertWebsiteAccess(
+        existing.websiteProgressId,
+        req.user.id,
+        req.user.role,
+      );
+      if ("error" in access) {
+        return res.status(access.status).json({ error: access.error });
+      }
+
+      const [copy] = await db
+        .insert(popupTemplates)
+        .values({
+          websiteProgressId: existing.websiteProgressId,
+          name: `${existing.name} (copy)`,
+          html: existing.html,
+          design: existing.design,
+          thumbnail: existing.thumbnail,
+          enabled: false,
+          delayMs: existing.delayMs,
+          showOnceEveryDays: existing.showOnceEveryDays,
+          version: 1,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      res.json(copy);
+    } catch (error) {
+      console.error("Error duplicating popup template:", error);
+      res.status(500).json({ error: "Failed to duplicate popup template" });
+    }
+  });
+
   // Duplicate template
   app.post("/api/email-templates/:id/duplicate", async (req, res) => {
     try {
@@ -4342,8 +4621,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
             addOns: body.addOns ? JSON.stringify(body.addOns) : "",
             language: body.language || "en", //default language is en
             isResume: body.isResume ? "true" : "false",
+            ...(body.websiteProgressId
+              ? { websiteProgressId: String(body.websiteProgressId) }
+              : {}),
           },
         };
+
+        if (body.isResume && body.websiteProgressId) {
+          const base = `${req.protocol}://${req.get("host")}`;
+          sessionConfig.success_url = `${base}/dashboard/website/${body.websiteProgressId}?tab=billing&resubscribed=1`;
+          sessionConfig.cancel_url = `${base}/dashboard/website/${body.websiteProgressId}?tab=billing`;
+        }
 
         if (stripeCustomerId) {
           sessionConfig.customer = stripeCustomerId;
@@ -5772,6 +6060,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
               // Create subscription record for the add-on (keep price in cents)
               const addOnPrice = stripeSubscription.items.data[0].price.unit_amount || null;
               
+              const priorAddonIdMeta = session.metadata?.priorSubscriptionId
+                ? parseInt(session.metadata.priorSubscriptionId, 10)
+                : NaN;
+
               const createdSubscription = await storage.createSubscription({
                 userId,
                 websiteProgressId,
@@ -5788,10 +6080,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 createdAt: new Date(session.created * 1000),
               });
 
+              if (Number.isFinite(priorAddonIdMeta) && priorAddonIdMeta > 0) {
+                await db
+                  .update(subscriptionsTable)
+                  .set({ reactivationOf: priorAddonIdMeta })
+                  .where(eq(subscriptionsTable.id, createdSubscription.id));
+              }
+
               console.log('✅ Add-on subscription created:', {
                 subscriptionId: createdSubscription.id,
                 addOnId,
-                stripeSubscriptionId: stripeSubscription.id
+                stripeSubscriptionId: stripeSubscription.id,
+                isResume: session.metadata?.isResume === "true",
+                reactivationOf: Number.isFinite(priorAddonIdMeta) ? priorAddonIdMeta : null,
               });
 
               // Create DRAFT invoice for add-on purchase
@@ -5969,11 +6270,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 .where(eq(subscriptionsTable.stripeSubscriptionId, scheduleId));
             }
 
+            const websiteProgressIdFromMeta = session.metadata?.websiteProgressId
+              ? parseInt(session.metadata.websiteProgressId, 10)
+              : NaN;
+            const priorSubscriptionIdFromMeta = session.metadata?.priorSubscriptionId
+              ? parseInt(session.metadata.priorSubscriptionId, 10)
+              : NaN;
+            const resumeWebsiteProgressId = Number.isFinite(websiteProgressIdFromMeta)
+              ? websiteProgressIdFromMeta
+              : null;
+
             // One local row per recurring Stripe item (plan + each add-on).
             const ensured = await ensureSubscriptionItemsFromStripe({
               userId: user.id,
               stripeSubscription,
               maps: buildSubscriptionPriceMaps(),
+              websiteProgressId: resumeWebsiteProgressId,
               billing: {
                 vatNumber: session.metadata.vatNumber?.trim() || null,
                 city: session.metadata.city?.trim() || null,
@@ -5985,8 +6297,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
               createdAt: new Date(session.created * 1000),
             });
 
+            if (resumeWebsiteProgressId != null) {
+              await db
+                .update(subscriptionsTable)
+                .set({ websiteProgressId: resumeWebsiteProgressId })
+                .where(
+                  and(
+                    eq(subscriptionsTable.stripeSubscriptionId, stripeSubscription.id),
+                    eq(subscriptionsTable.userId, user.id),
+                    isNull(subscriptionsTable.websiteProgressId),
+                  ),
+                );
+            }
+
+            if (Number.isFinite(priorSubscriptionIdFromMeta) && priorSubscriptionIdFromMeta > 0) {
+              const planRow =
+                ensured.rows.find((row) => row.productType === "plan") ?? ensured.rows[0];
+              if (planRow) {
+                await db
+                  .update(subscriptionsTable)
+                  .set({ reactivationOf: priorSubscriptionIdFromMeta })
+                  .where(eq(subscriptionsTable.id, planRow.id));
+              }
+            }
+
+            try {
+              const priorCompanionsRaw = session.metadata?.priorCompanionAddons;
+              if (priorCompanionsRaw) {
+                const priorCompanions = JSON.parse(priorCompanionsRaw) as Array<{
+                  id: number;
+                  productId: string;
+                }>;
+                for (const companion of priorCompanions) {
+                  if (!companion?.productId || !Number.isFinite(companion.id)) continue;
+                  const addonRow = ensured.rows.find(
+                    (row) =>
+                      row.productType === "addon" && row.productId === companion.productId,
+                  );
+                  if (!addonRow) continue;
+                  await db
+                    .update(subscriptionsTable)
+                    .set({ reactivationOf: companion.id })
+                    .where(eq(subscriptionsTable.id, addonRow.id));
+                }
+              }
+            } catch (companionErr) {
+              console.error(
+                "[checkout.session.completed] Failed to link companion addon reactivations:",
+                companionErr,
+              );
+            }
+
             console.log("✅ Subscription items synced from Stripe checkout:", {
               stripeSubscriptionId: stripeSubscription.id,
+              websiteProgressId: resumeWebsiteProgressId,
+              priorSubscriptionId: Number.isFinite(priorSubscriptionIdFromMeta)
+                ? priorSubscriptionIdFromMeta
+                : null,
               created: ensured.created,
               updated: ensured.updated,
               rows: ensured.rows.map((row) => ({
@@ -7254,6 +7621,317 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error resuming subscription:", error);
       return res.status(500).json({ error: "Failed to resume subscription" });
+    }
+  });
+
+  /**
+   * Fully cancelled plan or add-on → new Stripe Checkout (no setup fee), same website.
+   * Plan resubscribe also restores cancelled companion add-ons on that website.
+   * Distinct from /resume which only clears cancel_at_period_end on a still-live Stripe sub.
+   */
+  app.post("/api/subscriptions/:id/resubscribe", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const subscriptionId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(subscriptionId)) {
+        return res.status(400).json({ error: "Invalid subscription id" });
+      }
+
+      const currentUser = await storage.getUserById(req.user.id);
+      if (!currentUser) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const userSubscriptions = await storage.getUserSubscriptions(currentUser.id);
+      const localSubscription = userSubscriptions.find((s) => s.id === subscriptionId);
+      if (!localSubscription) {
+        return res.status(404).json({ error: "Subscription not found" });
+      }
+
+      if (localSubscription.status !== "cancelled") {
+        return res.status(400).json({
+          error:
+            localSubscription.cancelAtPeriodEnd
+              ? "Subscription is only scheduled to cancel — use Continue instead"
+              : "Only cancelled subscriptions can be resubscribed",
+        });
+      }
+
+      const websiteProgressId = localSubscription.websiteProgressId;
+      if (!websiteProgressId) {
+        return res.status(400).json({ error: "Subscription is not linked to a website" });
+      }
+
+      const [wp] = await db
+        .select()
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteProgressId))
+        .limit(1);
+      if (!wp || wp.userId !== currentUser.id) {
+        return res.status(403).json({ error: "Not authorized for this website" });
+      }
+
+      const base = `${req.protocol}://${req.get("host")}`;
+      const successUrl = `${base}/dashboard/website/${websiteProgressId}?tab=billing&resubscribed=1`;
+      const cancelUrl = `${base}/dashboard/website/${websiteProgressId}?tab=billing`;
+
+      const resolveAddonPriceId = (
+        addonId: string,
+        billingPeriod: "monthly" | "yearly",
+      ): string | null => {
+        if (billingPeriod === "yearly") {
+          return (
+            ADDON_YEARLY_PRICE_MAP[addonId]?.priceId ??
+            ADDON_PRICE_MAP[addonId] ??
+            null
+          );
+        }
+        return ADDON_PRICE_MAP[addonId] ?? null;
+      };
+
+      // ── Cancelled add-on only ──────────────────────────────────────────
+      if (localSubscription.productType === "addon") {
+        const addonId = localSubscription.productId;
+        if (!addonId) {
+          return res.status(400).json({ error: "Add-on has no product id" });
+        }
+        const alreadyActiveAddon = userSubscriptions.some(
+          (s) =>
+            s.websiteProgressId === websiteProgressId &&
+            s.productType === "addon" &&
+            s.productId === addonId &&
+            s.status === "active",
+        );
+        if (alreadyActiveAddon) {
+          return res.status(400).json({
+            error: "This add-on is already active on the website",
+          });
+        }
+
+        const billingPeriod =
+          localSubscription.billingPeriod === "yearly" ? "yearly" : "monthly";
+        const addonPriceId = resolveAddonPriceId(addonId, billingPeriod);
+        if (!addonPriceId) {
+          return res.status(400).json({ error: `No Stripe price for add-on ${addonId}` });
+        }
+
+        const activePlan = userSubscriptions.find(
+          (s) =>
+            s.websiteProgressId === websiteProgressId &&
+            s.productType === "plan" &&
+            s.status === "active" &&
+            !!s.stripeSubscriptionId,
+        );
+
+        // Prefer attaching to the live plan Stripe subscription when one exists.
+        if (activePlan?.stripeSubscriptionId && currentUser.stripeCustomerId) {
+          try {
+            await stripe.subscriptionItems.create({
+              subscription: activePlan.stripeSubscriptionId,
+              price: addonPriceId,
+              quantity: 1,
+              proration_behavior: "create_prorations",
+            });
+            const stripeSubscription = await stripe.subscriptions.retrieve(
+              activePlan.stripeSubscriptionId,
+              { expand: ["items.data.price"] },
+            );
+            const ensured = await ensureSubscriptionItemsFromStripe({
+              userId: currentUser.id,
+              stripeSubscription,
+              maps: buildSubscriptionPriceMaps(),
+              websiteProgressId,
+            });
+            const newAddonRow = ensured.rows.find(
+              (row) =>
+                row.productType === "addon" &&
+                row.productId === addonId &&
+                row.status === "active",
+            );
+            if (newAddonRow) {
+              await db
+                .update(subscriptionsTable)
+                .set({ reactivationOf: localSubscription.id })
+                .where(eq(subscriptionsTable.id, newAddonRow.id));
+            }
+            return res.json({
+              success: true,
+              attachedToPlan: true,
+              subscriptionId: newAddonRow?.id ?? null,
+            });
+          } catch (attachErr) {
+            console.warn(
+              "[resubscribe] attach addon to plan failed, falling back to Checkout:",
+              attachErr,
+            );
+          }
+        }
+
+        if (!currentUser.stripeCustomerId && !currentUser.email) {
+          return res.status(400).json({ error: "User has no Stripe customer or email" });
+        }
+
+        const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+          payment_method_types: ["card"],
+          mode: "subscription",
+          line_items: [{ price: addonPriceId, quantity: 1 }],
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+          metadata: {
+            userId: String(currentUser.id),
+            websiteProgressId: String(websiteProgressId),
+            addOnId: addonId,
+            isResume: "true",
+            priorSubscriptionId: String(localSubscription.id),
+            username: currentUser.username,
+            language: currentUser.language || "en",
+          },
+        };
+        if (currentUser.stripeCustomerId) {
+          sessionConfig.customer = currentUser.stripeCustomerId;
+        } else {
+          sessionConfig.customer_email = currentUser.email!;
+        }
+
+        const session = await stripe.checkout.sessions.create(sessionConfig);
+        if (!session.url) {
+          return res.status(500).json({ error: "Stripe did not return a checkout URL" });
+        }
+        return res.json({ url: session.url });
+      }
+
+      // ── Cancelled plan (+ companion cancelled add-ons) ────────────────
+      if (localSubscription.productType !== "plan") {
+        return res.status(400).json({
+          error: "Unsupported subscription type for resubscribe",
+        });
+      }
+
+      const alreadyActive = userSubscriptions.some(
+        (s) =>
+          s.websiteProgressId === websiteProgressId &&
+          s.productType === "plan" &&
+          s.status === "active",
+      );
+      if (alreadyActive) {
+        return res.status(400).json({
+          error: "This website already has an active plan subscription",
+        });
+      }
+
+      const planId = (localSubscription.tier || localSubscription.productId) as SubscriptionTier;
+      if (!planId || !["basic", "essential", "pro"].includes(planId)) {
+        return res.status(400).json({ error: "Unknown plan tier on cancelled subscription" });
+      }
+      const billingPeriod =
+        localSubscription.billingPeriod === "yearly" ? "yearly" : "monthly";
+
+      const { price } = await verifyPriceCurrencies(planId, billingPeriod);
+
+      // Restore cancelled add-ons on this website (prefer those from the same Stripe sub).
+      const companionByProduct = new Map<
+        string,
+        (typeof userSubscriptions)[number]
+      >();
+      for (const s of userSubscriptions) {
+        if (s.productType !== "addon" || s.status !== "cancelled" || !s.productId) continue;
+        if (s.websiteProgressId !== websiteProgressId) continue;
+        const hasActive = userSubscriptions.some(
+          (a) =>
+            a.productType === "addon" &&
+            a.productId === s.productId &&
+            a.websiteProgressId === websiteProgressId &&
+            a.status === "active",
+        );
+        if (hasActive) continue;
+        const existing = companionByProduct.get(s.productId);
+        if (!existing) {
+          companionByProduct.set(s.productId, s);
+          continue;
+        }
+        // Prefer rows that shared the cancelled plan's Stripe subscription id.
+        if (
+          localSubscription.stripeSubscriptionId &&
+          s.stripeSubscriptionId === localSubscription.stripeSubscriptionId &&
+          existing.stripeSubscriptionId !== localSubscription.stripeSubscriptionId
+        ) {
+          companionByProduct.set(s.productId, s);
+        }
+      }
+      const companionAddons = [...companionByProduct.values()];
+
+      const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
+        { price: price.id, quantity: 1 },
+      ];
+      const addonIdsForMeta: string[] = [];
+      const priorCompanionMeta: Array<{ id: number; productId: string }> = [];
+
+      for (const addon of companionAddons) {
+        const addonBilling =
+          addon.billingPeriod === "yearly" ? "yearly" : billingPeriod;
+        const addonPriceId = resolveAddonPriceId(addon.productId!, addonBilling);
+        if (!addonPriceId) {
+          console.warn(
+            `[resubscribe] skip companion addon ${addon.productId}: no price id`,
+          );
+          continue;
+        }
+        lineItems.push({ price: addonPriceId, quantity: 1 });
+        addonIdsForMeta.push(addon.productId!);
+        priorCompanionMeta.push({ id: addon.id, productId: addon.productId! });
+      }
+
+      const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+        payment_method_types: ["card"],
+        mode: "subscription",
+        line_items: lineItems,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+        metadata: {
+          username: currentUser.username,
+          phone: currentUser.phone || "",
+          planId,
+          billingPeriod,
+          password: "",
+          vatNumber: (localSubscription.vatNumber ?? "").trim(),
+          city: (localSubscription.city ?? "").trim(),
+          street: (localSubscription.street ?? "").trim(),
+          number: (localSubscription.number ?? "").trim(),
+          postalCode: (localSubscription.postalCode ?? "").trim(),
+          invoiceType: localSubscription.invoiceType || "invoice",
+          addOns: JSON.stringify(addonIdsForMeta),
+          language: currentUser.language || "en",
+          isResume: "true",
+          websiteProgressId: String(websiteProgressId),
+          priorSubscriptionId: String(localSubscription.id),
+          priorCompanionAddons: JSON.stringify(priorCompanionMeta),
+        },
+      };
+
+      if (currentUser.stripeCustomerId) {
+        sessionConfig.customer = currentUser.stripeCustomerId;
+      } else if (currentUser.email) {
+        sessionConfig.customer_email = currentUser.email;
+      } else {
+        return res.status(400).json({ error: "User has no Stripe customer or email" });
+      }
+
+      const session = await stripe.checkout.sessions.create(sessionConfig);
+      if (!session.url) {
+        return res.status(500).json({ error: "Stripe did not return a checkout URL" });
+      }
+      return res.json({
+        url: session.url,
+        restoredAddOns: addonIdsForMeta,
+      });
+    } catch (error) {
+      console.error("Error creating resubscribe checkout:", error);
+      return res.status(500).json({
+        error:
+          error instanceof Error ? error.message : "Failed to start resubscribe checkout",
+      });
     }
   });
 
@@ -16981,6 +17659,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bookingEnabled: websiteProgress.bookingEnabled,
           paymentsEnabled: websiteProgress.paymentsEnabled,
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
+          receptionEnabled: websiteProgress.receptionEnabled,
+          blogEnabled: websiteProgress.blogEnabled,
+          videoEnabled: websiteProgress.videoEnabled,
           contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
@@ -17154,6 +17835,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bookingEnabled: websiteProgress.bookingEnabled,
           paymentsEnabled: websiteProgress.paymentsEnabled,
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
+          receptionEnabled: websiteProgress.receptionEnabled,
+          blogEnabled: websiteProgress.blogEnabled,
+          videoEnabled: websiteProgress.videoEnabled,
           contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           customDomain: websiteProgress.customDomain,
@@ -17339,9 +18023,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
+      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, blogEnabled, videoEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; receptionEnabled: boolean; blogEnabled: boolean; videoEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -17371,6 +18055,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "digitalProductsEnabled must be a boolean" });
         }
         updates.digitalProductsEnabled = digitalProductsEnabled;
+      }
+
+      if (receptionEnabled !== undefined) {
+        if (typeof receptionEnabled !== "boolean") {
+          return res.status(400).json({ error: "receptionEnabled must be a boolean" });
+        }
+        updates.receptionEnabled = receptionEnabled;
+      }
+
+      if (blogEnabled !== undefined) {
+        if (typeof blogEnabled !== "boolean") {
+          return res.status(400).json({ error: "blogEnabled must be a boolean" });
+        }
+        updates.blogEnabled = blogEnabled;
+      }
+
+      if (videoEnabled !== undefined) {
+        if (typeof videoEnabled !== "boolean") {
+          return res.status(400).json({ error: "videoEnabled must be a boolean" });
+        }
+        updates.videoEnabled = videoEnabled;
       }
 
       if (siteId !== undefined) {
@@ -17406,7 +18111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, blogEnabled, videoEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
       }
 
       const [updatedWebsite] = await db
@@ -24166,9 +24871,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const fromAddress = "notifications@hayc.gr";
 
     // A visual workflow wins, exactly as on the contact path.
-    const workflowHandled = await startWorkflowForFormSubmit({
+    const workflowHandled = await handleFormSubmittedAutomation({
       websiteProgressId: website.id,
       formId,
+      dedupeKey: formSubmitDedupeKey({
+        websiteProgressId: website.id,
+        formId,
+        email,
+      }),
       payload: {
         visitorEmail: email,
         visitorName: name,
@@ -24185,6 +24895,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (workflowHandled) {
       console.log(
         `[newsletter/subscribe] ran workflow for form '${formId}' on website ${website.id}.`,
+      );
+      return;
+    }
+
+    // Under v2, legacy per-form confirmations are disabled (migrated to workflows).
+    const engineMode = await getAutomationsEngineMode(website.id);
+    if (engineMode === "v2") {
+      console.log(
+        `[newsletter/subscribe] v2 engine: no matching workflow for form '${formId}' on website ${website.id}; nothing sent.`,
       );
       return;
     }
@@ -24421,6 +25140,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Phase 2: newsletter.subscribed event (v2 engine workflows)
+      if (isSubscribed) {
+        try {
+          const mode = await getAutomationsEngineMode(websiteProgressId);
+          if (mode === "v2") {
+            const displayName =
+              [parsedFirstName, parsedLastName].filter(Boolean).join(" ").trim() ||
+              (typeof name === "string" ? name.trim() : "");
+            await emitEvent({
+              websiteProgressId,
+              type: "newsletter.subscribed",
+              dedupeKey: `newsletter.subscribed:${websiteProgressId}:${email.toLowerCase()}:${Math.floor(Date.now() / 60_000)}`,
+              payload: {
+                visitorEmail: email,
+                visitorName: displayName,
+                visitorPhone: "",
+                visitorMessage: "",
+                form_id: trimmedFormId,
+                contactId: newContact.id,
+              },
+            });
+          }
+        } catch (subEvtErr) {
+          console.error("[newsletter/subscribe] newsletter.subscribed emit failed:", subEvtErr);
+        }
+      }
+
       const message = isSubscribed 
         ? "Successfully subscribed to newsletter" 
         : "Contact added to list";
@@ -24649,7 +25395,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         siteLabel: siteLabel || "",
       };
 
-      // Email 1 — Notification to business owner
+      // Prefer visual workflow (legacy or v2), then simple automation, then default
+      let workflowHandled = false;
+      if (formId) {
+        try {
+          workflowHandled = await handleFormSubmittedAutomation({
+            websiteProgressId: website.id,
+            formId,
+            dedupeKey: formSubmitDedupeKey({
+              websiteProgressId: website.id,
+              formId,
+              email,
+              message,
+            }),
+            payload: {
+              visitorEmail: email,
+              visitorName: name,
+              visitorPhone: phone || "",
+              visitorMessage: message,
+              siteLabel: siteLabel || "",
+              siteId,
+              formId,
+              ownerEmail,
+              fromName: senderName,
+              language: emailLang,
+            },
+            extraPayload: Object.keys(extraFields).length > 0 ? { fields: extraFields } : undefined,
+          });
+        } catch (wfErr) {
+          console.error("[public/contact] workflow failed:", wfErr);
+          workflowHandled = false;
+        }
+      }
+
+      // Owner notification: skip hard-coded send when v2 workflow has notify_owner
+      const engineModeEarly = await getAutomationsEngineMode(website.id);
+      const skipHardcodedOwner =
+        !!formId &&
+        engineModeEarly === "v2" &&
+        (await formWorkflowHasNotifyOwner(website.id, formId));
+
       const ownerSubject = `New contact form message from ${name} — ${siteLabel}`;
       const ownerHtml = loadTemplate(
         "public-contact-owner-notification.html",
@@ -24664,46 +25449,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         "en",
       );
 
-      const ownerSend = EmailService.sendEmail({
-        to: ownerEmail,
-        subject: ownerSubject,
-        message: ownerSubject,
-        fromEmail: fromAddress,
-        fromName: senderName,
-        html: ownerHtml,
-        replyToAddresses: [email],
-      });
-
-      // Email 2 — prefer visual workflow, then simple automation, then default template
-      let workflowHandled = false;
-      if (formId) {
-        try {
-          workflowHandled = await startWorkflowForFormSubmit({
-            websiteProgressId: website.id,
-            formId,
-            payload: {
-              visitorEmail: email,
-              visitorName: name,
-              visitorPhone: phone || "",
-              visitorMessage: message,
-              siteLabel: siteLabel || "",
-              siteId,
-              formId,
-              ownerEmail,
-              fromName: senderName,
-              language: emailLang,
-            },
+      const ownerSend = skipHardcodedOwner
+        ? Promise.resolve({ success: true as const })
+        : EmailService.sendEmail({
+            to: ownerEmail,
+            subject: ownerSubject,
+            message: ownerSubject,
+            fromEmail: fromAddress,
+            fromName: senderName,
+            html: ownerHtml,
+            replyToAddresses: [email],
           });
-        } catch (wfErr) {
-          console.error("[public/contact] workflow failed:", wfErr);
-          workflowHandled = false;
-        }
-      }
 
       let visitorResult: { success: boolean; error?: string } = { success: true };
       if (!workflowHandled) {
+        const engineMode = await getAutomationsEngineMode(website.id);
         let automation: typeof websiteFormAutomations.$inferSelect | undefined;
-        if (formId) {
+        // Legacy confirmations are disabled under v2 (use default template only).
+        if (formId && engineMode !== "v2") {
           const [row] = await db
             .select()
             .from(websiteFormAutomations)
@@ -26508,11 +27271,43 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   });
 
   // ----- Visual automation workflows -----
+  const automationNodeTypeSchema = z.enum([
+    "trigger",
+    "email",
+    "delay",
+    "notify_owner",
+    "owner_reminder",
+    "add_tag",
+    "remove_tag",
+    "condition",
+    "webhook",
+    "review_request",
+    "send_coupon",
+  ]);
+  const automationFrequencySchema = z.enum([
+    "every_time",
+    "once_per_contact",
+    "once_per_contact_per_24h",
+    "once_per_contact_per_90d",
+  ]);
+  const automationTriggerTypeSchema = z.enum([
+    "form.submitted",
+    "contact.created",
+    "contact.tag_added",
+    "newsletter.subscribed",
+    "booking.created",
+    "booking.cancelled",
+    "booking.completed",
+    "schedule.date_offset",
+    "request.created",
+    "request.status_changed",
+    "request.docs_missing",
+  ]);
   const automationGraphSchema = z.object({
     nodes: z.array(
       z.object({
         id: z.string().min(1),
-        type: z.enum(["trigger", "email", "delay"]),
+        type: automationNodeTypeSchema,
         position: z.object({ x: z.number(), y: z.number() }),
         data: z.record(z.unknown()).default({}),
       }),
@@ -26559,25 +27354,58 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const schema = z.object({
         name: z.string().min(1).max(120),
         enabled: z.boolean().optional(),
-        triggerFormId: z.string().min(1).max(120),
+        triggerFormId: z.string().max(120).optional(),
+        triggerType: automationTriggerTypeSchema.optional(),
+        triggerConfig: z.record(z.unknown()).optional(),
         graph: automationGraphSchema.optional(),
+        frequency: automationFrequencySchema.optional(),
+        presetKey: z.string().max(80).nullable().optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid workflow", details: parsed.error.errors });
       }
 
-      if (parsed.data.enabled !== false) {
+      const triggerType = parsed.data.triggerType || "form.submitted";
+      const triggerFormId =
+        parsed.data.triggerFormId ||
+        (triggerType === "form.submitted" ? "" : triggerType);
+      if (triggerType.startsWith("request.") && !access.website.receptionEnabled) {
+        return res.status(403).json({ error: "Reception is disabled" });
+      }
+      if (triggerType === "form.submitted" && !triggerFormId) {
+        return res.status(400).json({ error: "triggerFormId required for form triggers" });
+      }
+
+      if (parsed.data.enabled !== false && triggerType === "form.submitted") {
         await db
           .update(websiteAutomationWorkflows)
           .set({ enabled: false, updatedAt: new Date() })
           .where(
             and(
               eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
-              eq(websiteAutomationWorkflows.triggerFormId, parsed.data.triggerFormId),
+              eq(websiteAutomationWorkflows.triggerFormId, triggerFormId),
               eq(websiteAutomationWorkflows.enabled, true),
             ),
           );
+      }
+
+      // Block enabling review_request workflows without Google URL
+      if (parsed.data.enabled !== false) {
+        const graph = parsed.data.graph;
+        const hasReview = graph?.nodes?.some((n) => n.type === "review_request");
+        if (hasReview) {
+          const [site] = await db
+            .select({ googleReviewUrl: websiteProgress.googleReviewUrl })
+            .from(websiteProgress)
+            .where(eq(websiteProgress.id, websiteId))
+            .limit(1);
+          if (!site?.googleReviewUrl?.trim()) {
+            return res.status(400).json({
+              error: "Set Google review URL before enabling a review request workflow",
+            });
+          }
+        }
       }
 
       const [workflow] = await db
@@ -26586,8 +27414,14 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
           websiteProgressId: websiteId,
           name: parsed.data.name,
           enabled: parsed.data.enabled ?? true,
-          triggerFormId: parsed.data.triggerFormId,
+          triggerFormId,
+          triggerType,
+          triggerConfig:
+            parsed.data.triggerConfig ||
+            (triggerType === "form.submitted" ? { formId: triggerFormId } : {}),
           graph: parsed.data.graph ?? { nodes: [], edges: [] },
+          frequency: parsed.data.frequency ?? "every_time",
+          presetKey: parsed.data.presetKey ?? null,
         })
         .returning();
       return res.status(201).json({ workflow });
@@ -26611,26 +27445,56 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       const schema = z.object({
         name: z.string().min(1).max(120),
         enabled: z.boolean(),
-        triggerFormId: z.string().min(1).max(120),
+        triggerFormId: z.string().max(120).optional(),
+        triggerType: automationTriggerTypeSchema.optional(),
+        triggerConfig: z.record(z.unknown()).optional(),
         graph: automationGraphSchema,
+        frequency: automationFrequencySchema.optional(),
       });
       const parsed = schema.safeParse(req.body);
       if (!parsed.success) {
         return res.status(400).json({ error: "Invalid workflow", details: parsed.error.errors });
       }
 
-      if (parsed.data.enabled) {
+      const triggerType = parsed.data.triggerType || "form.submitted";
+      const triggerFormId =
+        parsed.data.triggerFormId ||
+        (triggerType === "form.submitted" ? "" : triggerType);
+      if (triggerType.startsWith("request.") && !access.website.receptionEnabled) {
+        return res.status(403).json({ error: "Reception is disabled" });
+      }
+      if (triggerType === "form.submitted" && !triggerFormId) {
+        return res.status(400).json({ error: "triggerFormId required for form triggers" });
+      }
+
+      if (parsed.data.enabled && triggerType === "form.submitted") {
         await db
           .update(websiteAutomationWorkflows)
           .set({ enabled: false, updatedAt: new Date() })
           .where(
             and(
               eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
-              eq(websiteAutomationWorkflows.triggerFormId, parsed.data.triggerFormId),
+              eq(websiteAutomationWorkflows.triggerFormId, triggerFormId),
               eq(websiteAutomationWorkflows.enabled, true),
               ne(websiteAutomationWorkflows.id, workflowId),
             ),
           );
+      }
+
+      if (parsed.data.enabled) {
+        const hasReview = parsed.data.graph.nodes?.some((n) => n.type === "review_request");
+        if (hasReview) {
+          const [site] = await db
+            .select({ googleReviewUrl: websiteProgress.googleReviewUrl })
+            .from(websiteProgress)
+            .where(eq(websiteProgress.id, websiteId))
+            .limit(1);
+          if (!site?.googleReviewUrl?.trim()) {
+            return res.status(400).json({
+              error: "Set Google review URL before enabling a review request workflow",
+            });
+          }
+        }
       }
 
       const [workflow] = await db
@@ -26638,8 +27502,13 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
         .set({
           name: parsed.data.name,
           enabled: parsed.data.enabled,
-          triggerFormId: parsed.data.triggerFormId,
+          triggerFormId,
+          triggerType,
+          triggerConfig:
+            parsed.data.triggerConfig ||
+            (triggerType === "form.submitted" ? { formId: triggerFormId } : {}),
           graph: parsed.data.graph,
+          frequency: parsed.data.frequency ?? "every_time",
           updatedAt: new Date(),
         })
         .where(
@@ -26657,6 +27526,571 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     }
   });
 
+  app.get("/api/websites/:id/automation-workflows/:workflowId/runs", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const workflowId = parseInt(req.params.workflowId, 10);
+      if (Number.isNaN(websiteId) || Number.isNaN(workflowId)) {
+        return res.status(400).json({ error: "Invalid ids" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+
+      const [workflow] = await db
+        .select()
+        .from(websiteAutomationWorkflows)
+        .where(
+          and(
+            eq(websiteAutomationWorkflows.id, workflowId),
+            eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+          ),
+        )
+        .limit(1);
+      if (!workflow) return res.status(404).json({ error: "Workflow not found" });
+
+      const graphNodes = ((workflow.graph as any)?.nodes || []) as Array<{
+        id: string;
+        type?: string;
+        data?: Record<string, unknown>;
+      }>;
+      const nodeById = new Map(graphNodes.map((n) => [n.id, n]));
+
+      const labelForNode = (nodeId: string): { nodeType: string | null; label: string } => {
+        const node = nodeById.get(nodeId);
+        if (!node) {
+          const prefix = nodeId.split("-")[0] || "step";
+          return { nodeType: null, label: prefix };
+        }
+        const data = node.data || {};
+        const type = String(node.type || "");
+        switch (type) {
+          case "trigger":
+            return {
+              nodeType: type,
+              label: String(
+                data.formName || data.eventType || data.formId || "Trigger",
+              ),
+            };
+          case "email":
+            return {
+              nodeType: type,
+              label: String(data.templateName || data.subject || "Send email"),
+            };
+          case "delay": {
+            const amount = Number(data.amount ?? data.delayMinutes ?? 10) || 10;
+            const unit = String(data.unit || "minutes");
+            return { nodeType: type, label: `Wait ${amount} ${unit}` };
+          }
+          case "notify_owner":
+            return {
+              nodeType: type,
+              label: String(data.subject || "Notify me"),
+            };
+          case "owner_reminder": {
+            const amount = Number(data.amount ?? 2) || 2;
+            const unit = String(data.unit || "hours");
+            return { nodeType: type, label: `Remind me in ${amount} ${unit}` };
+          }
+          case "add_tag":
+            return {
+              nodeType: type,
+              label: data.tag ? `Add tag “${data.tag}”` : "Add tag",
+            };
+          case "remove_tag":
+            return {
+              nodeType: type,
+              label: data.tag ? `Remove tag “${data.tag}”` : "Remove tag",
+            };
+          case "condition":
+            return { nodeType: type, label: "If / Else" };
+          case "review_request":
+            return { nodeType: type, label: "Google review" };
+          case "send_coupon":
+            return {
+              nodeType: type,
+              label: data.couponCode
+                ? `Coupon ${String(data.couponCode)}`
+                : "Send coupon",
+            };
+          case "webhook":
+            return { nodeType: type, label: "Webhook" };
+          default:
+            return { nodeType: type || null, label: type || "Step" };
+        }
+      };
+
+      const runs = await db
+        .select()
+        .from(websiteAutomationRuns)
+        .where(
+          and(
+            eq(websiteAutomationRuns.workflowId, workflowId),
+            eq(websiteAutomationRuns.websiteProgressId, websiteId),
+          ),
+        )
+        .orderBy(desc(websiteAutomationRuns.startedAt))
+        .limit(100);
+
+      const runIds = runs.map((r) => r.id);
+      const steps =
+        runIds.length === 0
+          ? []
+          : await db
+              .select()
+              .from(websiteAutomationSteps)
+              .where(inArray(websiteAutomationSteps.runId, runIds));
+
+      const eventIds = runs
+        .map((r) => r.eventId)
+        .filter((id): id is number => typeof id === "number");
+      const events =
+        eventIds.length === 0
+          ? []
+          : await db
+              .select()
+              .from(automationEvents)
+              .where(inArray(automationEvents.id, eventIds));
+      const eventById = new Map(events.map((e) => [e.id, e]));
+
+      return res.json({
+        runs: runs.map((run) => {
+          const event = run.eventId ? eventById.get(run.eventId) : undefined;
+          const payload = (event?.payload || {}) as Record<string, unknown>;
+          return {
+            id: run.id,
+            status: run.status,
+            startedAt: run.startedAt,
+            finishedAt: run.finishedAt,
+            contactId: run.contactId,
+            contactEmail: String(
+              payload.visitorEmail || payload.email || "",
+            ),
+            isTest: run.isTest === true,
+            steps: steps
+              .filter((s) => s.runId === run.id)
+              .map((s) => {
+                const meta = labelForNode(s.nodeId);
+                return {
+                  id: s.id,
+                  nodeId: s.nodeId,
+                  nodeType: meta.nodeType,
+                  label: meta.label,
+                  status: s.status,
+                  runAt: s.runAt,
+                  attempts: s.attempts,
+                  error: s.error,
+                };
+              }),
+          };
+        }),
+      });
+    } catch (error) {
+      console.error("Error fetching automation runs:", error);
+      return res.status(500).json({ error: "Failed to fetch runs" });
+    }
+  });
+
+  app.get("/api/websites/:id/automation-presets", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const receptionOn = access.website.receptionEnabled;
+      return res.json({
+        presets: AUTOMATION_PRESETS.filter((p) => receptionOn || !p.triggerType.startsWith("request.")).map((p) => ({
+          key: p.key,
+          name: p.name,
+          nameGr: p.nameGr,
+          description: p.description,
+          descriptionGr: p.descriptionGr,
+          logic: p.logic,
+          logicGr: p.logicGr,
+          category: p.category,
+          popular: !!p.popular,
+          featured: !!p.featured,
+          triggerType: p.triggerType,
+          formType: p.formType || null,
+        })),
+      });
+    } catch (error) {
+      console.error("Error listing automation presets:", error);
+      return res.status(500).json({ error: "Failed to list presets" });
+    }
+  });
+
+  app.post("/api/websites/:id/automation-workflows/from-preset", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const schema = z.object({
+        presetKey: z.string().min(1),
+        formId: z.string().min(1).optional(),
+        formName: z.string().optional(),
+        enabled: z.boolean().optional(),
+        language: z.enum(["en", "gr"]).optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid preset request" });
+      }
+      const preset = getAutomationPreset(parsed.data.presetKey);
+      if (!preset) return res.status(404).json({ error: "Preset not found" });
+      if (preset.triggerType.startsWith("request.") && !access.website.receptionEnabled) {
+        return res.status(403).json({ error: "Reception is disabled" });
+      }
+
+      const isFormTrigger = preset.triggerType === "form.submitted";
+      let formId = parsed.data.formId?.trim() || "";
+      let formName = parsed.data.formName?.trim() || formId;
+
+      if (isFormTrigger) {
+        if (!formId) {
+          return res.status(400).json({
+            error: "formId required for form-based presets",
+          });
+        }
+      } else {
+        formId = preset.triggerType;
+        formName = parsed.data.language === "gr" ? preset.nameGr : preset.name;
+      }
+
+      const graph = preset.buildGraph({ formId, formName });
+      const enabled = parsed.data.enabled ?? false;
+      const triggerConfig: Record<string, unknown> = {
+        ...(preset.defaultTriggerConfig || {}),
+        presetKey: preset.key,
+      };
+      if (isFormTrigger) triggerConfig.formId = formId;
+
+      if (enabled && isFormTrigger) {
+        await db
+          .update(websiteAutomationWorkflows)
+          .set({ enabled: false, updatedAt: new Date() })
+          .where(
+            and(
+              eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+              eq(websiteAutomationWorkflows.triggerFormId, formId),
+              eq(websiteAutomationWorkflows.triggerType, "form.submitted"),
+              eq(websiteAutomationWorkflows.enabled, true),
+            ),
+          );
+      }
+
+      const name =
+        parsed.data.language === "en" ? preset.name : preset.nameGr || preset.name;
+
+      const [workflow] = await db
+        .insert(websiteAutomationWorkflows)
+        .values({
+          websiteProgressId: websiteId,
+          name,
+          enabled,
+          triggerFormId: formId,
+          triggerType: preset.triggerType,
+          triggerConfig,
+          graph,
+          frequency: "every_time",
+          presetKey: preset.key,
+        })
+        .returning();
+      return res.status(201).json({ workflow });
+    } catch (error) {
+      console.error("Error creating workflow from preset:", error);
+      return res.status(500).json({ error: "Failed to create from preset" });
+    }
+  });
+
+  /** Booking app (or dashboard test) → automation events. Does not change booking emails. */
+  app.post("/api/websites/:id/booking-events", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+
+      const bookingSecret = process.env.BOOKING_EVENTS_SECRET;
+      const headerSecret = String(req.headers["x-booking-secret"] || "");
+      const secretOk = !!bookingSecret && headerSecret === bookingSecret;
+      if (!secretOk) {
+        const access = await authorizeWebsiteAccess(req, websiteId);
+        if ("error" in access && access.error) {
+          return res.status(access.error.status).json(access.error.body);
+        }
+      }
+
+      const schema = z.object({
+        type: z.enum(["booking.created", "booking.cancelled", "booking.completed"]),
+        email: z.string().email(),
+        name: z.string().optional(),
+        phone: z.string().optional(),
+        service: z.string().optional(),
+        start_at: z.string().optional(),
+        end_at: z.string().optional(),
+        booking_id: z.string().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid booking event", details: parsed.error.errors });
+      }
+
+      const mode = await getAutomationsEngineMode(websiteId);
+      if (mode !== "v2") {
+        return res.status(409).json({ error: "Website automations_engine is not v2" });
+      }
+
+      const cancelKey = parsed.data.booking_id
+        ? `booking:${websiteId}:${parsed.data.booking_id}`
+        : null;
+
+      // Cancel in-flight runs for this booking, then emit so "on cancel" workflows can start.
+      let cancelledSteps = 0;
+      if (parsed.data.type === "booking.cancelled" && cancelKey) {
+        cancelledSteps = await cancelRuns(cancelKey);
+      }
+
+      const [bookingSite] = await db
+        .select({
+          contactEmail: websiteProgress.contactEmail,
+          projectName: websiteProgress.projectName,
+          domain: websiteProgress.domain,
+          siteId: websiteProgress.siteId,
+          websiteLanguage: websiteProgress.websiteLanguage,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+      const [bookingOnboarding] = await db
+        .select({
+          accountEmail: onboardingFormResponses.accountEmail,
+          businessName: onboardingFormResponses.businessName,
+        })
+        .from(onboardingFormResponses)
+        .where(eq(onboardingFormResponses.websiteProgressId, websiteId))
+        .orderBy(desc(onboardingFormResponses.createdAt))
+        .limit(1);
+      const ownerEmail =
+        (bookingSite?.contactEmail || bookingOnboarding?.accountEmail || "").trim();
+      const siteLabel = (bookingSite?.projectName || bookingSite?.domain || "").trim();
+      const fromName = (
+        bookingSite?.projectName ||
+        bookingOnboarding?.businessName ||
+        bookingSite?.domain ||
+        "Client"
+      ).trim();
+
+      const result = await emitEvent({
+        websiteProgressId: websiteId,
+        type: parsed.data.type,
+        cancelKey:
+          parsed.data.type === "booking.cancelled" ? null : cancelKey,
+        dedupeKey: cancelKey
+          ? `${parsed.data.type}:${cancelKey}`
+          : undefined,
+        payload: {
+          visitorEmail: parsed.data.email,
+          visitorName: parsed.data.name || "",
+          visitorPhone: parsed.data.phone || "",
+          visitorMessage: "",
+          service: parsed.data.service || "",
+          start_at: parsed.data.start_at || "",
+          end_at: parsed.data.end_at || "",
+          booking_id: parsed.data.booking_id || "",
+          ownerEmail,
+          siteLabel,
+          siteId: bookingSite?.siteId || "",
+          fromName,
+          language: bookingSite?.websiteLanguage || "en",
+        },
+      });
+      return res.json(
+        parsed.data.type === "booking.cancelled"
+          ? { ...result, cancelledSteps }
+          : result,
+      );
+    } catch (error) {
+      console.error("Error ingesting booking event:", error);
+      return res.status(500).json({ error: "Failed to ingest booking event" });
+    }
+  });
+
+  app.patch("/api/websites/:id/google-review-url", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const url = typeof req.body?.googleReviewUrl === "string" ? req.body.googleReviewUrl.trim() : "";
+      const [updated] = await db
+        .update(websiteProgress)
+        .set({ googleReviewUrl: url || null, updatedAt: new Date() })
+        .where(eq(websiteProgress.id, websiteId))
+        .returning({
+          id: websiteProgress.id,
+          googleReviewUrl: websiteProgress.googleReviewUrl,
+        });
+      return res.json(updated);
+    } catch (error) {
+      console.error("Error updating google review url:", error);
+      return res.status(500).json({ error: "Failed to update Google review URL" });
+    }
+  });
+
+  app.post("/api/websites/:id/automation-workflows/:workflowId/test", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      const workflowId = parseInt(req.params.workflowId, 10);
+      if (Number.isNaN(websiteId) || Number.isNaN(workflowId)) {
+        return res.status(400).json({ error: "Invalid ids" });
+      }
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      if (!req.user?.email) return res.status(401).json({ error: "Not authenticated" });
+
+      const [workflow] = await db
+        .select()
+        .from(websiteAutomationWorkflows)
+        .where(
+          and(
+            eq(websiteAutomationWorkflows.id, workflowId),
+            eq(websiteAutomationWorkflows.websiteProgressId, websiteId),
+          ),
+        )
+        .limit(1);
+      if (!workflow) return res.status(404).json({ error: "Workflow not found" });
+
+      const mode = await getAutomationsEngineMode(websiteId);
+      if (mode !== "v2") {
+        return res.status(409).json({ error: "Website automations_engine is not v2" });
+      }
+
+      const fallbackEmail = String(req.user.email);
+      const isValidEmail = (v: string) =>
+        /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+
+      const visitorEmail = String(req.body?.visitorEmail || "")
+        .trim()
+        .toLowerCase();
+      const ownerEmail = String(req.body?.ownerEmail || "")
+        .trim()
+        .toLowerCase();
+      const visitorName = String(req.body?.visitorName || "Test Contact").trim();
+
+      if (!visitorEmail || !isValidEmail(visitorEmail)) {
+        return res.status(400).json({ error: "Valid visitorEmail is required" });
+      }
+      if (!ownerEmail || !isValidEmail(ownerEmail)) {
+        return res.status(400).json({ error: "Valid ownerEmail is required" });
+      }
+
+      const [site] = await db
+        .select({
+          contactEmail: websiteProgress.contactEmail,
+          projectName: websiteProgress.projectName,
+          siteId: websiteProgress.siteId,
+        })
+        .from(websiteProgress)
+        .where(eq(websiteProgress.id, websiteId))
+        .limit(1);
+
+      const result = await emitEvent({
+        websiteProgressId: websiteId,
+        type: workflow.triggerType || "form.submitted",
+        dedupeKey: `test:${workflowId}:${Date.now()}`,
+        payload: {
+          isTest: true,
+          testEmail: fallbackEmail,
+          testWorkflowId: workflowId,
+          form_id: workflow.triggerFormId,
+          formId: workflow.triggerFormId,
+          visitorEmail,
+          visitorName: visitorName || "Test Contact",
+          visitorPhone: String(req.body?.visitorPhone || "").trim(),
+          visitorMessage:
+            String(req.body?.visitorMessage || "").trim() ||
+            "Test run — delays skipped where possible.",
+          siteLabel: site?.projectName || "Test",
+          siteId: site?.siteId || "",
+          ownerEmail,
+          fromName: site?.projectName || "Hayc Test",
+          language: "en",
+          tag: String((workflow.triggerConfig as any)?.tag || "test"),
+        },
+      });
+      if (!result.runIds.length) {
+        return res.status(409).json({
+          error:
+            "No run started — check the workflow is enabled and the trigger matches",
+        });
+      }
+      return res.json(result);
+    } catch (error: any) {
+      console.error("Error running automation test:", error);
+      const detail =
+        error?.cause?.message || error?.message || "Failed to run test";
+      return res.status(500).json({ error: detail });
+    }
+  });
+
+  app.post("/api/websites/:id/automation-webhook-test", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const url = String(req.body?.url || "").trim();
+      const secret = String(req.body?.secret || "").trim();
+      if (!url.startsWith("https://")) {
+        return res.status(400).json({ error: "URL must be https" });
+      }
+      const body = {
+        event: { type: "webhook.test" },
+        contact: { email: "test@example.com", name: "Test" },
+        payload: { sample: true },
+        website_id: websiteId,
+        sent_at: new Date().toISOString(),
+      };
+      const bodyStr = JSON.stringify(body);
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (secret) {
+        const { createHmac } = await import("crypto");
+        headers["X-Hayc-Signature"] = createHmac("sha256", secret)
+          .update(bodyStr)
+          .digest("hex");
+      }
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 10_000);
+      try {
+        const upstream = await fetch(url, {
+          method: "POST",
+          headers,
+          body: bodyStr,
+          signal: controller.signal,
+        });
+        return res.json({ status: upstream.status, ok: upstream.ok });
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch (error: any) {
+      return res.status(502).json({
+        error: "Webhook test failed",
+        message: error?.message || "unknown",
+      });
+    }
+  });
+
   app.delete("/api/websites/:id/automation-workflows/:workflowId", async (req, res) => {
     try {
       const websiteId = parseInt(req.params.id, 10);
@@ -26668,10 +28102,23 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       if ("error" in access && access.error) {
         return res.status(access.error.status).json(access.error.body);
       }
-      // Delete jobs first
+      // Delete jobs / runs / steps first (FK order)
       await db
         .delete(websiteAutomationJobs)
         .where(eq(websiteAutomationJobs.workflowId, workflowId));
+      const runs = await db
+        .select({ id: websiteAutomationRuns.id })
+        .from(websiteAutomationRuns)
+        .where(eq(websiteAutomationRuns.workflowId, workflowId));
+      if (runs.length) {
+        const runIds = runs.map((r) => r.id);
+        await db
+          .delete(websiteAutomationSteps)
+          .where(inArray(websiteAutomationSteps.runId, runIds));
+        await db
+          .delete(websiteAutomationRuns)
+          .where(eq(websiteAutomationRuns.workflowId, workflowId));
+      }
       const deleted = await db
         .delete(websiteAutomationWorkflows)
         .where(
@@ -26686,6 +28133,110 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
     } catch (error) {
       console.error("Error deleting automation workflow:", error);
       return res.status(500).json({ error: "Failed to delete workflow" });
+    }
+  });
+
+  // Trusted event intake (backend / booking / admin tools). Form posts still go through
+  // /public/contact and /api/newsletter/subscribe which call emitEvent internally on v2.
+  app.post("/api/events", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const schema = z.object({
+        websiteProgressId: z.number().int().positive(),
+        type: z.string().min(1).max(120),
+        payload: z.record(z.unknown()).default({}),
+        dedupeKey: z.string().max(500).nullable().optional(),
+        cancelKey: z.string().max(500).nullable().optional(),
+      });
+      const parsed = schema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ error: "Invalid event", details: parsed.error.errors });
+      }
+      const access = await authorizeWebsiteAccess(req, parsed.data.websiteProgressId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const mode = await getAutomationsEngineMode(parsed.data.websiteProgressId);
+      if (mode !== "v2") {
+        return res.status(409).json({
+          error: "Website automations_engine is not v2",
+          automationsEngine: mode,
+        });
+      }
+      const result = await emitEvent({
+        websiteProgressId: parsed.data.websiteProgressId,
+        type: parsed.data.type,
+        payload: parsed.data.payload as Record<string, unknown>,
+        dedupeKey: parsed.data.dedupeKey,
+        cancelKey: parsed.data.cancelKey,
+      });
+      return res.json(result);
+    } catch (error) {
+      console.error("Error emitting automation event:", error);
+      return res.status(500).json({ error: "Failed to emit event" });
+    }
+  });
+
+  app.post("/api/events/cancel", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Not authenticated" });
+    }
+    try {
+      const cancelKey = String(req.body?.cancelKey || "").trim();
+      if (!cancelKey) return res.status(400).json({ error: "cancelKey required" });
+      const cancelled = await cancelRuns(cancelKey);
+      return res.json({ cancelled });
+    } catch (error) {
+      console.error("Error cancelling automation runs:", error);
+      return res.status(500).json({ error: "Failed to cancel runs" });
+    }
+  });
+
+  app.post("/api/websites/:id/automations/migrate-legacy", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const result = await migrateLegacyFormAutomationsToWorkflows(websiteId);
+      return res.json(result);
+    } catch (error) {
+      console.error("Error migrating legacy automations:", error);
+      return res.status(500).json({ error: "Failed to migrate legacy automations" });
+    }
+  });
+
+  app.patch("/api/websites/:id/automations-engine", async (req, res) => {
+    try {
+      const websiteId = parseInt(req.params.id, 10);
+      if (Number.isNaN(websiteId)) return res.status(400).json({ error: "Invalid website id" });
+      const access = await authorizeWebsiteAccess(req, websiteId);
+      if ("error" in access && access.error) {
+        return res.status(access.error.status).json(access.error.body);
+      }
+      const engine = req.body?.automationsEngine;
+      if (engine !== "legacy" && engine !== "v2") {
+        return res.status(400).json({ error: "automationsEngine must be legacy|v2" });
+      }
+      if (engine === "v2") {
+        await migrateLegacyFormAutomationsToWorkflows(websiteId);
+      }
+      const [updated] = await db
+        .update(websiteProgress)
+        .set({ automationsEngine: engine, updatedAt: new Date() })
+        .where(eq(websiteProgress.id, websiteId))
+        .returning({
+          id: websiteProgress.id,
+          automationsEngine: websiteProgress.automationsEngine,
+        });
+      return res.json(updated);
+    } catch (error) {
+      console.error("Error updating automations engine:", error);
+      return res.status(500).json({ error: "Failed to update automations engine" });
     }
   });
 
@@ -26767,6 +28318,14 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
       }
 
       await putConfig(website.siteId, req.body);
+      try {
+        await syncWebsiteFormFieldsFromConfig(
+          website.id,
+          req.body as Record<string, unknown>,
+        );
+      } catch (syncErr) {
+        console.error("[site-config] form fields sync failed:", syncErr);
+      }
       res.json({ success: true });
     } catch (error: any) {
       console.error("Error saving site config:", error);
@@ -29049,6 +30608,10 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
   );
 
   const httpServer = createServer(app);
+
+  registerReceptionRoutes(app, authorizeWebsiteAccess);
+  registerBlogRoutes(app);
+  registerVideoRoutes(app);
   return httpServer;
 }
 

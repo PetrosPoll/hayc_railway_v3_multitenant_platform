@@ -158,9 +158,17 @@ export const websiteProgress = pgTable("website_progress", {
   bookingEnabled: boolean("booking_enabled").default(false).notNull(),
   paymentsEnabled: boolean("payments_enabled").default(false).notNull(),
   digitalProductsEnabled: boolean("digital_products_enabled").default(false).notNull(),
+  /** Insurance-agent reception inbox. Off by default. Admin-only toggle. */
+  receptionEnabled: boolean("reception_enabled").default(false).notNull(),
+  /** AI blog tab in the customer dashboard. Off until an admin turns it on. */
+  blogEnabled: boolean("blog_enabled").default(false).notNull(),
+  /** AI video editing tab. Off until an admin turns it on. */
+  videoEnabled: boolean("video_enabled").default(false).notNull(),
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
   contactEmail: text("contact_email"),
+  /** Google review / Maps URL for automation `review_request` action. */
+  googleReviewUrl: text("google_review_url"),
   /** Optional dashboard card preview image (staff can set while impersonating when no template chosen). */
   dashboardPreviewImage: text("dashboard_preview_image"),
   /** First time the site entered the Launch stage (set once, never overwritten). */
@@ -181,6 +189,11 @@ export const websiteProgress = pgTable("website_progress", {
   stripeAccountId: text("stripe_account_id"),
   stripeAccountStatus: text("stripe_account_status").notNull().default("disconnected"),
   stripeConnectedAt: timestamp("stripe_connected_at"),
+  /**
+   * Automations engine: `legacy` = old startWorkflowForFormSubmit path;
+   * `v2` = event bus + runs/steps worker (default for all sites).
+   */
+  automationsEngine: text("automations_engine").notNull().default("v2"),
   // Billing info per website (used for Wrapp invoices; survives subscription sync)
   billingVatNumber: text("billing_vat_number"),
   billingCity: text("billing_city"),
@@ -902,16 +915,128 @@ export const contacts = pgTable("contacts", {
   firstName: text("first_name"),
   lastName: text("last_name"),
   email: text("email").notNull(),
+  /** Phase 1 automations — optional phone from form submits */
+  phone: text("phone"),
+  /** Cloudinary folder for reception uploads. Reused for later magic-link files. */
+  cloudinaryFolder: text("cloudinary_folder"),
+  /** e.g. form.submitted / newsletter / booking */
+  source: text("source"),
+  /** Custom dates from form fields, e.g. { birthday: "1990-05-12" } */
+  dates: jsonb("dates").$type<Record<string, string>>().default({}),
+  consentMarketing: boolean("consent_marketing").notNull().default(false),
   status: text("status").notNull().default("pending"),
   confirmationToken: text("confirmation_token"),
   subscribedAt: timestamp("subscribed_at").defaultNow(),
   confirmedAt: timestamp("confirmed_at"),
   unsubscribedAt: timestamp("unsubscribed_at"),
+  lastBookingAt: timestamp("last_booking_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   emailWebsiteUnique: unique().on(table.email, table.websiteProgressId),
 }));
+
+export type ReceptionFile = {
+  publicId: string;
+  resourceType: "image" | "raw" | "video";
+  mime: string | null;
+  size: number | null;
+  ext: string;
+};
+
+export type ReceptionTypeField = {
+  key: string;
+  label: string;
+  type: "text" | "textarea" | "select" | "multiselect";
+  required?: boolean;
+  options?: { value: string; label: string }[];
+};
+
+export type ReceptionTypeDoc = {
+  key: string;
+  label: string;
+  required: boolean;
+};
+
+/** Global insurance request types. Same for every agent. */
+export const requestTypes = pgTable("request_types", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  label: text("label").notNull(),
+  kind: text("kind").notNull(),
+  fields: jsonb("fields").$type<ReceptionTypeField[]>().notNull().default([]),
+  requiredDocs: jsonb("required_docs").$type<ReceptionTypeDoc[]>().notNull().default([]),
+  allowUploads: boolean("allow_uploads").notNull().default(false),
+  active: boolean("active").notNull().default(true),
+});
+
+export const requests = pgTable(
+  "requests",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    contactId: integer("contact_id")
+      .notNull()
+      .references(() => contacts.id),
+    typeId: integer("type_id")
+      .notNull()
+      .references(() => requestTypes.id),
+    status: text("status").notNull().default("new"),
+    data: jsonb("data").$type<Record<string, string>>().notNull().default({}),
+    crossSell: text("cross_sell").array().notNull().default(sql`ARRAY[]::text[]`),
+    policyRef: text("policy_ref"),
+    magicTokenHash: text("magic_token_hash"),
+    magicTokenExpiresAt: timestamp("magic_token_expires_at"),
+    lastActivityAt: timestamp("last_activity_at").defaultNow().notNull(),
+    closedAt: timestamp("closed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    websiteIdx: index("requests_website_idx").on(table.websiteProgressId),
+    contactIdx: index("requests_contact_idx").on(table.contactId),
+    magicIdx: index("requests_magic_token_hash_idx").on(table.magicTokenHash),
+  }),
+);
+
+export const requestDocs = pgTable(
+  "request_docs",
+  {
+    id: serial("id").primaryKey(),
+    requestId: integer("request_id")
+      .notNull()
+      .references(() => requests.id, { onDelete: "cascade" }),
+    docKey: text("doc_key").notNull(),
+    label: text("label").notNull(),
+    required: boolean("required").notNull().default(true),
+    received: boolean("received").notNull().default(false),
+    files: jsonb("files").$type<ReceptionFile[]>().notNull().default([]),
+    uploadedAt: timestamp("uploaded_at"),
+    requestedManually: boolean("requested_manually").notNull().default(false),
+  },
+  (table) => ({
+    requestIdx: index("request_docs_request_idx").on(table.requestId),
+  }),
+);
+
+export const requestEvents = pgTable(
+  "request_events",
+  {
+    id: serial("id").primaryKey(),
+    requestId: integer("request_id")
+      .notNull()
+      .references(() => requests.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    actor: text("actor").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    requestIdx: index("request_events_request_idx").on(table.requestId),
+  }),
+);
 
 // Tags table - For categorizing contacts (replaces groups)
 export const tags = pgTable("tags", {
@@ -1152,6 +1277,115 @@ export const insertEmailTemplateSchema = createInsertSchema(emailTemplates)
 
 export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type InsertEmailTemplate = z.infer<typeof insertEmailTemplateSchema>;
+
+/** Site visit popups designed in Unlayer (separate from newsletter email templates). */
+export const popupTemplates = pgTable(
+  "popup_templates",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    name: text("name").notNull(),
+    html: text("html").notNull(),
+    design: text("design").notNull(), // JSON string of Unlayer design
+    thumbnail: text("thumbnail"),
+    enabled: boolean("enabled").notNull().default(false),
+    delayMs: integer("delay_ms").notNull().default(1500),
+    /** 0 = every visit; otherwise hide for N days after dismiss (localStorage/cookie on live site). */
+    showOnceEveryDays: integer("show_once_every_days").notNull().default(7),
+    /** Bump on content save so live sites can invalidate dismiss cookies. */
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteIdx: index("popup_templates_website_idx").on(table.websiteProgressId),
+  }),
+);
+
+export const insertPopupTemplateSchema = createInsertSchema(popupTemplates)
+  .pick({
+    websiteProgressId: true,
+    name: true,
+    html: true,
+    design: true,
+    thumbnail: true,
+    enabled: true,
+    delayMs: true,
+    showOnceEveryDays: true,
+  })
+  .extend({
+    thumbnail: z.string().nullable().optional(),
+    enabled: z.boolean().optional(),
+    delayMs: z.number().int().min(0).max(120_000).optional(),
+    showOnceEveryDays: z.number().int().min(0).max(365).optional(),
+  });
+
+export type PopupTemplate = typeof popupTemplates.$inferSelect;
+export type InsertPopupTemplate = z.infer<typeof insertPopupTemplateSchema>;
+
+/** Customer-written or AI-generated blog posts for one website. */
+export const blogPosts = pgTable(
+  "blog_posts",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    title: text("title").notNull(),
+    slug: text("slug").notNull(),
+    excerpt: text("excerpt").notNull().default(""),
+    html: text("html").notNull(),
+    /** The brief the customer typed when asking AI to write the post. */
+    topic: text("topic"),
+    published: boolean("published").notNull().default(false),
+    publishedAt: timestamp("published_at"),
+    /** Path written into the site config on the last sync. */
+    sitePath: text("site_path"),
+    syncedAt: timestamp("synced_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteIdx: index("blog_posts_website_idx").on(table.websiteProgressId),
+    websiteSlugUnique: unique("blog_posts_website_slug_unique").on(
+      table.websiteProgressId,
+      table.slug,
+    ),
+  }),
+);
+
+export type BlogPost = typeof blogPosts.$inferSelect;
+
+/** One caption job. The finished file stays at the provider; we keep only its ids. */
+export const videoJobs = pgTable(
+  "video_jobs",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    provider: text("provider").notNull(),
+    providerVideoId: text("provider_video_id"),
+    providerTaskId: text("provider_task_id"),
+    styleId: text("style_id").notNull(),
+    styleName: text("style_name").notNull(),
+    fileName: text("file_name").notNull(),
+    /** processing | completed | failed */
+    status: text("status").notNull().default("processing"),
+    error: text("error"),
+    /** Temporary upload key. Cleared once the provider has the file. */
+    s3Key: text("s3_key"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteIdx: index("video_jobs_website_idx").on(table.websiteProgressId),
+  }),
+);
+
+export type VideoJob = typeof videoJobs.$inferSelect;
 
 // Website Analytics tables
 export const websiteAnalyticsKeys = pgTable("website_analytics_keys", {
@@ -1804,12 +2038,48 @@ export type InsertWebsiteFormAutomation = z.infer<
 >;
 
 /** React Flow–compatible graph stored on workflows. */
+export type AutomationNodeType =
+  | "trigger"
+  | "email"
+  | "delay"
+  | "notify_owner"
+  | "owner_reminder"
+  | "add_tag"
+  | "remove_tag"
+  | "condition"
+  | "webhook"
+  | "review_request"
+  | "send_coupon";
+
 export type AutomationGraphNode = {
   id: string;
-  type: "trigger" | "email" | "delay";
+  type: AutomationNodeType;
   position: { x: number; y: number };
   data: Record<string, unknown>;
 };
+
+/** Workflow frequency (Phase 1–2 UI; enforced in v2 engine when set). */
+export type AutomationFrequency =
+  | "every_time"
+  | "once_per_contact"
+  | "once_per_contact_per_24h"
+  | "once_per_contact_per_90d";
+
+/** Event types the v2 engine can match (Phase 0–2). */
+export type AutomationEventType =
+  | "form.submitted"
+  | "contact.created"
+  | "contact.tag_added"
+  | "newsletter.subscribed"
+  | "booking.created"
+  | "booking.cancelled"
+  | "booking.completed"
+  | "schedule.date_offset"
+  | "request.created"
+  | "request.status_changed"
+  | "request.docs_missing";
+
+export type AutomationsEngineMode = "legacy" | "v2";
 
 export type AutomationGraphEdge = {
   id: string;
@@ -1835,6 +2105,8 @@ export type AutomationJobPayload = {
   ownerEmail: string;
   fromName: string;
   language: string;
+  /** Extra {{placeholders}} such as reception email variables. */
+  placeholders?: Record<string, string>;
 };
 
 export const websiteEmailTemplates = pgTable(
@@ -1880,11 +2152,22 @@ export const websiteAutomationWorkflows = pgTable(
       .references(() => websiteProgress.id),
     name: text("name").notNull(),
     enabled: boolean("enabled").notNull().default(true),
+    /** Form id for form.submitted triggers (kept for builder compat). */
     triggerFormId: text("trigger_form_id").notNull(),
+    /** e.g. form.submitted | booking.completed | schedule.date_offset */
+    triggerType: text("trigger_type").notNull().default("form.submitted"),
+    triggerConfig: jsonb("trigger_config")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     graph: jsonb("graph")
       .$type<AutomationGraph>()
       .notNull()
       .default({ nodes: [], edges: [] }),
+    frequency: text("frequency").notNull().default("every_time"),
+    isSystem: boolean("is_system").notNull().default(false),
+    presetKey: text("preset_key"),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
@@ -1896,8 +2179,139 @@ export const websiteAutomationWorkflows = pgTable(
       table.websiteProgressId,
       table.triggerFormId,
     ),
+    typeIdx: index("website_automation_workflows_type_idx").on(
+      table.websiteProgressId,
+      table.triggerType,
+    ),
   }),
 );
+
+/** Ingested automation events (form submits, booking, etc.). */
+export const automationEvents = pgTable(
+  "automation_events",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    dedupeKey: text("dedupe_key"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    websiteTypeIdx: index("automation_events_website_type_idx").on(
+      table.websiteProgressId,
+      table.type,
+    ),
+    // Partial unique index created in SQL migration (WHERE dedupe_key IS NOT NULL)
+  }),
+);
+
+export type AutomationEvent = typeof automationEvents.$inferSelect;
+
+/** SES open/click (and test) events for automation emails. */
+export const automationEmailEvents = pgTable(
+  "automation_email_events",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    runId: integer("run_id"),
+    stepId: integer("step_id"),
+    messageId: text("message_id").notNull(),
+    type: text("type").notNull(), // open | click | delivery | bounce | complaint
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    messageIdx: index("automation_email_events_message_idx").on(table.messageId),
+    runIdx: index("automation_email_events_run_idx").on(table.runId),
+  }),
+);
+
+export type AutomationEmailEvent = typeof automationEmailEvents.$inferSelect;
+
+export const websiteAutomationRuns = pgTable(
+  "website_automation_runs",
+  {
+    id: serial("id").primaryKey(),
+    workflowId: integer("workflow_id")
+      .notNull()
+      .references(() => websiteAutomationWorkflows.id),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    eventId: integer("event_id").references(() => automationEvents.id),
+    contactId: integer("contact_id"),
+    status: text("status").notNull().default("running"), // running | completed | failed | cancelled
+    cancelKey: text("cancel_key"),
+    isTest: boolean("is_test").notNull().default(false),
+    startedAt: timestamp("started_at").defaultNow().notNull(),
+    finishedAt: timestamp("finished_at"),
+  },
+  (table) => ({
+    workflowIdx: index("website_automation_runs_workflow_idx").on(table.workflowId),
+    websiteIdx: index("website_automation_runs_website_idx").on(table.websiteProgressId),
+    cancelIdx: index("website_automation_runs_cancel_idx").on(table.cancelKey),
+  }),
+);
+
+export type WebsiteAutomationRun = typeof websiteAutomationRuns.$inferSelect;
+
+export const websiteAutomationSteps = pgTable(
+  "website_automation_steps",
+  {
+    id: serial("id").primaryKey(),
+    runId: integer("run_id")
+      .notNull()
+      .references(() => websiteAutomationRuns.id),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    nodeId: text("node_id").notNull(),
+    status: text("status").notNull().default("pending"), // pending | processing | done | failed | cancelled
+    runAt: timestamp("run_at").notNull().defaultNow(),
+    attempts: integer("attempts").notNull().default(0),
+    output: jsonb("output").$type<Record<string, unknown>>(),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    dueIdx: index("website_automation_steps_due_idx").on(table.status, table.runAt),
+    runIdx: index("website_automation_steps_run_idx").on(table.runId),
+  }),
+);
+
+export type WebsiteAutomationStep = typeof websiteAutomationSteps.$inferSelect;
+
+/** Synced form field catalog (from site config on publish). */
+export const websiteFormFields = pgTable(
+  "website_form_fields",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    formId: text("form_id").notNull(),
+    fieldKey: text("field_key").notNull(),
+    label: text("label").notNull(),
+    fieldType: text("field_type").notNull().default("text"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    uniqueField: unique("website_form_fields_unique").on(
+      table.websiteProgressId,
+      table.formId,
+      table.fieldKey,
+    ),
+    websiteIdx: index("website_form_fields_website_idx").on(table.websiteProgressId),
+  }),
+);
+
+export type WebsiteFormField = typeof websiteFormFields.$inferSelect;
 
 export const insertWebsiteAutomationWorkflowSchema = createInsertSchema(
   websiteAutomationWorkflows,

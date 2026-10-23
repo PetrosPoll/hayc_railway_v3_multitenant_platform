@@ -36,6 +36,7 @@ import Auth from "@/pages/auth";
 import WebsitesList from "@/pages/websites-list";
 import WebsiteDashboard from "@/pages/website-dashboard";
 import EmailBuilderPage from "@/pages/email-builder";
+import PopupBuilderPage from "@/pages/popup-builder";
 import CampaignAnalytics from "@/pages/campaign-analytics";
 import NotFound from "@/pages/not-found";
 import Admin from "@/pages/admin";
@@ -64,6 +65,7 @@ import AdminTemplates from "@/pages/admin-templates";
 import AdminEmailBuilder from "@/pages/admin-email-builder";
 import UnsubscribePage from "@/pages/unsubscribe";
 import ContactCardPage from "@/pages/contact-card";
+import ReceptionUploadPage from "@/pages/reception-upload";
 import { isContactCardPath } from "@shared/contact-cards";
 
 function ConditionalFooter() {
@@ -83,8 +85,10 @@ function ConditionalFooter() {
     location.pathname === "/get-started/onboarding/content-media" ||
     location.pathname === "/reviews-program" ||
     location.pathname.includes("/email-builder") ||
+    location.pathname.includes("/popup-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
+    location.pathname.startsWith("/reception/") ||
     location.pathname === "/portfolio" ||
     isContactCardPath(location.pathname)
   ) {
@@ -107,8 +111,10 @@ function ConditionalNavMenu() {
     location.pathname === "/demo" ||
     location.pathname.startsWith("/demo/") ||
     location.pathname.includes("/email-builder") ||
+    location.pathname.includes("/popup-builder") ||
     location.pathname.includes("/analytics") ||
     location.pathname === "/unsubscribe" ||
+    location.pathname.startsWith("/reception/") ||
     location.pathname === "/portfolio" ||
     isContactCardPath(location.pathname)
   ) {
@@ -220,6 +226,14 @@ function MainAppContent() {
             }
           />
           <Route
+            path="/websites/:websiteId/popup-builder"
+            element={
+              <ProtectedRoute redirectAdminsToAdmin={true}>
+                <PopupBuilderPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/websites/:websiteId/campaigns/:campaignId/analytics"
             element={
               <ProtectedRoute redirectAdminsToAdmin={true}>
@@ -318,6 +332,7 @@ function MainAppContent() {
           <Route path="/billing-subscription-policy" element={<BillingSubscriptionPolicy />} />
           <Route path="/acceptable-use-policy" element={<AcceptableUsePolicy />} />
           <Route path="/unsubscribe" element={<UnsubscribePage />} />
+          <Route path="/reception/:token" element={<ReceptionUploadPage />} />
           <Route path="/card/:slug" element={<ContactCardPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

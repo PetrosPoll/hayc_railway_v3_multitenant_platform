@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { WebsiteProgress } from "@/components/ui/website-progress";
 import { WebsiteAnalytics } from "@/components/ui/website-analytics";
 import { Separator } from "@/components/ui/separator";
@@ -75,6 +76,9 @@ import {
   Film,
   Ticket,
   Zap,
+  AppWindow,
+  Inbox,
+  Newspaper,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useDemoMode } from "@/hooks/use-demo-mode";
@@ -82,7 +86,7 @@ import { useAuth } from "@/components/ui/authContext";
 import { impersonationMinHSvh } from "@/lib/impersonation-layout";
 import { useTranslation } from "react-i18next";
 import i18n from "@/i18n";
-import { Subscription } from "@shared/schema";
+import { Subscription, type PopupTemplate } from "@shared/schema";
 import { AVAILABLE_ADDONS } from "@/lib/addons";
 import { toGreekSafeUpperCase } from "@/lib/greek-text";
 import { usePricing, getAddonPrice } from "@/hooks/use-pricing";
@@ -96,6 +100,9 @@ import { loadCloudinaryWidget } from "@/lib/load-cloudinary-widget";
 import { Tips } from "@/components/ui/tips";
 import { ContentEditor } from "@/components/content-editor";
 import { AutomationBuilder } from "@/components/automations/AutomationBuilder";
+import { ReceptionPanel } from "@/components/reception/ReceptionPanel";
+import { BlogPanel } from "@/components/blog/BlogPanel";
+import { VideoPanel } from "@/components/video/VideoPanel";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 import { DigitalProductsTab } from "@/components/digital-products/DigitalProductsTab";
 import {
@@ -160,6 +167,9 @@ type Website = {
   bookingEnabled?: boolean;
    paymentsEnabled?: boolean;
   digitalProductsEnabled?: boolean;
+  receptionEnabled?: boolean;
+  blogEnabled?: boolean;
+  videoEnabled?: boolean;
   siteId?: string | null;
   websiteLanguage?: string | null;
   stages: Array<{
@@ -185,6 +195,7 @@ type SidebarMenuContentProps = {
   setDigitalProductsSubView: (view: "courses" | "buyers" | "analytics" | "coupons") => void;
   setBillingView: (view: any) => void;
   setNewsletterView: (view: any) => void;
+  resetReception: () => void;
   handleLogout: () => void;
   handleOpenBooking?: () => void;
   isBookingLoading?: boolean;
@@ -200,6 +211,7 @@ function SidebarMenuContent({
   setDigitalProductsSubView,
   setBillingView,
   setNewsletterView,
+  resetReception,
   handleLogout,
   handleOpenBooking,
   isBookingLoading,
@@ -429,6 +441,8 @@ function SidebarMenuContent({
                     setBillingView("overview");
                   } else if (item.id === "newsletter") {
                     setNewsletterView("overview");
+                  } else if (item.id === "reception") {
+                    resetReception();
                   }
                 });
               }}
@@ -503,6 +517,12 @@ export default function WebsiteDashboard() {
   const [activeSection, setActiveSection] = useState(() => {
     return searchParams.get("tab") || "progress";
   });
+  const [receptionHome, setReceptionHome] = useState(0);
+  const [leadName, setLeadName] = useState<string | null>(null);
+  const resetReception = () => {
+    setReceptionHome((n) => n + 1);
+    setLeadName(null);
+  };
 
   // Track the last updated tab to avoid race conditions
   const lastTabRef = useRef(searchParams.get("tab") || "progress");
@@ -633,6 +653,116 @@ export default function WebsiteDashboard() {
       enabled: !!websiteId && newsletterView === "templates",
     },
   );
+
+  const { data: popupTemplates, isLoading: popupsLoading } = useQuery<
+    PopupTemplate[]
+  >({
+    queryKey: ["/api/popup-templates", websiteId],
+    queryFn: async () => {
+      const response = await fetch(`/api/popup-templates/${websiteId}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch popups");
+      }
+      return response.json();
+    },
+    enabled: !!websiteId && activeSection === "popups",
+  });
+
+  const [popupToDelete, setPopupToDelete] = useState<number | null>(null);
+
+  const deletePopupMutation = useMutation({
+    mutationFn: async (popupId: number) => {
+      const response = await fetch(`/api/popup-templates/${popupId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to delete popup");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setPopupToDelete(null);
+      queryClient.invalidateQueries({
+        queryKey: ["/api/popup-templates", websiteId],
+      });
+      toast({
+        title: t("dashboard.success") || "Success",
+        description: t("dashboard.popupDeleted") || "Popup deleted",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const togglePopupEnabledMutation = useMutation({
+    mutationFn: async ({
+      popupId,
+      enabled,
+    }: {
+      popupId: number;
+      enabled: boolean;
+    }) => {
+      const response = await fetch(`/api/popup-templates/${popupId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ enabled }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to update popup");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/popup-templates", websiteId],
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const duplicatePopupMutation = useMutation({
+    mutationFn: async (popupId: number) => {
+      const response = await fetch(`/api/popup-templates/${popupId}/duplicate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to duplicate popup");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["/api/popup-templates", websiteId],
+      });
+      toast({
+        title: t("dashboard.success") || "Success",
+        description: t("dashboard.popupDuplicated") || "Popup duplicated",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Fetch website-specific invoices at the top level
   const { data: websiteInvoices, isLoading: invoicesLoading } = useQuery({
@@ -805,7 +935,7 @@ export default function WebsiteDashboard() {
       }
       return response.json() as Promise<{ accessUntil?: string }>;
     },
-    onSuccess: (data) => {
+    onSuccess: async (data, subscriptionId) => {
       const end =
         data.accessUntil != null
           ? new Date(data.accessUntil).toLocaleDateString()
@@ -819,7 +949,17 @@ export default function WebsiteDashboard() {
             : "Your subscription stays active until the end of the billing period."),
       });
       setSubscriptionToCancel(null);
-      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+      // Optimistic UI so buttons switch immediately (selectedSubscription is a local snapshot)
+      setSelectedSubscription((prev: any) =>
+        prev && prev.id === subscriptionId
+          ? {
+              ...prev,
+              cancelAtPeriodEnd: true,
+              accessUntil: data.accessUntil ?? prev.accessUntil,
+            }
+          : prev,
+      );
+      await queryClient.refetchQueries({ queryKey: ["/api/subscriptions", websiteId] });
       queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "stripe", "status"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user"] });
     },
@@ -845,15 +985,74 @@ export default function WebsiteDashboard() {
       }
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: async (_data, subscriptionId) => {
       toast({
         title: t("dashboard.subscriptionResumed") || "Subscription continued",
         description:
           t("dashboard.subscriptionResumedDesc") ||
           "Your subscription will renew as usual.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+      setSelectedSubscription((prev: any) =>
+        prev && prev.id === subscriptionId
+          ? {
+              ...prev,
+              cancelAtPeriodEnd: false,
+              cancellationReason: null,
+            }
+          : prev,
+      );
+      await queryClient.refetchQueries({ queryKey: ["/api/subscriptions", websiteId] });
       queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "stripe", "status"] });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  /** Fully cancelled plan/add-on → Checkout (or attach addon to active plan). */
+  const resubscribeMutation = useMutation({
+    mutationFn: async (subscriptionId: number) => {
+      const response = await fetch(
+        `/api/subscriptions/${subscriptionId}/resubscribe`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to start resubscribe");
+      }
+      return response.json() as Promise<{
+        url?: string;
+        attachedToPlan?: boolean;
+        restoredAddOns?: string[];
+      }>;
+    },
+    onSuccess: (data) => {
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      if (data.attachedToPlan) {
+        toast({
+          title: t("dashboard.resubscribeSuccess") || "Subscription restarted",
+          description:
+            t("dashboard.resubscribeAddonAttachedDesc") ||
+            "The add-on was added back to your active plan.",
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+        queryClient.invalidateQueries({
+          queryKey: ["/api/websites", websiteId, "stripe", "status"],
+        });
+        return;
+      }
+      toast({
+        title: t("dashboard.error") || "Error",
+        description: "No checkout URL returned",
+        variant: "destructive",
+      });
     },
     onError: (err: Error) => {
       toast({
@@ -1082,6 +1281,28 @@ export default function WebsiteDashboard() {
     },
   });
 
+  // After Stripe resubscribe Checkout success
+  useEffect(() => {
+    if (searchParams.get("resubscribed") !== "1") return;
+    setActiveSection("billing");
+    setBillingView("overview");
+    toast({
+      title: t("dashboard.resubscribeSuccess") || "Subscription restarted",
+      description:
+        t("dashboard.resubscribeSuccessDesc") ||
+        "Your new subscription is linked to this website.",
+    });
+    queryClient.invalidateQueries({ queryKey: ["/api/subscriptions", websiteId] });
+    queryClient.invalidateQueries({
+      queryKey: ["/api/websites", websiteId, "stripe", "status"],
+    });
+    const next = new URLSearchParams(searchParams);
+    next.delete("resubscribed");
+    if (!next.get("tab")) next.set("tab", "billing");
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   // Auto-redirect to content tab when progress is complete and no tab was explicitly set
   useEffect(() => {
     if (!website) return;
@@ -1198,6 +1419,24 @@ export default function WebsiteDashboard() {
       setActiveSection("progress");
     }
   }, [changesVisibleInUserDashboard, activeSection]);
+
+  useEffect(() => {
+    if (website && !website.receptionEnabled && activeSection === "reception") {
+      setActiveSection("progress");
+    }
+  }, [website, activeSection]);
+
+  useEffect(() => {
+    if (website && !website.blogEnabled && activeSection === "blog") {
+      setActiveSection("progress");
+    }
+  }, [website, activeSection]);
+
+  useEffect(() => {
+    if (website && !website.videoEnabled && activeSection === "video") {
+      setActiveSection("progress");
+    }
+  }, [website, activeSection]);
 
   // Newsletter section is now handled locally, no redirect needed
 
@@ -1463,7 +1702,17 @@ export default function WebsiteDashboard() {
     ];
 
     const marketingItems = [
+      ...(website?.receptionEnabled
+        ? [{ id: "reception", label: "Leads", icon: Inbox }]
+        : []),
       { id: "newsletter", label: t("dashboard.newsletter") || "Newsletter", icon: Mail },
+      { id: "popups", label: t("dashboard.popups") || "Popups", icon: AppWindow },
+      ...(website?.blogEnabled
+        ? [{ id: "blog", label: t("dashboard.blog") || "Blog", icon: Newspaper }]
+        : []),
+      ...(website?.videoEnabled
+        ? [{ id: "video", label: t("dashboard.video") || "Επεξεργασία βίντεο", icon: Film }]
+        : []),
       ...(website?.siteId
         ? [{ id: "automations", label: t("dashboard.automations") || "Automations", icon: Zap }]
         : []),
@@ -1533,7 +1782,7 @@ export default function WebsiteDashboard() {
     ];
 
     return items;
-  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, website?.receptionEnabled, website?.blogEnabled, website?.videoEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
 
   if (websiteLoading) {
     return (
@@ -1745,6 +1994,26 @@ export default function WebsiteDashboard() {
                 </BreadcrumbItem>
               </>
             )}
+            {activeSection === "popups" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage data-testid="breadcrumb-popups">
+                    {t("dashboard.popups") || "Popups"}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
+            {activeSection === "blog" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage data-testid="breadcrumb-blog">
+                    {t("dashboard.blog") || "Blog"}
+                  </BreadcrumbPage>
+                </BreadcrumbItem>
+              </>
+            )}
             {activeSection === "automations" && (
               <>
                 <BreadcrumbSeparator />
@@ -1753,6 +2022,32 @@ export default function WebsiteDashboard() {
                     {t("dashboard.automations") || "Automations"}
                   </BreadcrumbPage>
                 </BreadcrumbItem>
+              </>
+            )}
+            {activeSection === "reception" && (
+              <>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  {leadName ? (
+                    <BreadcrumbLink
+                      onClick={resetReception}
+                      className="cursor-pointer"
+                      data-testid="breadcrumb-leads"
+                    >
+                      Leads
+                    </BreadcrumbLink>
+                  ) : (
+                    <BreadcrumbPage data-testid="breadcrumb-leads">Leads</BreadcrumbPage>
+                  )}
+                </BreadcrumbItem>
+                {leadName && (
+                  <>
+                    <BreadcrumbSeparator />
+                    <BreadcrumbItem>
+                      <BreadcrumbPage data-testid="breadcrumb-lead">{leadName}</BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )}
               </>
             )}
             {newsletterView === "groups" && (
@@ -2030,7 +2325,114 @@ export default function WebsiteDashboard() {
     );
   };
 
+  const getSubscriptionAmount = (subscription: any): number => {
+    const amount = subscription?.nextBillingAmount ?? subscription?.price;
+    return typeof amount === "number" && Number.isFinite(amount) ? amount : 0;
+  };
+
+  const getSubscriptionLabel = (subscription: any): string => {
+    if (subscription?.productType === "addon" && subscription.productId) {
+      return (
+        AVAILABLE_ADDONS.find((a) => a.id === subscription.productId)?.name ||
+        subscription.productId
+      );
+    }
+    return subscription?.plan?.name || subscription?.tier || "Subscription";
+  };
+
+  /** Group plan + add-ons that share one Stripe subscription; leave standalone rows alone. */
+  const getSubscriptionDisplayGroups = (subs: any[] | undefined | null) => {
+    if (!subs?.length) return [] as Array<{ key: string; primary: any; companions: any[] }>;
+
+    const byStripe = new Map<string, any[]>();
+    const withoutStripe: any[] = [];
+
+    for (const sub of subs) {
+      const stripeId = sub.stripeSubscriptionId as string | null | undefined;
+      if (!stripeId) {
+        withoutStripe.push(sub);
+        continue;
+      }
+      const bucket = byStripe.get(stripeId);
+      if (bucket) bucket.push(sub);
+      else byStripe.set(stripeId, [sub]);
+    }
+
+    const groups: Array<{ key: string; primary: any; companions: any[] }> = [];
+
+    for (const [stripeId, rows] of byStripe) {
+      const plan = rows.find((r) => r.productType === "plan");
+      const addons = rows.filter((r) => r.productType === "addon");
+      if (plan && addons.length > 0) {
+        groups.push({ key: stripeId, primary: plan, companions: addons });
+      } else if (plan) {
+        groups.push({ key: stripeId, primary: plan, companions: [] });
+      } else {
+        for (const addon of addons) {
+          groups.push({ key: `${stripeId}-${addon.id}`, primary: addon, companions: [] });
+        }
+        for (const other of rows.filter(
+          (r) => r.productType !== "addon" && r.productType !== "plan",
+        )) {
+          groups.push({ key: `${stripeId}-${other.id}`, primary: other, companions: [] });
+        }
+      }
+    }
+
+    for (const orphan of withoutStripe) {
+      groups.push({ key: `local-${orphan.id}`, primary: orphan, companions: [] });
+    }
+
+    return groups;
+  };
+
+  const getCompanionsForSubscription = (subscription: any): any[] => {
+    if (
+      !subscription ||
+      subscription.productType !== "plan" ||
+      !subscription.stripeSubscriptionId ||
+      !subscriptions?.length
+    ) {
+      return [];
+    }
+    return subscriptions.filter(
+      (s: any) =>
+        s.productType === "addon" &&
+        s.stripeSubscriptionId === subscription.stripeSubscriptionId &&
+        s.id !== subscription.id,
+    );
+  };
+
+  const getSubscriptionStatusBadge = (subscription: any) => {
+    const endsAtPeriodEnd =
+      subscription?.status === "active" && subscription?.cancelAtPeriodEnd;
+    const untilDate = subscription?.accessUntil
+      ? formatDate(subscription.accessUntil)
+      : null;
+
+    return {
+      label: endsAtPeriodEnd
+        ? untilDate
+          ? t("dashboard.activeUntil", { date: untilDate }) ||
+            `Active until ${untilDate}`
+          : t("dashboard.subscriptionEndsOn", { date: "—" }) ||
+            "Active until period end"
+        : subscription?.status,
+      className: endsAtPeriodEnd
+        ? "bg-amber-500 hover:bg-amber-500"
+        : subscription?.status === "active"
+          ? "bg-green-500"
+          : "",
+      variant:
+        subscription?.status === "active"
+          ? ("default" as const)
+          : ("secondary" as const),
+    };
+  };
+
   const renderSubscriptionsList = () => {
+    const displayGroups = getSubscriptionDisplayGroups(subscriptions);
+
     return (
       <div data-testid="subscriptions-list">
         <h2 className="text-2xl font-bold mb-6">
@@ -2072,9 +2474,19 @@ export default function WebsiteDashboard() {
                 t("dashboard.activeSubscriptions") || "Active Subscriptions",
               )}
             </h3>
-            {subscriptions.map((subscription: any) => (
+            {displayGroups.map(({ key, primary: subscription, companions }) => {
+              const totalAmount =
+                getSubscriptionAmount(subscription) +
+                companions.reduce(
+                  (sum, addon) => sum + getSubscriptionAmount(addon),
+                  0,
+                );
+              const currency = subscription.currency || "EUR";
+              const period = subscription.billingPeriod || "monthly";
+
+              return (
               <Card
-                key={subscription.id}
+                key={key}
                 className="cursor-pointer hover:border-primary transition-colors"
                 onClick={() => {
                   setSelectedSubscription(subscription);
@@ -2090,29 +2502,30 @@ export default function WebsiteDashboard() {
                           className="text-base font-semibold capitalize"
                           data-testid={`tier-${subscription.id}`}
                         >
-                          {subscription.productType === "addon" &&
-                            subscription.productId
-                            ? AVAILABLE_ADDONS.find(
-                              (a) => a.id === subscription.productId,
-                            )?.name || subscription.productId
-                            : subscription.plan?.name || subscription.tier}
+                          {getSubscriptionLabel(subscription)}
                         </h3>
-                        <Badge
-                          variant={
-                            subscription.status === "active"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className={
-                            subscription.status === "active"
-                              ? "bg-green-500"
-                              : ""
-                          }
-                          data-testid={`status-${subscription.id}`}
-                        >
-                          {subscription.status}
-                        </Badge>
+                        {(() => {
+                          const statusBadge =
+                            getSubscriptionStatusBadge(subscription);
+                          return (
+                            <Badge
+                              variant={statusBadge.variant}
+                              className={statusBadge.className}
+                              data-testid={`status-${subscription.id}`}
+                            >
+                              {statusBadge.label}
+                            </Badge>
+                          );
+                        })()}
                       </div>
+                      {companions.length > 0 && (
+                        <p className="text-sm text-muted-foreground mb-1">
+                          {t("dashboard.includesAddOns") || "Includes"}:{" "}
+                          {companions
+                            .map((addon) => getSubscriptionLabel(addon))
+                            .join(", ")}
+                        </p>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         {subscription.status === "active" &&
                           subscription.nextBillingDate ? (
@@ -2120,10 +2533,13 @@ export default function WebsiteDashboard() {
                             Renews on {formatDate(subscription.nextBillingDate)}{" "}
                             for{" "}
                             {(() => {
+                              if (companions.length > 0) {
+                                return formatCurrency(totalAmount, currency);
+                              }
                               const actualPrice = subscription.nextBillingAmount || subscription.price;
                               const standardPrice = getStandardPrice(
                                 subscription.tier,
-                                subscription.billingPeriod || "monthly",
+                                period,
                                 subscription.productType,
                                 subscription.price
                               );
@@ -2133,88 +2549,50 @@ export default function WebsiteDashboard() {
                                 return (
                                   <span className="inline-flex items-center gap-2">
                                     <span className="line-through text-gray-400">
-                                      {formatCurrency(standardPrice, subscription.currency || "EUR")}
+                                      {formatCurrency(standardPrice, currency)}
                                     </span>
                                     <span className="text-green-600 font-semibold">
-                                      {formatCurrency(actualPrice, subscription.currency || "EUR")}
+                                      {formatCurrency(actualPrice, currency)}
                                     </span>
                                   </span>
                                 );
                               } else {
-                                return formatCurrency(actualPrice, subscription.currency || "EUR");
+                                return formatCurrency(actualPrice, currency);
                               }
                             })()}{" "}
-                            {subscription.billingPeriod || "monthly"}
+                            {period}
                           </>
                         ) : subscription.status === "cancelled" &&
                           subscription.accessUntil ? (
                           <>
                             Access expires on{" "}
                             {formatDate(subscription.accessUntil)}
-                            {(subscription.nextBillingAmount || subscription.price) && (
+                            {(totalAmount > 0 || subscription.price) && (
                               <>
                                 {" • "}
-                                {(() => {
-                                  const actualPrice = subscription.nextBillingAmount || subscription.price;
-                                  const standardPrice = getStandardPrice(
-                                    subscription.tier,
-                                    subscription.billingPeriod || "monthly",
-                                    subscription.productType,
-                                    subscription.price
-                                  );
-                                  const isDiscounted = actualPrice < standardPrice;
-
-                                  if (isDiscounted) {
-                                    return (
-                                      <span className="inline-flex items-center gap-2">
-                                        <span className="line-through text-gray-400">
-                                          {formatCurrency(standardPrice, subscription.currency || "EUR")}
-                                        </span>
-                                        <span className="text-green-600 font-semibold">
-                                          {formatCurrency(actualPrice, subscription.currency || "EUR")}
-                                        </span>
-                                      </span>
-                                    );
-                                  } else {
-                                    return formatCurrency(actualPrice, subscription.currency || "EUR");
-                                  }
-                                })()}{" "}
-                                {subscription.billingPeriod || "monthly"}
+                                {formatCurrency(
+                                  companions.length > 0
+                                    ? totalAmount
+                                    : getSubscriptionAmount(subscription),
+                                  currency,
+                                )}{" "}
+                                {period}
                               </>
                             )}
                           </>
                         ) : (
                           <>
                             {t("dashboard.activeSubscriptionsStartedOn") || "Started on"} {formatDate(subscription.createdAt)}
-                            {(subscription.nextBillingAmount || subscription.price) && (
+                            {(totalAmount > 0 || subscription.price) && (
                               <>
                                 {" • "}
-                                {(() => {
-                                  const actualPrice = subscription.nextBillingAmount || subscription.price;
-                                  const standardPrice = getStandardPrice(
-                                    subscription.tier,
-                                    subscription.billingPeriod || "monthly",
-                                    subscription.productType,
-                                    subscription.price
-                                  );
-                                  const isDiscounted = actualPrice < standardPrice;
-
-                                  if (isDiscounted) {
-                                    return (
-                                      <span className="inline-flex items-center gap-2">
-                                        <span className="line-through text-gray-400">
-                                          {formatCurrency(standardPrice, subscription.currency || "EUR")}
-                                        </span>
-                                        <span className="text-green-600 font-semibold">
-                                          {formatCurrency(actualPrice, subscription.currency || "EUR")}
-                                        </span>
-                                      </span>
-                                    );
-                                  } else {
-                                    return formatCurrency(actualPrice, subscription.currency || "EUR");
-                                  }
-                                })()}{" "}
-                                {t(`dashboard.billingPeriods.${subscription.billingPeriod || "monthly"}`)}
+                                {formatCurrency(
+                                  companions.length > 0
+                                    ? totalAmount
+                                    : getSubscriptionAmount(subscription),
+                                  currency,
+                                )}{" "}
+                                {t(`dashboard.billingPeriods.${period}`)}
                               </>
                             )}
                           </>
@@ -2225,7 +2603,8 @@ export default function WebsiteDashboard() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -2235,29 +2614,34 @@ export default function WebsiteDashboard() {
   const renderSubscriptionDetail = () => {
     if (!selectedSubscription) return null;
 
+    const companionAddons = getCompanionsForSubscription(selectedSubscription);
+    const nextPaymentTotal =
+      getSubscriptionAmount(selectedSubscription) +
+      companionAddons.reduce(
+        (sum, addon) => sum + getSubscriptionAmount(addon),
+        0,
+      );
+
     return (
       <div data-testid="subscription-detail">
         <div className="flex items-center gap-3 mb-6">
           <h2 className="text-2xl font-bold capitalize">
-            {selectedSubscription.productType === "addon" &&
-              selectedSubscription.productId
-              ? AVAILABLE_ADDONS.find(
-                (a) => a.id === selectedSubscription.productId,
-              )?.name || selectedSubscription.productId
-              : selectedSubscription.plan?.name ||
-              selectedSubscription.tier}{" "}
+            {getSubscriptionLabel(selectedSubscription)}{" "}
             {t("dashboard.subscription") || "Subscription"}
           </h2>
-          <Badge
-            variant={
-              selectedSubscription.status === "active" ? "default" : "secondary"
-            }
-            className={
-              selectedSubscription.status === "active" ? "bg-green-500" : ""
-            }
-          >
-            {selectedSubscription.status}
-          </Badge>
+          {(() => {
+            const statusBadge =
+              getSubscriptionStatusBadge(selectedSubscription);
+            return (
+              <Badge
+                variant={statusBadge.variant}
+                className={statusBadge.className}
+                data-testid={`status-detail-${selectedSubscription.id}`}
+              >
+                {statusBadge.label}
+              </Badge>
+            );
+          })()}
         </div>
         <p className="text-muted-foreground mb-6">
           {t("dashboard.manageSubscriptionBilling") ||
@@ -2275,11 +2659,8 @@ export default function WebsiteDashboard() {
             <div className="flex items-center justify-between py-3 border-b">
               <div>
                 <p className="font-semibold capitalize">
-                  {selectedSubscription.productType === "addon" &&
-                    selectedSubscription.productId
-                    ? AVAILABLE_ADDONS.find(
-                      (a) => a.id === selectedSubscription.productId,
-                    )?.name || selectedSubscription.productId
+                  {selectedSubscription.productType === "addon"
+                    ? getSubscriptionLabel(selectedSubscription)
                     : (selectedSubscription.plan?.name ||
                       selectedSubscription.tier) + " Plan"}
                 </p>
@@ -2321,6 +2702,54 @@ export default function WebsiteDashboard() {
               </span>
 
             </div>
+
+            {companionAddons.length > 0 && (
+              <div className="space-y-2 pb-2 border-b">
+                <p className="text-sm font-medium">
+                  {t("dashboard.includedAddOns") || "Included add-ons"}
+                </p>
+                {companionAddons.map((addon) => (
+                  <div
+                    key={addon.id}
+                    className="flex items-center justify-between text-sm"
+                    data-testid={`companion-addon-${addon.id}`}
+                  >
+                    <span className="text-muted-foreground capitalize">
+                      {getSubscriptionLabel(addon)}
+                    </span>
+                    <span>
+                      {formatCurrency(
+                        getSubscriptionAmount(addon),
+                        addon.currency || selectedSubscription.currency || "EUR",
+                      )}{" "}
+                      /{" "}
+                      {t(
+                        `dashboard.billingPeriods.${
+                          addon.billingPeriod ||
+                          selectedSubscription.billingPeriod ||
+                          "monthly"
+                        }`,
+                      )}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between text-sm font-semibold pt-1">
+                  <span>{t("dashboard.totalWithAddOns") || "Total"}</span>
+                  <span>
+                    {formatCurrency(
+                      nextPaymentTotal,
+                      selectedSubscription.currency || "EUR",
+                    )}{" "}
+                    /{" "}
+                    {t(
+                      `dashboard.billingPeriods.${
+                        selectedSubscription.billingPeriod || "monthly"
+                      }`,
+                    )}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="pt-2 space-y-2">
@@ -2379,18 +2808,31 @@ export default function WebsiteDashboard() {
                   {t("dashboard.cancelSubscription") || "CANCEL SUBSCRIPTION"}
                 </Button>
               ) : (
-                selectedSubscription.status === "cancelled" && (
-                  <div className="w-full space-y-1">
+                selectedSubscription.status === "cancelled" &&
+                (selectedSubscription.productType === "plan" ||
+                  selectedSubscription.productType === "addon") && (
+                  <div className="w-full space-y-2">
                     <Button
                       variant="default"
                       className="w-full"
-                      data-testid="button-resume-subscription"
-                      disabled={true}
+                      data-testid="button-resubscribe-subscription"
+                      disabled={isDemo || resubscribeMutation.isPending}
+                      onClick={() => {
+                        if (blockIfDemo()) return;
+                        resubscribeMutation.mutate(selectedSubscription.id);
+                      }}
                     >
-                      {t("dashboard.resume") || "Resume Subscription"}
+                      {resubscribeMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : null}
+                      {t("dashboard.resume") || "Continue"}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
-                      To resubscribe, please contact support or purchase a new plan.
+                      {selectedSubscription.productType === "addon"
+                        ? t("dashboard.resubscribeAddonHint") ||
+                          "Restores this add-on on the website. Setup fee does not apply."
+                        : t("dashboard.resubscribeHint") ||
+                          "Starts a new plan for this website and restores cancelled add-ons. Setup fee waived."}
                     </p>
                   </div>
                 )
@@ -2448,14 +2890,18 @@ export default function WebsiteDashboard() {
                 data-testid={`next-payment-${selectedSubscription.id}`}
               >
                 {formatCurrency(
-                  (selectedSubscription as any).nextBillingAmount !== undefined && (selectedSubscription as any).nextBillingAmount !== null
-                    ? (selectedSubscription as any).nextBillingAmount
-                    : selectedSubscription.price,
+                  companionAddons.length > 0
+                    ? nextPaymentTotal
+                    : (selectedSubscription as any).nextBillingAmount !== undefined &&
+                        (selectedSubscription as any).nextBillingAmount !== null
+                      ? (selectedSubscription as any).nextBillingAmount
+                      : selectedSubscription.price,
                   selectedSubscription.currency || "EUR",
                 )}
               </span>
             </div>
-            {(selectedSubscription as any).nextBillingAmount === 0 && (
+            {(selectedSubscription as any).nextBillingAmount === 0 &&
+              companionAddons.length === 0 && (
               <div className="py-3 border-b">
                 <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-md">
                   <span className="text-blue-600 dark:text-blue-400 text-xs mt-0.5">ℹ️</span>
@@ -3741,6 +4187,284 @@ export default function WebsiteDashboard() {
     );
   };
 
+  const renderPopupsList = () => {
+    return (
+      <div data-testid="popups-list">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold">
+              {t("dashboard.popups") || "Popups"}
+            </h2>
+            <p className="text-muted-foreground mt-2">
+              {t("dashboard.popupsDescription") ||
+                "Design visit popups with the visual editor. Separate from newsletter templates."}
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              if (blockIfDemo()) return;
+              sessionStorage.removeItem("loadPopupId");
+              navigate(`/websites/${websiteId}/popup-builder`);
+            }}
+            disabled={isDemo}
+            data-testid="button-create-popup"
+            className="shrink-0"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            {t("dashboard.createPopup") || "Create Popup"}
+          </Button>
+        </div>
+
+        {popupsLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" data-testid="loader-popups" />
+          </div>
+        ) : !popupTemplates || popupTemplates.length === 0 ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="p-4 bg-muted rounded-md">
+                    <AppWindow className="h-12 w-12 text-muted-foreground" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold mb-2">
+                  {t("dashboard.noPopupsYet") || "No popups yet"}
+                </h3>
+                <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                  {t("dashboard.createFirstPopup") ||
+                    "Create your first visit popup with the Unlayer editor."}
+                </p>
+                <Button
+                  onClick={() => {
+                    if (blockIfDemo()) return;
+                    sessionStorage.removeItem("loadPopupId");
+                    navigate(`/websites/${websiteId}/popup-builder`);
+                  }}
+                  disabled={isDemo}
+                  size="lg"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("dashboard.createPopup") || "Create Popup"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 max-w-3xl">
+            {popupTemplates.map((popup) => (
+              <Card
+                key={popup.id}
+                className="hover:border-primary transition-colors flex flex-col overflow-hidden"
+                data-testid={`popup-card-${popup.id}`}
+              >
+                <button
+                  type="button"
+                  className="relative aspect-square w-full bg-muted overflow-hidden border-b text-left cursor-pointer"
+                  onClick={() => {
+                    sessionStorage.setItem("loadPopupId", popup.id.toString());
+                    navigate(`/websites/${websiteId}/popup-builder`);
+                  }}
+                  data-testid={`button-popup-thumbnail-${popup.id}`}
+                >
+                  {popup.thumbnail ? (
+                    <img
+                      src={popup.thumbnail}
+                      alt={popup.name}
+                      className="absolute inset-0 h-full w-full object-contain object-center bg-white"
+                    />
+                  ) : popup.html ? (
+                    <div className="absolute inset-0 overflow-hidden bg-white pointer-events-none">
+                      <iframe
+                        title={popup.name}
+                        srcDoc={popup.html}
+                        sandbox=""
+                        className="border-0 origin-top-left"
+                        style={{
+                          width: "200%",
+                          height: "200%",
+                          transform: "scale(0.5)",
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
+                      <AppWindow className="h-12 w-12" />
+                      <span className="px-3 text-center text-sm">
+                        {t("dashboard.noThumbnail") || "No preview"}
+                      </span>
+                    </div>
+                  )}
+                </button>
+                <CardHeader className="p-3 pb-2 space-y-1.5">
+                  <CardTitle className="text-sm font-semibold leading-snug line-clamp-2">
+                    {popup.name}
+                  </CardTitle>
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge
+                      variant={popup.enabled ? "default" : "secondary"}
+                      className={popup.enabled ? "bg-green-500" : ""}
+                    >
+                      {popup.enabled
+                        ? t("dashboard.popupStatusEnabled") || "Enabled"
+                        : t("dashboard.popupStatusDisabled") || "Disabled"}
+                    </Badge>
+                    <Switch
+                      checked={!!popup.enabled}
+                      disabled={isDemo || togglePopupEnabledMutation.isPending}
+                      onCheckedChange={(checked) => {
+                        if (blockIfDemo()) return;
+                        togglePopupEnabledMutation.mutate({
+                          popupId: popup.id,
+                          enabled: checked,
+                        });
+                      }}
+                      data-testid={`switch-popup-enabled-${popup.id}`}
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {new Date(
+                      popup.updatedAt || popup.createdAt || Date.now(),
+                    ).toLocaleDateString()}
+                  </p>
+                </CardHeader>
+                <CardContent className="p-3 pt-0 mt-auto">
+                  <TooltipProvider>
+                    <div className="flex gap-1.5 justify-center flex-wrap">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              sessionStorage.setItem(
+                                "loadPopupId",
+                                popup.id.toString(),
+                              );
+                              navigate(`/websites/${websiteId}/popup-builder`);
+                            }}
+                            data-testid={`button-edit-popup-${popup.id}`}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("dashboard.edit") || "Edit"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => {
+                              const previewWindow = window.open("", "_blank");
+                              if (previewWindow) {
+                                previewWindow.document.write(popup.html);
+                                previewWindow.document.close();
+                              }
+                            }}
+                            data-testid={`button-preview-popup-${popup.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("dashboard.preview") || "Preview"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={
+                              isDemo || duplicatePopupMutation.isPending
+                            }
+                            onClick={() => {
+                              if (blockIfDemo()) return;
+                              duplicatePopupMutation.mutate(popup.id);
+                            }}
+                            data-testid={`button-duplicate-popup-${popup.id}`}
+                          >
+                            {duplicatePopupMutation.isPending ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("dashboard.duplicate") || "Duplicate"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={isDemo}
+                            onClick={() => {
+                              if (blockIfDemo()) return;
+                              setPopupToDelete(popup.id);
+                            }}
+                            data-testid={`button-delete-popup-${popup.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{t("dashboard.delete") || "Delete"}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </TooltipProvider>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <AlertDialog
+          open={popupToDelete !== null}
+          onOpenChange={(open) => !open && setPopupToDelete(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("dashboard.deletePopupTitle") || "Delete popup?"}
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {t("dashboard.deletePopupDesc") ||
+                  "This permanently deletes the popup design. This cannot be undone."}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletePopupMutation.isPending}>
+                {t("dashboard.cancel") || "Cancel"}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                disabled={deletePopupMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (popupToDelete != null) {
+                    deletePopupMutation.mutate(popupToDelete);
+                  }
+                }}
+              >
+                {deletePopupMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  t("dashboard.delete") || "Delete"
+                )}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  };
+
   const renderMediaSection = () => {
     const mediaFiles = mediaData?.media || [];
 
@@ -4566,6 +5290,7 @@ export default function WebsiteDashboard() {
                   setDigitalProductsSubView={setDigitalProductsSubView}
                   setBillingView={setBillingView}
                   setNewsletterView={setNewsletterView}
+                  resetReception={resetReception}
                   handleLogout={handleLogout}
                   handleOpenBooking={handleOpenBooking}
                   isBookingLoading={isBookingLoading}
@@ -4612,7 +5337,7 @@ export default function WebsiteDashboard() {
             <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4">
               <SidebarTrigger />
             </header>
-            <div className="flex-1 p-4 md:p-6 overflow-x-hidden">
+            <div className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-6">
               <div className="hidden md:block">{renderBreadcrumbs()}</div>
 
               {activeSection === "progress" && (
@@ -4725,11 +5450,35 @@ export default function WebsiteDashboard() {
                 </div>
               )}
 
+              {activeSection === "popups" && (
+                <div data-testid="section-popups">{renderPopupsList()}</div>
+              )}
+
+              {activeSection === "blog" && website?.blogEnabled && websiteId && (
+                <BlogPanel websiteId={Number(websiteId)} />
+              )}
+
+              {activeSection === "video" && website?.videoEnabled && websiteId && (
+                <VideoPanel websiteId={Number(websiteId)} />
+              )}
+
               {activeSection === "automations" && website?.siteId && (
                 <div data-testid="section-automations">
                   <AutomationBuilder
                     websiteId={Number(websiteId)}
                     websiteLanguage={website.websiteLanguage}
+                    contactEmail={website.contactEmail}
+                    receptionEnabled={website.receptionEnabled}
+                  />
+                </div>
+              )}
+
+              {activeSection === "reception" && website?.receptionEnabled && (
+                <div data-testid="section-reception">
+                  <ReceptionPanel
+                    websiteId={Number(websiteId)}
+                    homeToken={receptionHome}
+                    onSelectionChange={setLeadName}
                   />
                 </div>
               )}

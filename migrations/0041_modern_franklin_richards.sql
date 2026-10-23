@@ -1,0 +1,1 @@
+ALTER TABLE "website_progress" ADD COLUMN "blog_enabled" boolean DEFAULT false NOT NULL;

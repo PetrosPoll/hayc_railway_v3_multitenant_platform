@@ -239,6 +239,76 @@
       "when": 1791853378753,
       "tag": "0033_curious_maginty",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1792334706134,
+      "tag": "0034_lush_justin_hammer",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1792348611717,
+      "tag": "0035_lowly_zzzax",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792360709396,
+      "tag": "0036_misty_husk",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792404363429,
+      "tag": "0037_youthful_pandemic",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792504026802,
+      "tag": "0038_volatile_marvel_zombies",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792545674251,
+      "tag": "0039_true_argent",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792708549849,
+      "tag": "0040_living_morbius",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792709034094,
+      "tag": "0041_modern_franklin_richards",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792713395472,
+      "tag": "0042_petite_wiccan",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792720540884,
+      "tag": "0043_lyrical_tiger_shark",
+      "breakpoints": true
     }
   ]
 }
