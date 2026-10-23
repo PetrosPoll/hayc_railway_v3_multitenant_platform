@@ -118,23 +118,17 @@ export function VideoPanel({ websiteId }: { websiteId: number }) {
       const uploadResponse = await fetch(`/api/websites/${websiteId}/videos/upload`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, contentType, bytes: file.size }),
-      });
-      if (!uploadResponse.ok) throw new Error(await readError(uploadResponse));
-      const signed = await uploadResponse.json() as { uploadUrl: string; key: string };
-      const put = await fetch(signed.uploadUrl, {
-        method: "PUT",
         headers: { "Content-Type": contentType },
         body: file,
       });
-      if (!put.ok) throw new Error(t("dashboard.videoUploadFailed") || "Το ανέβασμα απέτυχε.");
+      if (!uploadResponse.ok) throw new Error(await readError(uploadResponse));
+      const uploaded = await uploadResponse.json() as { key: string };
       const createResponse = await fetch(`/api/websites/${websiteId}/videos`, {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          key: signed.key,
+          key: uploaded.key,
           styleId,
           fileName: file.name,
           durationSeconds: duration,
@@ -146,7 +140,10 @@ export function VideoPanel({ websiteId }: { websiteId: number }) {
       await queryClient.invalidateQueries({ queryKey: ["/api/websites", websiteId, "videos"] });
       toast({ description: t("dashboard.videoStarted") || "Η επεξεργασία ξεκίνησε." });
     } catch (error) {
-      toast({ description: error instanceof Error ? error.message : "Κάτι πήγε στραβά.", variant: "destructive" });
+      const message = error instanceof TypeError
+        ? "Η σύνδεση με τον server κόπηκε. Έλεγξε ότι τρέχει και δοκίμασε ξανά."
+        : error instanceof Error ? error.message : "Κάτι πήγε στραβά.";
+      toast({ description: message, variant: "destructive" });
     } finally {
       setBusy(false);
     }

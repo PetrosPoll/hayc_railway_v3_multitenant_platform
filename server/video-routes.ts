@@ -7,19 +7,13 @@ import { db } from "./db";
 import { storage } from "./storage";
 import { athensMonthStart } from "./lib/blog-quota";
 import { createZapcapProvider } from "./lib/zapcap";
-import { deleteVideoObject, presignVideoDownload, presignVideoUpload } from "./lib/video-storage";
+import { deleteVideoObject, presignVideoDownload, putVideoObject } from "./lib/video-storage";
 import { VIDEO_LIMIT_PER_MONTH, VIDEO_MAX_SECONDS, type VideoProvider } from "./lib/video-provider";
 
 const provider: VideoProvider = createZapcapProvider();
 
 const ALLOWED_TYPES = new Set(["video/mp4", "video/quicktime"]);
 const MAX_BYTES = 500 * 1024 * 1024;
-
-const uploadSchema = z.object({
-  fileName: z.string().trim().min(1).max(200),
-  contentType: z.string().trim(),
-  bytes: z.number().int().positive().max(MAX_BYTES),
-});
 
 const createSchema = z.object({
   key: z.string().trim().min(1),
@@ -129,18 +123,19 @@ export function registerVideoRoutes(app: Express) {
     if (!Number.isFinite(websiteId)) return res.status(400).json({ error: "Invalid website id" });
     const access = await authorize(req, websiteId);
     if ("error" in access && access.error) return res.status(access.error.status).json({ error: access.error.message });
-    const parsed = uploadSchema.safeParse(req.body);
-    if (!parsed.success || !ALLOWED_TYPES.has(parsed.data.contentType)) {
-      return res.status(400).json({ error: "Το αρχείο πρέπει να είναι mp4 ή mov έως 500 MB." });
-    }
     if (await monthlyCount(websiteId) >= VIDEO_LIMIT_PER_MONTH) {
       return res.status(429).json({ error: "Έχετε φτάσει τα 10 βίντεο για αυτόν τον μήνα." });
     }
-    const ext = parsed.data.contentType === "video/quicktime" ? "mov" : "mp4";
+    const contentType = String(req.headers["content-type"] || "").split(";")[0].trim();
+    const bytes = Number(req.headers["content-length"]);
+    if (!ALLOWED_TYPES.has(contentType) || !Number.isFinite(bytes) || bytes <= 0 || bytes > MAX_BYTES) {
+      return res.status(400).json({ error: "Το αρχείο πρέπει να είναι mp4 ή mov έως 500 MB." });
+    }
+    const ext = contentType === "video/quicktime" ? "mov" : "mp4";
     const key = `video-uploads/${websiteId}/${randomUUID()}.${ext}`;
     try {
-      const signed = await presignVideoUpload(key, parsed.data.contentType);
-      res.json(signed);
+      await putVideoObject(key, req, contentType, bytes);
+      res.json({ key });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Το ανέβασμα δεν ξεκίνησε.";
       res.status(503).json({ error: message });

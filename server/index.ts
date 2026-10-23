@@ -10,7 +10,7 @@ const app = express();
 // Skip JSON/urlencoded parsing for webhook endpoints - they need raw body for Stripe signature verification
 // Use larger limit for email templates (base64 images can be large), CMS site-config, and bulk-import endpoints
 app.use((req, res, next) => {
-  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect') {
+  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect' || /\/api\/websites\/\d+\/videos\/upload$/.test(req.path)) {
     next();
   } else if ((req.originalUrl.startsWith('/api/email-templates') || req.originalUrl.startsWith('/api/admin/templates')) && (req.method === 'POST' || req.method === 'PATCH')) {
     // 50MB limit for email templates (to handle base64-encoded images)
@@ -30,7 +30,7 @@ app.use((req, res, next) => {
   }
 });
 app.use((req, res, next) => {
-  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect') {
+  if (req.path === '/api/webhook' || req.path === '/api/webhook/stripe-connect' || /\/api\/websites\/\d+\/videos\/upload$/.test(req.path)) {
     next();
   } else {
     express.urlencoded({ extended: false, limit: '1mb' })(req, res, next);

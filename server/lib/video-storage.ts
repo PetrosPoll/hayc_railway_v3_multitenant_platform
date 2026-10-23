@@ -1,5 +1,6 @@
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import type { Readable } from "node:stream";
 
 const s3 = new S3Client({
   region: process.env.S3_REGION,
@@ -7,6 +8,8 @@ const s3 = new S3Client({
     accessKeyId: process.env.S3_ACCESS_KEY_ID || "",
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || "",
   },
+  requestChecksumCalculation: "WHEN_REQUIRED",
+  responseChecksumValidation: "WHEN_REQUIRED",
 });
 
 function bucket() {
@@ -15,14 +18,14 @@ function bucket() {
   return name;
 }
 
-export async function presignVideoUpload(key: string, contentType: string) {
-  const command = new PutObjectCommand({
+export async function putVideoObject(key: string, body: Readable, contentType: string, contentLength: number) {
+  await s3.send(new PutObjectCommand({
     Bucket: bucket(),
     Key: key,
+    Body: body,
     ContentType: contentType,
-  });
-  const uploadUrl = await getSignedUrl(s3, command, { expiresIn: 15 * 60 });
-  return { uploadUrl, key };
+    ContentLength: contentLength,
+  }));
 }
 
 export async function presignVideoDownload(key: string) {
