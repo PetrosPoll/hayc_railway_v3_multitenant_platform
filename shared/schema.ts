@@ -162,6 +162,8 @@ export const websiteProgress = pgTable("website_progress", {
   receptionEnabled: boolean("reception_enabled").default(false).notNull(),
   /** AI blog tab in the customer dashboard. Off until an admin turns it on. */
   blogEnabled: boolean("blog_enabled").default(false).notNull(),
+  /** AI video editing tab. Off until an admin turns it on. */
+  videoEnabled: boolean("video_enabled").default(false).notNull(),
   siteId: text("site_id").unique(),
   customDomain: text("custom_domain"),
   contactEmail: text("contact_email"),
@@ -1355,6 +1357,35 @@ export const blogPosts = pgTable(
 );
 
 export type BlogPost = typeof blogPosts.$inferSelect;
+
+/** One caption job. The finished file stays at the provider; we keep only its ids. */
+export const videoJobs = pgTable(
+  "video_jobs",
+  {
+    id: serial("id").primaryKey(),
+    websiteProgressId: integer("website_progress_id")
+      .notNull()
+      .references(() => websiteProgress.id),
+    provider: text("provider").notNull(),
+    providerVideoId: text("provider_video_id"),
+    providerTaskId: text("provider_task_id"),
+    styleId: text("style_id").notNull(),
+    styleName: text("style_name").notNull(),
+    fileName: text("file_name").notNull(),
+    /** processing | completed | failed */
+    status: text("status").notNull().default("processing"),
+    error: text("error"),
+    /** Temporary upload key. Cleared once the provider has the file. */
+    s3Key: text("s3_key"),
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
+  },
+  (table) => ({
+    websiteIdx: index("video_jobs_website_idx").on(table.websiteProgressId),
+  }),
+);
+
+export type VideoJob = typeof videoJobs.$inferSelect;
 
 // Website Analytics tables
 export const websiteAnalyticsKeys = pgTable("website_analytics_keys", {

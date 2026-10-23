@@ -306,6 +306,7 @@ export async function duplicateDemoWebsite(
           digitalProductsEnabled: source.digitalProductsEnabled,
           receptionEnabled: source.receptionEnabled,
           blogEnabled: source.blogEnabled,
+          videoEnabled: source.videoEnabled,
           siteId: null,
           customDomain: null,
           contactEmail: source.contactEmail,

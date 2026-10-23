@@ -102,6 +102,7 @@ import { ContentEditor } from "@/components/content-editor";
 import { AutomationBuilder } from "@/components/automations/AutomationBuilder";
 import { ReceptionPanel } from "@/components/reception/ReceptionPanel";
 import { BlogPanel } from "@/components/blog/BlogPanel";
+import { VideoPanel } from "@/components/video/VideoPanel";
 import { HdpBrandModal } from "@/components/HdpBrandModal";
 import { DigitalProductsTab } from "@/components/digital-products/DigitalProductsTab";
 import {
@@ -168,6 +169,7 @@ type Website = {
   digitalProductsEnabled?: boolean;
   receptionEnabled?: boolean;
   blogEnabled?: boolean;
+  videoEnabled?: boolean;
   siteId?: string | null;
   websiteLanguage?: string | null;
   stages: Array<{
@@ -1430,6 +1432,12 @@ export default function WebsiteDashboard() {
     }
   }, [website, activeSection]);
 
+  useEffect(() => {
+    if (website && !website.videoEnabled && activeSection === "video") {
+      setActiveSection("progress");
+    }
+  }, [website, activeSection]);
+
   // Newsletter section is now handled locally, no redirect needed
 
   const [changeSubject, setChangeSubject] = useState("");
@@ -1702,6 +1710,9 @@ export default function WebsiteDashboard() {
       ...(website?.blogEnabled
         ? [{ id: "blog", label: t("dashboard.blog") || "Blog", icon: Newspaper }]
         : []),
+      ...(website?.videoEnabled
+        ? [{ id: "video", label: t("dashboard.video") || "Επεξεργασία βίντεο", icon: Film }]
+        : []),
       ...(website?.siteId
         ? [{ id: "automations", label: t("dashboard.automations") || "Automations", icon: Zap }]
         : []),
@@ -1771,7 +1782,7 @@ export default function WebsiteDashboard() {
     ];
 
     return items;
-  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, website?.receptionEnabled, website?.blogEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
+  }, [t, website?.bookingEnabled, website?.paymentsEnabled, website?.digitalProductsEnabled, website?.receptionEnabled, website?.blogEnabled, website?.videoEnabled, tipsVisibleInUserDashboard, changesVisibleInUserDashboard, website?.siteId, website?.stages, website?.currentStage]);
 
   if (websiteLoading) {
     return (
@@ -5445,6 +5456,10 @@ export default function WebsiteDashboard() {
 
               {activeSection === "blog" && website?.blogEnabled && websiteId && (
                 <BlogPanel websiteId={Number(websiteId)} />
+              )}
+
+              {activeSection === "video" && website?.videoEnabled && websiteId && (
+                <VideoPanel websiteId={Number(websiteId)} />
               )}
 
               {activeSection === "automations" && website?.siteId && (

@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { EmailService } from "./email-service";
 import { registerReceptionRoutes } from "./reception-routes";
 import { registerBlogRoutes } from "./blog-routes";
+import { registerVideoRoutes } from "./video-routes";
 import { startCampaignScheduler } from "./scheduler";
 import { emailFormSchema } from "@shared/schema";
 import Stripe from "stripe";
@@ -17660,6 +17661,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
           receptionEnabled: websiteProgress.receptionEnabled,
           blogEnabled: websiteProgress.blogEnabled,
+          videoEnabled: websiteProgress.videoEnabled,
           contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           websiteLanguage: websiteProgress.websiteLanguage,
@@ -17835,6 +17837,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           digitalProductsEnabled: websiteProgress.digitalProductsEnabled,
           receptionEnabled: websiteProgress.receptionEnabled,
           blogEnabled: websiteProgress.blogEnabled,
+          videoEnabled: websiteProgress.videoEnabled,
           contactEmail: websiteProgress.contactEmail,
           siteId: websiteProgress.siteId,
           customDomain: websiteProgress.customDomain,
@@ -18020,9 +18023,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const websiteId = parseInt(req.params.id);
-      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, blogEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
+      const { domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, blogEnabled, videoEnabled, contactEmail, siteId, customDomain, websiteLanguage } = req.body;
 
-      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; receptionEnabled: boolean; blogEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
+      const updates: Partial<{ domain: string; bookingEnabled: boolean; paymentsEnabled: boolean; digitalProductsEnabled: boolean; receptionEnabled: boolean; blogEnabled: boolean; videoEnabled: boolean; contactEmail: string | null; siteId: string | null; customDomain: string | null; websiteLanguage: string; updatedAt: Date }> = {
         updatedAt: new Date(),
       };
 
@@ -18068,6 +18071,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updates.blogEnabled = blogEnabled;
       }
 
+      if (videoEnabled !== undefined) {
+        if (typeof videoEnabled !== "boolean") {
+          return res.status(400).json({ error: "videoEnabled must be a boolean" });
+        }
+        updates.videoEnabled = videoEnabled;
+      }
+
       if (siteId !== undefined) {
         if (typeof siteId !== 'string') {
           return res.status(400).json({ error: "siteId must be a string" });
@@ -18101,7 +18111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (Object.keys(updates).length <= 1) {
-        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, blogEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
+        return res.status(400).json({ error: "Provide at least one of: domain, bookingEnabled, paymentsEnabled, digitalProductsEnabled, receptionEnabled, blogEnabled, videoEnabled, contactEmail, siteId, customDomain, websiteLanguage" });
       }
 
       const [updatedWebsite] = await db
@@ -30613,6 +30623,7 @@ add_action('wpcf7_mail_sent', 'hayc_contact_form_handler');
 
   registerReceptionRoutes(app, authorizeWebsiteAccess);
   registerBlogRoutes(app);
+  registerVideoRoutes(app);
   return httpServer;
 }
 

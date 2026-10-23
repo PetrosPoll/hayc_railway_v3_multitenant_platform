@@ -68,6 +68,7 @@ type Website = {
   digitalProductsEnabled?: boolean
   receptionEnabled?: boolean
   blogEnabled?: boolean
+  videoEnabled?: boolean
   contactEmail?: string | null
   siteId?: string | null
   websiteLanguage?: string | null
@@ -98,6 +99,7 @@ function WebsiteProgressRowActions({
   updateDigitalProductsMutation,
   updateReceptionMutation,
   updateBlogMutation,
+  updateVideoMutation,
 }: {
   website: Website
   canManageWebsites?: boolean
@@ -129,13 +131,18 @@ function WebsiteProgressRowActions({
     mutate: (v: { websiteId: number; blogEnabled: boolean }) => void;
     isPending: boolean;
   };
+  updateVideoMutation: {
+    mutate: (v: { websiteId: number; videoEnabled: boolean }) => void;
+    isPending: boolean;
+  };
 }) {
   const settingsPending =
     updateBookingMutation.isPending ||
     updatePaymentsMutation.isPending ||
     updateDigitalProductsMutation.isPending ||
     updateReceptionMutation.isPending ||
-    updateBlogMutation.isPending;
+    updateBlogMutation.isPending ||
+    updateVideoMutation.isPending;
 
   return (
     <DropdownMenu>
@@ -258,6 +265,18 @@ function WebsiteProgressRowActions({
               }}
             >
               Blog
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={website.videoEnabled ?? false}
+              disabled={settingsPending}
+              onCheckedChange={(checked) => {
+                updateVideoMutation.mutate({
+                  websiteId: website.id,
+                  videoEnabled: !!checked,
+                });
+              }}
+            >
+              Επεξεργασία βίντεο
             </DropdownMenuCheckboxItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
@@ -1270,6 +1289,28 @@ export function AdminWebsiteProgress() {
     },
   });
 
+  const updateVideoMutation = useMutation({
+    mutationFn: async ({ websiteId, videoEnabled }: { websiteId: number; videoEnabled: boolean }) => {
+      const response = await fetch(`/api/admin/websites/${websiteId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoEnabled }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to update video setting");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/websites"] });
+      toast({ description: "Video setting updated" });
+    },
+    onError: (err: any) => {
+      toast({ description: err.message, variant: "destructive" });
+    },
+  });
+
   const updateBlogMutation = useMutation({
     mutationFn: async ({ websiteId, blogEnabled }: { websiteId: number; blogEnabled: boolean }) => {
       const response = await fetch(`/api/admin/websites/${websiteId}`, {
@@ -1826,6 +1867,7 @@ export function AdminWebsiteProgress() {
                       updateDigitalProductsMutation={updateDigitalProductsMutation}
                       updateReceptionMutation={updateReceptionMutation}
                       updateBlogMutation={updateBlogMutation}
+                      updateVideoMutation={updateVideoMutation}
                     />
                   </div>
                 </div>
